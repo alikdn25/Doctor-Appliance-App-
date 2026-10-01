@@ -3,8 +3,7 @@
 Multi-tenant field-service management app (see [`SPEC.md`](SPEC.md)).
 Stack: Laravel 13, Inertia.js + React + TypeScript, Tailwind CSS, PostgreSQL, Redis, Pest.
 
-**Current stage: Stage 0 — Foundation** (auth, companies, brands, team & roles, taxes, super-admin panel,
-tenant isolation, deployment pipeline).
+**Current stage: Stage 1 — MVP.** Progress per stage and task: [`docs/PROGRESS.md`](docs/PROGRESS.md).
 
 ## Local setup
 

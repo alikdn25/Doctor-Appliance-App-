@@ -17,6 +17,7 @@ export type CurrentCompany = {
 };
 
 export type Permissions = {
+    viewCustomers?: boolean;
     manageCompany?: boolean;
     viewBrands?: boolean;
     manageTeam?: boolean;

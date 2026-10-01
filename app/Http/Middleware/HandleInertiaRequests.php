@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Brand;
 use App\Models\Company;
+use App\Models\Customer;
 use App\Models\Membership;
 use App\Models\TaxRate;
 use App\Models\User;
@@ -75,6 +76,7 @@ class HandleInertiaRequests extends Middleware
                 ? []
                 : $user->accessibleCompanies()->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name])->values(),
             'can' => $company === null ? [] : [
+                'viewCustomers' => $user->can('viewAny', Customer::class),
                 'manageCompany' => $user->can('update', $company),
                 'viewBrands' => $user->can('viewAny', Brand::class),
                 'manageTeam' => $user->can('viewAny', Membership::class),

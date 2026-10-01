@@ -18,4 +18,15 @@ return [
 
     'default_timezone' => 'America/Vancouver',
 
+    /*
+    | Common appliance manufacturers suggested when entering an appliance
+    | (merged with the ones a company has already used).
+    */
+    'appliance_manufacturers' => [
+        'Amana', 'Asko', 'Bertazzoni', 'Blomberg', 'Bosch', 'Café', 'Dacor', 'Electrolux', 'Equator',
+        'Fisher & Paykel', 'Frigidaire', 'Fulgor Milano', 'GE', 'GE Profile', 'Haier', 'Hisense',
+        'Jenn-Air', 'Kenmore', 'KitchenAid', 'LG', 'Maytag', 'Midea', 'Miele', 'Monogram', 'Panasonic',
+        'Samsung', 'Sharp', 'Speed Queen', 'Sub-Zero', 'Thermador', 'Whirlpool', 'Wolf',
+    ],
+
 ];
