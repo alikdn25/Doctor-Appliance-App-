@@ -1,0 +1,48 @@
+<?php
+
+namespace App\Http\Controllers\Company;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Company\CompanySettingsRequest;
+use App\Services\AuditLogger;
+use DateTimeZone;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class CompanySettingsController extends Controller
+{
+    public function edit(): Response
+    {
+        $company = currentCompany();
+
+        Gate::authorize('update', $company);
+
+        return Inertia::render('company/settings', [
+            'company' => $company->only([
+                'id', 'name', 'timezone', 'currency',
+                'invoice_prefix', 'invoice_next_number',
+                'estimate_prefix', 'estimate_next_number',
+            ]) + ['business_hours' => $company->business_hours ?? $company::defaultBusinessHours()],
+            'timezones' => DateTimeZone::listIdentifiers(),
+            'currencies' => config('fieldservice.currencies'),
+        ]);
+    }
+
+    public function update(CompanySettingsRequest $request, AuditLogger $audit): RedirectResponse
+    {
+        $company = currentCompany();
+        $company->fill($request->settings());
+        $changes = $company->getDirty();
+        $company->save();
+
+        if ($changes !== []) {
+            $audit->record('company.settings_updated', $company, ['fields' => array_keys($changes)]);
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('company.saved')]);
+
+        return to_route('company.settings.edit');
+    }
+}

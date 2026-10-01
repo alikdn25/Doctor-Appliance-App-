@@ -1,0 +1,48 @@
+<?php
+
+return [
+    'title' => 'Brands',
+    'description' => 'Each brand has its own logo, contacts and documents. Customers always see the brand of their job.',
+    'add' => 'Add brand',
+    'empty' => 'No brands yet. Add your first brand.',
+    'form_description' => 'Brand identity, contacts, addresses and document details.',
+    'created' => 'Brand created.',
+    'updated' => 'Brand saved.',
+    'deleted' => 'Brand deleted.',
+    'delete' => 'Delete brand',
+    'confirm_delete' => 'Delete brand ":name"?',
+    'logo_hint' => 'PNG, JPG or WebP, up to 2 MB.',
+    'remove_logo' => 'Remove current logo',
+    'add_address' => 'Add address',
+    'primary_address' => 'Primary address',
+
+    'sections' => [
+        'contact' => 'Contacts and email sender',
+        'addresses' => 'Addresses',
+        'documents' => 'Invoices and estimates',
+    ],
+
+    'fields' => [
+        'name' => 'Brand name',
+        'logo' => 'Logo',
+        'primary_color' => 'Primary color',
+        'secondary_color' => 'Secondary color',
+        'website' => 'Website',
+        'email' => 'Email',
+        'phone' => 'Phone',
+        'sender_name' => 'Email sender name',
+        'sender_email' => 'Email sender address',
+        'gst_number' => 'GST number',
+        'business_number' => 'Business registration number',
+        'invoice_footer' => 'Invoice footer',
+        'invoice_terms' => 'Terms and conditions',
+        'is_active' => 'Brand is active',
+        'label' => 'Label (e.g. Main office)',
+        'line1' => 'Street address',
+        'line2' => 'Unit / suite',
+        'city' => 'City',
+        'province' => 'Province',
+        'postal_code' => 'Postal code',
+        'country' => 'Country code',
+    ],
+];

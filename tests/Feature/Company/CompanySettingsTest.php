@@ -1,0 +1,51 @@
+<?php
+
+use App\Enums\UserRole;
+use App\Models\AuditLog;
+use App\Models\Company;
+
+beforeEach(function () {
+    $this->company = Company::factory()->create(['name' => 'Old Name']);
+    $this->actingAs(memberOf($this->company, UserRole::Owner));
+});
+
+function settingsPayload(array $overrides = []): array
+{
+    return array_replace_recursive([
+        'name' => 'Doctor Appliance Group',
+        'timezone' => 'America/Vancouver',
+        'currency' => 'CAD',
+        'invoice_prefix' => 'DA-',
+        'invoice_next_number' => 1001,
+        'estimate_prefix' => 'EST-',
+        'estimate_next_number' => 50,
+        'business_hours' => Company::defaultBusinessHours(),
+    ], $overrides);
+}
+
+test('the owner can update company settings', function () {
+    $this->put(route('company.settings.update'), settingsPayload([
+        'business_hours' => ['sat' => ['closed' => false, 'open' => '09:00', 'close' => '13:00']],
+    ]))->assertRedirect(route('company.settings.edit'));
+
+    $company = $this->company->fresh();
+
+    expect($company)
+        ->name->toBe('Doctor Appliance Group')
+        ->invoice_prefix->toBe('DA-')
+        ->invoice_next_number->toBe(1001)
+        ->and($company->business_hours['sat'])->toEqual(['closed' => false, 'open' => '09:00', 'close' => '13:00'])
+        ->and($company->business_hours['sun'])->toEqual(['closed' => true, 'open' => null, 'close' => null])
+        ->and(AuditLog::where('action', 'company.settings_updated')->exists())->toBeTrue();
+});
+
+test('company settings are validated', function () {
+    $this->put(route('company.settings.update'), settingsPayload([
+        'timezone' => 'Mars/Olympus',
+        'currency' => 'EUR',
+        'invoice_next_number' => 0,
+        'business_hours' => ['mon' => ['closed' => false, 'open' => '17:00', 'close' => '08:00']],
+    ]))->assertSessionHasErrors(['timezone', 'currency', 'invoice_next_number', 'business_hours.mon.close']);
+
+    expect($this->company->fresh()->name)->toBe('Old Name');
+});
