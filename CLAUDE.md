@@ -12,4 +12,5 @@ Read `SPEC.md` before any task. It is the source of truth for scope and stages.
 - Keep secrets in `.env`, never commit keys. Keep `.env.example` up to date.
 - UI text in English, stored in translation files.
 - At the end of each task, write a short summary: what was built, how to test it manually, what is left.
+- At the end of each task, update `docs/PROGRESS.md`: what is done per stage and what is next.
 - If something in SPEC.md is unclear or contradictory, stop and ask instead of guessing.
