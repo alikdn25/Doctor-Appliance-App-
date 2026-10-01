@@ -1,0 +1,59 @@
+<?php
+
+namespace App\Models;
+
+use App\Models\Concerns\BelongsToCompany;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+/**
+ * @property int $id
+ * @property int $company_id
+ * @property int $brand_id
+ * @property string|null $label
+ * @property string $line1
+ * @property string|null $line2
+ * @property string $city
+ * @property string|null $province
+ * @property string|null $postal_code
+ * @property string $country
+ * @property bool $is_primary
+ */
+class BrandAddress extends Model
+{
+    use BelongsToCompany;
+
+    protected $fillable = [
+        'label',
+        'line1',
+        'line2',
+        'city',
+        'province',
+        'postal_code',
+        'country',
+        'is_primary',
+    ];
+
+    protected $attributes = [
+        'country' => 'CA',
+        'is_primary' => false,
+    ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_primary' => 'boolean',
+        ];
+    }
+
+    /**
+     * @return BelongsTo<Brand, $this>
+     */
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+}

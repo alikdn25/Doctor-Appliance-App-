@@ -1,0 +1,55 @@
+name: deploy
+
+# Deploys main to the production VPS.
+# Manual only (Actions → deploy → Run workflow) until the server is set up.
+# To deploy automatically after green tests on main, add:
+#   workflow_run:
+#     workflows: [tests]
+#     types: [completed]
+#     branches: [main]
+# and restore the job condition:
+#   if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+# and set DEPLOY_SHA to: ${{ github.event.workflow_run.head_sha || github.sha }}
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Run deploy script on the server
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          APP_PATH: ${{ secrets.APP_PATH }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" -o StrictHostKeyChecking=yes \
+            "$SSH_USER@$SSH_HOST" \
+            "cd '$APP_PATH' && DEPLOY_SHA='$DEPLOY_SHA' bash deploy/deploy.sh"
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

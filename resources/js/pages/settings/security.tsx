@@ -6,6 +6,7 @@ import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { useTrans } from '@/lib/i18n';
 import { edit } from '@/routes/security';
 import type { Props as ManageTwoFactorProps } from '@/components/manage-two-factor';
 import ManageTwoFactor from '@/components/manage-two-factor';
@@ -19,18 +20,19 @@ type Props = {
 export default function Security(props: Props) {
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
+    const t = useTrans();
 
     return (
         <>
-            <Head title="Security settings" />
+            <Head title={t('settings.security.title')} />
 
-            <h1 className="sr-only">Security settings</h1>
+            <h1 className="sr-only">{t('settings.security.title')}</h1>
 
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="Update password"
-                    description="Ensure your account is using a long, random password to stay secure"
+                    title={t('settings.security.password_heading')}
+                    description={t('settings.security.password_description')}
                 />
 
                 <Form
@@ -59,7 +61,7 @@ export default function Security(props: Props) {
                         <>
                             <div className="grid gap-2">
                                 <Label htmlFor="current_password">
-                                    Current password
+                                    {t('settings.security.current_password')}
                                 </Label>
 
                                 <PasswordInput
@@ -68,14 +70,18 @@ export default function Security(props: Props) {
                                     name="current_password"
                                     className="mt-1 block w-full"
                                     autoComplete="current-password"
-                                    placeholder="Current password"
+                                    placeholder={t(
+                                        'settings.security.current_password',
+                                    )}
                                 />
 
                                 <InputError message={errors.current_password} />
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="password">New password</Label>
+                                <Label htmlFor="password">
+                                    {t('settings.security.new_password')}
+                                </Label>
 
                                 <PasswordInput
                                     id="password"
@@ -83,7 +89,9 @@ export default function Security(props: Props) {
                                     name="password"
                                     className="mt-1 block w-full"
                                     autoComplete="new-password"
-                                    placeholder="New password"
+                                    placeholder={t(
+                                        'settings.security.new_password',
+                                    )}
                                     passwordrules={props.passwordRules}
                                 />
 
@@ -92,7 +100,7 @@ export default function Security(props: Props) {
 
                             <div className="grid gap-2">
                                 <Label htmlFor="password_confirmation">
-                                    Confirm password
+                                    {t('auth.fields.password_confirmation')}
                                 </Label>
 
                                 <PasswordInput
@@ -100,7 +108,9 @@ export default function Security(props: Props) {
                                     name="password_confirmation"
                                     className="mt-1 block w-full"
                                     autoComplete="new-password"
-                                    placeholder="Confirm password"
+                                    placeholder={t(
+                                        'auth.fields.password_confirmation',
+                                    )}
                                     passwordrules={props.passwordRules}
                                 />
 
@@ -114,7 +124,7 @@ export default function Security(props: Props) {
                                     disabled={processing}
                                     data-test="update-password-button"
                                 >
-                                    Save
+                                    {t('common.save')}
                                 </Button>
                             </div>
                         </>
@@ -134,7 +144,7 @@ export default function Security(props: Props) {
 Security.layout = {
     breadcrumbs: [
         {
-            title: 'Security settings',
+            title: 'settings.security.title',
             href: edit(),
         },
     ],

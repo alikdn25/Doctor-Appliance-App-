@@ -2,6 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
+use App\Models\Company;
+use App\Models\Membership;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -34,6 +37,34 @@ class UserFactory extends Factory
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
         ];
+    }
+
+    public function superAdmin(): static
+    {
+        return $this->state(['is_super_admin' => true]);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(['is_active' => false]);
+    }
+
+    /**
+     * Give the user a membership in the company (a new company if none given).
+     */
+    public function memberOf(?Company $company = null, UserRole $role = UserRole::Owner): static
+    {
+        return $this->afterCreating(function (User $user) use ($company, $role) {
+            $company ??= Company::factory()->create();
+
+            Membership::factory()->create([
+                'company_id' => $company->id,
+                'user_id' => $user->id,
+                'role' => $role,
+            ]);
+
+            $user->forceFill(['current_company_id' => $company->id])->save();
+        });
     }
 
     /**

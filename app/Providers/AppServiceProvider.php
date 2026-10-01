@@ -2,9 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use App\Services\Impersonation;
+use App\Support\Tenancy\CurrentCompany;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -15,7 +20,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // One tenant context per request / queued job.
+        $this->app->scoped(CurrentCompany::class);
+        $this->app->scoped(Impersonation::class);
     }
 
     /**
@@ -24,6 +31,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        Event::listen(Login::class, function (Login $event) {
+            if ($event->user instanceof User && ! app(Impersonation::class)->isActive()) {
+                $event->user->forceFill(['last_login_at' => now()])->saveQuietly();
+            }
+        });
     }
 
     /**
