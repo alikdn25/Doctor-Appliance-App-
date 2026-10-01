@@ -7,6 +7,9 @@ use App\Http\Controllers\Company\CompanySettingsController;
 use App\Http\Controllers\Company\SwitchCompanyController;
 use App\Http\Controllers\Company\TaxRateController;
 use App\Http\Controllers\Company\TeamController;
+use App\Http\Controllers\Customers\ApplianceController;
+use App\Http\Controllers\Customers\CustomerController;
+use App\Http\Controllers\Customers\PropertyController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +22,16 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
 
         Route::post('companies/{company}/switch', SwitchCompanyController::class)->name('companies.switch');
+
+        Route::get('customers/duplicates', [CustomerController::class, 'duplicates'])->name('customers.duplicates');
+        Route::resource('customers', CustomerController::class);
+        Route::post('customers/{customer}/properties', [PropertyController::class, 'store'])->name('properties.store');
+        Route::put('properties/{property}', [PropertyController::class, 'update'])->name('properties.update');
+        Route::delete('properties/{property}', [PropertyController::class, 'destroy'])->name('properties.destroy');
+        Route::post('properties/{property}/appliances', [ApplianceController::class, 'store'])->name('appliances.store');
+        Route::get('appliances/{appliance}', [ApplianceController::class, 'show'])->name('appliances.show');
+        Route::put('appliances/{appliance}', [ApplianceController::class, 'update'])->name('appliances.update');
+        Route::delete('appliances/{appliance}', [ApplianceController::class, 'destroy'])->name('appliances.destroy');
 
         Route::prefix('company')->group(function () {
             Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company.settings.edit');

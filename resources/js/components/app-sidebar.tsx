@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Building,
     Building2,
+    Contact,
     LayoutGrid,
     Percent,
     Tags,
@@ -23,6 +24,7 @@ import {
 import { dashboard } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as brands } from '@/routes/brands';
+import { index as customers } from '@/routes/customers';
 import { edit as companySettings } from '@/routes/company/settings';
 import { index as taxes } from '@/routes/taxes';
 import { index as team } from '@/routes/team';
@@ -33,7 +35,14 @@ export function AppSidebar() {
     const can = auth.can ?? {};
 
     const mainItems: NavItem[] = auth.company
-        ? [{ title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid }]
+        ? ([
+              { title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid },
+              can.viewCustomers && {
+                  title: 'nav.customers',
+                  href: customers(),
+                  icon: Contact,
+              },
+          ].filter(Boolean) as NavItem[])
         : [];
 
     const companyItems: NavItem[] = [

@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Actions\Customers\SaveAppliance;
+use App\Actions\Customers\SaveCustomer;
 use App\Enums\UserRole;
 use App\Models\Brand;
 use App\Models\Company;
@@ -52,6 +54,8 @@ class DemoSeeder extends Seeder
 
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true, 'sort_order' => 1]);
             TaxRate::create(['name' => 'PST', 'rate' => 7, 'sort_order' => 2]);
+
+            $this->customers();
         });
 
         $tenancy->runAs($coastal, function () use ($coastal, $other, $tech) {
@@ -60,6 +64,10 @@ class DemoSeeder extends Seeder
 
             $this->brand('Coastal Appliance Repair', '#1D4ED8', 'Victoria');
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true]);
+
+            app(SaveCustomer::class)->handle(null, ['type' => 'residential', 'first_name' => 'Victoria', 'last_name' => 'Island'],
+                [['label' => 'mobile', 'number' => '250-555-0199']], [],
+                ['line1' => '10 Government St', 'city' => 'Victoria', 'province' => 'BC', 'country' => 'CA']);
         });
     }
 
@@ -103,5 +111,43 @@ class DemoSeeder extends Seeder
         ]);
 
         return $brand;
+    }
+
+    /**
+     * A few customers with properties and appliances for the current company.
+     */
+    private function customers(): void
+    {
+        $saveCustomer = app(SaveCustomer::class);
+        $saveAppliance = app(SaveAppliance::class);
+
+        $jane = $saveCustomer->handle(
+            null,
+            ['type' => 'residential', 'first_name' => 'Jane', 'last_name' => 'Cooper', 'lead_source' => 'google_business_profile', 'tags' => ['VIP']],
+            [['label' => 'mobile', 'number' => '604-555-0142', 'is_primary' => true]],
+            [['label' => 'personal', 'email' => 'jane.cooper@example.com', 'is_primary' => true]],
+            ['line1' => '8450 128 St', 'city' => 'Surrey', 'province' => 'BC', 'postal_code' => 'V3W 4G1', 'country' => 'CA', 'gate_code' => '#1234'],
+        );
+        $property = $jane->properties()->first();
+        $saveAppliance->handle($property, null, ['type' => 'washer', 'manufacturer' => 'LG', 'model_number' => 'WM3900HWA', 'serial_number' => '912KWPX4B123', 'warranty_expires_on' => now()->addYear()->toDateString()]);
+        $saveAppliance->handle($property, null, ['type' => 'refrigerator', 'manufacturer' => 'Samsung', 'model_number' => 'RF28R7351SR', 'serial_number' => '0B4R4BAN500123']);
+
+        $pm = $saveCustomer->handle(
+            null,
+            ['type' => 'property_manager', 'company_name' => 'Westside Property Management', 'first_name' => 'Mark', 'last_name' => 'Lee', 'lead_source' => 'referral'],
+            [['label' => 'work', 'number' => '604-555-0177', 'is_primary' => true]],
+            [['label' => 'billing', 'email' => 'ap@westside-pm.example.com', 'is_primary' => true]],
+            ['label' => 'Rental on Main', 'line1' => '4120 Main St', 'unit' => '204', 'city' => 'Vancouver', 'province' => 'BC', 'postal_code' => 'V5V 3P6', 'country' => 'CA',
+                'site_contact_name' => 'Sam Tenant', 'site_contact_phone' => '778-555-0110', 'access_notes' => 'Call the tenant 30 minutes before arrival.'],
+        );
+        $saveAppliance->handle($pm->properties()->first(), null, ['type' => 'dishwasher', 'manufacturer' => 'Bosch', 'model_number' => 'SHPM88Z75N']);
+
+        $saveCustomer->handle(
+            null,
+            ['type' => 'residential', 'first_name' => 'Robert', 'last_name' => 'Fox', 'lead_source' => 'homestars'],
+            [['label' => 'mobile', 'number' => '778-555-0123', 'is_primary' => true]],
+            [],
+            ['line1' => '6200 McKay Ave', 'city' => 'Burnaby', 'province' => 'BC', 'postal_code' => 'V5H 4M9', 'country' => 'CA'],
+        );
     }
 }

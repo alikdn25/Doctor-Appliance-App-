@@ -2,12 +2,17 @@
 
 use App\Actions\Members\SyncMemberBrands;
 use App\Enums\UserRole;
+use App\Models\Appliance;
 use App\Models\AuditLog;
 use App\Models\Brand;
 use App\Models\BrandAddress;
 use App\Models\Company;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Customer;
+use App\Models\CustomerEmail;
+use App\Models\CustomerPhone;
 use App\Models\Membership;
+use App\Models\Property;
 use App\Models\TaxRate;
 use App\Support\Tenancy\MissingTenantException;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +30,13 @@ beforeEach(function () {
 
     $this->taxA = TaxRate::factory()->create(['company_id' => $this->companyA->id]);
     $this->taxB = TaxRate::factory()->create(['company_id' => $this->companyB->id]);
+
+    $this->customerA = Customer::factory()->for($this->companyA)->withPhone('604-555-0101')->withEmail('a@example.com')->create(['first_name' => 'Alice']);
+    $this->customerB = Customer::factory()->for($this->companyB)->withPhone('604-555-0202')->withEmail('b@example.com')->create(['first_name' => 'Bella']);
+    $this->propertyA = Property::factory()->for($this->customerA)->create();
+    $this->propertyB = Property::factory()->for($this->customerB)->create(['line1' => '1 Secret St']);
+    $this->applianceA = Appliance::factory()->for($this->propertyA)->create();
+    $this->applianceB = Appliance::factory()->for($this->propertyB)->create(['type' => 'washer', 'model_number' => 'SECRETMODEL']);
 });
 
 /**
@@ -36,6 +48,11 @@ dataset('tenant models', [
     'brand addresses' => [BrandAddress::class],
     'memberships' => [Membership::class],
     'tax rates' => [TaxRate::class],
+    'customers' => [Customer::class],
+    'customer phones' => [CustomerPhone::class],
+    'customer emails' => [CustomerEmail::class],
+    'properties' => [Property::class],
+    'appliances' => [Appliance::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -50,7 +67,10 @@ test('every tenant-owned model is covered by isolation tests', function () {
         ->sort()
         ->all();
 
-    expect($tenantModels)->toBe(collect([Brand::class, BrandAddress::class, Membership::class, TaxRate::class])->sort()->all());
+    expect($tenantModels)->toBe(collect([
+        Appliance::class, Brand::class, BrandAddress::class, Customer::class, CustomerEmail::class,
+        CustomerPhone::class, Membership::class, Property::class, TaxRate::class,
+    ])->sort()->values()->all());
 });
 
 test('querying a tenant model without a current company fails closed', function (string $model) {
@@ -178,4 +198,81 @@ test('audit logs written in a company are attributed to that company', function 
 
     expect(AuditLog::where('action', 'tax_rate.created')->sole()->company_id)
         ->toBe($this->companyA->id);
+});
+
+test('the customer list and search only show customers of the current company', function () {
+    $this->actingAs($this->ownerA);
+
+    $this->get(route('customers.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('customers.total', 1)
+            ->where('customers.data.0.id', $this->customerA->id));
+
+    foreach (['Bella', '604-555-0202', 'b@example.com', 'Secret St', 'SECRETMODEL'] as $term) {
+        $this->get(route('customers.index', ['search' => $term]))
+            ->assertInertia(fn (Assert $page) => $page->where('customers.total', 0));
+    }
+});
+
+test('another company\'s customers, properties and appliances cannot be opened or changed', function () {
+    $this->actingAs($this->ownerA);
+
+    $this->get(route('customers.show', $this->customerB))->assertNotFound();
+    $this->get(route('customers.edit', $this->customerB))->assertNotFound();
+    $this->put(route('customers.update', $this->customerB), ['type' => 'residential', 'first_name' => 'X'])->assertNotFound();
+    $this->delete(route('customers.destroy', $this->customerB))->assertNotFound();
+
+    $this->post(route('properties.store', $this->customerB), ['line1' => 'X', 'city' => 'Y', 'country' => 'CA'])->assertNotFound();
+    $this->put(route('properties.update', $this->propertyB), ['line1' => 'X', 'city' => 'Y', 'country' => 'CA'])->assertNotFound();
+    $this->delete(route('properties.destroy', $this->propertyB))->assertNotFound();
+
+    $this->post(route('appliances.store', $this->propertyB), ['type' => 'washer'])->assertNotFound();
+    $this->get(route('appliances.show', $this->applianceB))->assertNotFound();
+    $this->put(route('appliances.update', $this->applianceB), ['type' => 'dryer'])->assertNotFound();
+    $this->delete(route('appliances.destroy', $this->applianceB))->assertNotFound();
+
+    expect(Customer::withoutCompanyScope()->find($this->customerB->id)->first_name)->toBe('Bella')
+        ->and(Property::withoutCompanyScope()->find($this->propertyB->id)->line1)->toBe('1 Secret St')
+        ->and(Appliance::withoutCompanyScope()->find($this->applianceB->id)->type->value)->toBe('washer')
+        ->and(Property::withoutCompanyScope()->where('customer_id', $this->customerB->id)->count())->toBe(1)
+        ->and(Appliance::withoutCompanyScope()->where('property_id', $this->propertyB->id)->count())->toBe(1);
+});
+
+test('phones and emails of another company cannot be taken over through a customer update', function () {
+    $phoneB = CustomerPhone::withoutCompanyScope()->where('customer_id', $this->customerB->id)->sole();
+    $emailB = CustomerEmail::withoutCompanyScope()->where('customer_id', $this->customerB->id)->sole();
+
+    $this->actingAs($this->ownerA)
+        ->put(route('customers.update', $this->customerA), [
+            'type' => 'residential',
+            'first_name' => 'Alice',
+            'phones' => [['id' => $phoneB->id, 'label' => 'mobile', 'number' => '604-555-9999']],
+            'emails' => [['id' => $emailB->id, 'label' => 'personal', 'email' => 'x@example.com']],
+        ])
+        ->assertRedirect();
+
+    expect($phoneB->fresh())->number->toBe('604-555-0202')->customer_id->toBe($this->customerB->id)
+        ->and($emailB->fresh())->email->toBe('b@example.com')->customer_id->toBe($this->customerB->id);
+});
+
+test('duplicate detection never reveals another company\'s customers', function () {
+    $this->actingAs($this->ownerA)
+        ->getJson(route('customers.duplicates', ['phones' => ['604-555-0202'], 'emails' => ['b@example.com']]))
+        ->assertOk()
+        ->assertJsonCount(0, 'duplicates');
+});
+
+test('manufacturer and tag suggestions only come from the current company', function () {
+    inCompany($this->companyB, function () {
+        $this->applianceB->update(['manufacturer' => 'SecretBrand']);
+        $this->customerB->update(['tags' => ['secret-tag']]);
+    });
+
+    $this->actingAs($this->ownerA)
+        ->get(route('customers.show', $this->customerA))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('manufacturers', fn ($list) => ! collect($list)->contains('SecretBrand')));
+
+    $this->get(route('customers.index'))
+        ->assertInertia(fn (Assert $page) => $page->where('tags', []));
 });
