@@ -23,7 +23,9 @@ class JobProfit
      */
     public static function for(ServiceJob $job): array
     {
-        $invoices = Invoice::query()->where('service_job_id', $job->id)->where('status', '!=', InvoiceStatus::Void->value)->with('items')->get();
+        $currency = currentCompany()->currency;
+        $invoices = Invoice::query()->where('service_job_id', $job->id)->where('currency', $currency)
+            ->where('status', '!=', InvoiceStatus::Void->value)->with('items')->get();
 
         $revenue = 0;
         $cost = 0;
@@ -35,7 +37,8 @@ class JobProfit
             $cost += $invoice->items->sum(fn (InvoiceItem $item) => $item->totalCost());
         }
 
-        $cost += JobCostItem::query()->where('service_job_id', $job->id)->get()->sum(fn (JobCostItem $item) => $item->totalCost());
+        $cost += JobCostItem::query()->where('service_job_id', $job->id)->where('currency', $currency)
+            ->get()->sum(fn (JobCostItem $item) => $item->totalCost());
         $fees = (int) Payment::query()->valid()->whereIn('invoice_id', $invoices->pluck('id'))->sum('processing_fee');
         $profit = $revenue - $cost - $fees;
 

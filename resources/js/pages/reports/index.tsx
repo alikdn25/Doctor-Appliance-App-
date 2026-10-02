@@ -179,6 +179,9 @@ export default function Reports({
                     <h2 className="text-base font-medium">
                         {t('reports.profit_title')}
                     </h2>
+                    <p className="text-sm text-muted-foreground">
+                        {t('reports.profit_currency_hint', { currency })}
+                    </p>
                     {totals.jobs === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             {t('reports.empty')}

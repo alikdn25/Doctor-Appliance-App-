@@ -10,6 +10,7 @@ return [
     'no_appliance' => 'No appliance',
     'no_receipts' => 'No supplier receipts for jobs closed in this period.',
     'profit_title' => 'Profit and margin',
+    'profit_currency_hint' => 'Profit and costs include only records in the current company currency (:currency). Revenue in other document currencies is shown separately above; amounts are not converted.',
     'jobs' => 'Jobs',
     'revenue' => 'Revenue',
     'cost' => 'Costs',

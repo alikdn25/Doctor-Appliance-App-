@@ -243,20 +243,39 @@ export default function Services({
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => setRow(i, { brand_ids: [] })}
+                                        onClick={() =>
+                                            setRow(i, { brand_ids: [] })
+                                        }
                                     >
                                         {t('services.all_brands')}
                                     </Button>
                                     <div className="flex flex-wrap gap-x-4 gap-y-2">
                                         {brands.map((brand) => (
-                                            <label key={brand.id} className="flex min-h-10 items-center gap-2 text-sm">
+                                            <label
+                                                key={brand.id}
+                                                className="flex min-h-10 items-center gap-2 text-sm"
+                                            >
                                                 <Checkbox
-                                                    checked={row.brand_ids.includes(brand.id)}
-                                                    onCheckedChange={(checked) =>
+                                                    checked={row.brand_ids.includes(
+                                                        brand.id,
+                                                    )}
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
                                                         setRow(i, {
-                                                            brand_ids: checked === true
-                                                                ? [...row.brand_ids, brand.id]
-                                                                : row.brand_ids.filter((id) => id !== brand.id),
+                                                            brand_ids:
+                                                                checked === true
+                                                                    ? [
+                                                                          ...row.brand_ids,
+                                                                          brand.id,
+                                                                      ]
+                                                                    : row.brand_ids.filter(
+                                                                          (
+                                                                              id,
+                                                                          ) =>
+                                                                              id !==
+                                                                              brand.id,
+                                                                      ),
                                                         })
                                                     }
                                                 />
@@ -264,7 +283,11 @@ export default function Services({
                                             </label>
                                         ))}
                                     </div>
-                                    <InputError message={errors[`services.${i}.brand_ids`]} />
+                                    <InputError
+                                        message={
+                                            errors[`services.${i}.brand_ids`]
+                                        }
+                                    />
                                 </fieldset>
                             )}
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

@@ -95,6 +95,16 @@ test('price book availability can only reference brands in the current company',
     ]])->assertSessionHasErrors('services.0.brand_ids.0');
 });
 
+test('several catalogue items can be available to the same brand', function () {
+    $brand = Brand::factory()->create(['company_id' => $this->company->id]);
+    $this->put(route('company.services.update'), ['services' => [
+        ['name' => 'Pump', 'brand_ids' => [$brand->id, $brand->id]],
+        ['name' => 'Motor', 'brand_ids' => [$brand->id]],
+    ]])->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => Service::query()->orderBy('sort_order')->get()->pluck('brand_ids')->all()))
+        ->toBe([[$brand->id], [$brand->id]]);
+});
+
 test('existing invoice lines keep their service reference after availability changes', function () {
     $brand = Brand::factory()->create(['company_id' => $this->company->id]);
     $otherBrand = Brand::factory()->create(['company_id' => $this->company->id]);

@@ -31,8 +31,8 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
   to install npm dependencies. Build, formatting, TypeScript and backend tests must pass in GitHub Actions.
 - Manual validation still required: narrow mobile screens, long names/addresses, every visit state,
   iPhone home-indicator spacing, navigation/call links, dark mode and keyboard focus.
-- Next functional work: finish price-book categories and basic revenue/conversion reports, then the remaining
-  stages in SPEC.md. Stage 2, Stage 3 and platform subscription billing are not complete.
+- Categories and business reports are implemented below. Stage 2, Stage 3 and platform subscription billing
+  are not complete.
 
 | #   | Task                                                                         | Status     |
 | --- | ---------------------------------------------------------------------------- | ---------- |
@@ -65,6 +65,8 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
   Approved and invoiced count as converted; unsent drafts and superseded versions do not count.
 - Reports enforce company and office brand access, validate real calendar dates and reject reversed ranges.
   Removed silent truncation after 5,000 closed jobs; receipt ZIP names include only accessible jobs.
+- Profit/cost reports use only the company's current currency, explicitly labeled, so legacy document currencies
+  are never added together. The new revenue section reports every document currency separately.
 - CI runs frontend checks, TypeScript and backend tests independently, keeping failed checks visible. Suggested
   formatting diffs are printed after tests on failures; CI never writes fixes back to the repository.
 - Tests added for categories, currency separation, refunds, periods, conversion, role/brand access and tenant
@@ -709,7 +711,7 @@ Decisions made without asking (change if needed):
 - Markup tiers are stored in major units of the company currency; prices from markup are suggestions only.
 
 Ideas for later: **stock / inventory of materials** (van stock, reorder levels, consumption per job) — out of scope
-now; automatic supplier price import; categories in the price book; cash refunds tied to cash on hand.
+now; automatic supplier price import; cash refunds tied to cash on hand.
 
 ## Stage 2 — ⏳ Not started
 
@@ -717,6 +719,6 @@ now; automatic supplier price import; categories in the price book; cash refunds
 
 ## Next
 
-Stage 1 — remaining reports (revenue by brand/job type/lead source, average ticket, estimate conversion), price book
-categories, estimate follow-up reminders, map of the day from property coordinates. Stripe as the second payment
+Stage 1 — validate categories, brand availability and business reports; estimate follow-up reminders,
+map of the day from property coordinates. Stripe as the second payment
 provider. Then Stage 2 (parts orders, warranty claims, online booking, payment reminders, shared SMS inbox).

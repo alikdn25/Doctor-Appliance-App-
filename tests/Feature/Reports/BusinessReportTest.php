@@ -8,6 +8,7 @@ use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\Property;
 use App\Models\ServiceJob;
+use App\Support\Billing\JobProfit;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -89,4 +90,12 @@ test('reports respect office brand restrictions', function () {
 test('invalid and reversed report dates are rejected', function () {
     $this->get(route('reports.index', ['from' => '2026-02-30']))->assertSessionHasErrors('from');
     $this->get(route('reports.index', ['from' => '2026-10-31', 'to' => '2026-10-01']))->assertSessionHasErrors('to');
+});
+
+test('profit never adds invoice amounts from different currencies', function () {
+    inCompany($this->company, function () {
+        Invoice::factory()->create(['service_job_id' => $this->job->id, 'currency' => $this->company->currency, 'total' => 10000, 'tax_total' => 0]);
+        Invoice::factory()->create(['service_job_id' => $this->job->id, 'currency' => 'USD', 'total' => 90000, 'tax_total' => 0]);
+        expect(JobProfit::for($this->job)['revenue'])->toBe(10000);
+    });
 });
