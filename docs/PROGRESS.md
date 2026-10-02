@@ -123,11 +123,46 @@ Decisions made without asking (change if needed):
 Deferred on purpose: Google map of the day and route optimisation (Google Places task), passing visits to a
 subcontractor (Stage 2), recurring visits (Stage 3).
 
+### Task 4 — Technician PWA, photos, checklists, signature ✅
+
+- **Installable app**: web app manifest (`/manifest.webmanifest`, opens on My jobs), icons, service worker
+  (`public/sw.js`) caching built assets, and an offline page when there is no connection. "Install app" button on
+  My jobs (Android/Chrome; on iPhone: Share → Add to Home Screen).
+- **Photos before/after**: one tap opens the camera, several photos at once. Photos are shrunk on the phone
+  (max 1600 px JPEG), saved in the phone's storage (IndexedDB) and uploaded by a queue that retries with growing
+  pauses, right away when the signal returns and on the next app start. A bar under the header shows how many
+  are still waiting. Retries are idempotent (`client_uuid`). Photos are served only through an authorized route.
+  The photographer or the office can delete a photo.
+- **Rating plate photo** from the job (camera button on each appliance), same queue, kept sharper (2400 px).
+- **Checklists per job type**: Company → Checklists (Owner/Admin), one item per line. A new job gets its own copy;
+  changing the job type swaps it while nothing is ticked. Whole row is the tap target. Defaults are created for
+  new and existing companies.
+- **Customer signature** drawn with a finger, with the signer's name; stored as PNG, replaces the previous one.
+- **Calendar on phones**: press and hold a visit (or a job in To schedule), then drag with the finger; the page
+  scrolls near the edges.
+- SPEC §7.6 updated: pluggable payment providers, manual payment methods.
+
+Decisions made without asking (change if needed):
+
+- No full offline mode (as agreed): pages need the network; only photos, rating plates and signatures are kept
+  on the phone until they upload. Checklist ticks and notes need a connection.
+- The installed app opens on My jobs (fewer taps for technicians; the owner also goes on calls).
+- Photos are only "before" and "after" (no third kind). One signature per job; signing again replaces it.
+- Job photos and signatures are served through the app (permission check), not by public URL. Rating plate
+  photos still use the storage URL as in task 1; move to private storage with the S3 decision.
+- Upload errors that cannot be fixed by retrying (validation, no access, deleted job) stop and show Retry /
+  Discard; network errors and server errors retry automatically.
+- Icon: a neutral wrench in the brand teal until the product name and logo are decided.
+- Touch drag uses a 350 ms press-and-hold so normal swipes still scroll the calendar.
+
+Deferred on purpose: estimates/invoices/payment on site (next tasks), SMS on "On my way" (Twilio task),
+plate OCR (later), background sync while the app is closed (the queue resumes when the app is opened).
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started
 
 ## Next
 
-Stage 1 — Technician PWA view, photos, signatures (installable app, offline-friendly job screen, before/after
-photos with upload retry, rating plate photo, checklists per job type, customer signature).
+Stage 1 — Estimates and invoices (line items, taxes, Good/Better/Best options, invoice from job, manual payments
+per the updated SPEC §7.6), then Square payments behind the payment provider interface.

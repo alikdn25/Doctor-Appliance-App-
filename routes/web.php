@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Company\BrandController;
+use App\Http\Controllers\Company\ChecklistController;
 use App\Http\Controllers\Company\CompanySettingsController;
 use App\Http\Controllers\Company\DetectTimezoneController;
 use App\Http\Controllers\Company\SwitchCompanyController;
@@ -14,11 +15,15 @@ use App\Http\Controllers\Customers\PropertyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Jobs\CalendarController;
 use App\Http\Controllers\Jobs\JobController;
+use App\Http\Controllers\Jobs\JobFieldController;
 use App\Http\Controllers\Jobs\JobStatusController;
 use App\Http\Controllers\Jobs\JobWorkController;
 use App\Http\Controllers\Jobs\VisitActionController;
 use App\Http\Controllers\Jobs\VisitController;
+use App\Http\Controllers\ManifestController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
 
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'login'))->name('home');
 
@@ -47,6 +52,13 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('jobs/{job}/tech-notes', [JobWorkController::class, 'notes'])->name('jobs.tech-notes');
         Route::post('jobs/{job}/appliances', [JobWorkController::class, 'storeAppliance'])->name('jobs.appliances.store');
         Route::put('jobs/{job}/appliances/{appliance}', [JobWorkController::class, 'updateAppliance'])->name('jobs.appliances.update');
+        Route::post('jobs/{job}/photos', [JobFieldController::class, 'storePhoto'])->name('jobs.photos.store');
+        Route::get('jobs/{job}/photos/{photo}', [JobFieldController::class, 'showPhoto'])->name('jobs.photos.show');
+        Route::delete('jobs/{job}/photos/{photo}', [JobFieldController::class, 'destroyPhoto'])->name('jobs.photos.destroy');
+        Route::post('jobs/{job}/appliances/{appliance}/rating-plate', [JobFieldController::class, 'ratingPlate'])->name('jobs.appliances.rating-plate');
+        Route::put('jobs/{job}/checklist/{item}', [JobFieldController::class, 'toggleChecklistItem'])->name('jobs.checklist.toggle');
+        Route::post('jobs/{job}/signature', [JobFieldController::class, 'storeSignature'])->name('jobs.signature.store');
+        Route::get('jobs/{job}/signature', [JobFieldController::class, 'showSignature'])->name('jobs.signature.show');
         Route::post('jobs/{job}/visits', [VisitController::class, 'store'])->name('visits.store');
         Route::put('visits/{visit}', [VisitController::class, 'update'])->name('visits.update');
         Route::delete('visits/{visit}', [VisitController::class, 'destroy'])->name('visits.destroy');
@@ -60,6 +72,8 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company.settings.edit');
             Route::put('settings', [CompanySettingsController::class, 'update'])->name('company.settings.update');
             Route::put('timezone', DetectTimezoneController::class)->name('company.timezone.detect');
+            Route::get('checklists', [ChecklistController::class, 'edit'])->name('company.checklists.edit');
+            Route::put('checklists', [ChecklistController::class, 'update'])->name('company.checklists.update');
 
             Route::resource('brands', BrandController::class)->except('show');
 

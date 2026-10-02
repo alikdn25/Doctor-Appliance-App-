@@ -7,6 +7,7 @@ use App\Enums\ApplianceType;
 use App\Enums\JobStatus;
 use App\Enums\JobType;
 use App\Enums\LeadSource;
+use App\Enums\PhotoKind;
 use App\Enums\VisitStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Customers\CustomerController;
@@ -14,6 +15,8 @@ use App\Http\Requests\Jobs\JobRequest;
 use App\Models\Appliance;
 use App\Models\Brand;
 use App\Models\Customer;
+use App\Models\JobChecklistItem;
+use App\Models\JobPhoto;
 use App\Models\JobVisit;
 use App\Models\Membership;
 use App\Models\Property;
@@ -188,7 +191,10 @@ class JobController extends Controller
 
         $user = $request->user();
         $timezone = currentCompany()->timezone;
-        $job->load(['brand', 'customer.phones', 'property', 'appliances', 'visits.assignees', 'statusChanges.user']);
+        $job->load([
+            'brand', 'customer.phones', 'property', 'appliances', 'visits.assignees', 'statusChanges.user',
+            'photos.user', 'checklistItems.doneBy', 'signer',
+        ]);
         $canUpdate = Gate::allows('update', $job);
         $property = $job->property;
         $myVisit = JobPresenter::myNextVisit($job, $user);
@@ -225,6 +231,27 @@ class JobController extends Controller
                 'visits' => $job->visits->map(fn (JobVisit $v) => JobPresenter::visit($v, $user, $timezone))->values(),
                 'minutes_on_job' => $job->visits->sum(fn (JobVisit $v) => $v->minutesOnJob() ?? 0),
                 'history' => $job->statusChanges->map(fn ($c) => JobPresenter::statusChange($c))->values(),
+                'photos' => $job->photos->map(fn (JobPhoto $photo) => [
+                    'id' => $photo->id,
+                    'kind' => $photo->kind->value,
+                    'url' => route('jobs.photos.show', [$job, $photo]),
+                    'taken_at' => JobPresenter::iso($photo->taken_at),
+                    'user' => $photo->user?->name,
+                    'can_delete' => $canUpdate || ($photo->user_id === $user->id && Gate::allows('work', $job)),
+                ])->values(),
+                'checklist' => $job->checklistItems->map(fn (JobChecklistItem $item) => [
+                    'id' => $item->id,
+                    'label' => $item->label,
+                    'is_done' => $item->is_done,
+                    'done_by' => $item->doneBy?->name,
+                    'done_at' => JobPresenter::iso($item->done_at),
+                ])->values(),
+                'signature' => $job->signature_path ? [
+                    'url' => route('jobs.signature.show', $job).'?v='.$job->signed_at?->timestamp,
+                    'name' => $job->signature_name,
+                    'signed_at' => JobPresenter::iso($job->signed_at),
+                    'by' => $job->signer?->name,
+                ] : null,
             ],
             'myVisitId' => $myVisit?->id,
             'can' => [
@@ -244,6 +271,7 @@ class JobController extends Controller
             'applianceTypes' => ApplianceType::options(),
             'manufacturers' => CustomerController::manufacturers(),
             'today' => CarbonImmutable::now($timezone)->format('Y-m-d'),
+            'photoKinds' => PhotoKind::options(),
         ]);
     }
 

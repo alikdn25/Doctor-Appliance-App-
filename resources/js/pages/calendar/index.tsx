@@ -7,10 +7,10 @@ import {
     Navigation,
     Pencil,
 } from 'lucide-react';
-import type { DragEvent } from 'react';
+import type { DragEvent, TouchEvent } from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { DayGrid } from '@/components/calendar/day-grid';
+import { DayGrid, HOUR_PX } from '@/components/calendar/day-grid';
 import type {
     CalendarVisit,
     DragItem,
@@ -37,6 +37,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useTouchDrag } from '@/hooks/use-touch-drag';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
@@ -168,6 +169,48 @@ export default function CalendarPage({
         );
     };
 
+    // Phones: press and hold, then drag with the finger.
+    const touch = useTouchDrag<DragItem>({
+        hourPx: HOUR_PX,
+        onStart: (item) => {
+            drag.current = item;
+            setDragging(true);
+        },
+        onDrop: (item, target) => {
+            drag.current = item;
+            drop(
+                { id: target.lane, name: null, inactive: false },
+                target.date,
+                target.minutes,
+            );
+        },
+        onCancel: () => {
+            drag.current = null;
+            setDragging(false);
+        },
+    });
+
+    const touchVisit = (
+        e: TouchEvent<HTMLElement>,
+        visit: CalendarVisit,
+        lane: Lane,
+        grabOffset: number,
+    ) => {
+        if (visit.movable) {
+            touch.begin(
+                e,
+                { kind: 'visit', visit, fromLane: lane.id, grabOffset },
+                `${visit.start_time} ${visit.job.customer ?? ''}`,
+            );
+        }
+    };
+
+    const open = (visit: CalendarVisit) => {
+        if (!touch.consumeClick()) {
+            setDetails(visit);
+        }
+    };
+
     const dragVisit = (
         e: DragEvent,
         visit: CalendarVisit,
@@ -272,8 +315,9 @@ export default function CalendarPage({
                                 dragging={dragging}
                                 onVisitDragStart={dragVisit}
                                 onDragEnd={endDrag}
+                                onVisitTouchStart={touchVisit}
                                 onDrop={drop}
-                                onOpen={setDetails}
+                                onOpen={open}
                             />
                         ) : (
                             <WeekGrid
@@ -285,8 +329,9 @@ export default function CalendarPage({
                                 dragging={dragging}
                                 onVisitDragStart={dragVisit}
                                 onDragEnd={endDrag}
+                                onVisitTouchStart={touchVisit}
                                 onDrop={drop}
-                                onOpen={setDetails}
+                                onOpen={open}
                             />
                         )}
                     </div>
@@ -317,10 +362,21 @@ export default function CalendarPage({
                                                     })
                                                 }
                                                 onDragEnd={endDrag}
+                                                onTouchStart={(e) =>
+                                                    touch.begin(
+                                                        e,
+                                                        { kind: 'job', job },
+                                                        `#${job.number} ${job.customer ?? ''}`,
+                                                    )
+                                                }
+                                                onContextMenu={(e) =>
+                                                    e.preventDefault()
+                                                }
                                                 onClick={() =>
+                                                    !touch.consumeClick() &&
                                                     setScheduling(job)
                                                 }
-                                                className="block w-full cursor-grab rounded-md border bg-card p-2 text-left text-xs shadow-sm hover:bg-muted/50"
+                                                className="block w-full cursor-grab rounded-md border bg-card p-2 text-left text-xs shadow-sm select-none [-webkit-touch-callout:none] hover:bg-muted/50"
                                             >
                                                 <span className="flex items-center justify-between gap-2">
                                                     <span className="font-medium">
@@ -446,6 +502,15 @@ export default function CalendarPage({
                     </aside>
                 </div>
             </div>
+
+            {touch.ghost && (
+                <div
+                    className="pointer-events-none fixed z-50 max-w-48 -translate-x-1/2 -translate-y-full rounded-md border-l-4 border-l-primary bg-card px-2 py-1 text-xs font-medium shadow-lg"
+                    style={{ left: touch.ghost.x, top: touch.ghost.y - 12 }}
+                >
+                    {touch.ghost.label}
+                </div>
+            )}
 
             <Dialog
                 open={details !== null}

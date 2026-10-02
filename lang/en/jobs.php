@@ -176,6 +176,62 @@ return [
         'inspection' => 'Inspection',
     ],
 
+    'photo_kinds' => [
+        'before' => 'Before',
+        'after' => 'After',
+    ],
+
+    'photos' => [
+        'title' => 'Photos',
+        'take' => ':kind photo',
+        'empty' => 'No photos yet.',
+        'delete' => 'Delete photo',
+        'confirm_delete' => 'Delete this photo?',
+        'by' => 'By :name',
+    ],
+
+    'rating_plate' => [
+        'take' => 'Rating plate photo',
+        'retake' => 'New rating plate photo',
+        'saved' => 'Rating plate photo saved.',
+    ],
+
+    'checklist' => [
+        'title' => 'Checklist',
+        'empty' => 'No checklist for this job type.',
+        'progress' => ':done of :total done',
+    ],
+
+    'signature' => [
+        'title' => 'Customer signature',
+        'sign' => 'Get signature',
+        'resign' => 'Sign again',
+        'name' => 'Customer name',
+        'clear' => 'Clear',
+        'save' => 'Save signature',
+        'hint' => 'Hand the phone to the customer to sign with a finger.',
+        'empty' => 'Not signed yet.',
+        'signed' => 'Signed by :name · :date',
+        'draw_first' => 'Ask the customer to sign in the box first.',
+        'saved' => 'Signature saved.',
+    ],
+
+    'uploads' => [
+        'waiting' => 'Waiting for signal…',
+        'uploading' => 'Uploading…',
+        'failed' => 'Upload failed',
+        'retry' => 'Retry',
+        'discard' => 'Discard',
+        'queued' => ':count waiting to upload',
+        'all_sent' => 'All uploads sent.',
+        'kept_offline' => 'Saved on this phone. It will upload when the signal is back.',
+    ],
+
+    'install' => [
+        'button' => 'Install app',
+        'done' => 'App installed.',
+    ],
+
     'history_entry' => [
         'created' => 'Job created',
     ],

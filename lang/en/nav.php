@@ -12,6 +12,7 @@ return [
     'brands' => 'Brands',
     'team' => 'Team',
     'taxes' => 'Taxes',
+    'checklists' => 'Checklists',
     'company_settings' => 'Company settings',
     'companies' => 'Companies',
     'settings' => 'Settings',

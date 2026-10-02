@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
-import type { DragEvent } from 'react';
+import type { DragEvent, TouchEvent } from 'react';
 import type { CalendarVisit, Lane } from '@/components/calendar/types';
 import { inLane } from '@/components/calendar/types';
 import { useTrans } from '@/lib/i18n';
@@ -22,6 +22,13 @@ type Props = {
         grabOffset: number,
     ) => void;
     onDragEnd: () => void;
+    /** Long-press drag on phones (see the calendar page). */
+    onVisitTouchStart: (
+        e: TouchEvent<HTMLElement>,
+        visit: CalendarVisit,
+        lane: Lane,
+        grabOffset: number,
+    ) => void;
     onDrop: (lane: Lane, date: string, minutes: number | null) => void;
     onOpen: (visit: CalendarVisit) => void;
 };
@@ -59,6 +66,7 @@ export function DayGrid({
     dragging,
     onVisitDragStart,
     onDragEnd,
+    onVisitTouchStart,
     onDrop,
     onOpen,
 }: Props) {
@@ -80,7 +88,7 @@ export function DayGrid({
     };
 
     return (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-lg border" data-drag-scroll>
             <div className="flex min-w-max">
                 <div className="w-12 shrink-0 border-r">
                     <div className="h-10 border-b" />
@@ -135,6 +143,10 @@ export function DayGrid({
                                 style={{ height }}
                                 onDragOver={(e) => e.preventDefault()}
                                 onDrop={(e) => dropAt(e, lane)}
+                                data-drop-lane={lane.id ?? ''}
+                                data-drop-date={date}
+                                data-drop-mode="time"
+                                data-hour-start={hours.start}
                             >
                                 {hourList.map((h) => (
                                     <div
@@ -188,9 +200,25 @@ export function DayGrid({
                                                     );
                                                 }}
                                                 onDragEnd={onDragEnd}
+                                                onTouchStart={(e) => {
+                                                    const rect =
+                                                        e.currentTarget.getBoundingClientRect();
+                                                    onVisitTouchStart(
+                                                        e,
+                                                        visit,
+                                                        lane,
+                                                        ((e.touches[0].clientY -
+                                                            rect.top) /
+                                                            HOUR_PX) *
+                                                            60,
+                                                    );
+                                                }}
+                                                onContextMenu={(e) =>
+                                                    e.preventDefault()
+                                                }
                                                 onClick={() => onOpen(visit)}
                                                 className={cn(
-                                                    'flex w-full flex-col justify-start overflow-hidden rounded-md border bg-card px-1.5 py-1 text-left text-xs shadow-sm',
+                                                    'flex w-full flex-col justify-start overflow-hidden rounded-md border bg-card px-1.5 py-1 text-left text-xs shadow-sm select-none [-webkit-touch-callout:none]',
                                                     visit.movable
                                                         ? 'cursor-grab border-l-4 border-l-primary active:cursor-grabbing'
                                                         : 'border-l-4 border-l-muted-foreground/40 opacity-80',

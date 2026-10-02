@@ -20,8 +20,15 @@ import { useEffect, useState } from 'react';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
 import InputError from '@/components/input-error';
+import { ChecklistSection } from '@/components/jobs/checklist-section';
+import type { ChecklistItemData } from '@/components/jobs/checklist-section';
 import { FinishDialog } from '@/components/jobs/finish-dialog';
 import { JobApplianceDialog } from '@/components/jobs/job-appliance-dialog';
+import { PhotoSection } from '@/components/jobs/photo-section';
+import type { JobPhotoData } from '@/components/jobs/photo-section';
+import { RatingPlateButton } from '@/components/jobs/rating-plate-button';
+import { SignatureSection } from '@/components/jobs/signature-section';
+import type { SignatureData } from '@/components/jobs/signature-section';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import { StatusDialog } from '@/components/jobs/status-dialog';
 import type { ApplianceItem, Assignable, Visit } from '@/components/jobs/types';
@@ -58,8 +65,11 @@ type Job = {
         phones: { id: number; number: string; label_text: string }[];
     };
     property: PropertyData & { full_address: string };
-    appliances: ApplianceItem[];
+    appliances: (ApplianceItem & { rating_plate_url: string | null })[];
     visits: Visit[];
+    photos: JobPhotoData[];
+    checklist: ChecklistItemData[];
+    signature: SignatureData;
     minutes_on_job: number;
     history: {
         id: number;
@@ -87,6 +97,7 @@ type Props = {
     applianceTypes: Option[];
     manufacturers: string[];
     today: string;
+    photoKinds: Option[];
 };
 
 /** Minutes since an ISO time, refreshed every 30 seconds. */
@@ -118,6 +129,7 @@ export default function JobShow({
     applianceTypes,
     manufacturers,
     today,
+    photoKinds,
 }: Props) {
     const t = useTrans();
     const time = useCompanyTime();
@@ -173,7 +185,7 @@ export default function JobShow({
         }
     };
 
-    const placeholders = ['estimates', 'invoices', 'photos'] as const;
+    const placeholders = ['estimates', 'invoices'] as const;
 
     return (
         <>
@@ -500,6 +512,13 @@ export default function JobShow({
                                         </div>
                                     </div>
                                     {can.work && !a.removed && (
+                                        <RatingPlateButton
+                                            jobId={job.id}
+                                            applianceId={a.id}
+                                            url={a.rating_plate_url}
+                                        />
+                                    )}
+                                    {can.work && !a.removed && (
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -522,6 +541,20 @@ export default function JobShow({
                         </ul>
                     )}
                 </section>
+
+                <ChecklistSection
+                    jobId={job.id}
+                    items={job.checklist}
+                    canTick={can.work}
+                />
+
+                <PhotoSection
+                    jobId={job.id}
+                    visitId={myVisitId}
+                    photos={job.photos}
+                    kinds={photoKinds}
+                    canAdd={can.work}
+                />
 
                 {/* Work done */}
                 <section className="space-y-2">
@@ -561,6 +594,13 @@ export default function JobShow({
                         </p>
                     )}
                 </section>
+
+                <SignatureSection
+                    jobId={job.id}
+                    signature={job.signature}
+                    customerName={job.customer.display_name}
+                    canSign={can.work}
+                />
 
                 {/* Visits */}
                 <section className="space-y-2">
@@ -693,7 +733,7 @@ export default function JobShow({
                 </section>
 
                 {/* Coming later */}
-                <section className="grid gap-2 sm:grid-cols-3">
+                <section className="grid gap-2 sm:grid-cols-2">
                     {placeholders.map((section) => (
                         <div
                             key={section}

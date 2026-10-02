@@ -62,6 +62,7 @@ class SaveJob
             $job->save();
 
             $this->syncAppliances($job, $applianceIds, $newAppliances);
+            $job->applyChecklistTemplate();
             $this->changeStatus->created($job, $user);
 
             if ($visit !== null) {
@@ -80,8 +81,14 @@ class SaveJob
     public function update(ServiceJob $job, array $attributes, array $applianceIds, array $newAppliances): ServiceJob
     {
         return DB::transaction(function () use ($job, $attributes, $applianceIds, $newAppliances) {
-            $job->fill($attributes)->save();
+            $job->fill($attributes);
+            $typeChanged = $job->isDirty('job_type');
+            $job->save();
             $this->syncAppliances($job, $applianceIds, $newAppliances);
+
+            if ($typeChanged) {
+                $job->applyChecklistTemplate();
+            }
 
             return $job;
         });

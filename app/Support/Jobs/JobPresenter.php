@@ -92,6 +92,7 @@ class JobPresenter
             'model_number' => $appliance->model_number,
             'serial_number' => $appliance->serial_number,
             'under_warranty' => $appliance->isUnderWarranty(),
+            'rating_plate_url' => $appliance->rating_plate_url,
             'removed' => $appliance->trashed(),
         ];
     }

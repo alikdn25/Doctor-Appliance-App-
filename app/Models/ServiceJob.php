@@ -33,6 +33,10 @@ use Illuminate\Support\Carbon;
  * @property string|null $description
  * @property string|null $notes
  * @property string|null $tech_notes
+ * @property string|null $signature_path
+ * @property string|null $signature_name
+ * @property Carbon|null $signed_at
+ * @property int|null $signed_by
  * @property Carbon|null $completed_at
  * @property Carbon|null $cancelled_at
  * @property int|null $created_by
@@ -76,6 +80,7 @@ class ServiceJob extends Model
             'status' => JobStatus::class,
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'signed_at' => 'datetime',
         ];
     }
 
@@ -135,6 +140,48 @@ class ServiceJob extends Model
     public function statusChanges(): HasMany
     {
         return $this->hasMany(JobStatusChange::class)->orderByDesc('created_at')->orderByDesc('id');
+    }
+
+    /**
+     * @return HasMany<JobPhoto, $this>
+     */
+    public function photos(): HasMany
+    {
+        return $this->hasMany(JobPhoto::class)->orderBy('taken_at')->orderBy('id');
+    }
+
+    /**
+     * @return HasMany<JobChecklistItem, $this>
+     */
+    public function checklistItems(): HasMany
+    {
+        return $this->hasMany(JobChecklistItem::class)->orderBy('position')->orderBy('id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function signer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'signed_by');
+    }
+
+    /**
+     * Replaces the checklist with the company's template for the job type
+     * (only while nothing has been ticked, so finished work is never lost).
+     */
+    public function applyChecklistTemplate(): void
+    {
+        if ($this->checklistItems()->where('is_done', true)->exists()) {
+            return;
+        }
+
+        $this->checklistItems()->delete();
+        $items = ChecklistTemplate::query()->where('job_type', $this->job_type->value)->first()?->items ?? [];
+
+        foreach (array_values($items) as $i => $label) {
+            $this->checklistItems()->create(['position' => $i, 'label' => $label]);
+        }
     }
 
     /**

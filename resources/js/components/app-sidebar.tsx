@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Building,
     Building2,
+    ListChecks,
     CalendarDays,
     ClipboardList,
     Contact,
@@ -28,6 +29,7 @@ import { calendar, dashboard } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as brands } from '@/routes/brands';
 import { index as customers } from '@/routes/customers';
+import { edit as checklists } from '@/routes/company/checklists';
 import { edit as companySettings } from '@/routes/company/settings';
 import { index as jobs, mine as myJobs } from '@/routes/jobs';
 import { index as taxes } from '@/routes/taxes';
@@ -68,6 +70,11 @@ export function AppSidebar() {
         can.viewBrands && { title: 'nav.brands', href: brands(), icon: Tags },
         can.manageTeam && { title: 'nav.team', href: team(), icon: Users },
         can.viewTaxes && { title: 'nav.taxes', href: taxes(), icon: Percent },
+        can.manageChecklists && {
+            title: 'nav.checklists',
+            href: checklists(),
+            icon: ListChecks,
+        },
         can.manageCompany && {
             title: 'nav.company_settings',
             href: companySettings(),

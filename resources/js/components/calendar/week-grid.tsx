@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { AlertTriangle } from 'lucide-react';
-import type { DragEvent } from 'react';
+import type { DragEvent, TouchEvent } from 'react';
 import type { CalendarVisit, Lane } from '@/components/calendar/types';
 import { dayLabel, inLane } from '@/components/calendar/types';
 import { useTrans } from '@/lib/i18n';
@@ -21,6 +21,12 @@ type Props = {
         grabOffset: number,
     ) => void;
     onDragEnd: () => void;
+    onVisitTouchStart: (
+        e: TouchEvent<HTMLElement>,
+        visit: CalendarVisit,
+        lane: Lane,
+        grabOffset: number,
+    ) => void;
     onDrop: (lane: Lane, date: string, minutes: number | null) => void;
     onOpen: (visit: CalendarVisit) => void;
 };
@@ -37,13 +43,14 @@ export function WeekGrid({
     dragging,
     onVisitDragStart,
     onDragEnd,
+    onVisitTouchStart,
     onDrop,
     onOpen,
 }: Props) {
     const t = useTrans();
 
     return (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-lg border" data-drag-scroll>
             <table className="w-full min-w-[64rem] table-fixed border-collapse text-xs">
                 <thead>
                     <tr>
@@ -96,6 +103,9 @@ export function WeekGrid({
                                             day === today && 'bg-primary/5',
                                             dragging && 'bg-muted/30',
                                         )}
+                                        data-drop-lane={lane.id ?? ''}
+                                        data-drop-date={day}
+                                        data-drop-mode="day"
                                         onDragOver={(e) => e.preventDefault()}
                                         onDrop={(e) => {
                                             e.preventDefault();
@@ -117,11 +127,22 @@ export function WeekGrid({
                                                         )
                                                     }
                                                     onDragEnd={onDragEnd}
+                                                    onTouchStart={(e) =>
+                                                        onVisitTouchStart(
+                                                            e,
+                                                            visit,
+                                                            lane,
+                                                            0,
+                                                        )
+                                                    }
+                                                    onContextMenu={(e) =>
+                                                        e.preventDefault()
+                                                    }
                                                     onClick={() =>
                                                         onOpen(visit)
                                                     }
                                                     className={cn(
-                                                        'block w-full rounded border bg-card px-1.5 py-1 text-left shadow-sm',
+                                                        'block w-full rounded border bg-card px-1.5 py-1 text-left shadow-sm select-none [-webkit-touch-callout:none]',
                                                         visit.movable
                                                             ? 'cursor-grab border-l-4 border-l-primary'
                                                             : 'border-l-4 border-l-muted-foreground/40 opacity-80',

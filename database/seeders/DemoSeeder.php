@@ -9,6 +9,7 @@ use App\Actions\Jobs\VisitWorkflow;
 use App\Enums\JobStatus;
 use App\Enums\UserRole;
 use App\Models\Brand;
+use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Membership;
@@ -57,6 +58,7 @@ class DemoSeeder extends Seeder
                 'created_at' => now(), 'updated_at' => now(),
             ]);
 
+            ChecklistTemplate::createDefaults();
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true, 'sort_order' => 1]);
             TaxRate::create(['name' => 'PST', 'rate' => 7, 'sort_order' => 2]);
 
@@ -68,6 +70,7 @@ class DemoSeeder extends Seeder
             $this->member($coastal, $tech, UserRole::Technician);
 
             $this->brand('Coastal Appliance Repair', '#1D4ED8', 'Victoria');
+            ChecklistTemplate::createDefaults();
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true]);
 
             app(SaveCustomer::class)->handle(null, ['type' => 'residential', 'first_name' => 'Victoria', 'last_name' => 'Island'],

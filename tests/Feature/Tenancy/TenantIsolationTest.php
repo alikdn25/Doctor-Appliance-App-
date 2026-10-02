@@ -6,12 +6,15 @@ use App\Models\Appliance;
 use App\Models\AuditLog;
 use App\Models\Brand;
 use App\Models\BrandAddress;
+use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Customer;
 use App\Models\CustomerEmail;
 use App\Models\CustomerPhone;
 use App\Models\JobAppliance;
+use App\Models\JobChecklistItem;
+use App\Models\JobPhoto;
 use App\Models\JobStatusChange;
 use App\Models\JobVisit;
 use App\Models\JobVisitAssignee;
@@ -20,7 +23,10 @@ use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Tenancy\MissingTenantException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -55,7 +61,22 @@ beforeEach(function () {
         JobStatusChange::withoutCompanyScope()->insert([
             'company_id' => $job->company_id, 'service_job_id' => $job->id, 'to_status' => 'new', 'created_at' => now(),
         ]);
+        JobPhoto::withoutCompanyScope()->insert([
+            'company_id' => $job->company_id, 'service_job_id' => $job->id, 'kind' => 'before',
+            'path' => "companies/{$job->company_id}/jobs/{$job->id}/photos/x.jpg", 'client_uuid' => (string) Str::uuid(),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        JobChecklistItem::withoutCompanyScope()->insert([
+            'company_id' => $job->company_id, 'service_job_id' => $job->id, 'position' => 0, 'label' => 'Check',
+            'is_done' => false, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        ChecklistTemplate::withoutCompanyScope()->insert([
+            'company_id' => $job->company_id, 'job_type' => 'repair', 'items' => json_encode(["Item {$job->company_id}"]),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
     }
+    $this->photoB = JobPhoto::withoutCompanyScope()->where('service_job_id', $this->jobB->id)->sole();
+    $this->itemB = JobChecklistItem::withoutCompanyScope()->where('service_job_id', $this->jobB->id)->sole();
 });
 
 /**
@@ -77,6 +98,9 @@ dataset('tenant models', [
     'job visits' => [JobVisit::class],
     'job visit assignees' => [JobVisitAssignee::class],
     'job status changes' => [JobStatusChange::class],
+    'job photos' => [JobPhoto::class],
+    'job checklist items' => [JobChecklistItem::class],
+    'checklist templates' => [ChecklistTemplate::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -92,8 +116,9 @@ test('every tenant-owned model is covered by isolation tests', function () {
         ->all();
 
     expect($tenantModels)->toBe(collect([
-        Appliance::class, Brand::class, BrandAddress::class, Customer::class, CustomerEmail::class,
-        CustomerPhone::class, JobAppliance::class, JobStatusChange::class, JobVisit::class, JobVisitAssignee::class,
+        Appliance::class, Brand::class, BrandAddress::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class,
+        CustomerPhone::class, JobAppliance::class, JobChecklistItem::class, JobPhoto::class, JobStatusChange::class,
+        JobVisit::class, JobVisitAssignee::class,
         Membership::class, Property::class, ServiceJob::class, TaxRate::class,
     ])->sort()->values()->all());
 });
@@ -416,4 +441,43 @@ test('another company\'s visit cannot be moved or assigned through the calendar'
 
     expect(JobVisit::withoutCompanyScope()->find($this->visitB->id)->scheduled_start->toDateTimeString())
         ->toBe($this->visitB->scheduled_start->toDateTimeString());
+});
+
+test('another company\'s photos, checklist and signature cannot be seen or changed', function () {
+    $this->actingAs($this->ownerA);
+    $jpeg = UploadedFile::fake()->image('p.jpg');
+
+    $this->get(route('jobs.photos.show', [$this->jobB, $this->photoB]))->assertNotFound();
+    $this->delete(route('jobs.photos.destroy', [$this->jobB, $this->photoB]))->assertNotFound();
+    $this->post(route('jobs.photos.store', $this->jobB), ['photo' => $jpeg, 'kind' => 'before', 'client_uuid' => (string) Str::uuid()])->assertNotFound();
+    $this->put(route('jobs.checklist.toggle', [$this->jobB, $this->itemB]), ['is_done' => true])->assertNotFound();
+    $this->post(route('jobs.signature.store', $this->jobB), ['signature' => UploadedFile::fake()->image('s.png'), 'signer_name' => 'X'])->assertNotFound();
+    $this->get(route('jobs.signature.show', $this->jobB))->assertNotFound();
+    $this->post(route('jobs.appliances.rating-plate', [$this->jobB, $this->applianceB]), ['rating_plate' => $jpeg])->assertNotFound();
+
+    // Another company's photo or item through the company's own job.
+    $this->get(route('jobs.photos.show', [$this->jobA, $this->photoB]))->assertNotFound();
+    $this->put(route('jobs.checklist.toggle', [$this->jobA, $this->itemB]), ['is_done' => true])->assertNotFound();
+
+    expect(JobPhoto::withoutCompanyScope()->whereKey($this->photoB->id)->exists())->toBeTrue()
+        ->and($this->itemB->fresh()->is_done)->toBeFalse()
+        ->and(ServiceJob::withoutCompanyScope()->find($this->jobB->id)->signature_path)->toBeNull();
+});
+
+test('a photo uuid used by another company does not collide', function () {
+    Storage::fake('public');
+
+    $this->actingAs($this->ownerA)
+        ->post(route('jobs.photos.store', $this->jobA), [
+            'photo' => UploadedFile::fake()->image('p.jpg'), 'kind' => 'after', 'client_uuid' => $this->photoB->client_uuid,
+        ], ['Accept' => 'application/json'])
+        ->assertCreated();
+
+    expect(JobPhoto::withoutCompanyScope()->where('client_uuid', $this->photoB->client_uuid)->count())->toBe(2);
+});
+
+test('the checklist settings only show the current company\'s checklists', function () {
+    $this->actingAs($this->ownerA)
+        ->get(route('company.checklists.edit'))
+        ->assertInertia(fn (Assert $page) => $page->where('templates.repair', ["Item {$this->companyA->id}"]));
 });

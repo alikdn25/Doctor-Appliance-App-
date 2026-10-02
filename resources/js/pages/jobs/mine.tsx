@@ -1,10 +1,11 @@
 import { Head, Link } from '@inertiajs/react';
-import { Navigation, Phone } from 'lucide-react';
+import { Download, Navigation, Phone } from 'lucide-react';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import type { Visit } from '@/components/jobs/types';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { useInstallPrompt } from '@/hooks/use-install-prompt';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -35,13 +36,26 @@ export default function MyJobs({
 }) {
     const t = useTrans();
     const time = useCompanyTime();
+    const install = useInstallPrompt();
 
     return (
         <>
             <Head title={t('jobs.my_jobs')} />
 
             <div className="mx-auto w-full max-w-2xl p-4">
-                <PageHeader title={t('jobs.my_jobs')} />
+                <PageHeader
+                    title={t('jobs.my_jobs')}
+                    actions={
+                        install && (
+                            <Button
+                                variant="outline"
+                                onClick={() => void install()}
+                            >
+                                <Download /> {t('jobs.install.button')}
+                            </Button>
+                        )
+                    }
+                />
 
                 <nav className="mb-4 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
                     {tabs.map((name) => (

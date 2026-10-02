@@ -59,9 +59,9 @@ test('the shared permissions match the role', function (UserRole $role, array $c
         ->get(route('dashboard'))
         ->assertInertia(fn ($page) => $page->where('auth.can', $can));
 })->with([
-    'owner' => [UserRole::Owner, ['viewCustomers' => true, 'viewJobs' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageCompany' => true, 'viewBrands' => true, 'manageTeam' => true, 'viewTaxes' => true]],
-    'admin' => [UserRole::Admin, ['viewCustomers' => true, 'viewJobs' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageCompany' => false, 'viewBrands' => true, 'manageTeam' => false, 'viewTaxes' => true]],
-    'technician' => [UserRole::Technician, ['viewCustomers' => false, 'viewJobs' => false, 'viewMyJobs' => true, 'viewCalendar' => false, 'manageCompany' => false, 'viewBrands' => false, 'manageTeam' => false, 'viewTaxes' => false]],
+    'owner' => [UserRole::Owner, ['viewCustomers' => true, 'viewJobs' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageChecklists' => true, 'manageCompany' => true, 'viewBrands' => true, 'manageTeam' => true, 'viewTaxes' => true]],
+    'admin' => [UserRole::Admin, ['viewCustomers' => true, 'viewJobs' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageChecklists' => true, 'manageCompany' => false, 'viewBrands' => true, 'manageTeam' => false, 'viewTaxes' => true]],
+    'technician' => [UserRole::Technician, ['viewCustomers' => false, 'viewJobs' => false, 'viewMyJobs' => true, 'viewCalendar' => false, 'manageChecklists' => false, 'manageCompany' => false, 'viewBrands' => false, 'manageTeam' => false, 'viewTaxes' => false]],
 ]);
 
 test('guests are sent to the login page', function () {

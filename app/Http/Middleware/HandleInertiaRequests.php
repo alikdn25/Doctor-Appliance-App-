@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Brand;
+use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Membership;
@@ -85,6 +86,7 @@ class HandleInertiaRequests extends Middleware
                 'viewJobs' => $user->can('viewAny', ServiceJob::class),
                 'viewMyJobs' => $user->can('viewMine', ServiceJob::class),
                 'viewCalendar' => $user->can('dispatch', ServiceJob::class),
+                'manageChecklists' => $user->can('manage', ChecklistTemplate::class),
                 'manageCompany' => $user->can('update', $company),
                 'viewBrands' => $user->can('viewAny', Brand::class),
                 'manageTeam' => $user->can('viewAny', Membership::class),
