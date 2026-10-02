@@ -58,6 +58,10 @@ class PropertyRequest extends FormRequest
             "{$prefix}gate_code" => ['nullable', 'string', 'max:100'],
             "{$prefix}site_contact_name" => ['nullable', 'string', 'max:255'],
             "{$prefix}site_contact_phone" => ['nullable', 'string', 'max:32'],
+            // Set when the address was picked from Google Places suggestions.
+            "{$prefix}google_place_id" => ['nullable', 'string', 'max:255'],
+            "{$prefix}latitude" => ['nullable', "required_with:{$prefix}longitude", 'numeric', 'between:-90,90'],
+            "{$prefix}longitude" => ['nullable', "required_with:{$prefix}latitude", 'numeric', 'between:-180,180'],
         ];
     }
 

@@ -21,6 +21,9 @@ export type DocumentItem = {
     unit_price: number;
     taxable: boolean;
     total: number;
+    /** Estimates: the customer may add it; counted only when selected. */
+    optional: boolean;
+    selected: boolean;
 };
 
 export type DocumentTax = {
@@ -81,9 +84,21 @@ export type BillingDocument = DocumentRow & {
     created_at: string | null;
     // Estimate
     valid_until?: string | null;
+    expired?: boolean;
     approved_at?: string | null;
     declined_at?: string | null;
     invoice?: { id: number; number: string } | null;
+    deposit_type?: 'percent' | 'amount' | null;
+    deposit_value?: string;
+    deposit_amount?: number;
+    deposit_paid?: number;
+    online_approval?: {
+        signer_name: string;
+        signature_type: 'drawn' | 'typed';
+        signature: string | null;
+        ip: string | null;
+    } | null;
+    decline_reason?: string | null;
     // Invoice
     due_on?: string | null;
     amount_paid?: number;

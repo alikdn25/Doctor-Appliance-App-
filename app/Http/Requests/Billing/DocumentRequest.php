@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Estimate or invoice form: dates, line items (prices in major units of the document currency, e.g. dollars),
- * discount, taxes and notes.
+ * discount, taxes and notes. Estimates also have optional lines and a deposit asked on approval.
  * Access is checked in the controller (it depends on the job or document in the route).
  */
 class DocumentRequest extends FormRequest
@@ -45,7 +45,21 @@ class DocumentRequest extends FormRequest
             'items.*.quantity' => ['required', 'numeric', 'gt:0', 'max:99999', 'regex:/^\d+(\.\d{1,2})?$/'],
             'items.*.unit_price' => ['required', 'numeric', self::moneyRule($this->currency(), negative: true)],
             'items.*.taxable' => ['boolean'],
+            ...($this->isEstimate() ? [
+                'items.*.optional' => ['boolean'],
+                'items.*.selected' => ['boolean'],
+                'deposit_type' => ['nullable', Rule::in(['amount', 'percent'])],
+                'deposit_value' => [
+                    'nullable', 'required_with:deposit_type', 'numeric', 'min:0',
+                    ...($this->input('deposit_type') === 'percent' ? ['max:100'] : [self::moneyRule($this->currency())]),
+                ],
+            ] : []),
         ];
+    }
+
+    public function isEstimate(): bool
+    {
+        return $this->routeIs('estimates.*');
     }
 
     /**
@@ -60,6 +74,7 @@ class DocumentRequest extends FormRequest
             'discount_value' => __('billing.fields.discount'),
             'valid_until' => __('estimates.fields.valid_until'),
             'due_on' => __('invoices.fields.due_on'),
+            'deposit_value' => __('estimates.fields.deposit'),
             'issued_on' => __('billing.fields.issued_on'),
         ];
     }
@@ -78,6 +93,10 @@ class DocumentRequest extends FormRequest
             'quantity' => (string) $item['quantity'],
             'unit_price' => Currencies::toMinor($item['unit_price'], $this->currency()),
             'taxable' => (bool) ($item['taxable'] ?? true),
+            ...($this->isEstimate() ? [
+                'optional' => (bool) ($item['optional'] ?? false),
+                'selected' => ! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false),
+            ] : []),
         ], $data['items']);
         $data['tax_rate_ids'] ??= [];
 

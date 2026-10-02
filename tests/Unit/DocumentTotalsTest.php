@@ -142,3 +142,23 @@ test('a fixed discount uses the minor units of the currency', function () {
 
     expect($totals['discount_total'])->toBe(500)->and($totals['total'])->toBe(11500);
 });
+
+test('optional lines that are not picked keep their line total but are not counted', function () {
+    $totals = DocumentTotals::calculate(
+        [
+            ['quantity' => '1', 'unit_price' => 10000, 'taxable' => true],
+            ['quantity' => '1', 'unit_price' => 5000, 'taxable' => true, 'included' => false],
+            ['quantity' => '2', 'unit_price' => 1000, 'taxable' => false, 'included' => true],
+        ],
+        'percent',
+        10,
+        [['tax_rate_id' => 1, 'name' => 'Tax', 'rate' => '10']],
+    );
+
+    expect($totals['item_totals'])->toBe([10000, 5000, 2000])
+        ->and($totals['subtotal'])->toBe(12000)
+        // 10% of 12000; the taxable line carries 10000/12000 of it.
+        ->and($totals['discount_total'])->toBe(1200)
+        ->and($totals['tax_total'])->toBe(900)
+        ->and($totals['total'])->toBe(11700);
+});

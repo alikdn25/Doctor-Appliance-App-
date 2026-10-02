@@ -76,6 +76,8 @@ return [
     'square' => [
         'link_name' => 'Invoice :number — :brand',
         'payment_note' => 'Invoice :number',
+        'deposit_link_name' => 'Deposit for estimate :number — :brand',
+        'deposit_payment_note' => 'Deposit for estimate :number',
         'errors' => [
             'api' => 'Square did not respond as expected. Please try again.',
             'denied' => 'Square was not connected (access was not granted).',

@@ -23,6 +23,8 @@ export type CurrentCompany = {
     tracks_appliances: boolean;
     prices_include_tax: boolean;
     address: { region_label: string; postal_label: string; order: string };
+    /** Google Maps browser key for address suggestions; null = type addresses by hand. */
+    google_maps_key: string | null;
 };
 
 export type Permissions = {

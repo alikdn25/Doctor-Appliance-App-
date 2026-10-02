@@ -200,6 +200,14 @@ class Messenger
         return $message;
     }
 
+    /**
+     * US numbers can be texted only once the company's A2P 10DLC registration is approved.
+     */
+    public function registrationBlocks(string $number): bool
+    {
+        return $this->needsRegistration($number) && ! $this->registrationApproved();
+    }
+
     private function needsRegistration(string $number): bool
     {
         try {

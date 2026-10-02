@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * A service address of a customer. Address is entered manually for now;
- * Google Places autocomplete and geocoding (latitude/longitude) come later.
+ * A service address of a customer. Typed by hand, or picked from Google Places suggestions (then the place ID and
+ * coordinates are kept; editing the address by hand clears them).
  *
  * @property int $id
  * @property int $company_id
@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $country
  * @property string|null $latitude
  * @property string|null $longitude
+ * @property string|null $google_place_id
  * @property string|null $access_notes
  * @property string|null $gate_code
  * @property string|null $site_contact_name
@@ -57,6 +58,9 @@ class Property extends Model
         'site_contact_name',
         'site_contact_phone',
         'is_primary',
+        'google_place_id',
+        'latitude',
+        'longitude',
     ];
 
     protected $attributes = [

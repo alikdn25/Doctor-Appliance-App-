@@ -9,6 +9,7 @@ use App\Http\Requests\Billing\DocumentRequest;
 use App\Messaging\MessagingPresenter;
 use App\Models\Estimate;
 use App\Models\ServiceJob;
+use App\Payments\PaymentProviders;
 use App\Support\Billing\BillingPresenter;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -23,6 +24,8 @@ class EstimateController extends Controller
     {
         Gate::authorize('work', $job);
 
+        $days = currentCompany()->estimate_valid_days;
+
         return Inertia::render('billing/form', [
             'kind' => 'estimate',
             'document' => null,
@@ -30,6 +33,8 @@ class EstimateController extends Controller
             'taxRates' => BillingPresenter::taxOptions(),
             'services' => BillingPresenter::serviceOptions(),
             'today' => $this->today(),
+            'defaultValidUntil' => $days ? CarbonImmutable::parse($this->today())->addDays($days)->toDateString() : null,
+            'canTakeDeposit' => app(PaymentProviders::class)->readyFor(currentCompany()) !== null,
         ]);
     }
 
@@ -53,7 +58,7 @@ class EstimateController extends Controller
             'can' => [
                 'update' => Gate::allows('update', $estimate),
                 'delete' => Gate::allows('delete', $estimate),
-                'convert' => Gate::allows('update', $estimate) && Gate::allows('work', $estimate->job),
+                'convert' => Gate::allows('convert', $estimate),
             ],
             'today' => $this->today(),
             'delivery' => BillingPresenter::delivery($estimate),
@@ -72,6 +77,7 @@ class EstimateController extends Controller
             'taxRates' => BillingPresenter::taxOptions($estimate->taxes),
             'services' => BillingPresenter::serviceOptions(),
             'today' => $this->today(),
+            'canTakeDeposit' => app(PaymentProviders::class)->readyFor(currentCompany()) !== null,
         ]);
     }
 
@@ -98,7 +104,7 @@ class EstimateController extends Controller
     }
 
     /**
-     * The customer agreed (on site or by phone) or said no. Online approval comes with sending estimates.
+     * The customer agreed (on site or by phone) or said no. Online approval is on the customer's page.
      */
     public function decide(Request $request, Estimate $estimate): RedirectResponse
     {
@@ -117,8 +123,7 @@ class EstimateController extends Controller
 
     public function convert(Request $request, Estimate $estimate, SaveBillingDocument $save): RedirectResponse
     {
-        Gate::authorize('update', $estimate);
-        Gate::authorize('work', $estimate->job);
+        Gate::authorize('convert', $estimate);
 
         $invoice = $save->convertEstimate($estimate, $request->user(), $this->today());
 

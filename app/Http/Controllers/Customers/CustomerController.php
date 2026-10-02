@@ -310,6 +310,7 @@ class CustomerController extends Controller
         return $property->only([
             'id', 'label', 'line1', 'line2', 'unit', 'city', 'region', 'postal_code', 'country',
             'access_notes', 'gate_code', 'site_contact_name', 'site_contact_phone', 'is_primary',
+            'google_place_id', 'latitude', 'longitude',
         ]);
     }
 

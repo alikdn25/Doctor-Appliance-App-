@@ -35,6 +35,12 @@ return [
     | and oauth.authorization.revoked
     | with the URL in SQUARE_WEBHOOK_URL (exactly as entered in the Square dashboard; it is part of the signature).
     */
+    // Google Places address suggestions in the browser (Places API (New) + Maps JavaScript API). A browser key:
+    // restrict it to your domain (HTTP referrers) and to those two APIs in Google Cloud. Empty = manual address entry.
+    'google_maps' => [
+        'browser_key' => env('GOOGLE_MAPS_BROWSER_KEY'),
+    ],
+
     'square' => [
         'environment' => env('SQUARE_ENVIRONMENT', 'sandbox'),
         'application_id' => env('SQUARE_APPLICATION_ID'),

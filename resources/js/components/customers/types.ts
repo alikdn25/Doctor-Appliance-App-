@@ -12,6 +12,10 @@ export type PropertyFormData = {
     site_contact_name: string;
     site_contact_phone: string;
     is_primary: boolean;
+    /** Set when the address was picked from Google Places suggestions. */
+    google_place_id: string;
+    latitude: string;
+    longitude: string;
 };
 
 export type PropertyData = {
@@ -37,6 +41,9 @@ export const emptyProperty = (country: string): PropertyFormData => ({
     site_contact_name: '',
     site_contact_phone: '',
     is_primary: false,
+    google_place_id: '',
+    latitude: '',
+    longitude: '',
 });
 
 /** Edit form values; the stored E.164 phone is shown in the company's national format. */
@@ -57,6 +64,9 @@ export const propertyToForm = (
     site_contact_name: p.site_contact_name ?? '',
     site_contact_phone: phoneText(p.site_contact_phone),
     is_primary: p.is_primary,
+    google_place_id: p.google_place_id ?? '',
+    latitude: p.latitude ?? '',
+    longitude: p.longitude ?? '',
 });
 
 /** Google Maps search link for an address (opens the Maps app on phones). */

@@ -15,4 +15,22 @@ return [
         'line' => 'You have been added to :company. Sign in with your existing account and switch to it from the company menu.',
         'action' => 'Sign in',
     ],
+
+    'estimate_decided' => [
+        'greeting' => 'Hello :name,',
+        'action' => 'Open estimate',
+    ],
+
+    'estimate_approved' => [
+        'subject' => 'Estimate :number approved by :customer',
+        'line' => ':customer approved estimate :number (:total) online and signed it as :signer.',
+        'deposit' => 'A deposit of :deposit was asked; it is shown on the estimate once paid.',
+        'sms' => ':brand: :customer approved estimate :number (:total). :url',
+    ],
+
+    'estimate_declined' => [
+        'subject' => 'Estimate :number declined by :customer',
+        'line' => ':customer declined estimate :number (:total) online.',
+        'reason' => 'Reason: :reason',
+    ],
 ];

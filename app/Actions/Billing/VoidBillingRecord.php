@@ -49,8 +49,8 @@ class VoidBillingRecord
     }
 
     /**
-     * An invoice with payments cannot be voided; void the payments first.
-     * An estimate the invoice was made from can be turned into an invoice again.
+     * An invoice with payments cannot be voided; void the payments first. A deposit paid on the estimate is not in the
+     * way: it moves back to the estimate. An estimate the invoice was made from can be turned into an invoice again.
      */
     public function invoice(Invoice $invoice, User $user, ?string $reason): void
     {
@@ -59,6 +59,15 @@ class VoidBillingRecord
 
             if ($invoice->isVoid()) {
                 return;
+            }
+
+            // A deposit paid on the estimate goes back to the estimate (it counts on the next invoice made from it).
+            if ($invoice->estimate_id !== null) {
+                Payment::query()
+                    ->where('invoice_id', $invoice->id)
+                    ->where('estimate_id', $invoice->estimate_id)
+                    ->update(['invoice_id' => null]);
+                $this->syncInvoice->handle($invoice, $user);
             }
 
             // Manual payments are voided first; online payments must be refunded in full at the provider.

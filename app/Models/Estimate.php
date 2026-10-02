@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\EstimateStatus;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Concerns\IsBillingDocument;
+use Carbon\CarbonImmutable;
 use Database\Factories\EstimateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -40,6 +41,16 @@ use Illuminate\Support\Carbon;
  * @property string|null $notes
  * @property Carbon|null $approved_at
  * @property Carbon|null $declined_at
+ * @property string|null $deposit_type percent or amount; null = no deposit
+ * @property string $deposit_value
+ * @property int $deposit_amount The deposit for the current total, in minor units
+ * @property string|null $signer_name Set when the customer approved online
+ * @property string|null $signature_type drawn or typed
+ * @property string|null $signature_path PNG of a drawn signature on the private disk
+ * @property string|null $approved_ip
+ * @property string|null $approved_user_agent
+ * @property string|null $decline_reason
+ * @property string|null $declined_ip
  * @property int|null $created_by
  * @property Carbon|null $created_at
  * @property-read ServiceJob $job
@@ -54,7 +65,11 @@ class Estimate extends Model
     /** @use HasFactory<EstimateFactory> */
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['issued_on', 'valid_until', 'discount_type', 'discount_value', 'notes'];
+    public const SIGNATURE_DRAWN = 'drawn';
+
+    public const SIGNATURE_TYPED = 'typed';
+
+    protected $fillable = ['issued_on', 'valid_until', 'discount_type', 'discount_value', 'notes', 'deposit_type', 'deposit_value'];
 
     protected $attributes = [
         'status' => 'draft',
@@ -72,6 +87,8 @@ class Estimate extends Model
             'valid_until' => 'date:Y-m-d',
             'approved_at' => 'datetime',
             'declined_at' => 'datetime',
+            'deposit_value' => 'decimal:2',
+            'deposit_amount' => 'integer',
         ];
     }
 
@@ -89,5 +106,80 @@ class Estimate extends Model
     public function invoice(): HasOne
     {
         return $this->hasOne(Invoice::class);
+    }
+
+    /**
+     * Deposit payments (and their refunds) made on this estimate. They move to the invoice made from it,
+     * keeping estimate_id, so they still count here.
+     *
+     * @return HasMany<Payment, $this>
+     */
+    public function depositPayments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Net deposit received (refunds deducted), in minor units.
+     */
+    public function depositPaid(): int
+    {
+        return (int) $this->depositPayments()->valid()->sum('amount');
+    }
+
+    /**
+     * What is still to pay of the deposit.
+     */
+    public function depositDue(): int
+    {
+        return max(0, $this->deposit_amount - $this->depositPaid());
+    }
+
+    /**
+     * The deposit for a total: a percent of it, or a fixed amount (never more than the total).
+     */
+    public function depositFor(int $total, int $minorFactor): int
+    {
+        $value = (float) $this->deposit_value;
+
+        if ($total <= 0 || $value <= 0) {
+            return 0;
+        }
+
+        $amount = match ($this->deposit_type) {
+            'percent' => (int) round($total * min($value, 100) / 100),
+            'amount' => (int) round($value * $minorFactor),
+            default => 0,
+        };
+
+        return min($amount, $total);
+    }
+
+    /**
+     * Past its "valid until" day in the company's time zone: it can no longer be approved.
+     */
+    public function isExpired(): bool
+    {
+        if ($this->valid_until === null) {
+            return false;
+        }
+
+        return $this->valid_until->toDateString() < CarbonImmutable::now(currentCompany()->timezone)->toDateString();
+    }
+
+    /**
+     * The customer approved and signed on the online page (as opposed to staff marking it approved).
+     */
+    public function approvedOnline(): bool
+    {
+        return $this->signer_name !== null && $this->approved_at !== null;
+    }
+
+    /**
+     * The customer can still approve or decline on the online page.
+     */
+    public function awaitsCustomer(): bool
+    {
+        return in_array($this->status, [EstimateStatus::Draft, EstimateStatus::Declined], true) && ! $this->trashed();
     }
 }

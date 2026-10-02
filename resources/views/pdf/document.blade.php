@@ -28,6 +28,12 @@
         .footer { position: fixed; bottom: -30px; left: 0; right: 0; text-align: center; font-size: 9px; color: #6b7280; }
         .pay { margin-top: 14px; padding: 8px 10px; border: 1.5px solid {{ $doc['brand']['color'] }}; }
         .pay a { color: {{ $doc['brand']['color'] }}; }
+        .excluded td { color: #9ca3af; }
+        .tag { font-size: 8.5px; text-transform: uppercase; color: #6b7280; }
+        .approval { margin-top: 16px; padding: 10px 12px; border: 1.5px solid #16a34a; }
+        .approval .title { font-weight: bold; color: #15803d; }
+        .signature { max-height: 70px; max-width: 260px; margin: 6px 0 2px; }
+        .typed-signature { font-size: 20px; font-style: italic; margin: 6px 0 2px; }
     </style>
 </head>
 <body>
@@ -88,8 +94,8 @@
         </thead>
         <tbody>
             @foreach ($doc['items'] as $item)
-                <tr>
-                    <td style="white-space: pre-line;">{{ $item['description'] }}@unless ($item['taxable'])<span class="muted"> · {{ __('billing.not_taxable') }}</span>@endunless</td>
+                <tr @class(['excluded' => ! $item['included']])>
+                    <td style="white-space: pre-line;">@if ($item['optional'])<span class="tag">{{ $item['included'] ? __('estimates.optional_included') : __('estimates.optional_not_included') }}</span><br>@endif{{ $item['description'] }}@unless ($item['taxable'])<span class="muted"> · {{ __('billing.not_taxable') }}</span>@endunless</td>
                     <td class="num">{{ $item['quantity'] }}</td>
                     <td class="num">{{ $item['unit_price'] }}</td>
                     <td class="num">{{ $item['total'] }}</td>
@@ -120,6 +126,30 @@
 
     @if (! empty($url) && $doc['kind'] === 'invoice' && $doc['balance_minor'] > 0)
         <div class="pay">{{ __('documents.pay_online_pdf') }} <a href="{{ $url }}">{{ $url }}</a></div>
+    @endif
+
+    @if ($doc['approval'] && $doc['approval']['deposit'])
+        <table class="totals" style="margin-top: 4px;">
+            <tr><td>{{ $doc['approval']['deposit_percent'] ? __('estimates.deposit_percent', ['percent' => $doc['approval']['deposit_percent']]) : __('estimates.deposit') }}</td><td class="num">{{ $doc['approval']['deposit'] }}</td></tr>
+            @if ($doc['approval']['deposit_paid'])
+                <tr><td>{{ __('estimates.deposit_paid') }}</td><td class="num">{{ $doc['approval']['deposit_paid'] }}</td></tr>
+            @endif
+        </table>
+    @endif
+
+    @if ($doc['approval'] && $doc['approval']['online'])
+        <div class="approval">
+            <div class="title">{{ __('estimates.online.approved_title') }}</div>
+            @if ($doc['approval']['signature'])
+                <img class="signature" src="{{ $doc['approval']['signature'] }}" alt="">
+            @else
+                <div class="typed-signature">{{ $doc['approval']['signer_name'] }}</div>
+            @endif
+            <div>{{ __('estimates.online.signed_by', ['name' => $doc['approval']['signer_name'], 'date' => $doc['approval']['approved_at']]) }}</div>
+            @if ($doc['approval']['approved_ip'])
+                <div class="muted">{{ __('estimates.online.ip', ['ip' => $doc['approval']['approved_ip']]) }}</div>
+            @endif
+        </div>
     @endif
 
     @if ($doc['notes'])

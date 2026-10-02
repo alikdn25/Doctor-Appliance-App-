@@ -35,6 +35,7 @@ type CompanySettings = {
     estimate_next_number: number;
     business_hours: Record<string, Day>;
     travel_buffer_minutes: number;
+    estimate_valid_days: number | null;
     payment_provider: string;
 };
 
@@ -85,6 +86,7 @@ export default function CompanySettingsPage({
         estimate_next_number: company.estimate_next_number,
         business_hours: company.business_hours,
         travel_buffer_minutes: company.travel_buffer_minutes,
+        estimate_valid_days: company.estimate_valid_days,
         payment_provider: company.payment_provider ?? '',
     });
     const errors = form.errors as Record<string, string | undefined>;
@@ -313,6 +315,30 @@ export default function CompanySettingsPage({
                             example: `${form.data.invoice_prefix}${form.data.invoice_next_number}`,
                         })}
                     </p>
+                    <FormField
+                        id="estimate_valid_days"
+                        label={t('company.fields.estimate_valid_days')}
+                        hint={t('company.estimate_valid_days_hint')}
+                        error={errors.estimate_valid_days}
+                        className="sm:max-w-xs"
+                    >
+                        <Input
+                            id="estimate_valid_days"
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={365}
+                            value={form.data.estimate_valid_days ?? ''}
+                            onChange={(e) =>
+                                form.setData(
+                                    'estimate_valid_days',
+                                    e.target.value === ''
+                                        ? null
+                                        : Number(e.target.value),
+                                )
+                            }
+                        />
+                    </FormField>
                 </section>
 
                 <section className="grid gap-3">

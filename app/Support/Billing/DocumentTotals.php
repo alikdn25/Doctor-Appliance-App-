@@ -7,6 +7,8 @@ namespace App\Support\Billing;
  * resources/js/components/billing/money.ts for the live preview; the server result is what is saved.
  *
  * - Line total = quantity × unit price, rounded to the minor unit.
+ * - A line with `included` = false (an optional line the customer did not pick) has its line total but does not
+ *   count towards the subtotal, discount or taxes.
  * - Discount (fixed amount or percent of the subtotal) is applied before taxes; taxable lines carry
  *   their share of it.
  * - Taxes are applied in order. A normal tax is charged on the discounted taxable amount; a compound tax
@@ -17,7 +19,7 @@ namespace App\Support\Billing;
 class DocumentTotals
 {
     /**
-     * @param  list<array{quantity: string|float|int, unit_price: int, taxable: bool}>  $items
+     * @param  list<array{quantity: string|float|int, unit_price: int, taxable: bool, included?: bool}>  $items
      * @param  list<array{tax_rate_id: int|null, name: string, rate: string|float, compound?: bool}>  $taxes
      * @param  int  $minorFactor  Minor units per major unit of the currency (100 for USD, 1 for JPY), for a fixed discount
      * @return array{
@@ -39,9 +41,15 @@ class DocumentTotals
     ): array {
         $itemTotals = array_map(fn (array $item) => self::lineTotal($item['quantity'], $item['unit_price']), $items);
 
-        $subtotal = array_sum($itemTotals);
+        $subtotal = 0;
         $taxableSubtotal = 0;
         foreach ($items as $i => $item) {
+            if (! ($item['included'] ?? true)) {
+                continue;
+            }
+
+            $subtotal += $itemTotals[$i];
+
             if ($item['taxable']) {
                 $taxableSubtotal += $itemTotals[$i];
             }

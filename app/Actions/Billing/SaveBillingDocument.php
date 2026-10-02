@@ -5,7 +5,9 @@ namespace App\Actions\Billing;
 use App\Enums\EstimateStatus;
 use App\Models\Customer;
 use App\Models\Estimate;
+use App\Models\EstimateItem;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Models\User;
@@ -20,7 +22,8 @@ use Illuminate\Validation\ValidationException;
  * Must run in a tenant context.
  *
  * $data: issued_on, valid_until|due_on, discount_type, discount_value, notes,
- *        tax_rate_ids (list<int>), items (list of description, quantity, unit_price in cents, taxable).
+ *        tax_rate_ids (list<int>), items (list of description, quantity, unit_price in cents, taxable;
+ *        estimates also optional, selected), deposit_type, deposit_value (estimates).
  */
 class SaveBillingDocument
 {
@@ -86,11 +89,22 @@ class SaveBillingDocument
                 'discount_type' => $estimate->discount_type,
                 'discount_value' => $estimate->discount_value,
                 'notes' => $estimate->notes,
-                'items' => $estimate->items->map(fn ($item) => $item->only(['description', 'quantity', 'unit_price', 'taxable']))->all(),
+                // Optional lines the customer did not pick are left out.
+                'items' => $estimate->items
+                    ->filter(fn (EstimateItem $item) => $item->isIncluded())
+                    ->map(fn (EstimateItem $item) => $item->only(['description', 'quantity', 'unit_price', 'taxable']))
+                    ->values()
+                    ->all(),
             ], $estimate->taxes);
 
             $estimate->status = EstimateStatus::Invoiced;
             $estimate->save();
+
+            // A deposit paid on the estimate counts towards the invoice.
+            Payment::query()
+                ->where('estimate_id', $estimate->id)
+                ->whereNull('invoice_id')
+                ->update(['invoice_id' => $invoice->id]);
 
             $this->syncInvoice->handle($invoice, $user);
 
@@ -130,15 +144,20 @@ class SaveBillingDocument
      */
     private function fill(Estimate|Invoice $document, array $data, array $taxes): void
     {
+        $estimate = $document instanceof Estimate;
         $items = array_values(array_map(fn (array $item) => [
             'description' => trim((string) $item['description']),
             'quantity' => (string) $item['quantity'],
             'unit_price' => (int) $item['unit_price'],
             'taxable' => (bool) $item['taxable'],
+            ...($estimate ? [
+                'optional' => (bool) ($item['optional'] ?? false),
+                'selected' => ! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false),
+            ] : []),
         ], $data['items']));
 
         $totals = DocumentTotals::calculate(
-            $items,
+            array_map(fn (array $item) => [...$item, 'included' => $item['selected'] ?? true], $items),
             $data['discount_type'] ?? null,
             $data['discount_value'] ?? 0,
             $taxes,
@@ -167,13 +186,11 @@ class SaveBillingDocument
                 ?: $this->dueOn($document, CarbonImmutable::parse($data['issued_on']))->toDateString();
         } else {
             $document->valid_until = $data['valid_until'] ?? null;
+            $document->deposit_type = ($data['deposit_type'] ?? null) ?: null;
+            $document->deposit_value = $document->deposit_type ? ($data['deposit_value'] ?? 0) : 0;
         }
 
-        $document->subtotal = $totals['subtotal'];
-        $document->discount_total = $totals['discount_total'];
-        $document->tax_total = $totals['tax_total'];
-        $document->total = $totals['total'];
-        $document->taxes = $totals['taxes'];
+        $this->applyTotals($document, $totals);
         $document->save();
 
         $document->items()->delete();
@@ -181,6 +198,48 @@ class SaveBillingDocument
             $document->items()->create([...$item, 'position' => $position, 'total' => $totals['item_totals'][$position]]);
         }
         $document->unsetRelation('items');
+    }
+
+    /**
+     * Recalculates an estimate's totals from its lines as they are (e.g. after the customer picked optional lines),
+     * with the discount and the tax rates already on it.
+     */
+    public function recalculate(Estimate $estimate): void
+    {
+        $estimate->loadMissing('items');
+
+        $totals = DocumentTotals::calculate(
+            $estimate->items->map(fn (EstimateItem $item) => [
+                'quantity' => $item->quantity,
+                'unit_price' => $item->unit_price,
+                'taxable' => $item->taxable,
+                'included' => $item->isIncluded(),
+            ])->values()->all(),
+            $estimate->discount_type,
+            $estimate->discount_value,
+            $estimate->taxes,
+            $estimate->prices_include_tax,
+            Currencies::factor($estimate->currency),
+        );
+
+        $this->applyTotals($estimate, $totals);
+        $estimate->save();
+    }
+
+    /**
+     * @param  array{subtotal: int, discount_total: int, tax_total: int, total: int, taxes: list<array<string, mixed>>}  $totals
+     */
+    private function applyTotals(Estimate|Invoice $document, array $totals): void
+    {
+        $document->subtotal = $totals['subtotal'];
+        $document->discount_total = $totals['discount_total'];
+        $document->tax_total = $totals['tax_total'];
+        $document->total = $totals['total'];
+        $document->taxes = $totals['taxes'];
+
+        if ($document instanceof Estimate) {
+            $document->deposit_amount = $document->depositFor($document->total, Currencies::factor($document->currency));
+        }
     }
 
     private function dueOn(Invoice $invoice, CarbonImmutable $issuedOn): CarbonImmutable

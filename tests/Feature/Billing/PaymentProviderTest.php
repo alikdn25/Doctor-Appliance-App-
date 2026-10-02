@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Property;
@@ -57,7 +58,7 @@ class FakePaymentProvider implements PaymentProvider
 
     public function disconnect(Company $company): void {}
 
-    public function createPaymentLink(Invoice $invoice, int $amount): PaymentLink
+    public function createPaymentLink(Estimate|Invoice $invoice, int $amount): PaymentLink
     {
         return new PaymentLink("https://pay.example.test/{$invoice->number}/{$amount}", "link-{$invoice->id}-{$amount}", "order-{$invoice->id}-{$amount}");
     }

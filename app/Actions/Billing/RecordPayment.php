@@ -2,7 +2,9 @@
 
 namespace App\Actions\Billing;
 
+use App\Enums\InvoiceStatus;
 use App\Enums\PaymentMethod;
+use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
@@ -12,7 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Records a payment towards an invoice: by hand (cash, check, bank transfer, own terminal, other)
- * or from a payment provider (webhook). Must run in a tenant context.
+ * or from a payment provider (webhook). A provider payment can also be the deposit of an estimate the customer
+ * approved online: it stays on the estimate until the estimate becomes an invoice. Must run in a tenant context.
  */
 class RecordPayment
 {
@@ -56,7 +59,7 @@ class RecordPayment
      * so a repeated webhook does not record it twice.
      */
     public function fromProvider(
-        Invoice $invoice,
+        Estimate|Invoice $document,
         string $provider,
         string $providerPaymentId,
         int $amount,
@@ -65,12 +68,23 @@ class RecordPayment
         ?string $currency = null,
         int $tip = 0,
     ): Payment {
-        return DB::transaction(function () use ($invoice, $provider, $providerPaymentId, $amount, $receivedAt, $reference, $currency, $tip) {
-            $invoice = $this->lock($invoice);
+        return DB::transaction(function () use ($document, $provider, $providerPaymentId, $amount, $receivedAt, $reference, $currency, $tip) {
+            $estimate = null;
 
-            if ($currency !== null && strtoupper($currency) !== $invoice->currency) {
+            if ($document instanceof Estimate) {
+                $estimate = Estimate::query()->withTrashed()->lockForUpdate()->findOrFail($document->id);
+                // Already invoiced: the deposit goes straight onto that invoice.
+                $invoiceId = $estimate->invoice()->where('status', '!=', InvoiceStatus::Void->value)->value('id');
+                $invoice = $invoiceId !== null ? $this->lock(Invoice::query()->findOrFail($invoiceId)) : null;
+            } else {
+                $invoice = $this->lock($document);
+            }
+
+            $expected = $invoice?->currency ?? $estimate?->currency;
+
+            if ($currency !== null && strtoupper($currency) !== $expected) {
                 throw ValidationException::withMessages(['amount' => __('payments.errors.currency_mismatch', [
-                    'currency' => strtoupper($currency), 'expected' => $invoice->currency,
+                    'currency' => strtoupper($currency), 'expected' => $expected,
                 ])]);
             }
 
@@ -83,7 +97,7 @@ class RecordPayment
                 return $existing;
             }
 
-            return $this->create($invoice, [
+            $attributes = [
                 'amount' => $amount,
                 // A tip is the customer's extra to the company: kept on the payment, not applied to the invoice.
                 'tip_amount' => max(0, $tip),
@@ -92,7 +106,13 @@ class RecordPayment
                 'received_at' => $receivedAt,
                 'provider' => $provider,
                 'provider_payment_id' => $providerPaymentId,
-            ], null);
+            ];
+
+            if ($invoice === null) {
+                return $this->createDeposit($estimate, $attributes);
+            }
+
+            return $this->create($invoice, $attributes, null, $estimate?->id);
         });
     }
 
@@ -104,7 +124,8 @@ class RecordPayment
     public function refundFromProvider(Payment $original, string $providerRefundId, int $amount, CarbonInterface $refundedAt): Payment
     {
         return DB::transaction(function () use ($original, $providerRefundId, $amount, $refundedAt) {
-            $invoice = Invoice::query()->lockForUpdate()->findOrFail($original->invoice_id);
+            // A deposit not invoiced yet is refunded on its estimate.
+            $invoice = $original->invoice_id !== null ? Invoice::query()->lockForUpdate()->findOrFail($original->invoice_id) : null;
 
             $existing = Payment::query()
                 ->where('provider', $original->provider)
@@ -130,12 +151,15 @@ class RecordPayment
                 'provider' => $original->provider,
                 'provider_payment_id' => $providerRefundId,
             ]);
-            $refund->invoice_id = $invoice->id;
-            $refund->currency = $invoice->currency;
+            $refund->invoice_id = $invoice?->id;
+            $refund->estimate_id = $original->estimate_id;
+            $refund->currency = $original->currency;
             $refund->refunded_payment_id = $original->id;
             $refund->save();
 
-            $this->syncInvoice->handle($invoice, null);
+            if ($invoice !== null) {
+                $this->syncInvoice->handle($invoice, null);
+            }
 
             return $refund;
         });
@@ -155,7 +179,7 @@ class RecordPayment
     /**
      * @param  array<string, mixed>  $attributes
      */
-    private function create(Invoice $invoice, array $attributes, ?User $user): Payment
+    private function create(Invoice $invoice, array $attributes, ?User $user, ?int $estimateId = null): Payment
     {
         if ($attributes['amount'] <= 0) {
             throw ValidationException::withMessages(['amount' => __('payments.errors.amount_required')]);
@@ -163,11 +187,31 @@ class RecordPayment
 
         $payment = new Payment($attributes);
         $payment->invoice_id = $invoice->id;
+        $payment->estimate_id = $estimateId;
         $payment->currency = $invoice->currency;
         $payment->user_id = $user?->id;
         $payment->save();
 
         $this->syncInvoice->handle($invoice, $user);
+
+        return $payment;
+    }
+
+    /**
+     * A deposit on an estimate that has no invoice yet.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createDeposit(Estimate $estimate, array $attributes): Payment
+    {
+        if ($attributes['amount'] <= 0) {
+            throw ValidationException::withMessages(['amount' => __('payments.errors.amount_required')]);
+        }
+
+        $payment = new Payment($attributes);
+        $payment->estimate_id = $estimate->id;
+        $payment->currency = $estimate->currency;
+        $payment->save();
 
         return $payment;
     }

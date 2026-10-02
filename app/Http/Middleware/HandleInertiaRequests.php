@@ -76,6 +76,8 @@ class HandleInertiaRequests extends Middleware
             'company' => $company ? [
                 ...$company->only(['id', 'name']),
                 ...$company->formatSettings(),
+                // Browser key for Google Places address suggestions; null = addresses are typed by hand.
+                'google_maps_key' => config('services.google_maps.browser_key') ?: null,
                 // The Owner's browser fills in the time zone of a new company.
                 'timezone_pending' => $company->timezone_pending && $user->can('update', $company),
             ] : null,

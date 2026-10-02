@@ -2,6 +2,11 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Plus, Search, Trash2, UserPlus, X } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import {
+    AddressAutocomplete,
+    clearedPlace,
+    GEOCODED_FIELDS,
+} from '@/components/customers/address-autocomplete';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import type { ApplianceItem, Assignable } from '@/components/jobs/types';
@@ -78,6 +83,9 @@ type FormData = {
             postal_code: string;
             country: string;
             gate_code: string;
+            google_place_id: string;
+            latitude: string;
+            longitude: string;
         };
     };
     add_visit: boolean;
@@ -156,6 +164,9 @@ export default function JobForm({
                 postal_code: '',
                 country: auth.company?.country ?? 'US',
                 gate_code: '',
+                google_place_id: '',
+                latitude: '',
+                longitude: '',
             },
         },
         add_visit: false,
@@ -259,12 +270,22 @@ export default function JobForm({
     const setNewCustomer = (patch: Partial<FormData['new_customer']>) =>
         form.setData('new_customer', { ...data.new_customer, ...patch });
 
+    // Typing over a picked address clears its place ID and coordinates.
     const setNewAddress = (
         patch: Partial<FormData['new_customer']['property']>,
+        picked = false,
     ) =>
         form.setData('new_customer', {
             ...data.new_customer,
-            property: { ...data.new_customer.property, ...patch },
+            property: {
+                ...data.new_customer.property,
+                ...(picked ||
+                !data.new_customer.property.google_place_id ||
+                !GEOCODED_FIELDS.some((field) => field in patch)
+                    ? {}
+                    : clearedPlace),
+                ...patch,
+            },
         });
 
     const setVisit = (patch: Partial<FormData['visit']>) =>
@@ -432,15 +453,38 @@ export default function JobForm({
                                 {t('customers.sections.property')}
                             </h3>
                             <div className="grid gap-4 sm:grid-cols-2">
-                                {textField(
-                                    'nc-line1',
-                                    t('properties.fields.line1'),
-                                    data.new_customer.property.line1,
-                                    (v) => setNewAddress({ line1: v }),
-                                    errors['new_customer.property.line1'],
-                                    { autoComplete: 'off' },
-                                    'sm:col-span-2',
-                                )}
+                                <FormField
+                                    id="nc-line1"
+                                    label={t('properties.fields.line1')}
+                                    error={
+                                        errors['new_customer.property.line1']
+                                    }
+                                    className="sm:col-span-2"
+                                >
+                                    <AddressAutocomplete
+                                        id="nc-line1"
+                                        autoComplete="off"
+                                        value={data.new_customer.property.line1}
+                                        country={
+                                            data.new_customer.property.country
+                                        }
+                                        onChange={(v) =>
+                                            setNewAddress({ line1: v })
+                                        }
+                                        onPick={(address) =>
+                                            setNewAddress(
+                                                {
+                                                    ...address,
+                                                    unit:
+                                                        address.unit ??
+                                                        data.new_customer
+                                                            .property.unit,
+                                                },
+                                                true,
+                                            )
+                                        }
+                                    />
+                                </FormField>
                                 {textField(
                                     'nc-unit',
                                     t('properties.fields.unit'),
