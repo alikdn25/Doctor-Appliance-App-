@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Plus, TriangleAlert, X } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
@@ -34,6 +34,7 @@ type Customer = {
     company_name: string | null;
     display_name: string;
     lead_source: string | null;
+    payment_terms: string | null;
     tags: string[];
     notes: string | null;
     phones: Phone[];
@@ -46,6 +47,7 @@ type FormData = {
     last_name: string;
     company_name: string;
     lead_source: string;
+    payment_terms: string;
     tags: string;
     notes: string;
     phones: Phone[];
@@ -60,6 +62,8 @@ type Props = {
     customer: Customer | null;
     types: Option[];
     leadSources: Option[];
+    paymentTerms: Option[];
+    defaultPaymentTerms: string;
     phoneLabels: Option[];
     emailLabels: Option[];
     tags: string[];
@@ -116,11 +120,14 @@ export default function CustomerForm({
     customer,
     types,
     leadSources,
+    paymentTerms,
+    defaultPaymentTerms,
     phoneLabels,
     emailLabels,
     tags,
 }: Props) {
     const t = useTrans();
+    const { auth } = usePage().props;
 
     const form = useForm<FormData>({
         type: customer?.type ?? 'residential',
@@ -128,6 +135,7 @@ export default function CustomerForm({
         last_name: customer?.last_name ?? '',
         company_name: customer?.company_name ?? '',
         lead_source: customer?.lead_source ?? '',
+        payment_terms: customer?.payment_terms ?? '',
         tags: customer?.tags.join(', ') ?? '',
         notes: customer?.notes ?? '',
         phones: customer?.phones.map(({ id, label, number, is_primary }) => ({
@@ -143,7 +151,10 @@ export default function CustomerForm({
             is_primary,
         })) ?? [{ label: 'personal', email: '', is_primary: true }],
         add_property: customer === null,
-        property: { ...emptyProperty(), is_primary: true },
+        property: {
+            ...emptyProperty(auth.company?.country ?? 'US'),
+            is_primary: true,
+        },
     });
     const errors = form.errors as Record<string, string | undefined>;
 
@@ -267,6 +278,31 @@ export default function CustomerForm({
                             {leadSources.map((source) => (
                                 <option key={source.value} value={source.value}>
                                     {source.label}
+                                </option>
+                            ))}
+                        </NativeSelect>
+                    </FormField>
+                    <FormField
+                        id="payment_terms"
+                        label={t('customers.fields.payment_terms')}
+                        hint={t('customers.payment_terms_hint')}
+                        error={errors.payment_terms}
+                    >
+                        <NativeSelect
+                            id="payment_terms"
+                            value={form.data.payment_terms}
+                            onChange={(e) =>
+                                form.setData('payment_terms', e.target.value)
+                            }
+                        >
+                            <option value="">
+                                {t('customers.company_default_terms', {
+                                    terms: defaultPaymentTerms,
+                                })}
+                            </option>
+                            {paymentTerms.map((terms) => (
+                                <option key={terms.value} value={terms.value}>
+                                    {terms.label}
                                 </option>
                             ))}
                         </NativeSelect>

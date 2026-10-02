@@ -42,8 +42,9 @@ class CustomerPhone extends Model
     protected static function booted(): void
     {
         static::saving(function (CustomerPhone $phone) {
-            $phone->number = trim($phone->number);
-            $phone->number_normalized = PhoneNumber::normalize($phone->number);
+            // Stored in E.164; number_normalized is kept for the search and duplicate indexes.
+            $phone->number = PhoneNumber::normalize($phone->number);
+            $phone->number_normalized = $phone->number;
         });
     }
 

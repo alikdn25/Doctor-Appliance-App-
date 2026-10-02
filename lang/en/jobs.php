@@ -175,6 +175,8 @@ return [
         'installation' => 'Installation',
         'vent_cleaning' => 'Vent cleaning',
         'inspection' => 'Inspection',
+        'assembly' => 'Assembly',
+        'mounting' => 'Mounting',
     ],
 
     'photo_kinds' => [

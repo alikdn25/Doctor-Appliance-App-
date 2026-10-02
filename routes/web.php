@@ -5,10 +5,13 @@ use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Billing\EstimateController;
 use App\Http\Controllers\Billing\InvoiceController;
 use App\Http\Controllers\Billing\PaymentController;
+use App\Http\Controllers\Billing\PaymentLinkController;
 use App\Http\Controllers\Company\BrandController;
 use App\Http\Controllers\Company\ChecklistController;
 use App\Http\Controllers\Company\CompanySettingsController;
 use App\Http\Controllers\Company\DetectTimezoneController;
+use App\Http\Controllers\Company\PaymentProviderController;
+use App\Http\Controllers\Company\ServiceController;
 use App\Http\Controllers\Company\SwitchCompanyController;
 use App\Http\Controllers\Company\TaxRateController;
 use App\Http\Controllers\Company\TeamController;
@@ -24,9 +27,15 @@ use App\Http\Controllers\Jobs\JobWorkController;
 use App\Http\Controllers\Jobs\VisitActionController;
 use App\Http\Controllers\Jobs\VisitController;
 use App\Http\Controllers\ManifestController;
+use App\Http\Controllers\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
+
+// Online payment provider webhooks (signature checked by the provider; no session, no CSRF).
+Route::post('webhooks/payments/{provider}', PaymentWebhookController::class)
+    ->middleware('throttle:120,1')
+    ->name('webhooks.payments');
 
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'login'))->name('home');
 
@@ -91,6 +100,12 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('invoices/{invoice}/void', [InvoiceController::class, 'void'])->name('invoices.void');
         Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('payments.store');
         Route::post('payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
+        Route::post('invoices/{invoice}/payment-link', [PaymentLinkController::class, 'store'])->name('invoices.payment-link');
+
+        // Connecting the company's own payment provider account (OAuth). The callback URL is registered at the provider.
+        Route::get('payment-providers/{provider}/connect', [PaymentProviderController::class, 'connect'])->name('payment-providers.connect');
+        Route::get('payment-providers/{provider}/callback', [PaymentProviderController::class, 'callback'])->name('payment-providers.callback');
+        Route::delete('payment-providers/{provider}', [PaymentProviderController::class, 'disconnect'])->name('payment-providers.disconnect');
 
         Route::prefix('company')->group(function () {
             Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company.settings.edit');
@@ -98,6 +113,8 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::put('timezone', DetectTimezoneController::class)->name('company.timezone.detect');
             Route::get('checklists', [ChecklistController::class, 'edit'])->name('company.checklists.edit');
             Route::put('checklists', [ChecklistController::class, 'update'])->name('company.checklists.update');
+            Route::get('services', [ServiceController::class, 'edit'])->name('company.services.edit');
+            Route::put('services', [ServiceController::class, 'update'])->name('company.services.update');
 
             Route::resource('brands', BrandController::class)->except('show');
 

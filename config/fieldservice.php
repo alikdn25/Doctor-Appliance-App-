@@ -21,9 +21,11 @@ return [
     */
     'require_two_factor' => (bool) env('AUTH_REQUIRE_TWO_FACTOR', true),
 
-    'currencies' => ['CAD', 'USD'],
-
-    'default_timezone' => 'America/Vancouver',
+    /*
+    | Country preselected when the super-admin creates a company (SPEC §1.1). Currency, regional format,
+    | time zone and address format follow the company's country (config/countries.php).
+    */
+    'default_country' => env('DEFAULT_COMPANY_COUNTRY', 'US'),
 
     /*
     | Time zone database check in the super-admin panel. PHP built with the

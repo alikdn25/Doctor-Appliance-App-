@@ -12,9 +12,17 @@ export type User = {
 export type CurrentCompany = {
     id: number;
     name: string;
+    country: string;
     currency: string;
+    currency_decimals: number;
+    /** Regional format (BCP 47) for dates, times and numbers, e.g. en-US. */
+    locale: string;
     timezone: string;
     timezone_pending?: boolean;
+    vertical: 'appliance_repair' | 'handyman';
+    tracks_appliances: boolean;
+    prices_include_tax: boolean;
+    address: { region_label: string; postal_label: string; order: string };
 };
 
 export type Permissions = {

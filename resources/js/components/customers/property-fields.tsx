@@ -1,6 +1,7 @@
 import { FormField } from '@/components/form-field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { usePage } from '@inertiajs/react';
 import { useTrans } from '@/lib/i18n';
 import type { PropertyFormData } from './types';
 
@@ -11,7 +12,7 @@ const layout: [TextField, string, string?][] = [
     ['unit', '', 'address-line2'],
     ['line2', ''],
     ['city', '', 'address-level2'],
-    ['province', '', 'address-level1'],
+    ['region', '', 'address-level1'],
     ['postal_code', '', 'postal-code'],
     ['country', ''],
     ['label', 'sm:col-span-2'],
@@ -36,6 +37,16 @@ export function PropertyFields({
     idPrefix?: string;
 }) {
     const t = useTrans();
+    const { auth } = usePage().props;
+    // State / Province / County and ZIP / Postal code / Postcode, as the company's country calls them.
+    const labels =
+        auth.company && data.country === auth.company.country
+            ? auth.company.address
+            : null;
+    const label = (field: TextField) =>
+        (field === 'region' && labels?.region_label) ||
+        (field === 'postal_code' && labels?.postal_label) ||
+        t(`properties.fields.${field}`);
 
     const input = (
         field: TextField,
@@ -46,7 +57,7 @@ export function PropertyFields({
         <FormField
             key={field}
             id={`${idPrefix}-${field}`}
-            label={t(`properties.fields.${field}`)}
+            label={label(field)}
             error={errors[`${errorPrefix}${field}`]}
             className={className}
         >

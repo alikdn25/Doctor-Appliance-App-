@@ -11,6 +11,7 @@ function newCompanyPayload(array $overrides = []): array
 {
     return [
         'name' => 'Coastal Repair',
+        'country' => 'CA',
         'timezone' => '',
         'currency' => 'CAD',
         'owner_name' => 'Chris',
@@ -26,8 +27,9 @@ test('a company created without a time zone waits for the owner\'s browser', fun
         ->post(route('admin.companies.store'), newCompanyPayload())
         ->assertRedirect();
 
+    // Until the browser reports the zone, the company uses its country's default zone.
     expect(Company::where('name', 'Coastal Repair')->sole())
-        ->timezone->toBe('America/Vancouver')
+        ->timezone->toBe('America/Toronto')
         ->timezone_pending->toBeTrue();
 });
 

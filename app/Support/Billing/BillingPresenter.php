@@ -11,7 +11,7 @@ use App\Models\TaxRate;
 use App\Support\Jobs\JobPresenter;
 
 /**
- * Shapes estimates, invoices and payments for the React pages. Money stays in cents.
+ * Shapes estimates, invoices and payments for the React pages. Money stays in minor units, with its currency.
  */
 class BillingPresenter
 {
@@ -31,6 +31,7 @@ class BillingPresenter
             'status' => $document->status->value,
             'status_label' => $document->status->label(),
             'issued_on' => $document->issued_on->toDateString(),
+            'currency' => $document->currency,
             'total' => $document->total,
             'balance' => $invoice ? $document->balance : null,
             'job_id' => $document->service_job_id,
@@ -52,6 +53,7 @@ class BillingPresenter
             ...self::row($document),
             'discount_type' => $document->discount_type,
             'discount_value' => $document->discount_value,
+            'prices_include_tax' => $document->prices_include_tax,
             'subtotal' => $document->subtotal,
             'discount_total' => $document->discount_total,
             'tax_total' => $document->tax_total,
@@ -113,6 +115,7 @@ class BillingPresenter
         return [
             'id' => $payment->id,
             'amount' => $payment->amount,
+            'currency' => $payment->currency,
             'method' => $payment->method->value,
             'method_label' => $payment->method->label(),
             'reference' => $payment->reference,
@@ -146,7 +149,7 @@ class BillingPresenter
      * Taxes to offer on the form. The active ones; plus those already on the document.
      *
      * @param  list<array{tax_rate_id: int|null, name: string, rate: string}>  $onDocument
-     * @return list<array{id: int, name: string, rate: string, is_default: bool}>
+     * @return list<array{id: int, name: string, rate: string, is_compound: bool, is_default: bool}>
      */
     public static function taxOptions(array $onDocument = []): array
     {
@@ -154,6 +157,7 @@ class BillingPresenter
 
         return TaxRate::query()
             ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', $ids))
+            ->orderBy('is_compound')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
@@ -161,6 +165,7 @@ class BillingPresenter
                 'id' => $rate->id,
                 'name' => $rate->name,
                 'rate' => rtrim(rtrim((string) $rate->rate, '0'), '.'),
+                'is_compound' => $rate->is_compound,
                 'is_default' => $rate->is_default && $rate->is_active,
             ])
             ->values()

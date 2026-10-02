@@ -17,6 +17,8 @@ return [
         'brands_count' => ':count brands',
         'owner' => 'Owner',
         'owner_hint' => 'If this email already has an account, that person is added as Owner.',
+        'country_hint' => 'Sets the currency, regional format, time zone, address and phone formats. All can be changed later.',
+        'vertical_hint' => 'Sets the job types, default checklists and starting services.',
     ],
 
     'fields' => [

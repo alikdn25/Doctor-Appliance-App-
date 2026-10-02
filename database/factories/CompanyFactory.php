@@ -20,10 +20,29 @@ class CompanyFactory extends Factory
             'name' => $name,
             'slug' => Str::slug($name).'-'.Str::lower(Str::random(5)),
             'status' => CompanyStatus::Active,
+            // Test data is Canadian by default (most tests use BC addresses and 604 numbers);
+            // use ->inUnitedStates() or ->state(['country' => ...]) for other countries.
+            'country' => 'CA',
             'timezone' => 'America/Vancouver',
             'currency' => 'CAD',
+            'locale' => 'en-CA',
             'business_hours' => Company::defaultBusinessHours(),
         ];
+    }
+
+    public function inUnitedStates(): static
+    {
+        return $this->state([
+            'country' => 'US',
+            'timezone' => 'America/Chicago',
+            'currency' => 'USD',
+            'locale' => 'en-US',
+        ]);
+    }
+
+    public function handyman(): static
+    {
+        return $this->state(['vertical' => 'handyman']);
     }
 
     public function suspended(): static

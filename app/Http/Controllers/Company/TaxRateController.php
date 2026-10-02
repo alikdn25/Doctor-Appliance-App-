@@ -18,7 +18,7 @@ class TaxRateController extends Controller
         Gate::authorize('viewAny', TaxRate::class);
 
         return Inertia::render('taxes/index', [
-            'taxRates' => TaxRate::query()->orderBy('sort_order')->orderBy('name')->get(),
+            'taxRates' => TaxRate::query()->orderBy('is_compound')->orderBy('sort_order')->orderBy('name')->get(),
             'canManage' => Gate::allows('create', TaxRate::class),
         ]);
     }
@@ -38,7 +38,7 @@ class TaxRateController extends Controller
     {
         $taxRate->update($request->validated());
 
-        $audit->record('tax_rate.updated', $taxRate, $taxRate->only(['name', 'rate', 'is_active']));
+        $audit->record('tax_rate.updated', $taxRate, $taxRate->only(['name', 'rate', 'is_compound', 'is_active']));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('taxes.updated')]);
 

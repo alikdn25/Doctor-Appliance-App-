@@ -66,7 +66,7 @@ test('my jobs lists only the user\'s own visits by day', function () {
             ->component('jobs/mine')
             ->where('tab', 'today')
             ->where('visits.0.job.customer', 'Mine Owner')
-            ->where('visits.0.job.phone', '604-555-0101')
+            ->where('visits.0.job.phone', '+16045550101')
             ->where('visits.0.job.appliances', ['LG Washer']));
 });
 

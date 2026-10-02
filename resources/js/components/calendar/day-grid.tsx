@@ -3,6 +3,7 @@ import type { DragEvent, TouchEvent } from 'react';
 import type { CalendarVisit, Lane } from '@/components/calendar/types';
 import { inLane } from '@/components/calendar/types';
 import { useTrans } from '@/lib/i18n';
+import { useLocale } from '@/lib/locale';
 import { cn } from '@/lib/utils';
 
 /** Pixels per hour on the day grid (15 minutes = 14 px). */
@@ -71,6 +72,11 @@ export function DayGrid({
     onOpen,
 }: Props) {
     const t = useTrans();
+    const locale = useLocale();
+    const hourFormat = new Intl.DateTimeFormat(locale, {
+        hour: 'numeric',
+        timeZone: 'UTC',
+    });
     const height = (hours.end - hours.start) * HOUR_PX;
     const y = (minutes: number) =>
         ((minutes - hours.start * 60) / 60) * HOUR_PX;
@@ -101,7 +107,9 @@ export function DayGrid({
                             >
                                 {h === hours.start
                                     ? ''
-                                    : `${((h + 11) % 12) + 1}${h < 12 ? 'a' : 'p'}`}
+                                    : hourFormat.format(
+                                          new Date(Date.UTC(2000, 0, 1, h)),
+                                      )}
                             </span>
                         ))}
                     </div>

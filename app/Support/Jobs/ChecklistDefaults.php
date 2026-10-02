@@ -2,16 +2,75 @@
 
 namespace App\Support\Jobs;
 
+use App\Enums\Vertical;
+
 /**
- * Starting checklists per job type for a new company. Each company edits its own in settings.
- * Kept in English like the rest of the UI text that companies can change themselves.
+ * Starting checklists per job type for a new company, by vertical. Each company edits its own in settings.
+ * Kept in English like the rest of the text that companies can change themselves.
  */
 class ChecklistDefaults
 {
     /**
      * @return array<string, list<string>>
      */
-    public static function all(): array
+    public static function forVertical(Vertical $vertical): array
+    {
+        return match ($vertical) {
+            Vertical::ApplianceRepair => self::applianceRepair(),
+            Vertical::Handyman => self::handyman(),
+        };
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public static function handyman(): array
+    {
+        return [
+            'repair' => [
+                'Confirm the job and the price with the customer',
+                'Protect floors and furniture',
+                'Photo before',
+                'Photo after',
+                'Clean up and remove debris',
+            ],
+            'installation' => [
+                'Confirm the location with the customer',
+                'Check for pipes and wires before drilling',
+                'Level and secure',
+                'Test with the customer',
+                'Remove packaging',
+            ],
+            'assembly' => [
+                'Check all parts against the instructions',
+                'Assemble and tighten all fasteners',
+                'Anchor to the wall if required',
+                'Remove packaging',
+            ],
+            'mounting' => [
+                'Confirm height and position with the customer',
+                'Locate studs, check for pipes and wires',
+                'Mount and level',
+                'Hide or tidy cables',
+                'Clean up dust',
+            ],
+            'maintenance' => [
+                'Walk through the task list with the customer',
+                'Note anything that needs a follow-up job',
+                'Clean up the work area',
+            ],
+            'inspection' => [
+                'Photo of each issue found',
+                'Note findings in Work done',
+                'Suggest an estimate for repairs',
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public static function applianceRepair(): array
     {
         $repair = [
             'Confirm the problem with the customer',

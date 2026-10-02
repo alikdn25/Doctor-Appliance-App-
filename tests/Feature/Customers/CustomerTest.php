@@ -20,7 +20,7 @@ function customerPayload(array $overrides = []): array
         'type' => 'residential',
         'first_name' => 'Jane',
         'last_name' => 'Cooper',
-        'lead_source' => 'homestars',
+        'lead_source' => 'directory',
         'tags' => ['VIP', ' vip ', 'Warranty'],
         'notes' => 'Prefers mornings.',
         'phones' => [
@@ -35,7 +35,7 @@ function customerPayload(array $overrides = []): array
             'line1' => '8450 128 St',
             'unit' => '12',
             'city' => 'Surrey',
-            'province' => 'BC',
+            'region' => 'BC',
             'postal_code' => 'V3W 4G1',
             'country' => 'ca',
             'gate_code' => '#1234',
@@ -55,7 +55,7 @@ test('an owner can create a customer with contacts and a first property', functi
         ->and($customer->type)->toBe(CustomerType::Residential)
         ->and($customer->tags)->toBe(['VIP', 'Warranty'])
         ->and($customer->phones)->toHaveCount(2)
-        ->and($customer->phones->first()->number)->toBe('778-555-0100')
+        ->and($customer->phones->first()->number)->toBe('+17785550100')
         ->and($customer->phones->first()->is_primary)->toBeTrue()
         ->and($customer->phones->last()->number_normalized)->toBe('+16045550142')
         ->and($customer->emails->sole()->email)->toBe('jane@example.com')
@@ -64,7 +64,7 @@ test('an owner can create a customer with contacts and a first property', functi
         ->country->toBe('CA')
         ->is_primary->toBeTrue()
         ->site_contact_name->toBe('Sam Tenant')
-        ->site_contact_phone->toBe('778-555-0110');
+        ->site_contact_phone->toBe('+17785550110');
 });
 
 test('a customer can be created without a property', function () {
@@ -105,7 +105,7 @@ test('commercial customers are displayed by company name', function () {
 test('updating a customer syncs phones and emails', function () {
     $this->post(route('customers.store'), customerPayload());
     $customer = inCompany($this->company, fn () => Customer::with('phones')->sole());
-    $keep = $customer->phones->firstWhere('number', '778-555-0100');
+    $keep = $customer->phones->firstWhere('number', '+17785550100');
 
     $this->put(route('customers.update', $customer), customerPayload([
         'last_name' => 'Smith',
@@ -120,8 +120,8 @@ test('updating a customer syncs phones and emails', function () {
 
     expect($customer->display_name)->toBe('Jane Smith')
         ->and($customer->phones)->toHaveCount(2)
-        ->and($customer->phones->firstWhere('id', $keep->id)->number)->toBe('778-555-0101')
-        ->and($customer->phones->where('is_primary', true)->sole()->number)->toBe('604-555-0199')
+        ->and($customer->phones->firstWhere('id', $keep->id)->number)->toBe('+17785550101')
+        ->and($customer->phones->where('is_primary', true)->sole()->number)->toBe('+16045550199')
         ->and($customer->emails)->toBeEmpty()
         ->and($customer->properties)->toHaveCount(1);
 });
@@ -150,7 +150,7 @@ test('the customer card shows properties and appliances', function () {
             ->has('customer.phones', 1)
             ->has('customer.properties', 1)
             ->where('customer.properties.0.site_contact_name', 'Sam Tenant')
-            ->where('customer.properties.0.site_contact_phone', '778-555-0110')
+            ->where('customer.properties.0.site_contact_phone', '+17785550110')
             ->where('customer.properties.0.appliances.0.model_number', 'WM3900HWA')
             ->where('canUpdate', true));
 });

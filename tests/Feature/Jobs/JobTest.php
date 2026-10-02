@@ -2,6 +2,7 @@
 
 use App\Enums\JobStatus;
 use App\Enums\UserRole;
+use App\Enums\Vertical;
 use App\Models\Appliance;
 use App\Models\AuditLog;
 use App\Models\Brand;
@@ -19,7 +20,7 @@ beforeEach(function () {
     $this->tech = memberOf($this->company, UserRole::Technician, ['name' => 'Tom Tech']);
     $this->brand = Brand::factory()->create(['company_id' => $this->company->id, 'name' => 'Doctor Appliance']);
     $this->customer = Customer::factory()->for($this->company)->withPhone('604-555-0101')
-        ->create(['first_name' => 'Jane', 'last_name' => 'Cooper', 'lead_source' => 'homestars']);
+        ->create(['first_name' => 'Jane', 'last_name' => 'Cooper', 'lead_source' => 'directory']);
     $this->property = Property::factory()->for($this->customer)->create(['line1' => '8450 128 St', 'city' => 'Surrey']);
     $this->washer = Appliance::factory()->for($this->property)->create(['type' => 'washer', 'model_number' => 'WM3900']);
     $this->dryer = Appliance::factory()->for($this->property)->create(['type' => 'dryer']);
@@ -123,7 +124,7 @@ test('a new customer can be created right in the job form', function () {
         expect($customer)
             ->display_name->toBe('Sam Lee')
             ->lead_source->value->toBe('website')
-            ->and($customer->phones->sole())->number->toBe('(778) 555-0199')->is_primary->toBeTrue()
+            ->and($customer->phones->sole())->number->toBe('+17785550199')->is_primary->toBeTrue()
             ->and($customer->emails->sole()->email)->toBe('sam@example.com')
             ->and($customer->properties->sole())
             ->line1->toBe('100 Main St')
@@ -264,7 +265,7 @@ test('the job page shows customer, address, appliances, visits and history', fun
             ->component('jobs/show')
             ->where('job.number', $job->number)
             ->where('job.customer.display_name', 'Jane Cooper')
-            ->where('job.customer.phones.0.number', '604-555-0101')
+            ->where('job.customer.phones.0.number', '+16045550101')
             ->where('job.property.line1', '8450 128 St')
             ->where('job.appliances.0.id', $this->washer->id)
             ->where('job.visits.0.assignees.0.name', 'Tom Tech')
@@ -352,4 +353,15 @@ test('an admin limited to some brands only sees and creates jobs of those brands
     $this->post(route('jobs.store'), jobPayload())->assertRedirect();
 
     expect(inCompany($this->company, fn () => ServiceJob::where('brand_id', $this->brand->id)->count()))->toBe(2);
+});
+
+test('job types follow the company vertical', function () {
+    $this->post(route('jobs.store'), jobPayload(['job_type' => 'mounting']))->assertSessionHasErrors('job_type');
+
+    $this->company->update(['vertical' => 'handyman']);
+
+    $this->get(route('jobs.create'))->assertInertia(fn (Assert $page) => $page
+        ->where('jobTypes', collect(Vertical::Handyman->jobTypeOptions())->all()));
+    $this->post(route('jobs.store'), jobPayload(['job_type' => 'mounting', 'appliance_ids' => []]))->assertSessionHasNoErrors();
+    $this->post(route('jobs.store'), jobPayload(['job_type' => 'vent_cleaning']))->assertSessionHasErrors('job_type');
 });

@@ -55,6 +55,7 @@ type Customer = {
     last_name: string | null;
     company_name: string | null;
     lead_source_label: string | null;
+    payment_terms_label: string | null;
     tags: string[];
     notes: string | null;
     created_at: string | null;
@@ -140,6 +141,7 @@ export default function CustomerShow({
                         customer.type_label,
                         contactPerson,
                         customer.lead_source_label,
+                        customer.payment_terms_label,
                     ]
                         .filter(Boolean)
                         .join(' · ')}

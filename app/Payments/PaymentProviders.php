@@ -44,13 +44,35 @@ class PaymentProviders
     }
 
     /**
+     * Providers offered to the company: available in its country.
+     *
+     * @return array<string, PaymentProvider>
+     */
+    public function availableFor(Company $company): array
+    {
+        return array_filter($this->all(), fn (PaymentProvider $provider) => $provider->isAvailableFor($company));
+    }
+
+    /**
+     * Providers the company can pick as its online payment provider: available and connected.
+     *
      * @return list<array{value: string, label: string}>
      */
-    public function options(): array
+    public function options(Company $company): array
     {
         return array_values(array_map(
             fn (PaymentProvider $provider) => ['value' => $provider->key(), 'label' => $provider->label()],
-            $this->all(),
+            array_filter($this->availableFor($company), fn (PaymentProvider $provider) => $provider->isConnected($company)),
         ));
+    }
+
+    /**
+     * The company's provider when it can take a payment right now (picked, available, connected).
+     */
+    public function readyFor(Company $company): ?PaymentProvider
+    {
+        $provider = $this->forCompany($company);
+
+        return $provider !== null && $provider->isAvailableFor($company) && $provider->isConnected($company) ? $provider : null;
     }
 }

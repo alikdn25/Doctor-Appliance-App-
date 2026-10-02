@@ -6,11 +6,14 @@ import { useMemo } from 'react';
  */
 export function useCompanyTime() {
     const { auth } = usePage().props;
-    const timeZone = auth.company?.timezone ?? 'America/Vancouver';
+    const timeZone = auth.company?.timezone ?? 'UTC';
+    // The company's regional format decides the order and style (en-US: "Oct 6, 2026, 9:00 AM";
+    // en-GB: "6 Oct 2026, 09:00").
+    const locale = auth.company?.locale ?? 'en-US';
 
     return useMemo(() => {
         const make = (options: Intl.DateTimeFormatOptions) =>
-            new Intl.DateTimeFormat('en-CA', { timeZone, ...options });
+            new Intl.DateTimeFormat(locale, { timeZone, ...options });
 
         const dayFormat = make({
             weekday: 'short',
@@ -31,7 +34,7 @@ export function useCompanyTime() {
             year: 'numeric',
         });
         // Plain dates (YYYY-MM-DD) have no time zone: format them as they are.
-        const plainDateFormat = new Intl.DateTimeFormat('en-CA', {
+        const plainDateFormat = new Intl.DateTimeFormat(locale, {
             timeZone: 'UTC',
             month: 'short',
             day: 'numeric',
@@ -53,7 +56,7 @@ export function useCompanyTime() {
             timeRange: (start: string, end: string) =>
                 `${timeFormat.format(new Date(start))} – ${timeFormat.format(new Date(end))}`,
         };
-    }, [timeZone]);
+    }, [timeZone, locale]);
 }
 
 /** Minutes as "45 min" or "1 h 20 min". */

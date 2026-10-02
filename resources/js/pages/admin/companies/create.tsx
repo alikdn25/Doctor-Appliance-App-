@@ -11,22 +11,39 @@ import type { Option } from '@/types';
 
 type Props = {
     timezones: string[];
-    currencies: string[];
+    countries: Option[];
+    countryDefaults: Record<string, { currency: string; locale: string }>;
+    currencies: Option[];
+    locales: Option[];
+    verticals: Option[];
     subscriptionStatuses: Option[];
-    defaults: { timezone: string; currency: string };
+    defaults: {
+        timezone: string;
+        country: string;
+        currency: string;
+        locale: string;
+        vertical: string;
+    };
 };
 
 export default function AdminCompanyCreate({
     timezones,
+    countries,
+    countryDefaults,
     currencies,
+    locales,
+    verticals,
     subscriptionStatuses,
     defaults,
 }: Props) {
     const t = useTrans();
     const form = useForm({
         name: '',
+        country: defaults.country,
+        vertical: defaults.vertical,
         timezone: defaults.timezone,
         currency: defaults.currency,
+        locale: defaults.locale,
         plan: '',
         subscription_status: 'trialing',
         owner_name: '',
@@ -66,6 +83,73 @@ export default function AdminCompanyCreate({
 
                 <div className="grid gap-4 sm:grid-cols-2">
                     <FormField
+                        id="country"
+                        label={t('company.fields.country')}
+                        hint={t('admin.companies.country_hint')}
+                        error={form.errors.country}
+                    >
+                        <NativeSelect
+                            id="country"
+                            value={form.data.country}
+                            onChange={(e) => {
+                                // The country sets currency and regional format; both stay editable.
+                                const preset = countryDefaults[e.target.value];
+                                form.setData({
+                                    ...form.data,
+                                    country: e.target.value,
+                                    currency:
+                                        preset?.currency ?? form.data.currency,
+                                    locale: preset?.locale ?? form.data.locale,
+                                });
+                            }}
+                        >
+                            {countries.map((c) => (
+                                <option key={c.value} value={c.value}>
+                                    {c.label}
+                                </option>
+                            ))}
+                        </NativeSelect>
+                    </FormField>
+                    <FormField
+                        id="vertical"
+                        label={t('company.fields.vertical')}
+                        hint={t('admin.companies.vertical_hint')}
+                        error={form.errors.vertical}
+                    >
+                        <NativeSelect
+                            id="vertical"
+                            value={form.data.vertical}
+                            onChange={(e) =>
+                                form.setData('vertical', e.target.value)
+                            }
+                        >
+                            {verticals.map((v) => (
+                                <option key={v.value} value={v.value}>
+                                    {v.label}
+                                </option>
+                            ))}
+                        </NativeSelect>
+                    </FormField>
+                    <FormField
+                        id="locale"
+                        label={t('company.fields.locale')}
+                        error={form.errors.locale}
+                    >
+                        <NativeSelect
+                            id="locale"
+                            value={form.data.locale}
+                            onChange={(e) =>
+                                form.setData('locale', e.target.value)
+                            }
+                        >
+                            {locales.map((l) => (
+                                <option key={l.value} value={l.value}>
+                                    {l.label}
+                                </option>
+                            ))}
+                        </NativeSelect>
+                    </FormField>
+                    <FormField
                         id="timezone"
                         label={t('company.fields.timezone')}
                         error={form.errors.timezone}
@@ -98,7 +182,9 @@ export default function AdminCompanyCreate({
                             }
                         >
                             {currencies.map((c) => (
-                                <option key={c}>{c}</option>
+                                <option key={c.value} value={c.value}>
+                                    {c.label}
+                                </option>
                             ))}
                         </NativeSelect>
                     </FormField>

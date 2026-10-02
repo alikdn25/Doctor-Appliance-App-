@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\Companies\CreateCompany;
 use App\Enums\CompanyStatus;
 use App\Enums\SubscriptionStatus;
+use App\Enums\Vertical;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CompanyStoreRequest;
 use App\Http\Requests\Admin\CompanyUpdateRequest;
@@ -13,6 +14,8 @@ use App\Models\Company;
 use App\Models\ImpersonationLog;
 use App\Models\Membership;
 use App\Services\AuditLogger;
+use App\Support\Locale\Countries;
+use App\Support\Locale\Currencies;
 use App\Support\TimezoneDatabase;
 use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
@@ -66,11 +69,21 @@ class CompanyController extends Controller
     {
         return Inertia::render('admin/companies/create', [
             'timezones' => DateTimeZone::listIdentifiers(),
-            'currencies' => config('fieldservice.currencies'),
+            'countries' => Countries::options(),
+            // Currency and regional format each country starts with (both can be changed).
+            'countryDefaults' => collect(Countries::codes())
+                ->mapWithKeys(fn (string $code) => [$code => ['currency' => Countries::currency($code), 'locale' => Countries::locale($code)]])
+                ->all(),
+            'currencies' => Currencies::options(),
+            'locales' => Countries::localeOptions(),
+            'verticals' => Vertical::options(),
             'subscriptionStatuses' => $this->subscriptionOptions(),
             'defaults' => [
                 'timezone' => '',
-                'currency' => 'CAD',
+                'country' => $country = (string) config('fieldservice.default_country'),
+                'currency' => Countries::currency($country),
+                'locale' => Countries::locale($country),
+                'vertical' => Vertical::ApplianceRepair->value,
             ],
         ]);
     }
@@ -80,7 +93,7 @@ class CompanyController extends Controller
         $data = $request->validated();
 
         $company = $createCompany->handle(
-            collect($data)->only(['name', 'timezone', 'currency', 'plan', 'subscription_status'])->all(),
+            collect($data)->only(['name', 'country', 'vertical', 'timezone', 'currency', 'locale', 'plan', 'subscription_status'])->all(),
             ['name' => $data['owner_name'], 'email' => $data['owner_email']],
         );
 
@@ -103,6 +116,8 @@ class CompanyController extends Controller
                 'subscription_status' => $company->subscription_status?->value,
                 'timezone' => $company->timezone,
                 'currency' => $company->currency,
+                'country' => $company->country,
+                'vertical' => $company->vertical->label(),
                 'brands_count' => $company->brands_count,
                 'created_at' => $company->created_at?->toDateTimeString(),
             ],

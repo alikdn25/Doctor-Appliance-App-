@@ -12,6 +12,8 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { DocumentStatusBadge } from '@/components/billing/document-status-badge';
 import { useMoney } from '@/components/billing/money';
+import type { OnlinePayment } from '@/components/billing/online-payment';
+import { OnlinePaymentSection } from '@/components/billing/online-payment';
 import { PaymentDialog } from '@/components/billing/payment-dialog';
 import type { BillingDocument, PaymentData } from '@/components/billing/types';
 import { FormField } from '@/components/form-field';
@@ -59,14 +61,16 @@ export default function BillingShow({
     can,
     paymentMethods = [],
     today,
+    online = null,
 }: {
     document: BillingDocument;
     can: Can;
     paymentMethods?: Option[];
     today: string;
+    online?: OnlinePayment;
 }) {
     const t = useTrans();
-    const money = useMoney();
+    const money = useMoney(doc.currency);
     const time = useCompanyTime();
     const [paymentOpen, setPaymentOpen] = useState(false);
     const [voidOpen, setVoidOpen] = useState(false);
@@ -301,10 +305,12 @@ export default function BillingShow({
                                 className="flex justify-between"
                             >
                                 <dt>
-                                    {t('billing.tax_line', {
-                                        name: tax.name,
-                                        rate: tax.rate,
-                                    })}
+                                    {t(
+                                        doc.prices_include_tax
+                                            ? 'billing.includes_tax'
+                                            : 'billing.tax_line',
+                                        { name: tax.name, rate: tax.rate },
+                                    )}
                                 </dt>
                                 <dd className="tabular-nums">
                                     {money(tax.amount)}
@@ -339,6 +345,15 @@ export default function BillingShow({
                         </p>
                     )}
                 </section>
+
+                {isInvoice && online && balance > 0 && (
+                    <OnlinePaymentSection
+                        invoiceId={doc.id}
+                        online={online}
+                        balance={balance}
+                        currency={doc.currency}
+                    />
+                )}
 
                 {/* Estimate actions */}
                 {!isInvoice && can.update && (
@@ -516,6 +531,7 @@ export default function BillingShow({
                     onOpenChange={setPaymentOpen}
                     invoiceId={doc.id}
                     balance={balance}
+                    currency={doc.currency}
                     methods={paymentMethods}
                     today={today}
                 />

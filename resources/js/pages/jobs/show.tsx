@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     CalendarPlus,
     Car,
@@ -139,6 +139,10 @@ export default function JobShow({
     photoKinds,
 }: Props) {
     const t = useTrans();
+    const { auth } = usePage().props;
+    // Handyman companies do not record appliances; show the section only when the job has some.
+    const showAppliances =
+        (auth.company?.tracks_appliances ?? true) || job.appliances.length > 0;
     const time = useCompanyTime();
     const [statusOpen, setStatusOpen] = useState(false);
     const [finishOpen, setFinishOpen] = useState(false);
@@ -447,105 +451,117 @@ export default function JobShow({
                 )}
 
                 {/* Appliances */}
-                <section className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-base font-medium">
-                            {t('jobs.sections.appliances')}
-                        </h2>
-                        {can.work && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                    setApplianceDialog({
-                                        open: true,
-                                        appliance: null,
-                                    })
-                                }
-                            >
-                                <Plus /> {t('jobs.appliance.add')}
-                            </Button>
-                        )}
-                    </div>
-                    {job.appliances.length === 0 ? (
-                        <p className="rounded-lg border p-4 text-sm text-muted-foreground">
-                            {t('appliances.empty')}
-                        </p>
-                    ) : (
-                        <ul className="divide-y rounded-lg border">
-                            {job.appliances.map((a) => (
-                                <li
-                                    key={a.id}
-                                    className="flex min-h-14 items-center gap-2 px-3 py-2"
-                                >
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                                            {a.removed ? (
-                                                <span className="text-muted-foreground line-through">
-                                                    {applianceTitle(a)}
-                                                </span>
-                                            ) : (
-                                                <Link
-                                                    href={showAppliance(a.id)}
-                                                    className="underline-offset-4 hover:underline"
-                                                >
-                                                    {applianceTitle(a)}
-                                                </Link>
-                                            )}
-                                            {a.under_warranty && (
-                                                <ShieldCheck
-                                                    className="size-4 text-emerald-600"
-                                                    aria-label={t(
-                                                        'appliances.under_warranty',
+                {showAppliances && (
+                    <>
+                        <section className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-base font-medium">
+                                    {t('jobs.sections.appliances')}
+                                </h2>
+                                {can.work && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            setApplianceDialog({
+                                                open: true,
+                                                appliance: null,
+                                            })
+                                        }
+                                    >
+                                        <Plus /> {t('jobs.appliance.add')}
+                                    </Button>
+                                )}
+                            </div>
+                            {job.appliances.length === 0 ? (
+                                <p className="rounded-lg border p-4 text-sm text-muted-foreground">
+                                    {t('appliances.empty')}
+                                </p>
+                            ) : (
+                                <ul className="divide-y rounded-lg border">
+                                    {job.appliances.map((a) => (
+                                        <li
+                                            key={a.id}
+                                            className="flex min-h-14 items-center gap-2 px-3 py-2"
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                                                    {a.removed ? (
+                                                        <span className="text-muted-foreground line-through">
+                                                            {applianceTitle(a)}
+                                                        </span>
+                                                    ) : (
+                                                        <Link
+                                                            href={showAppliance(
+                                                                a.id,
+                                                            )}
+                                                            className="underline-offset-4 hover:underline"
+                                                        >
+                                                            {applianceTitle(a)}
+                                                        </Link>
                                                     )}
+                                                    {a.under_warranty && (
+                                                        <ShieldCheck
+                                                            className="size-4 text-emerald-600"
+                                                            aria-label={t(
+                                                                'appliances.under_warranty',
+                                                            )}
+                                                        />
+                                                    )}
+                                                </div>
+                                                <div className="text-xs break-all text-muted-foreground select-all">
+                                                    {[
+                                                        a.model_number &&
+                                                            t(
+                                                                'appliances.model',
+                                                                {
+                                                                    model: a.model_number,
+                                                                },
+                                                            ),
+                                                        a.serial_number &&
+                                                            t(
+                                                                'appliances.serial',
+                                                                {
+                                                                    serial: a.serial_number,
+                                                                },
+                                                            ),
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </div>
+                                            </div>
+                                            {can.work && !a.removed && (
+                                                <RatingPlateButton
+                                                    jobId={job.id}
+                                                    applianceId={a.id}
+                                                    url={a.rating_plate_url}
                                                 />
                                             )}
-                                        </div>
-                                        <div className="text-xs break-all text-muted-foreground select-all">
-                                            {[
-                                                a.model_number &&
-                                                    t('appliances.model', {
-                                                        model: a.model_number,
-                                                    }),
-                                                a.serial_number &&
-                                                    t('appliances.serial', {
-                                                        serial: a.serial_number,
-                                                    }),
-                                            ]
-                                                .filter(Boolean)
-                                                .join(' · ')}
-                                        </div>
-                                    </div>
-                                    {can.work && !a.removed && (
-                                        <RatingPlateButton
-                                            jobId={job.id}
-                                            applianceId={a.id}
-                                            url={a.rating_plate_url}
-                                        />
-                                    )}
-                                    {can.work && !a.removed && (
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="size-10"
-                                            aria-label={t(
-                                                'jobs.appliance.edit',
+                                            {can.work && !a.removed && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-10"
+                                                    aria-label={t(
+                                                        'jobs.appliance.edit',
+                                                    )}
+                                                    onClick={() =>
+                                                        setApplianceDialog({
+                                                            open: true,
+                                                            appliance: a,
+                                                        })
+                                                    }
+                                                >
+                                                    <Pencil />
+                                                </Button>
                                             )}
-                                            onClick={() =>
-                                                setApplianceDialog({
-                                                    open: true,
-                                                    appliance: a,
-                                                })
-                                            }
-                                        >
-                                            <Pencil />
-                                        </Button>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </section>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </section>
+                    </>
+                )}
 
                 <ChecklistSection
                     jobId={job.id}

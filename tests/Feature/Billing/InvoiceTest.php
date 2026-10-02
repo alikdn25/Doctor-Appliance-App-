@@ -90,7 +90,7 @@ test('creating an invoice for a completed job marks it invoiced; paying it marks
     $this->post(route('payments.store', $invoice), ['amount' => '100.00', 'method' => 'cash']);
     expect(jobStatus($this->job))->toBe(JobStatus::Invoiced);
 
-    $this->post(route('payments.store', $invoice), ['amount' => '180.50', 'method' => 'e_transfer']);
+    $this->post(route('payments.store', $invoice), ['amount' => '180.50', 'method' => 'bank_transfer']);
     expect(jobStatus($this->job))->toBe(JobStatus::Paid)
         ->and(latestInvoice($this->company)->status)->toBe(InvoiceStatus::Paid);
 
@@ -191,7 +191,7 @@ test('the invoice list shows outstanding invoices by default', function () {
             ->component('invoices/index')
             ->has('invoices.data', 1)
             ->where('invoices.data.0.number', 'INV-1042')
-            ->where('outstandingTotal', 28050));
+            ->where('outstandingTotals', [['currency' => 'CAD', 'amount' => 28050]]));
 
     $this->get(route('invoices.index', ['status' => 'paid']))
         ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 1)->where('invoices.data.0.number', 'INV-1043'));

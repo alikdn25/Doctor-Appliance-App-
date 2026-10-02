@@ -19,7 +19,7 @@ function propertyPayload(array $overrides = []): array
         'line1' => '4120 Main St',
         'unit' => '204',
         'city' => 'Vancouver',
-        'province' => 'BC',
+        'region' => 'BC',
         'postal_code' => 'V5V 3P6',
         'country' => 'CA',
         'access_notes' => 'Side door.',
@@ -58,7 +58,7 @@ test('a property can be updated', function () {
     $this->put(route('properties.update', $property), propertyPayload(['gate_code' => '9999', 'site_contact_phone' => '604-555-0000']))
         ->assertRedirect(route('customers.show', $this->customer));
 
-    expect($property->fresh())->gate_code->toBe('9999')->site_contact_phone->toBe('604-555-0000');
+    expect($property->fresh())->gate_code->toBe('9999')->site_contact_phone->toBe('+16045550000');
 });
 
 test('the address is validated', function () {

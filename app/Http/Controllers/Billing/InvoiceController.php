@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Billing;
 
+use App\Actions\Billing\CreateInvoicePaymentLink;
 use App\Actions\Billing\SaveBillingDocument;
 use App\Actions\Billing\VoidBillingRecord;
 use App\Enums\InvoiceStatus;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Models\Invoice;
 use App\Models\ServiceJob;
+use App\Payments\PaymentProviders;
 use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
 use Carbon\CarbonImmutable;
@@ -60,7 +62,14 @@ class InvoiceController extends Controller
             'invoices' => $invoices,
             'filters' => $filters,
             'statuses' => InvoiceStatus::options(),
-            'outstandingTotal' => (int) (clone $base)->outstanding()->sum('balance'),
+            // One sum per currency: documents keep the currency they were created in.
+            'outstandingTotals' => (clone $base)->outstanding()
+                ->selectRaw('currency, sum(balance) as amount')
+                ->groupBy('currency')
+                ->orderBy('currency')
+                ->get()
+                ->map(fn ($row) => ['currency' => $row->currency, 'amount' => (int) $row->amount])
+                ->values(),
         ]);
     }
 
@@ -68,12 +77,18 @@ class InvoiceController extends Controller
     {
         Gate::authorize('work', $job);
 
+        // Due date from the customer's payment terms (or the company default), editable on the form.
+        $terms = $job->customer()->withTrashed()->first()?->paymentTerms() ?? currentCompany()->default_payment_terms;
+        $today = CarbonImmutable::now(currentCompany()->timezone)->startOfDay();
+
         return Inertia::render('billing/form', [
             'kind' => 'invoice',
             'document' => null,
             'job' => BillingPresenter::job($job),
             'taxRates' => BillingPresenter::taxOptions(),
-            'today' => $this->today(),
+            'today' => $today->format('Y-m-d'),
+            'defaultDueOn' => $terms->dueOn($today)->format('Y-m-d'),
+            'paymentTerms' => $terms->label(),
         ]);
     }
 
@@ -88,7 +103,7 @@ class InvoiceController extends Controller
         return to_route('invoices.show', $invoice);
     }
 
-    public function show(Invoice $invoice): Response
+    public function show(Invoice $invoice, PaymentProviders $providers, CreateInvoicePaymentLink $links): Response
     {
         Gate::authorize('view', $invoice);
 
@@ -102,7 +117,31 @@ class InvoiceController extends Controller
             ],
             'paymentMethods' => PaymentMethod::manualOptions(),
             'today' => $this->today(),
+            'online' => $this->online($invoice, $providers, $links),
         ]);
+    }
+
+    /**
+     * Online payment (SPEC §7.6): the company's provider, if ready, and the current link for the balance.
+     *
+     * @return array{provider: string, link: array{url: string, amount: int, currency: string}|null}|null
+     */
+    private function online(Invoice $invoice, PaymentProviders $providers, CreateInvoicePaymentLink $links): ?array
+    {
+        $provider = $providers->readyFor(currentCompany());
+
+        if ($provider === null || $invoice->isVoid() || $invoice->balance <= 0 || Gate::denies('recordPayment', $invoice)) {
+            return null;
+        }
+
+        $link = $links->current($invoice, $provider->key());
+
+        return [
+            'provider' => $provider->label(),
+            'link' => $link && $link->amount === $invoice->balance
+                ? ['url' => $link->url, 'amount' => $link->amount, 'currency' => $link->currency]
+                : null,
+        ];
     }
 
     public function edit(Invoice $invoice): Response

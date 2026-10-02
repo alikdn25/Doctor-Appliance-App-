@@ -92,7 +92,7 @@ class JobController extends Controller
             'jobs' => $jobs,
             'filters' => $filters,
             'statuses' => JobStatus::options(),
-            'types' => JobType::options(),
+            'types' => currentCompany()->vertical->jobTypeOptions(),
             'brands' => $this->brandOptions($user, activeOnly: false),
             'technicians' => $this->assignableUsers(),
             'canCreate' => Gate::allows('create', ServiceJob::class),
@@ -423,12 +423,28 @@ class JobController extends Controller
     {
         return [
             'brands' => $this->brandOptions($user, true, $job),
-            'jobTypes' => JobType::options(),
+            'jobTypes' => $this->jobTypeOptions($job),
             'leadSources' => LeadSource::options(),
             'applianceTypes' => ApplianceType::options(),
             'manufacturers' => CustomerController::manufacturers(),
             'assignableUsers' => $this->assignableUsers(),
         ];
+    }
+
+    /**
+     * Job types of the company's vertical, plus the job's own type if it is not one of them.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private function jobTypeOptions(?ServiceJob $job): array
+    {
+        $types = currentCompany()->vertical->jobTypes();
+
+        if ($job !== null && ! in_array($job->job_type, $types, true)) {
+            $types[] = $job->job_type;
+        }
+
+        return array_map(fn (JobType $type) => ['value' => $type->value, 'label' => $type->label()], $types);
     }
 
     private function date(mixed $value): string

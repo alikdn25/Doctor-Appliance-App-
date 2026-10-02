@@ -55,6 +55,7 @@ test('super-admins can create a company with its owner', function () {
     $this->actingAs($this->admin)
         ->post(route('admin.companies.store'), [
             'name' => 'Coastal Repair',
+            'country' => 'CA',
             'timezone' => 'America/Vancouver',
             'currency' => 'CAD',
             'plan' => 'starter',

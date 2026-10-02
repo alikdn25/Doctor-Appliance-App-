@@ -17,8 +17,8 @@ test('totals add line items and taxes in cents', function () {
         ->and($totals['subtotal'])->toBe(21100)
         ->and($totals['discount_total'])->toBe(0)
         ->and($totals['taxes'])->toBe([
-            ['tax_rate_id' => 1, 'name' => 'GST', 'rate' => '5', 'amount' => 1055],
-            ['tax_rate_id' => 2, 'name' => 'PST', 'rate' => '7', 'amount' => 1477],
+            ['tax_rate_id' => 1, 'name' => 'GST', 'rate' => '5', 'compound' => false, 'amount' => 1055],
+            ['tax_rate_id' => 2, 'name' => 'PST', 'rate' => '7', 'compound' => false, 'amount' => 1477],
         ])
         ->and($totals['tax_total'])->toBe(2532)
         ->and($totals['total'])->toBe(23632);
@@ -83,4 +83,62 @@ test('credit lines lower the subtotal', function () {
     );
 
     expect($totals['subtotal'])->toBe(21100)->and($totals['total'])->toBe(21100);
+});
+
+test('a compound tax is charged on the amount plus the taxes before it', function () {
+    $totals = DocumentTotals::calculate(
+        [['quantity' => '1', 'unit_price' => 10000, 'taxable' => true]],
+        null,
+        0,
+        [
+            ['tax_rate_id' => 1, 'name' => 'GST', 'rate' => '5'],
+            ['tax_rate_id' => 2, 'name' => 'QST', 'rate' => '10', 'compound' => true],
+        ],
+    );
+
+    // GST 5.00 on 100.00; QST 10% of 105.00.
+    expect(array_column($totals['taxes'], 'amount'))->toBe([500, 1050])
+        ->and($totals['taxes'][1]['compound'])->toBeTrue()
+        ->and($totals['total'])->toBe(11550);
+});
+
+test('with tax-inclusive prices the taxes are taken out of the total', function () {
+    $totals = DocumentTotals::calculate(
+        [['quantity' => '1', 'unit_price' => 12000, 'taxable' => true]],
+        null,
+        0,
+        [['tax_rate_id' => 1, 'name' => 'VAT', 'rate' => '20']],
+        pricesIncludeTax: true,
+    );
+
+    // £120.00 including 20% VAT = £100.00 + £20.00 VAT.
+    expect($totals['tax_total'])->toBe(2000)
+        ->and($totals['subtotal'])->toBe(12000)
+        ->and($totals['total'])->toBe(12000);
+});
+
+test('tax-inclusive taxes always add up to the gross amount', function () {
+    $totals = DocumentTotals::calculate(
+        [['quantity' => '3', 'unit_price' => 3333, 'taxable' => true], ['quantity' => '1', 'unit_price' => 500, 'taxable' => false]],
+        'percent',
+        '7',
+        [['tax_rate_id' => 1, 'name' => 'GST', 'rate' => '5'], ['tax_rate_id' => 2, 'name' => 'PST', 'rate' => '7']],
+        pricesIncludeTax: true,
+    );
+
+    expect($totals['total'])->toBe($totals['subtotal'] - $totals['discount_total'])
+        ->and($totals['tax_total'])->toBe(array_sum(array_column($totals['taxes'], 'amount')));
+});
+
+test('a fixed discount uses the minor units of the currency', function () {
+    // JPY has no minor unit: a discount of 500 yen is 500.
+    $totals = DocumentTotals::calculate(
+        [['quantity' => '1', 'unit_price' => 12000, 'taxable' => false]],
+        'amount',
+        '500',
+        [],
+        minorFactor: 1,
+    );
+
+    expect($totals['discount_total'])->toBe(500)->and($totals['total'])->toBe(11500);
 });

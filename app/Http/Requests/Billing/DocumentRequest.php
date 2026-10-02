@@ -2,18 +2,19 @@
 
 namespace App\Http\Requests\Billing;
 
+use App\Support\Locale\Currencies;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Estimate or invoice form: dates, line items (prices in dollars), discount, taxes and notes.
+ * Estimate or invoice form: dates, line items (prices in major units of the document currency, e.g. dollars),
+ * discount, taxes and notes.
  * Access is checked in the controller (it depends on the job or document in the route).
  */
 class DocumentRequest extends FormRequest
 {
-    private const MONEY = 'regex:/^-?\d{1,7}(\.\d{1,2})?$/';
-
     public function authorize(): bool
     {
         return true;
@@ -42,7 +43,7 @@ class DocumentRequest extends FormRequest
             'items' => ['required', 'array', 'min:1', 'max:100'],
             'items.*.description' => ['required', 'string', 'max:500'],
             'items.*.quantity' => ['required', 'numeric', 'gt:0', 'max:99999', 'regex:/^\d+(\.\d{1,2})?$/'],
-            'items.*.unit_price' => ['required', 'numeric', self::MONEY],
+            'items.*.unit_price' => ['required', 'numeric', self::moneyRule($this->currency(), negative: true)],
             'items.*.taxable' => ['boolean'],
         ];
     }
@@ -75,7 +76,7 @@ class DocumentRequest extends FormRequest
         $data['items'] = array_map(fn (array $item) => [
             'description' => $item['description'],
             'quantity' => (string) $item['quantity'],
-            'unit_price' => self::cents($item['unit_price']),
+            'unit_price' => Currencies::toMinor($item['unit_price'], $this->currency()),
             'taxable' => (bool) ($item['taxable'] ?? true),
         ], $data['items']);
         $data['tax_rate_ids'] ??= [];
@@ -83,8 +84,24 @@ class DocumentRequest extends FormRequest
         return $data;
     }
 
-    public static function cents(string|int|float $dollars): int
+    /**
+     * An amount typed in major units with at most the currency's decimals ("12.50" USD, "1200" JPY).
+     */
+    public static function moneyRule(string $currency, bool $negative = false): string
     {
-        return (int) round((float) $dollars * 100);
+        $decimals = Currencies::decimals($currency);
+        $fraction = $decimals > 0 ? '(\.\d{1,'.$decimals.'})?' : '';
+
+        return 'regex:/^'.($negative ? '-?' : '').'\d{1,9}'.$fraction.'$/';
+    }
+
+    /**
+     * Currency of the document being edited, or of the company for a new one.
+     */
+    public function currency(): string
+    {
+        $document = $this->route('invoice') ?? $this->route('estimate');
+
+        return $document instanceof Model ? $document->currency : currentCompany()->currency;
     }
 }

@@ -1,15 +1,45 @@
 # Field Service App for Appliance Repair — Technical Specification
 
-Version 0.1 · October 2026 · Owner: Alex (Doctor Appliance, Greater Vancouver, BC)
+Version 0.2 · October 2026 · Owner: Alex (Doctor Appliance, Greater Vancouver, BC)
 
 ## 1. Goal
 
-A field-service management app (Housecall Pro–style) built specifically for appliance repair companies.
+A field-service management app (Housecall Pro–style) built specifically for appliance repair companies, with
+handyman as a second vertical.
 
 - **Phase A:** used by the owner's own companies (Doctor Appliance, Duct Works).
-- **Phase B:** sold as a monthly subscription to other appliance repair companies.
+- **Phase B:** sold as a monthly subscription to other appliance repair (and handyman) companies.
 
 Therefore the system is **multi-tenant from day one**: every company is an isolated account, and every company can run several brands.
+
+### 1.1 Markets and localization
+
+The product is **international**. First markets: **USA and Canada**; later the whole world. Nothing in the code
+assumes a particular country.
+
+- **Country** is chosen when a company is created. It sets the defaults below; each of them can be changed.
+- **Currency** per company (ISO 4217 code). Every amount is stored together with its currency (documents and payments
+  keep the currency they were created in). Amounts are stored in the currency's minor units. The currency symbol and
+  number format follow the company's currency and regional format; no "$" is hard-coded anywhere (discounts included).
+- **Taxes** are configured by each company: several named rates (e.g. GST + PST, state + county sales tax, VAT),
+  **compound** taxes (charged on top of the previous taxes), and prices entered **with or without tax** (tax-inclusive
+  pricing, as common in the UK/EU/Australia). Nothing like GST/PST is hard-coded.
+- **Time zone**, **regional format** (date, time and number format, e.g. en-US, en-CA, en-GB) and **address format**
+  (labels and order of state/province/county and ZIP/postal code) are company settings derived from the country.
+- **Phone numbers** are stored in **E.164** (+15551234567). Numbers typed without a country code are read as numbers
+  of the company's country.
+- **All UI strings** live in translation files; English is the default (and the only language in v1).
+
+### 1.2 Verticals
+
+A company picks its **vertical** when it is created. The vertical sets its job types, default checklists and the
+starting set of services (price book items) created with the company.
+
+- **Appliance repair** — the main vertical (appliances, rating plates, manufacturer warranty, vent cleaning).
+- **Handyman** — the second vertical: repairs, installation, assembly, mounting, maintenance, inspection.
+
+**Out of scope** (for any vertical): full construction and renovation projects — multi-phase projects, change orders,
+progress (staged) billing, subcontractor management for projects. The product stays a service-call app.
 
 ## 2. Tech stack
 
@@ -28,7 +58,8 @@ Therefore the system is **multi-tenant from day one**: every company is an isola
 - Tenant scoping is enforced globally (Eloquent global scope + policy checks). A user must never see another company's data. This is covered by automated tests.
 - Hierarchy: **Platform → Company (tenant) → Brands → Users / Customers / Jobs**.
 - **Super-admin panel** (platform owner only): list of companies, status, plan, usage, ability to impersonate for support (logged).
-- Company-level settings: timezone, currency (CAD default), tax rates, invoice numbering, business hours.
+- Company-level settings: country, vertical, timezone, currency, regional format, tax rates (named, compound, prices
+  with/without tax), default payment terms, invoice numbering, business hours (see §1.1).
 - Subscription billing for tenants (companies paying for the app) is specified in §11 and built as a separate task before the Phase B launch. The data model already includes `plan` and `subscription_status` on Company.
 
 ## 4. Brands
@@ -39,7 +70,8 @@ Each brand has:
 
 - Name, logo, colors, website, address(es)
 - Its own phone number for SMS (Twilio) and email sender identity
-- Its own invoice/estimate template, footer, terms, tax/business registration numbers (GST number etc.)
+- Its own invoice/estimate template, footer, terms, tax/business registration numbers (e.g. GST/HST number, VAT
+  number, EIN)
 - Its own **Google review profiles** (see §8)
 - Its own public online booking page
 
@@ -59,10 +91,13 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 
 ## 6. Core data model (summary)
 
-- **Customer:** type (residential / commercial / property manager / strata), name, phones, emails, notes, tags, lead source.
-- **Property:** address (Google Places autocomplete, geocoded), access notes, gate/buzzer code. A customer can have many properties. A strata building can have many **units**.
-- **Appliance:** property, type (washer, dryer, fridge, range, dishwasher, etc.), brand, model number, serial number, photo of the rating plate, install/purchase date, warranty info, full repair history.
-- **Job:** brand, customer, property, appliance(s), job type (repair / warranty / maintenance / installation / vent cleaning / inspection), source, assigned user(s), scheduled window, estimated duration, status, notes, photos, checklists, signatures. A job can have several **visits** (diagnosis visit → parts → repair visit).
+- **Customer:** type (residential / commercial / property manager / strata or HOA), name, phones (E.164), emails, notes,
+  tags, lead source, payment terms (empty = the company default; see §7.6).
+- **Property:** address in the format of its country (Google Places autocomplete, geocoded), access notes, gate/buzzer code. A customer can have many properties. A strata building can have many **units**.
+- **Appliance** (appliance repair vertical): property, type (washer, dryer, fridge, range, dishwasher, etc.), brand, model number, serial number, photo of the rating plate, install/purchase date, warranty info, full repair history.
+- **Job:** brand, customer, property, appliance(s), job type (per vertical — appliance repair: repair / warranty /
+  maintenance / installation / vent cleaning / inspection; handyman: repair / installation / assembly / mounting /
+  maintenance / inspection), source, assigned user(s), scheduled window, estimated duration, status, notes, photos, checklists, signatures. A job can have several **visits** (diagnosis visit → parts → repair visit).
 - **Estimate**, **Invoice**, **Payment**, **Price book item**, **Parts order**, **Warranty claim**, **Service plan**, **Inspection report**, **Message**, **Attachment**, **Activity log**.
 
 ### Job statuses
@@ -112,27 +147,42 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 ### 7.6 Invoices and payments
 
 - Invoice from job in one tap; line items, taxes, discounts, deposits, partial payments.
-- Configurable taxes per company (BC: GST and PST; rates are settings, not hard-coded).
+- Configurable taxes per company (§1.1): several named rates, compound taxes, prices with or without tax. Examples:
+  BC — GST 5% + PST 7%; a US city — one combined sales tax rate; UK — VAT 20% with tax-inclusive prices.
+- **Payment terms:** company default (Due on receipt, Net 7, Net 15, Net 30), changeable per customer (stratas and
+  property managers usually need Net 30). The invoice due date = invoice date + the customer's terms (editable on the
+  invoice).
 - Send by SMS/email as a link with PDF.
 - **Square integration (required):** each company connects its own Square account via OAuth. Money goes directly to the company.
-    - Online: Square payment link on the invoice page.
+    - Tokens are stored encrypted; the Owner can disconnect the account at any time.
+    - **Square is not available in every country** (at the time of writing: USA, Canada, UK, Ireland, Australia,
+      Japan, France, Spain). The provider is offered only to companies in those countries. For other countries the
+      **next provider is Stripe**, built behind the same interface.
+    - Online: a Square payment link for the invoice balance (and a QR code of it on the technician's screen).
     - On site: QR code / payment link on the tech's screen; investigate Square Point of Sale API hand-off from the PWA to the Square app for card-present payments.
-    - Payments recorded back to the invoice automatically (webhooks).
+    - Payments recorded back to the invoice automatically (webhooks), as a payment through the provider. A repeated
+      webhook never creates a duplicate payment.
+    - Partial and manual payments keep working next to the provider.
+    - Square keys (application ID/secret, webhook signature key, sandbox/production) come only from `.env`.
 - **Payment providers are pluggable.** Build a provider interface; Square is the first implementation. Others (Stripe, Moneris, Helcim, Clover) can be added later without changing invoice logic. Each company picks its provider in settings, or none.
 - A company with no provider records all payments manually.
-- Manual payment methods: cash, cheque, e-Transfer, card on own terminal (with transaction reference), other (with note). Available in every company regardless of provider.
+- Manual payment methods: cash, check/cheque, bank transfer (e-Transfer, Zelle, ACH, BACS …, with reference), card on
+  own terminal (with transaction reference), other (with note). Available in every company regardless of provider.
 - Marking an invoice paid manually is a normal flow, not an exception.
 - Automatic reminders for unpaid invoices; aging report.
 - **Review request toggle on invoice sending** (see §8).
 
 ### 7.7 Customer communication
 
-- Two-way SMS inbox per brand (Twilio, local Vancouver number per brand).
+- Two-way SMS inbox per brand (Twilio, a local number per brand in the company's country).
+- **USA:** sending SMS to US customers from a 10-digit long code requires **A2P 10DLC registration** in Twilio (brand +
+  campaign) for each company/brand before messages are delivered. Onboarding must guide companies through it; other
+  countries have their own sender rules (e.g. Canada has none of this today).
 - Automated messages (each can be turned on/off and edited per brand): booking confirmation, reminder the day before, on my way + ETA, parts arrived, invoice sent, payment received, payment reminder.
 - Click-to-call from the app using the brand number (Twilio voice) — so remote staff call from a local number.
 - All messages stored on the customer and job timeline.
 
-### 7.8 Appliance-specific features (not in Housecall Pro)
+### 7.8 Appliance-specific features (appliance repair vertical; not in Housecall Pro)
 
 - Appliance card with model, serial, plate photo and full repair history across jobs.
 - **Parts orders:** part number, description, supplier, supplier order number, cost, sell price, status (to order / ordered / shipped / received / installed / returned), ETA. Job automatically moves to `waiting_for_parts`; when part is marked received, office is notified and customer optionally gets an SMS.
@@ -191,7 +241,8 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 ## 9. Non-functional requirements
 
 - Mobile-first UI; technician screens usable with one hand.
-- English UI in v1; text strings kept in translation files for future languages.
+- English UI in v1; all text strings kept in translation files for future languages.
+- Localization per company as in §1.1 (currency, taxes, time zone, regional format, address format, E.164 phones).
 - Security: hashed passwords, 2FA for Owner/Admin, role-based access, rate limiting, audit log of sensitive actions.
 - Privacy: customer data belongs to the company; company can export all its data (CSV); deletion on request.
 - Daily database backups, off-server.
@@ -222,6 +273,11 @@ Tenant subscription billing (§11) is a separate task scheduled before the Phase
 
 AI features (call answering, plate OCR, estimate drafting), native mobile apps, payroll.
 
+### Out of scope
+
+Construction and renovation project management: multi-phase projects, change orders, progress billing, managing
+subcontractors on projects (see §1.2).
+
 ## 11. Platform subscription billing
 
 How companies (tenants) pay **us** for the app. Not to be confused with §7.6, where companies take payments from **their customers**: the two modules share no code, settings or credentials.
@@ -232,13 +288,19 @@ How companies (tenants) pay **us** for the app. Not to be confused with §7.6, w
 - It is a separate module from the invoice payment providers of §7.6 (Square etc.).
 - Stripe keys, webhook secret and account come from env config only (`.env`), nothing hardcoded. No Stripe price/product IDs in code either; they are created or looked up from our plan data.
 
-### 11.2 Plans and prices (CAD per month)
+### 11.2 Plans and prices (USD per month)
 
-| Plan | Users    | Regular price | Founding member price |
-| ---- | -------- | ------------- | --------------------- |
-| Solo | 1        | $29           | $25                   |
-| Team | up to 5  | $79           | $59                   |
-| Pro  | up to 15 | $149          | — (regular price)     |
+All subscription prices are in **USD** and are **set in config** (`config/subscriptions.php`, amounts from env, created
+when this module is built), not in code. The owner sets the amounts later; the founding price of Pro is configurable
+too (it may equal the regular price).
+
+| Plan | Users          | Regular price | Founding member price           |
+| ---- | -------------- | ------------- | ------------------------------- |
+| Solo | 1 user exactly | (config)      | (config)                        |
+| Team | up to 5        | (config)      | (config)                        |
+| Pro  | up to 15       | (config)      | (config; may equal the regular) |
+
+- Solo is for exactly one user (the Owner). Adding a second user requires Team.
 
 - **Founding members:** the first 20–30 companies (the exact cut-off is a platform setting). Their price is **locked for life**: later price changes never apply to them while their subscription stays active.
 - Prices are stored per company subscription in our database, so a price change for new customers never changes existing subscriptions by accident.
@@ -253,7 +315,7 @@ How companies (tenants) pay **us** for the app. Not to be confused with §7.6, w
 
 - Companies update their card, see invoices/receipts and billing history via the **Stripe Customer Portal**, opened from the Owner's billing page.
 - We show no bank details and issue no manual subscription invoices.
-- Only the Owner sees and manages the company subscription.
+- Only the Owner sees and manages the company subscription (Admins do not).
 
 ### 11.5 Source of truth
 

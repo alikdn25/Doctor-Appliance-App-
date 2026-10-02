@@ -39,8 +39,8 @@ test('every manual method can be recorded, as partial payments', function () {
     $this->actingAs($this->tech);
 
     $this->post(route('payments.store', $this->invoice), ['amount' => '50', 'method' => 'cash'])->assertRedirect();
-    $this->post(route('payments.store', $this->invoice), ['amount' => '50.00', 'method' => 'cheque', 'reference' => '0042'])->assertRedirect();
-    $this->post(route('payments.store', $this->invoice), ['amount' => '50.00', 'method' => 'e_transfer', 'reference' => 'CA1x9Z'])->assertRedirect();
+    $this->post(route('payments.store', $this->invoice), ['amount' => '50.00', 'method' => 'check', 'reference' => '0042'])->assertRedirect();
+    $this->post(route('payments.store', $this->invoice), ['amount' => '50.00', 'method' => 'bank_transfer', 'reference' => 'CA1x9Z'])->assertRedirect();
     $this->post(route('payments.store', $this->invoice), ['amount' => '100.00', 'method' => 'card_terminal', 'reference' => 'TXN-778812'])->assertRedirect();
 
     expect(invoiceNow($this->invoice))->status->toBe(InvoiceStatus::PartiallyPaid)->amount_paid->toBe(25000)->balance->toBe(3050);
@@ -49,7 +49,7 @@ test('every manual method can be recorded, as partial payments', function () {
 
     $payments = paymentsOf($this->invoice);
     expect($payments->pluck('method')->all())->toBe([
-        PaymentMethod::Cash, PaymentMethod::Cheque, PaymentMethod::ETransfer, PaymentMethod::CardTerminal, PaymentMethod::Other,
+        PaymentMethod::Cash, PaymentMethod::Check, PaymentMethod::BankTransfer, PaymentMethod::CardTerminal, PaymentMethod::Other,
     ])
         ->and($payments->pluck('reference')->all())->toBe([null, '0042', 'CA1x9Z', 'TXN-778812', null])
         ->and($payments->last()->note)->toBe('Gift card from the store')
@@ -81,7 +81,7 @@ test('a payment needs a positive amount, a manual method and no more than the ba
 test('a payment received on an earlier day is dated that day', function () {
     $yesterday = CarbonImmutable::now('America/Vancouver')->subDay()->toDateString();
 
-    $this->post(route('payments.store', $this->invoice), ['amount' => '10', 'method' => 'cheque', 'received_on' => $yesterday]);
+    $this->post(route('payments.store', $this->invoice), ['amount' => '10', 'method' => 'check', 'received_on' => $yesterday]);
 
     expect(paymentsOf($this->invoice)->sole()->received_at->setTimezone('America/Vancouver')->format('Y-m-d H:i'))
         ->toBe("{$yesterday} 12:00");

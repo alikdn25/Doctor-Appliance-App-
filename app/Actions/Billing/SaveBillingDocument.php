@@ -3,12 +3,15 @@
 namespace App\Actions\Billing;
 
 use App\Enums\EstimateStatus;
+use App\Models\Customer;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Models\User;
 use App\Support\Billing\DocumentTotals;
+use App\Support\Locale\Currencies;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -73,10 +76,13 @@ class SaveBillingDocument
             $this->attachToJob($invoice, $estimate->job, $user);
             $invoice->estimate_id = $estimate->id;
             $invoice->number = $this->numbers->invoice();
+            // The invoice keeps the estimate's money settings, even if the company changed them since.
+            $invoice->currency = $estimate->currency;
+            $invoice->prices_include_tax = $estimate->prices_include_tax;
 
             $this->fill($invoice, [
                 'issued_on' => $issuedOn,
-                'due_on' => $issuedOn,
+                'due_on' => null,
                 'discount_type' => $estimate->discount_type,
                 'discount_value' => $estimate->discount_value,
                 'notes' => $estimate->notes,
@@ -108,6 +114,9 @@ class SaveBillingDocument
 
     private function attachToJob(Estimate|Invoice $document, ServiceJob $job, User $user): void
     {
+        $company = currentCompany();
+        $document->currency = $company->currency;
+        $document->prices_include_tax = $company->prices_include_tax;
         $document->service_job_id = $job->id;
         $document->brand_id = $job->brand_id;
         $document->customer_id = $job->customer_id;
@@ -117,7 +126,7 @@ class SaveBillingDocument
 
     /**
      * @param  array<string, mixed>  $data
-     * @param  list<array{tax_rate_id: int|null, name: string, rate: string}>  $taxes
+     * @param  list<array{tax_rate_id: int|null, name: string, rate: string, compound?: bool}>  $taxes
      */
     private function fill(Estimate|Invoice $document, array $data, array $taxes): void
     {
@@ -128,7 +137,14 @@ class SaveBillingDocument
             'taxable' => (bool) $item['taxable'],
         ], $data['items']));
 
-        $totals = DocumentTotals::calculate($items, $data['discount_type'] ?? null, $data['discount_value'] ?? 0, $taxes);
+        $totals = DocumentTotals::calculate(
+            $items,
+            $data['discount_type'] ?? null,
+            $data['discount_value'] ?? 0,
+            $taxes,
+            $document->prices_include_tax,
+            Currencies::factor($document->currency),
+        );
 
         if ($totals['total'] < 0) {
             throw ValidationException::withMessages(['items' => __('billing.errors.negative_total')]);
@@ -146,7 +162,9 @@ class SaveBillingDocument
         ]);
 
         if ($document instanceof Invoice) {
-            $document->due_on = $data['due_on'] ?? null;
+            // Empty due date: the customer's payment terms (or the company default) from the invoice date.
+            $document->due_on = ($data['due_on'] ?? null)
+                ?: $this->dueOn($document, CarbonImmutable::parse($data['issued_on']))->toDateString();
         } else {
             $document->valid_until = $data['valid_until'] ?? null;
         }
@@ -165,22 +183,30 @@ class SaveBillingDocument
         $document->unsetRelation('items');
     }
 
+    private function dueOn(Invoice $invoice, CarbonImmutable $issuedOn): CarbonImmutable
+    {
+        $customer = Customer::query()->withTrashed()->find($invoice->customer_id);
+
+        return CarbonImmutable::instance($customer?->paymentTerms()->dueOn($issuedOn) ?? $issuedOn);
+    }
+
     /**
      * Taxes to apply, as name + rate copied at the time. Taxes already on the document keep the rate they had.
      *
      * @param  list<int|string>  $taxRateIds
-     * @param  list<array{tax_rate_id: int|null, name: string, rate: string}>  $current
-     * @return list<array{tax_rate_id: int|null, name: string, rate: string}>
+     * @param  list<array{tax_rate_id: int|null, name: string, rate: string, compound?: bool}>  $current
+     * @return list<array{tax_rate_id: int|null, name: string, rate: string, compound: bool}>
      */
     private function taxSnapshot(array $taxRateIds, array $current = []): array
     {
         $ids = array_values(array_unique(array_map('intval', $taxRateIds)));
         $kept = collect($current)->filter(fn (array $tax) => in_array((int) $tax['tax_rate_id'], $ids, true))->keyBy('tax_rate_id');
-        $rates = TaxRate::query()->whereIn('id', $ids)->orderBy('sort_order')->orderBy('name')->get();
+        // Compound taxes come last: they are charged on the amount plus the other taxes.
+        $rates = TaxRate::query()->whereIn('id', $ids)->orderBy('is_compound')->orderBy('sort_order')->orderBy('name')->get();
 
         return $rates->map(fn (TaxRate $rate) => $kept->has($rate->id)
-            ? ['tax_rate_id' => $rate->id, 'name' => $kept[$rate->id]['name'], 'rate' => (string) $kept[$rate->id]['rate']]
-            : ['tax_rate_id' => $rate->id, 'name' => $rate->name, 'rate' => (string) $rate->rate])
+            ? ['tax_rate_id' => $rate->id, 'name' => $kept[$rate->id]['name'], 'rate' => (string) $kept[$rate->id]['rate'], 'compound' => (bool) ($kept[$rate->id]['compound'] ?? false)]
+            : ['tax_rate_id' => $rate->id, 'name' => $rate->name, 'rate' => (string) $rate->rate, 'compound' => $rate->is_compound])
             ->values()
             ->all();
     }

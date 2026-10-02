@@ -4,7 +4,7 @@ export type PropertyFormData = {
     line2: string;
     unit: string;
     city: string;
-    province: string;
+    region: string;
     postal_code: string;
     country: string;
     access_notes: string;
@@ -22,15 +22,16 @@ export type PropertyData = {
           : string | null;
 } & { id: number };
 
-export const emptyProperty = (): PropertyFormData => ({
+/** A new address in the company's country. */
+export const emptyProperty = (country: string): PropertyFormData => ({
     label: '',
     line1: '',
     line2: '',
     unit: '',
     city: '',
-    province: 'BC',
+    region: '',
     postal_code: '',
-    country: 'CA',
+    country,
     access_notes: '',
     gate_code: '',
     site_contact_name: '',
@@ -44,7 +45,7 @@ export const propertyToForm = (p: PropertyData): PropertyFormData => ({
     line2: p.line2 ?? '',
     unit: p.unit ?? '',
     city: p.city,
-    province: p.province ?? '',
+    region: p.region ?? '',
     postal_code: p.postal_code ?? '',
     country: p.country,
     access_notes: p.access_notes ?? '',

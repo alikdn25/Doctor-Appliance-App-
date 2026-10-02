@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Records a payment towards an invoice: by hand (cash, cheque, e-Transfer, own terminal, other)
+ * Records a payment towards an invoice: by hand (cash, check, bank transfer, own terminal, other)
  * or from a payment provider (webhook). Must run in a tenant context.
  */
 class RecordPayment
@@ -55,10 +55,23 @@ class RecordPayment
      * A payment reported by a payment provider. Idempotent on the provider's payment ID,
      * so a repeated webhook does not record it twice.
      */
-    public function fromProvider(Invoice $invoice, string $provider, string $providerPaymentId, int $amount, CarbonInterface $receivedAt, ?string $reference = null): Payment
-    {
-        return DB::transaction(function () use ($invoice, $provider, $providerPaymentId, $amount, $receivedAt, $reference) {
+    public function fromProvider(
+        Invoice $invoice,
+        string $provider,
+        string $providerPaymentId,
+        int $amount,
+        CarbonInterface $receivedAt,
+        ?string $reference = null,
+        ?string $currency = null,
+    ): Payment {
+        return DB::transaction(function () use ($invoice, $provider, $providerPaymentId, $amount, $receivedAt, $reference, $currency) {
             $invoice = $this->lock($invoice);
+
+            if ($currency !== null && strtoupper($currency) !== $invoice->currency) {
+                throw ValidationException::withMessages(['amount' => __('payments.errors.currency_mismatch', [
+                    'currency' => strtoupper($currency), 'expected' => $invoice->currency,
+                ])]);
+            }
 
             $existing = Payment::query()
                 ->where('provider', $provider)
@@ -102,6 +115,7 @@ class RecordPayment
 
         $payment = new Payment($attributes);
         $payment->invoice_id = $invoice->id;
+        $payment->currency = $invoice->currency;
         $payment->user_id = $user?->id;
         $payment->save();
 

@@ -28,6 +28,21 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+    | Square (SPEC §7.6): one Square application for the platform; each company authorizes it for its own
+    | Square account by OAuth. Use SQUARE_ENVIRONMENT=sandbox with sandbox credentials for testing.
+    | Webhook: subscribe the application to payment.created, payment.updated and oauth.authorization.revoked
+    | with the URL in SQUARE_WEBHOOK_URL (exactly as entered in the Square dashboard; it is part of the signature).
+    */
+    'square' => [
+        'environment' => env('SQUARE_ENVIRONMENT', 'sandbox'),
+        'application_id' => env('SQUARE_APPLICATION_ID'),
+        'application_secret' => env('SQUARE_APPLICATION_SECRET'),
+        'webhook_signature_key' => env('SQUARE_WEBHOOK_SIGNATURE_KEY'),
+        'webhook_url' => env('SQUARE_WEBHOOK_URL'),
+        'api_version' => env('SQUARE_API_VERSION', '2025-10-16'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

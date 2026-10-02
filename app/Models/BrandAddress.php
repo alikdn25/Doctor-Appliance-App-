@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\PhoneNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $line1
  * @property string|null $line2
  * @property string $city
- * @property string|null $province
+ * @property string|null $region
  * @property string|null $postal_code
  * @property string $country
  * @property bool $is_primary
@@ -28,16 +29,22 @@ class BrandAddress extends Model
         'line1',
         'line2',
         'city',
-        'province',
+        'region',
         'postal_code',
         'country',
         'is_primary',
     ];
 
     protected $attributes = [
-        'country' => 'CA',
         'is_primary' => false,
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (BrandAddress $address) {
+            $address->country = strtoupper($address->country ?: PhoneNumber::defaultCountry());
+        });
+    }
 
     /**
      * @return array<string, string>

@@ -340,7 +340,7 @@ test('a new company starts with the default checklists', function () {
     Notification::fake();
 
     $this->actingAs(User::factory()->superAdmin()->create())->post(route('admin.companies.store'), [
-        'name' => 'Fresh Co', 'timezone' => 'America/Vancouver', 'currency' => 'CAD',
+        'name' => 'Fresh Co', 'country' => 'CA', 'timezone' => 'America/Vancouver', 'currency' => 'CAD',
         'owner_name' => 'Fay', 'owner_email' => 'fay@example.com',
     ])->assertRedirect();
 

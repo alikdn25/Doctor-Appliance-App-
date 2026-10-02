@@ -18,14 +18,14 @@ test('a customer with the same phone in another format is reported', function ()
         ->assertOk()
         ->assertJsonPath('duplicates.0.id', $this->existing->id)
         ->assertJsonPath('duplicates.0.display_name', 'Jane Cooper')
-        ->assertJsonPath('duplicates.0.matches', ['604-555-0142']);
+        ->assertJsonPath('duplicates.0.matches', ['+16045550142']);
 });
 
 test('a customer with the same email in another case is reported once', function () {
     $this->getJson(route('customers.duplicates', ['phones' => ['6045550142'], 'emails' => ['JANE@example.com']]))
         ->assertOk()
         ->assertJsonCount(1, 'duplicates')
-        ->assertJsonPath('duplicates.0.matches', ['604-555-0142', 'jane@example.com']);
+        ->assertJsonPath('duplicates.0.matches', ['+16045550142', 'jane@example.com']);
 });
 
 test('the customer being edited is ignored', function () {
