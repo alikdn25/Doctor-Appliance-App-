@@ -274,7 +274,8 @@ test('the job page shows customer, address, appliances, visits and history', fun
             ->where('otherAppliances.0.id', $this->dryer->id)
             ->where('myVisitId', null)
             ->where('can.update', true)
-            ->has('statusOptions', 8)
+            ->has('statusOptions', 9)
+            ->where('statusOptions.5.value', 'waiting_for_customer')
             ->has('assignableUsers', 2));
 });
 

@@ -60,17 +60,33 @@ export default function JobsBacklog({
                     {(['', ...reasons] as const).map((reason) => (
                         <Button
                             key={reason}
-                            variant={filters.reason === reason ? 'default' : 'outline'}
+                            variant={
+                                filters.reason === reason
+                                    ? 'default'
+                                    : 'outline'
+                            }
                             className="min-h-11"
                             asChild
                         >
                             <Link
-                                href={backlog({ query: { reason, search: filters.search } })}
-                                aria-current={filters.reason === reason ? 'page' : undefined}
+                                href={backlog({
+                                    query: { reason, search: filters.search },
+                                })}
+                                aria-current={
+                                    filters.reason === reason
+                                        ? 'page'
+                                        : undefined
+                                }
                             >
-                                {t(reason ? `jobs.backlog.reasons.${reason}` : 'jobs.backlog.all')}
+                                {t(
+                                    reason
+                                        ? `jobs.backlog.reasons.${reason}`
+                                        : 'jobs.backlog.all',
+                                )}
                                 <span className="tabular-nums">
-                                    {reason ? unfinishedJobs?.counts[reason] ?? 0 : unfinishedJobs?.total ?? 0}
+                                    {reason
+                                        ? (unfinishedJobs?.counts[reason] ?? 0)
+                                        : (unfinishedJobs?.total ?? 0)}
                                 </span>
                             </Link>
                         </Button>
@@ -85,12 +101,19 @@ export default function JobsBacklog({
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                     />
-                    <Button type="submit" variant="outline" className="min-h-11" aria-label={t('jobs.search')}>
+                    <Button
+                        type="submit"
+                        variant="outline"
+                        className="min-h-11"
+                        aria-label={t('jobs.search')}
+                    >
                         <Search className="size-4" />
                     </Button>
                     {filtered && (
                         <Button variant="ghost" className="min-h-11" asChild>
-                            <Link href={backlog()}>{t('jobs.clear_filters')}</Link>
+                            <Link href={backlog()}>
+                                {t('jobs.clear_filters')}
+                            </Link>
                         </Button>
                     )}
                 </form>
@@ -99,7 +122,9 @@ export default function JobsBacklog({
                 </p>
                 <JobList
                     jobs={jobs.data}
-                    empty={t(filtered ? 'jobs.no_results' : 'jobs.backlog.empty')}
+                    empty={t(
+                        filtered ? 'jobs.no_results' : 'jobs.backlog.empty',
+                    )}
                 />
                 <PaginationLinks links={jobs.links} />
             </div>

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Jobs;
 
 use App\Http\Controllers\Controller;
-use App\Models\ServiceJob;
 use App\Models\JobVisit;
+use App\Models\ServiceJob;
 use App\Support\Jobs\JobBacklog;
 use App\Support\Jobs\JobPresenter;
 use Illuminate\Http\Request;

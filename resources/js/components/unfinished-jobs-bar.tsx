@@ -23,7 +23,10 @@ export function UnfinishedJobsBar() {
                 <span className="rounded-full bg-background px-2 text-xs tabular-nums">
                     {unfinishedJobs.total}
                 </span>
-                <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
+                <ChevronRight
+                    className="size-3.5 shrink-0"
+                    aria-hidden="true"
+                />
             </Link>
             {unfinishedJobs.counts.overdue > 0 && (
                 <Link

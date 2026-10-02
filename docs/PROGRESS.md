@@ -53,8 +53,8 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 - Categories and business reports are implemented below. Stage 2, Stage 3 and platform subscription billing
   are not complete.
 
-| #   | Task                                                                         | Status |
-| --- | ---------------------------------------------------------------------------- | ------ |
+| #   | Task                                                                         | Status  |
+| --- | ---------------------------------------------------------------------------- | ------- |
 | 1   | Customers, properties (manual address), appliances (§6, §7.1)                | ✅ Done |
 | 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)               | ✅ Done |
 | 3   | Calendar & dispatch                                                          | ✅ Done |

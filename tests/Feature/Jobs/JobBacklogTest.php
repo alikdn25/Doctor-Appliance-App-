@@ -12,6 +12,7 @@ use App\Models\Membership;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -39,19 +40,19 @@ test('the queue keeps old, unscheduled and waiting jobs without any date cutoff'
 
     $this->actingAs($this->owner)->get(route('jobs.backlog'))
         ->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('jobs/backlog')
-            ->where('unfinishedJobs.total', 6)
-            ->where('unfinishedJobs.counts', [
-                'overdue' => 1, 'needs_schedule' => 1, 'waiting_for_parts' => 1,
-                'waiting_for_customer' => 1, 'on_hold' => 1, 'scheduled' => 1,
-            ])
-            ->where('jobs.total', 6)
-            ->where('jobs.data', fn ($rows) => collect($rows)->pluck('id')->all() === [
-                $overdue->id, $unscheduled->id, $parts->id, $customer->id, $hold->id, $future->id,
-            ])
-            ->where('jobs.data.0.backlog_reason', 'overdue')
-            ->where('jobs.data.2.backlog_reason', 'waiting_for_parts')
-            ->where('jobs.data.5.backlog_reason', 'scheduled'));
+        ->component('jobs/backlog')
+        ->where('unfinishedJobs.total', 6)
+        ->where('unfinishedJobs.counts', [
+            'overdue' => 1, 'needs_schedule' => 1, 'waiting_for_parts' => 1,
+            'waiting_for_customer' => 1, 'on_hold' => 1, 'scheduled' => 1,
+        ])
+        ->where('jobs.total', 6)
+        ->where('jobs.data', fn ($rows) => collect($rows)->pluck('id')->all() === [
+            $overdue->id, $unscheduled->id, $parts->id, $customer->id, $hold->id, $future->id,
+        ])
+        ->where('jobs.data.0.backlog_reason', 'overdue')
+        ->where('jobs.data.2.backlog_reason', 'waiting_for_parts')
+        ->where('jobs.data.5.backlog_reason', 'scheduled'));
 
     $this->travelTo('2031-06-12 16:00:00');
     $this->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
@@ -175,7 +176,7 @@ test('company switching changes both the queue and shared count without leaking 
 });
 
 test('counts cover all pages and stay global when the queue is filtered or searched', function () {
-    $this->jobs->count(30)->create();
+    $this->jobs->count(30)->sequence(fn (Sequence $sequence) => ['number' => 1001 + $sequence->index])->create();
     $parts = $this->jobs->status(JobStatus::WaitingForParts)->create();
     $this->actingAs($this->owner)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 31)->where('jobs.total', 31)->has('jobs.data', 25));
@@ -190,12 +191,13 @@ test('counts cover all pages and stay global when the queue is filtered or searc
 
 test('partial navigation refreshes the shared counter even when only jobs are requested', function () {
     $job = $this->jobs->create();
-    $this->actingAs($this->owner)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $response = $this->actingAs($this->owner)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 1));
     inCompany($this->company, fn () => $job->forceFill(['status' => JobStatus::Completed])->save());
 
     $this->get(route('jobs.backlog'), [
-        'X-Inertia' => 'true', 'X-Inertia-Partial-Component' => 'jobs/backlog', 'X-Inertia-Partial-Data' => 'jobs',
+        'X-Inertia' => 'true', 'X-Inertia-Version' => $response->viewData('page')['version'],
+        'X-Inertia-Partial-Component' => 'jobs/backlog', 'X-Inertia-Partial-Data' => 'jobs',
     ])->assertOk()->assertJsonPath('props.unfinishedJobs.total', 0)->assertJsonPath('props.jobs.total', 0);
 });
 
