@@ -19,6 +19,14 @@ class CompanyPolicy
     }
 
     /**
+     * Connecting and disconnecting the company's payment provider accounts: the Owner, like settings.
+     */
+    public function managePayments(User $user, Company $company): bool
+    {
+        return $this->update($user, $company);
+    }
+
+    /**
      * Super-admin panel.
      */
     public function administer(User $user): bool

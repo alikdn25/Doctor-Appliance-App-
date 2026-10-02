@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Company;
 use App\Enums\PaymentTerms;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\CompanySettingsRequest;
+use App\Payments\PaymentProvider;
 use App\Payments\PaymentProviders;
 use App\Services\AuditLogger;
 use App\Support\Locale\Countries;
@@ -33,7 +34,13 @@ class CompanySettingsController extends Controller
                 'default_payment_terms' => $company->default_payment_terms->value,
                 'vertical' => $company->vertical->label(),
             ],
-            'paymentProviders' => $providers->options(),
+            'paymentProviders' => $providers->options($company),
+            // Providers the company can connect in its country (Square: US, CA, UK, IE, AU, JP, FR, ES).
+            'providerConnections' => array_values(array_map(fn (PaymentProvider $provider) => [
+                'key' => $provider->key(),
+                'label' => $provider->label(),
+                'connected' => $provider->connectionSummary($company),
+            ], $providers->availableFor($company))),
             'timezones' => DateTimeZone::listIdentifiers(),
             'currencies' => Currencies::options(),
             'countries' => Countries::options(),

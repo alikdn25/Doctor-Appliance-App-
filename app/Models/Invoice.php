@@ -103,6 +103,14 @@ class Invoice extends Model
     }
 
     /**
+     * @return HasMany<InvoicePaymentLink, $this>
+     */
+    public function paymentLinks(): HasMany
+    {
+        return $this->hasMany(InvoicePaymentLink::class);
+    }
+
+    /**
      * @return BelongsTo<Estimate, $this>
      */
     public function estimate(): BelongsTo
