@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Company;
 
 use App\Enums\JobOutcome;
+use App\Enums\LineKind;
 use App\Enums\PaymentTerms;
+use App\Enums\WarrantyUnit;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\CompanySettingsRequest;
 use App\Models\Service;
 use App\Payments\PaymentProvider;
 use App\Payments\PaymentProviders;
 use App\Services\AuditLogger;
+use App\Support\Billing\Markup;
 use App\Support\Locale\Countries;
 use App\Support\Locale\Currencies;
 use DateTimeZone;
@@ -32,7 +35,13 @@ class CompanySettingsController extends Controller
                 'invoice_prefix', 'invoice_next_number', 'online_tips',
                 'estimate_prefix', 'estimate_next_number', 'travel_buffer_minutes', 'payment_provider',
                 'estimate_valid_days', 'technicians_can_delete_jobs', 'diagnostic_service_id', 'strict_arrival_reminder_minutes',
+                'warranty_labor_value', 'warranty_labor_unit', 'warranty_parts_value', 'warranty_parts_unit',
+                'warranty_parts_above_value', 'warranty_parts_above_unit', 'warranty_terms', 'technicians_see_costs', 'accepts_cash',
             ]) + [
+                'warranty_parts_threshold' => $company->warranty_parts_threshold === null ? null
+                    : $company->warranty_parts_threshold / Currencies::factor($company->currency),
+                'markup_parts' => Markup::scale($company, LineKind::Part),
+                'markup_materials' => Markup::scale($company, LineKind::Material),
                 // Reasons per outcome as edited (one per line); defaults shown when the company has none.
                 'closure_reasons' => collect(JobOutcome::cases())
                     ->filter(fn (JobOutcome $o) => $o->needsReason())
@@ -54,6 +63,7 @@ class CompanySettingsController extends Controller
             'countries' => Countries::options(),
             'locales' => Countries::localeOptions(),
             'paymentTerms' => PaymentTerms::options(),
+            'warrantyUnits' => WarrantyUnit::options(),
             'services' => Service::query()->orderBy('name')->get()
                 ->map(fn (Service $service) => ['value' => (string) $service->id, 'label' => $service->name])->values(),
         ]);

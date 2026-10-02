@@ -29,6 +29,7 @@ return [
 
     'fields' => [
         'amount' => 'Amount',
+        'receipt_photo' => 'Photo of the receipt (optional)',
         'method' => 'Method',
         'reference' => 'Reference',
         'transaction_reference' => 'Transaction #',
@@ -92,5 +93,20 @@ return [
         'amount_required' => 'Enter an amount above zero.',
         'provider_payment' => 'Online payments are refunded in the payment provider.',
         'currency_mismatch' => 'The payment is in :currency but the invoice is in :expected.',
+    ],
+
+    'refunds' => [
+        'title' => 'Refund',
+        'action' => 'Refund',
+        'hint' => 'Money given back as settled: the customer will not owe it again. Online payments are refunded at the provider; for cash or check, hand the money back.',
+        'reason' => 'Reason',
+        'amount' => 'Amount to refund',
+        'full' => 'Full refund (:amount)',
+        'partial' => 'Partial refund',
+        'none' => 'No refund',
+        'done' => 'Refund recorded.',
+        'reason_required' => 'Give the reason for the refund.',
+        'more_than_paid' => 'You can refund at most what was paid.',
+        'provider_failed' => 'The payment provider did not accept the refund: :error',
     ],
 ];

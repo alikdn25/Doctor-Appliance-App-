@@ -170,6 +170,31 @@ return [
 
     'closed' => 'Job closed: :outcome.',
     'diagnosis_line' => 'Diagnostic / service call',
+    'warranty' => [
+        'title' => 'Warranties',
+        'hint' => 'Warranty of each line from the day the job was closed. 0 = no warranty.',
+        'apply_all' => 'Apply to all lines',
+        'saved' => 'Warranties saved.',
+        'review' => 'Review warranties',
+        'until' => 'until :date',
+    ],
+    'callback' => [
+        'warranties' => 'Warranties of job #:number on :date',
+        'covered' => 'Under warranty until :date',
+        'expired' => 'Warranty ended :date',
+        'none' => 'No warranty',
+        'no_lines' => 'The original job has no invoiced lines.',
+        'free_hint' => 'Lines under warranty are free by default on the callback invoice; the rest at the original price. You can change them.',
+        'refund' => 'Refund on the original job',
+        'refund_hint' => 'Give money back on the invoice of job #:number (as settled).',
+        'refund_reason' => 'Reason for the refund',
+        'refunded' => 'Refunded',
+        'partially_refunded' => 'Partially refunded',
+        'original_refund' => 'Original job :status — see callback #:number',
+    ],
+    'no_charge' => [
+        'not_allowed' => 'No charge is only for jobs without an invoice, or with invoices totalling zero.',
+    ],
     'close' => [
         'action' => 'Close job',
         'title' => 'Close job',
@@ -187,9 +212,11 @@ return [
     'cancel_hint' => 'Only for jobs called off before any work (customer changed their mind, nobody opened the door). After work started, close the job with an outcome instead.',
     'outcomes' => [
         'repaired' => 'Repaired',
+        'fixed_under_warranty' => 'Fixed under warranty',
         'customer_declined' => 'Customer declined repair',
         'unable_to_repair' => 'Unable to repair',
         'cancelled' => 'Cancelled',
+        'no_charge' => 'No charge',
     ],
     'all_outcomes' => 'All outcomes',
     'open_no_outcome' => 'No outcome yet',
@@ -206,6 +233,11 @@ return [
             'Part on backorder too long',
             'Could not find the cause',
             'Repair not safe or not economical',
+            'Other',
+        ],
+        'no_charge' => [
+            'Goodwill',
+            'Could not diagnose',
             'Other',
         ],
         'cancelled' => [

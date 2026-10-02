@@ -184,6 +184,32 @@ class SquareProvider implements PaymentProvider
         return new PaymentLink($link['url'], $link['id'], $link['order_id'] ?? null);
     }
 
+    public function refund(Payment $payment, int $amount, string $reason): string
+    {
+        $connection = $this->connection(currentCompany());
+
+        if ($connection === null) {
+            throw new PaymentProviderException(__('payments.square.errors.not_connected'));
+        }
+
+        try {
+            $refund = $this->client->refundPayment($this->accessToken($connection), [
+                'idempotency_key' => (string) Str::uuid(),
+                'payment_id' => $payment->provider_payment_id,
+                'amount_money' => ['amount' => $amount, 'currency' => $payment->currency],
+                'reason' => Str::limit($reason, 192, ''),
+            ]);
+        } catch (Throwable $e) {
+            throw new PaymentProviderException(__('payments.refunds.provider_failed', ['error' => $e->getMessage()]));
+        }
+
+        if (! is_string($refund['id'] ?? null) || in_array($refund['status'] ?? null, ['REJECTED', 'FAILED'], true)) {
+            throw new PaymentProviderException(__('payments.refunds.provider_failed', ['error' => (string) ($refund['status'] ?? 'unknown')]));
+        }
+
+        return $refund['id'];
+    }
+
     public function cancelPaymentLink(Company $company, string $providerReference): void
     {
         $connection = $this->connection($company);
@@ -277,6 +303,13 @@ class SquareProvider implements PaymentProvider
         }
 
         $link->update(['status' => InvoicePaymentLink::PAID]);
+
+        // The processing fee may only come with a later payment.updated: keep the latest.
+        $fee = collect($payment['processing_fee'] ?? [])->sum(fn ($f) => (int) ($f['amount_money']['amount'] ?? 0));
+        if ($fee > 0) {
+            Payment::query()->where('provider', $this->key())->where('provider_payment_id', $payment['id'])
+                ->update(['processing_fee' => $fee]);
+        }
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Actions\Billing\SaveBillingDocument;
 use App\Actions\Billing\VoidBillingRecord;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentMethod;
+use App\Enums\VisitType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Messaging\MessagingPresenter;
@@ -16,6 +17,7 @@ use App\Models\ServiceJob;
 use App\Payments\PaymentProviders;
 use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
+use App\Support\Billing\Warranties;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -94,7 +96,7 @@ class InvoiceController extends Controller
             'defaultDueOn' => $terms->dueOn($today)->format('Y-m-d'),
             'paymentTerms' => $terms->label(),
             // "Invoice diagnosis only" after the customer declined the repair: one line, the diagnostic fee.
-            'prefillItems' => $request->boolean('diagnosis') ? [self::diagnosisLine()] : null,
+            'prefillItems' => $request->boolean('diagnosis') ? [self::diagnosisLine()] : self::callbackLines($job),
         ]);
     }
 
@@ -104,6 +106,32 @@ class InvoiceController extends Controller
      *
      * @return array{description: string, unit_price: int|null, taxable: bool}
      */
+    /**
+     * First invoice of a warranty callback: the original job's lines, free while their warranty runs on the visit day,
+     * at the original price otherwise (the technician can change them).
+     *
+     * @return list<array<string, mixed>>|null
+     */
+    public static function callbackLines(ServiceJob $job): ?array
+    {
+        if ($job->visit_type !== VisitType::Callback || $job->previous_job_id === null || $job->invoices()->exists()) {
+            return null;
+        }
+
+        $original = $job->previousJob()->first();
+        $visit = $job->visits()->first();
+        $day = CarbonImmutable::parse(($visit?->scheduled_start ?? now())->setTimezone(currentCompany()->timezone)->format('Y-m-d'));
+        $lines = $original ? Warranties::onDate($original, $day) : [];
+
+        return $lines === [] ? null : array_map(fn (array $line) => [
+            'description' => $line['description'],
+            'unit_price' => $line['active'] ? 0 : $line['unit_price'],
+            'taxable' => $line['taxable'],
+            'kind' => $line['kind'],
+            'quantity' => rtrim(rtrim($line['quantity'], '0'), '.'),
+        ], $lines);
+    }
+
     public static function diagnosisLine(): array
     {
         $company = currentCompany();
@@ -138,8 +166,9 @@ class InvoiceController extends Controller
                 'recordPayment' => Gate::allows('recordPayment', $invoice),
                 'void' => Gate::allows('void', $invoice),
                 'voidPayments' => Gate::allows('update', $invoice->job),
+                'refund' => Gate::allows('refund', $invoice),
             ],
-            'paymentMethods' => PaymentMethod::manualOptions(),
+            'paymentMethods' => PaymentMethod::manualOptions(currentCompany()),
             'today' => $this->today(),
             'online' => $this->online($invoice, $providers, $links),
             'delivery' => BillingPresenter::delivery($invoice),

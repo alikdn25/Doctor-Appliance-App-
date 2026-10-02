@@ -5,6 +5,7 @@ namespace App\Payments;
 use App\Models\Company;
 use App\Models\Estimate;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -71,6 +72,14 @@ interface PaymentProvider
      * @throws PaymentProviderException
      */
     public function createPaymentLink(Estimate|Invoice $document, int $amount): PaymentLink;
+
+    /**
+     * Gives back (part of) a payment made through the provider. Returns the provider's refund ID; the refund is
+     * recorded right away and the provider's webhook for it is then recognised (no duplicate).
+     *
+     * @throws PaymentProviderException
+     */
+    public function refund(Payment $payment, int $amount, string $reason): string;
 
     /**
      * Retires a link that is no longer wanted (best effort).

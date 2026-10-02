@@ -37,6 +37,14 @@ class InvoicePolicy
         return $this->update($user, $invoice) && $invoice->balance > 0;
     }
 
+    /**
+     * Giving money back (as settled): the office.
+     */
+    public function refund(User $user, Invoice $invoice): bool
+    {
+        return $this->inCurrentCompany($invoice) && $this->managesJob($user, $invoice->job) && ! $invoice->isVoid() && $invoice->amount_paid > 0;
+    }
+
     public function void(User $user, Invoice $invoice): bool
     {
         return $this->inCurrentCompany($invoice) && $this->managesJob($user, $invoice->job) && ! $invoice->isVoid();

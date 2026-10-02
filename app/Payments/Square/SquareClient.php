@@ -112,6 +112,23 @@ class SquareClient
         return (array) $response->json('payment_link');
     }
 
+    /**
+     * Refunds (part of) a payment. Square answers PENDING and confirms with refund.updated webhooks.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    public function refundPayment(string $accessToken, array $body): array
+    {
+        $response = $this->api($accessToken)->post('/v2/refunds', $body);
+
+        if ($response->failed()) {
+            $this->fail('square.refund', $response);
+        }
+
+        return (array) $response->json('refund');
+    }
+
     public function deletePaymentLink(string $accessToken, string $linkId): void
     {
         $this->api($accessToken)->delete('/v2/online-checkout/payment-links/'.rawurlencode($linkId))->throw();

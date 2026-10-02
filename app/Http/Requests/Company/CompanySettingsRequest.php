@@ -4,6 +4,7 @@ namespace App\Http\Requests\Company;
 
 use App\Enums\JobOutcome;
 use App\Enums\PaymentTerms;
+use App\Enums\WarrantyUnit;
 use App\Models\Company;
 use App\Payments\PaymentProviders;
 use App\Support\Locale\Countries;
@@ -43,6 +44,22 @@ class CompanySettingsRequest extends FormRequest
             'technicians_can_delete_jobs' => ['boolean'],
             'strict_arrival_reminder_minutes' => ['sometimes', 'integer', 'min:5', 'max:480'],
             'diagnostic_service_id' => ['nullable', 'integer', Rule::exists('services', 'id')->where('company_id', currentCompany()->id)],
+            'warranty_labor_value' => ['sometimes', 'integer', 'min:0', 'max:999'],
+            'warranty_labor_unit' => ['sometimes', Rule::enum(WarrantyUnit::class)],
+            'warranty_parts_value' => ['sometimes', 'integer', 'min:0', 'max:999'],
+            'warranty_parts_unit' => ['sometimes', Rule::enum(WarrantyUnit::class)],
+            'warranty_parts_threshold' => ['nullable', 'numeric', 'min:0', 'max:9999999'],
+            'warranty_parts_above_value' => ['nullable', 'integer', 'min:0', 'max:999'],
+            'warranty_parts_above_unit' => ['nullable', Rule::enum(WarrantyUnit::class)],
+            'warranty_terms' => ['nullable', 'string', 'max:5000'],
+            'markup_parts' => ['sometimes', 'array', 'max:10'],
+            'markup_parts.*.up_to' => ['nullable', 'numeric', 'min:0'],
+            'markup_parts.*.multiplier' => ['required', 'numeric', 'min:1', 'max:20'],
+            'markup_materials' => ['sometimes', 'array', 'max:10'],
+            'markup_materials.*.up_to' => ['nullable', 'numeric', 'min:0'],
+            'markup_materials.*.multiplier' => ['required', 'numeric', 'min:1', 'max:20'],
+            'technicians_see_costs' => ['boolean'],
+            'accepts_cash' => ['boolean'],
             'closure_reasons' => ['sometimes', 'array'],
             'closure_reasons.*' => ['array', 'max:30'],
             'closure_reasons.*.*' => ['nullable', 'string', 'max:100'],
@@ -84,6 +101,28 @@ class CompanySettingsRequest extends FormRequest
         $data['prices_include_tax'] = (bool) ($data['prices_include_tax'] ?? false);
         $data['online_tips'] = (bool) ($data['online_tips'] ?? false);
         $data['technicians_can_delete_jobs'] = (bool) ($data['technicians_can_delete_jobs'] ?? false);
+        $data['technicians_see_costs'] = (bool) ($data['technicians_see_costs'] ?? false);
+        $data['accepts_cash'] = (bool) ($data['accepts_cash'] ?? true);
+
+        if (array_key_exists('warranty_parts_threshold', $data)) {
+            $data['warranty_parts_threshold'] = filled($data['warranty_parts_threshold'])
+                ? Currencies::toMinor((string) $data['warranty_parts_threshold'], $data['currency'] ?? currentCompany()->currency)
+                : null;
+        }
+
+        // Markup tiers sorted by "up to" (in major units), the open-ended tier last.
+        foreach (['markup_parts', 'markup_materials'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $data[$key] = collect($data[$key])
+                    ->map(fn (array $tier) => [
+                        'up_to' => filled($tier['up_to'] ?? null) ? (float) $tier['up_to'] : null,
+                        'multiplier' => (float) $tier['multiplier'],
+                    ])
+                    ->sortBy(fn (array $tier) => $tier['up_to'] ?? PHP_FLOAT_MAX)
+                    ->values()
+                    ->all() ?: null;
+            }
+        }
 
         // One list per outcome; empty lines dropped; an empty list falls back to the defaults.
         if (array_key_exists('closure_reasons', $data)) {

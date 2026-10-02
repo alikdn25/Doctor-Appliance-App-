@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Jobs;
 
+use App\Actions\Jobs\RefundOriginalJob;
 use App\Actions\Jobs\SaveJob;
 use App\Enums\ApplianceType;
+use App\Enums\InvoiceStatus;
 use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\JobType;
@@ -11,6 +13,7 @@ use App\Enums\LeadSource;
 use App\Enums\PhotoKind;
 use App\Enums\VisitStatus;
 use App\Enums\VisitType;
+use App\Enums\WarrantyUnit;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Requests\Jobs\JobRequest;
@@ -20,16 +23,21 @@ use App\Models\Brand;
 use App\Models\Customer;
 use App\Models\Estimate;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\JobBringItem;
 use App\Models\JobChecklistItem;
+use App\Models\JobCostItem;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
 use App\Models\Membership;
 use App\Models\Property;
 use App\Models\ServiceJob;
+use App\Models\SupplierReceipt;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
+use App\Support\Billing\CostAccess;
+use App\Support\Billing\JobProfit;
 use App\Support\Jobs\JobPresenter;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -319,7 +327,60 @@ class JobController extends Controller
                 'customer_declined' => currentCompany()->closureReasons(JobOutcome::CustomerDeclined),
                 'unable_to_repair' => currentCompany()->closureReasons(JobOutcome::UnableToRepair),
                 'cancelled' => currentCompany()->closureReasons(JobOutcome::Cancelled),
+                'no_charge' => currentCompany()->closureReasons(JobOutcome::NoCharge),
             ],
+            // Warranty callback: what can be refunded on the original job.
+            'callback' => $job->visit_type === VisitType::Callback && $job->previousJob ? [
+                'number' => $job->previousJob->number,
+                'refundable' => RefundOriginalJob::refundable($job->previousJob),
+                'currency' => $job->previousJob->invoices()->value('currency') ?? currentCompany()->currency,
+            ] : null,
+            'warrantyLines' => $job->invoices->where('status', '!=', InvoiceStatus::Void)
+                ->flatMap(fn (Invoice $invoice) => $invoice->items()->get()->map(fn (InvoiceItem $item) => [
+                    'id' => $item->id,
+                    'invoice' => $invoice->number,
+                    'description' => $item->description,
+                    'kind' => $item->kind->value,
+                    'bill_to_customer' => $item->bill_to_customer,
+                    'warranty_value' => $item->warranty_value ?? 0,
+                    'warranty_unit' => $item->warranty_unit ?? 'days',
+                    'warranty_ends_on' => $item->warranty_ends_on?->toDateString(),
+                ]))->values(),
+            'warrantyUnits' => WarrantyUnit::options(),
+            // Costs, receipts and profit: only for people who see costs.
+            'costs' => CostAccess::canSee($user) ? [
+                'profit' => JobProfit::for($job),
+                'currency' => currentCompany()->currency,
+                'items' => JobCostItem::query()->where('service_job_id', $job->id)->orderBy('id')->get()
+                    ->map(fn (JobCostItem $item) => [
+                        'id' => $item->id,
+                        'kind' => $item->kind->value,
+                        'description' => $item->description,
+                        'part_number' => $item->part_number,
+                        'supplier' => $item->supplier,
+                        'quantity' => rtrim(rtrim((string) $item->quantity, '0'), '.'),
+                        'unit' => $item->unit,
+                        'total_cost' => $item->totalCost(),
+                    ])->values(),
+                'receipts' => SupplierReceipt::query()
+                    ->whereHas('jobs', fn ($q) => $q->where('service_jobs.id', $job->id))
+                    ->with('jobs')
+                    ->orderByDesc('id')
+                    ->get()
+                    ->map(fn (SupplierReceipt $r) => [
+                        'id' => $r->id,
+                        'name' => $r->original_name,
+                        'url' => route('receipts.show', $r),
+                        'supplier' => $r->supplier,
+                        'receipt_date' => $r->receipt_date?->toDateString(),
+                        'amount' => $r->amount,
+                        'jobs' => $r->jobs->pluck('number')->values(),
+                        'can_delete' => $r->uploaded_by === $user->id && $r->created_at?->isAfter(now()->subHour()),
+                    ])->values(),
+                'supplier_taxes' => BillingPresenter::lineSetup()['supplier_taxes'],
+                'units' => BillingPresenter::lineSetup()['units'],
+            ] : null,
+            'openWarranty' => $request->boolean('warranty'),
             'assignableUsers' => $canUpdate ? $this->assignableUsers() : [],
             'otherAppliances' => Appliance::query()
                 ->where('property_id', $property->id)

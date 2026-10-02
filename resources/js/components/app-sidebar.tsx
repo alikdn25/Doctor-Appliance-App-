@@ -1,5 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    Banknote,
+    BarChart3,
     BookOpen,
     Building,
     Building2,
@@ -32,6 +34,8 @@ import {
 import { calendar, dashboard } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as brands } from '@/routes/brands';
+import { index as cash } from '@/routes/cash';
+import { index as reports } from '@/routes/reports';
 import { index as customers } from '@/routes/customers';
 import { edit as checklists } from '@/routes/company/checklists';
 import { edit as googleProfiles } from '@/routes/company/google-profiles';
@@ -75,6 +79,16 @@ export function AppSidebar() {
                   title: 'nav.customers',
                   href: customers(),
                   icon: Contact,
+              },
+              can.viewInvoices && {
+                  title: 'nav.reports',
+                  href: reports(),
+                  icon: BarChart3,
+              },
+              can.viewInvoices && {
+                  title: 'nav.cash',
+                  href: cash(),
+                  icon: Banknote,
               },
           ].filter(Boolean) as NavItem[])
         : [];

@@ -3,6 +3,7 @@
 namespace App\Actions\Jobs;
 
 use App\Actions\Billing\SyncJobBillingStatus;
+use App\Enums\InvoiceStatus;
 use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\VisitStatus;
@@ -40,6 +41,12 @@ class CloseJob
 
         DB::transaction(function () use ($job, $outcome, $reason, $note, $user, $visit) {
             $job = ServiceJob::query()->lockForUpdate()->findOrFail($job->id);
+
+            // No charge: nothing billed (no invoice, or invoices totalling zero).
+            if ($outcome === JobOutcome::NoCharge
+                && $job->invoices()->where('status', '!=', InvoiceStatus::Void->value)->where('total', '>', 0)->exists()) {
+                throw ValidationException::withMessages(['outcome' => __('jobs.no_charge.not_allowed')]);
+            }
 
             if ($job->status === JobStatus::Cancelled) {
                 throw ValidationException::withMessages(['outcome' => __('jobs.errors.cancelled')]);

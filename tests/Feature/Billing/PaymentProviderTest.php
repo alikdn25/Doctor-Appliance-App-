@@ -63,6 +63,11 @@ class FakePaymentProvider implements PaymentProvider
         return new PaymentLink("https://pay.example.test/{$invoice->number}/{$amount}", "link-{$invoice->id}-{$amount}", "order-{$invoice->id}-{$amount}");
     }
 
+    public function refund(Payment $payment, int $amount, string $reason): string
+    {
+        return "refund-{$payment->id}-{$amount}";
+    }
+
     public function cancelPaymentLink(Company $company, string $providerReference): void {}
 
     public function handleWebhook(Request $request): void {}

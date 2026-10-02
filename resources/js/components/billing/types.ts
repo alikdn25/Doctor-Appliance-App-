@@ -69,6 +69,8 @@ export type PaymentData = {
     voided_at: string | null;
     voided_by: string | null;
     void_reason: string | null;
+    refund_reason: string | null;
+    processing_fee: number;
 };
 
 export type JobSummary = {

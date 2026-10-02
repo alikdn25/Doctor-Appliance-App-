@@ -112,6 +112,7 @@ class BillingPresenter
                 ...$data,
                 'due_on' => $document->due_on?->toDateString(),
                 'amount_paid' => $document->amount_paid,
+                'credited_amount' => $document->credited_amount,
                 'paid_at' => JobPresenter::iso($document->paid_at),
                 'voided_at' => JobPresenter::iso($document->voided_at),
                 'voided_by' => $document->voider?->name,
@@ -183,6 +184,8 @@ class BillingPresenter
             'voided_at' => JobPresenter::iso($payment->voided_at),
             'voided_by' => $payment->voider?->name,
             'void_reason' => $payment->void_reason,
+            'refund_reason' => $payment->refund_reason,
+            'processing_fee' => $payment->processing_fee,
         ];
     }
 

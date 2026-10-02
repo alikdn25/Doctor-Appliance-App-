@@ -19,10 +19,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
+import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
 import { duplicates } from '@/routes/customers';
 import { index, lookup, show, store, update } from '@/routes/jobs';
+import { warranties as jobWarranties } from '@/routes/jobs';
 import type { Option } from '@/types';
 
 type CustomerOption = {
@@ -146,6 +148,7 @@ export default function JobForm({
     visitTypes,
 }: Props) {
     const t = useTrans();
+    const time = useCompanyTime();
     const phoneText = usePhone();
     const { auth } = usePage().props;
     const tracksAppliances = auth.company?.tracks_appliances ?? true;
@@ -220,6 +223,44 @@ export default function JobForm({
                     : d.appliance_ids,
         }));
     };
+
+    // Warranty callback: which warranties of the original job still run on the visit day.
+    const [warranties, setWarranties] = useState<{
+        date: string;
+        number: number;
+        lines: {
+            item_id: number;
+            description: string;
+            warranty: string;
+            ends_on: string | null;
+            active: boolean;
+        }[];
+    } | null>(null);
+    const warrantyDate = form.data.add_visit ? form.data.visit.date : today;
+
+    useEffect(() => {
+        if (form.data.visit_type !== 'callback' || !form.data.previous_job_id) {
+            setWarranties(null);
+
+            return;
+        }
+
+        const controller = new AbortController();
+        fetch(
+            jobWarranties(form.data.previous_job_id, {
+                query: { date: warrantyDate },
+            }).url,
+            {
+                headers: { Accept: 'application/json' },
+                signal: controller.signal,
+            },
+        )
+            .then((r) => (r.ok ? r.json() : null))
+            .then(setWarranties)
+            .catch(() => undefined);
+
+        return () => controller.abort();
+    }, [form.data.visit_type, form.data.previous_job_id, warrantyDate]);
 
     const setBring = (index: number, patch: Partial<BringItem>) =>
         form.setData(
@@ -917,6 +958,57 @@ export default function JobForm({
                                 ))}
                             </NativeSelect>
                         </FormField>
+                    )}
+                    {warranties && (
+                        <div className="space-y-2 rounded-md border p-3 text-sm sm:col-span-2">
+                            <p className="font-medium">
+                                {t('jobs.callback.warranties', {
+                                    number: warranties.number,
+                                    date: time.dateOnly(warranties.date),
+                                })}
+                            </p>
+                            {warranties.lines.length === 0 ? (
+                                <p className="text-muted-foreground">
+                                    {t('jobs.callback.no_lines')}
+                                </p>
+                            ) : (
+                                <ul className="space-y-1">
+                                    {warranties.lines.map((line) => (
+                                        <li
+                                            key={line.item_id}
+                                            className="flex justify-between gap-2"
+                                        >
+                                            <span className="min-w-0 truncate">
+                                                {line.description}
+                                            </span>
+                                            <span
+                                                className={
+                                                    line.active
+                                                        ? 'shrink-0 text-emerald-700 dark:text-emerald-400'
+                                                        : 'shrink-0 text-muted-foreground'
+                                                }
+                                            >
+                                                {line.ends_on
+                                                    ? t(
+                                                          line.active
+                                                              ? 'jobs.callback.covered'
+                                                              : 'jobs.callback.expired',
+                                                          {
+                                                              date: time.dateOnly(
+                                                                  line.ends_on,
+                                                              ),
+                                                          },
+                                                      )
+                                                    : t('jobs.callback.none')}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                                {t('jobs.callback.free_hint')}
+                            </p>
+                        </div>
                     )}
                     {data.visit_type === 'return_visit' && (
                         <fieldset className="space-y-2 sm:col-span-2">
