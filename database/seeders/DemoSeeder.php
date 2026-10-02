@@ -76,7 +76,7 @@ class DemoSeeder extends Seeder
             ChecklistTemplate::createDefaults();
             Service::createDefaults();
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true, 'sort_order' => 1]);
-            TaxRate::create(['name' => 'PST', 'rate' => 7, 'is_default' => true, 'sort_order' => 2]);
+            TaxRate::create(['name' => 'PST', 'rate' => 7, 'is_default' => true, 'sort_order' => 2, 'is_recoverable' => false]);
 
             $profile = GoogleProfile::create(['brand_id' => $doctor->id, 'label' => 'Surrey', 'review_url' => 'https://g.page/r/doctor-appliance-surrey/review']);
             $doctor->update(['google_profile_id' => $profile->id]);
