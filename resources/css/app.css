@@ -9,8 +9,8 @@
 
 @theme {
     --font-sans:
-        ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
-        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -138,8 +138,15 @@
 
     body {
         @apply bg-background text-foreground antialiased;
-        background-image: radial-gradient(circle at top right, oklch(0.96 0.035 250), transparent 34rem);
+        background-image: radial-gradient(
+            circle at top right,
+            oklch(0.96 0.035 250),
+            transparent 34rem
+        );
     }
 
-    button, a { @apply transition-colors; }
+    button,
+    a {
+        @apply transition-colors;
+    }
 }
