@@ -3,6 +3,7 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
+import { UnfinishedJobsBar } from '@/components/unfinished-jobs-bar';
 import { UploadStatusBar } from '@/components/upload-status-bar';
 import { useDetectTimezone } from '@/hooks/use-detect-timezone';
 import type { AppLayoutProps } from '@/types';
@@ -18,6 +19,7 @@ export default function AppSidebarLayout({
             <AppSidebar />
             <AppContent variant="sidebar" className="min-w-0 overflow-x-clip">
                 <ImpersonationBanner />
+                <UnfinishedJobsBar />
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 <UploadStatusBar />
                 {children}

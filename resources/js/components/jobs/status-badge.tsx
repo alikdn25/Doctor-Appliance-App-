@@ -10,6 +10,8 @@ const tones: Record<string, string> = {
         'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
     waiting_for_parts:
         'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200',
+    waiting_for_customer:
+        'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200',
     completed:
         'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
     invoiced: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200',

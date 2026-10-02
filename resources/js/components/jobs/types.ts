@@ -3,6 +3,8 @@ export type JobRow = {
     number: number;
     status: string;
     status_label: string;
+    backlog_reason?: string;
+    backlog_reason_label?: string;
     job_type_label: string;
     visit_type: string;
     visit_type_label: string;

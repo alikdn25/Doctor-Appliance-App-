@@ -102,7 +102,12 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 
 ### Job statuses
 
-`new` → `scheduled` → `on_the_way` → `in_progress` → `waiting_for_parts` → `completed` → `invoiced` → `paid`, plus `cancelled` and `on_hold`. Every status change is logged with user and time.
+`new` → `scheduled` → `on_the_way` → `in_progress` → `waiting_for_parts` → `completed` → `invoiced` → `paid`, plus `waiting_for_customer`, `cancelled` and `on_hold`. Every status change is logged with user and time.
+
+All unfinished jobs remain in a date-independent queue, reached from a compact persistent top bar with a job
+counter. It includes overdue visits, work needing scheduling, waiting for parts/customer, on-hold work and future
+scheduled work. Completed, invoiced, paid, cancelled, outcome-closed and deleted jobs are excluded. Reopened jobs
+return. Each job counts once; access follows company, brand and technician assignment permissions.
 
 ## 7. Feature list
 

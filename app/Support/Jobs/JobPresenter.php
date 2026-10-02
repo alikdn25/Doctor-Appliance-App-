@@ -21,9 +21,9 @@ class JobPresenter
      *
      * @return array<string, mixed>
      */
-    public static function row(ServiceJob $job): array
+    public static function row(ServiceJob $job, ?JobVisit $visit = null): array
     {
-        $visit = self::currentVisit($job);
+        $visit ??= self::currentVisit($job);
 
         return [
             'id' => $job->id,

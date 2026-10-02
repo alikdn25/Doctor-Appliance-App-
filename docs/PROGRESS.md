@@ -20,6 +20,25 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
+### Unfinished jobs queue — implemented, CI pending
+
+- Persistent compact "Not completed jobs" bar on tenant application screens, including a zero counter and a
+  direct overdue shortcut. The count refreshes with every Inertia response, including partial navigation.
+- Date-independent paginated queue: overdue visits and work needing scheduling first, then waiting for
+  parts/customer, on hold and scheduled/in-progress jobs. One reason and one count per job; oldest jobs first
+  within a group. Search and reason filters do not change the global counter.
+- Future appointments remain in the total. An upcoming return visit takes precedence over a stale old visit
+  for the scheduled reason and displayed arrival window. Completed/cancelled visits cannot keep a job scheduled.
+- New logged "Waiting for customer" status, available in the office status selector. It pauses visit work;
+  scheduling a new visit resumes the job. Closing/cancelling removes jobs; reopening brings them back.
+- Both the queue and counter enforce company/brand access and technician assignment. Unsupported roles and
+  public/platform pages receive no queue data. Closed/billed/paid/cancelled/deleted jobs are excluded.
+- Tests cover old dates, waiting after diagnosis, multiple visits, future returns, closure/reopening, pagination,
+  partial reloads, role/brand permissions and company switching. No database migration needed for this feature.
+- Manual check: leave yesterday's visit unfinished; open the top bar from My Jobs or the calendar; try each
+  filter, schedule a return, set Waiting for customer, close and reopen a job, then check as a technician and
+  after switching companies. Mobile visual validation remains pending.
+
 ### Bolt technician UI — draft, validation pending
 
 - My Jobs: rounded cards, larger touch targets, active-tab accessibility, wrapping time/status rows,

@@ -12,6 +12,7 @@ use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Models\User;
 use App\Services\Impersonation;
+use App\Support\Jobs\JobBacklog;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\Translations;
 use Illuminate\Http\Request;
@@ -43,6 +44,13 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => fn () => $this->auth($request),
             'impersonation' => fn () => $this->impersonation($request),
+            'unfinishedJobs' => Inertia::always(function () use ($request) {
+                $user = $request->user();
+
+                return $user !== null && app(CurrentCompany::class)->get() !== null && $user->can('viewMine', ServiceJob::class)
+                    ? JobBacklog::summary($user)
+                    : null;
+            }),
             'locale' => app()->getLocale(),
             'translations' => Inertia::once(fn () => Translations::forLocale(app()->getLocale())),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

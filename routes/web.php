@@ -26,6 +26,7 @@ use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Customers\PropertyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Jobs\CalendarController;
+use App\Http\Controllers\Jobs\JobBacklogController;
 use App\Http\Controllers\Jobs\JobCloseController;
 use App\Http\Controllers\Jobs\JobController;
 use App\Http\Controllers\Jobs\JobCostController;
@@ -88,6 +89,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('appliances/{appliance}', [ApplianceController::class, 'destroy'])->name('appliances.destroy');
 
         Route::get('my-jobs', [JobController::class, 'mine'])->name('jobs.mine');
+        Route::get('jobs/not-completed', JobBacklogController::class)->name('jobs.backlog');
         Route::get('jobs/customers', [JobController::class, 'lookup'])->name('jobs.lookup');
         Route::get('jobs/deleted', [JobController::class, 'trash'])->name('jobs.trash');
         Route::post('jobs/{job}/restore', [JobController::class, 'restore'])->withTrashed()->name('jobs.restore');
