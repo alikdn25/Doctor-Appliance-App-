@@ -11,6 +11,7 @@ import type {
     BillingDocument,
     DocumentKind,
     JobSummary,
+    ServiceOption,
     TaxOption,
 } from '@/components/billing/types';
 import { FormField } from '@/components/form-field';
@@ -75,6 +76,7 @@ export default function BillingForm({
     taxRates,
     today,
     defaultDueOn,
+    services = [],
     paymentTerms,
 }: {
     kind: DocumentKind;
@@ -84,6 +86,7 @@ export default function BillingForm({
     today: string;
     defaultDueOn?: string;
     paymentTerms?: string;
+    services?: ServiceOption[];
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -147,6 +150,26 @@ export default function BillingForm({
                 i === index ? { ...line, ...patch } : line,
             ),
         );
+
+    // Fill a line from the price book: name (+ description), price and tax flag. A price in another
+    // currency than the document's is not copied.
+    const pickService = (index: number, id: string) => {
+        const service = services.find((s) => String(s.id) === id);
+
+        if (!service) {
+            return;
+        }
+
+        setLine(index, {
+            description: [service.name, service.description]
+                .filter(Boolean)
+                .join(' — '),
+            taxable: service.taxable,
+            ...(service.unit_price !== null && service.currency === currency
+                ? { unit_price: fromMinor(service.unit_price, currency) }
+                : {}),
+        });
+    };
 
     const toggleTax = (id: number, on: boolean) =>
         form.setData(
@@ -280,6 +303,29 @@ export default function BillingForm({
                                 key={line.key}
                                 className="space-y-3 rounded-lg border p-3"
                             >
+                                {services.length > 0 && (
+                                    <NativeSelect
+                                        aria-label={t('billing.pick_service')}
+                                        value=""
+                                        onChange={(e) =>
+                                            pickService(i, e.target.value)
+                                        }
+                                    >
+                                        <option value="">
+                                            {t('billing.pick_service')}
+                                        </option>
+                                        {services.map((service) => (
+                                            <option
+                                                key={service.id}
+                                                value={service.id}
+                                            >
+                                                {service.unit_price !== null
+                                                    ? `${service.name} · ${money(service.unit_price, service.currency)}`
+                                                    : service.name}
+                                            </option>
+                                        ))}
+                                    </NativeSelect>
+                                )}
                                 <div className="flex items-start gap-2">
                                     <div className="flex-1">
                                         <Textarea

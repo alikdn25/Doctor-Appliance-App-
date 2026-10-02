@@ -86,6 +86,7 @@ class InvoiceController extends Controller
             'document' => null,
             'job' => BillingPresenter::job($job),
             'taxRates' => BillingPresenter::taxOptions(),
+            'services' => BillingPresenter::serviceOptions(),
             'today' => $today->format('Y-m-d'),
             'defaultDueOn' => $terms->dueOn($today)->format('Y-m-d'),
             'paymentTerms' => $terms->label(),
@@ -153,6 +154,7 @@ class InvoiceController extends Controller
             'document' => BillingPresenter::document($invoice),
             'job' => BillingPresenter::job($invoice->job),
             'taxRates' => BillingPresenter::taxOptions($invoice->taxes),
+            'services' => BillingPresenter::serviceOptions(),
             'today' => $this->today(),
         ]);
     }

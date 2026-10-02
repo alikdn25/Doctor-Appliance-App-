@@ -41,6 +41,27 @@ class PhoneNumber
         return self::parse(trim((string) $number), $country) !== null;
     }
 
+    /**
+     * For people to read (PDFs, emails): national format for numbers of the given country,
+     * international format for others. Unparseable values are returned as stored.
+     */
+    public static function display(?string $number, ?string $country = null): string
+    {
+        $number = trim((string) $number);
+        $country = strtoupper($country ?? self::defaultCountry());
+        $util = PhoneNumberUtil::getInstance();
+
+        try {
+            $parsed = $util->parse($number, $country);
+        } catch (NumberParseException) {
+            return $number;
+        }
+
+        return $util->format($parsed, $parsed->getCountryCode() === $util->getCountryCodeForRegion($country)
+            ? PhoneNumberFormat::NATIONAL
+            : PhoneNumberFormat::INTERNATIONAL);
+    }
+
     public static function digits(?string $value): string
     {
         return preg_replace('/\D+/', '', (string) $value) ?? '';

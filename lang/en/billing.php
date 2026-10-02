@@ -7,6 +7,7 @@ return [
     'new_invoice' => 'New invoice',
     'items' => 'Items',
     'add_item' => 'Add line',
+    'pick_service' => 'Pick from price book…',
     'remove_item' => 'Remove line',
     'taxable' => 'Taxable',
     'not_taxable' => 'No tax',

@@ -52,3 +52,23 @@ test('services of another company cannot be changed through their ids', function
     expect(Service::withoutCompanyScope()->find($foreign->id)->name)->not->toBe('Hijacked')
         ->and(inCompany($this->company, fn () => Service::sole()->name))->toBe('Hijacked');
 });
+
+test('active services are offered on estimate and invoice lines', function () {
+    $first = inCompany($this->company, function () {
+        Service::query()->orderBy('sort_order')->first()->update(['unit_price' => 9500]);
+        Service::query()->orderBy('sort_order')->skip(1)->first()->update(['is_active' => false]);
+
+        return Service::query()->orderBy('sort_order')->first();
+    });
+    $job = App\Models\ServiceJob::factory()->for(App\Models\Property::factory()->for(App\Models\Customer::factory()->for($this->company)))
+        ->create(['brand_id' => App\Models\Brand::factory()->create(['company_id' => $this->company->id])->id]);
+    $count = inCompany($this->company, fn () => Service::where('is_active', true)->count());
+
+    foreach (['invoices.create', 'estimates.create'] as $route) {
+        $this->get(route($route, $job))->assertInertia(fn (Assert $page) => $page
+            ->has('services', $count)
+            ->where('services.0.id', $first->id)
+            ->where('services.0.unit_price', 9500)
+            ->where('services.0.currency', 'CAD'));
+    }
+});

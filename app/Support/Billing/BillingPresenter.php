@@ -6,6 +6,7 @@ use App\Enums\InvoiceStatus;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Jobs\JobPresenter;
@@ -169,6 +170,33 @@ class BillingPresenter
                 'rate' => rtrim(rtrim((string) $rate->rate, '0'), '.'),
                 'is_compound' => $rate->is_compound,
                 'is_default' => $rate->is_default && $rate->is_active,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Active services of the price book, to fill estimate and invoice lines with one tap.
+     * Prices are in the company currency; a document in another currency gets the description only.
+     *
+     * @return list<array{id: int, name: string, description: string|null, unit_price: int|null, currency: string, taxable: bool}>
+     */
+    public static function serviceOptions(): array
+    {
+        $currency = currentCompany()->currency;
+
+        return Service::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Service $service) => [
+                'id' => $service->id,
+                'name' => $service->name,
+                'description' => $service->description,
+                'unit_price' => $service->unit_price,
+                'currency' => $currency,
+                'taxable' => $service->taxable,
             ])
             ->values()
             ->all();

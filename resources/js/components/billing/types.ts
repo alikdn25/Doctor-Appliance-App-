@@ -95,6 +95,16 @@ export type BillingDocument = DocumentRow & {
     payments?: PaymentData[];
 };
 
+/** A price book service to fill a line with. Price in the company currency (null = not set). */
+export type ServiceOption = {
+    id: number;
+    name: string;
+    description: string | null;
+    unit_price: number | null;
+    currency: string;
+    taxable: boolean;
+};
+
 export type TaxOption = {
     id: number;
     name: string;
