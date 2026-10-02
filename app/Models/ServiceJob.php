@@ -61,6 +61,7 @@ class ServiceJob extends Model
         'description',
         'notes',
         'tech_notes',
+        'ask_for_review',
     ];
 
     protected $attributes = [
@@ -81,6 +82,7 @@ class ServiceJob extends Model
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'signed_at' => 'datetime',
+            'ask_for_review' => 'boolean',
         ];
     }
 

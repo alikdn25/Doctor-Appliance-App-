@@ -6,6 +6,7 @@ use App\Actions\Billing\SaveBillingDocument;
 use App\Enums\EstimateStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
+use App\Messaging\MessagingPresenter;
 use App\Models\Estimate;
 use App\Models\ServiceJob;
 use App\Support\Billing\BillingPresenter;
@@ -56,6 +57,7 @@ class EstimateController extends Controller
             ],
             'today' => $this->today(),
             'delivery' => BillingPresenter::delivery($estimate),
+            'sms' => app(MessagingPresenter::class)->forDocument($estimate),
         ]);
     }
 

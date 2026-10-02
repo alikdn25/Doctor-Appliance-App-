@@ -1,4 +1,5 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
+import type { Option } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { FormField } from '@/components/form-field';
@@ -6,6 +7,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
 import { formatPhone } from '@/lib/phone';
@@ -38,6 +40,7 @@ type Brand = {
     business_number: string | null;
     invoice_footer: string | null;
     invoice_terms: string | null;
+    google_profile_id: number | null;
     is_active: boolean;
     addresses: (Omit<Address, 'label' | 'line2' | 'region' | 'postal_code'> & {
         id: number;
@@ -61,6 +64,7 @@ type FormData = {
     business_number: string;
     invoice_footer: string;
     invoice_terms: string;
+    google_profile_id: string;
     is_active: boolean;
     logo: File | null;
     remove_logo: boolean;
@@ -81,9 +85,11 @@ const emptyAddress = (primary: boolean, country: string): Address => ({
 export default function BrandForm({
     brand,
     canUpdate = true,
+    googleProfiles = [],
 }: {
     brand: Brand | null;
     canUpdate?: boolean;
+    googleProfiles?: Option[];
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -103,6 +109,9 @@ export default function BrandForm({
         business_number: brand?.business_number ?? '',
         invoice_footer: brand?.invoice_footer ?? '',
         invoice_terms: brand?.invoice_terms ?? '',
+        google_profile_id: brand?.google_profile_id
+            ? String(brand.google_profile_id)
+            : '',
         is_active: brand?.is_active ?? true,
         logo: null,
         remove_logo: false,
@@ -411,6 +420,33 @@ export default function BrandForm({
                         ),
                     )}
                 </section>
+
+                {googleProfiles.length > 0 && (
+                    <FormField
+                        id="google_profile_id"
+                        label={t('reviews.fields.default_profile')}
+                        error={errors.google_profile_id}
+                    >
+                        <NativeSelect
+                            id="google_profile_id"
+                            value={form.data.google_profile_id}
+                            disabled={readOnly}
+                            onChange={(e) =>
+                                form.setData(
+                                    'google_profile_id',
+                                    e.target.value,
+                                )
+                            }
+                        >
+                            <option value="">{t('reviews.none')}</option>
+                            {googleProfiles.map((p) => (
+                                <option key={p.value} value={p.value}>
+                                    {p.label}
+                                </option>
+                            ))}
+                        </NativeSelect>
+                    </FormField>
+                )}
 
                 <label className="flex items-center gap-2 text-sm">
                     <Checkbox

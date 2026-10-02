@@ -23,7 +23,10 @@ import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
+import { MessageHistory } from '@/components/messaging/message-history';
+import type { MessageItem } from '@/components/messaging/types';
 import { Button } from '@/components/ui/button';
+import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
 import { show as showAppliance } from '@/routes/appliances';
@@ -65,6 +68,7 @@ type Customer = {
         label_text: string;
         number: string;
         is_primary: boolean;
+        sms_opted_out_at: string | null;
     }[];
     emails: {
         id: number;
@@ -85,6 +89,7 @@ type Props = {
     canDelete: boolean;
     applianceTypes: Option[];
     manufacturers: string[];
+    messaging: { mode: string; messages: MessageItem[] };
 };
 
 export default function CustomerShow({
@@ -97,8 +102,10 @@ export default function CustomerShow({
     canDelete,
     applianceTypes,
     manufacturers,
+    messaging,
 }: Props) {
     const t = useTrans();
+    const time = useCompanyTime();
     const phoneText = usePhone();
     const [propertyDialog, setPropertyDialog] = useState<{
         open: boolean;
@@ -194,6 +201,16 @@ export default function CustomerShow({
                                 <span className="text-xs text-muted-foreground">
                                     {p.label_text}
                                 </span>
+                                {p.sms_opted_out_at && (
+                                    <span
+                                        className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive"
+                                        title={t('messages.opted_out_on', {
+                                            date: time.date(p.sms_opted_out_at),
+                                        })}
+                                    >
+                                        {t('messages.opted_out')}
+                                    </span>
+                                )}
                             </li>
                         ))}
                         {customer.emails.map((e) => (
@@ -459,6 +476,16 @@ export default function CustomerShow({
                             </div>
                         </article>
                     ))}
+                </section>
+
+                <section className="space-y-3">
+                    <h2 className="text-base font-medium">
+                        {t('messages.title')}
+                    </h2>
+                    <MessageHistory
+                        messages={messaging.messages}
+                        showJobLinks
+                    />
                 </section>
 
                 <section className="space-y-3">

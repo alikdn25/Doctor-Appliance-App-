@@ -3,7 +3,12 @@
 namespace App\Http\Controllers\Billing;
 
 use App\Actions\Billing\SendDocument;
+use App\Enums\MessageKind;
+use App\Enums\SmsMode;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Jobs\JobMessageController;
+use App\Messaging\MessagingPresenter;
+use App\Messaging\Messenger;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Support\Billing\DocumentPdf;
@@ -39,6 +44,42 @@ class DocumentDeliveryController extends Controller
         abort_if($invoice->isVoid(), 422);
 
         return $this->send($request, $invoice, $send);
+    }
+
+    public function smsEstimate(Request $request, Estimate $estimate, Messenger $messenger): RedirectResponse
+    {
+        return $this->sms($request, $estimate, $messenger);
+    }
+
+    public function smsInvoice(Request $request, Invoice $invoice, Messenger $messenger): RedirectResponse
+    {
+        abort_if($invoice->isVoid(), 422);
+
+        return $this->sms($request, $invoice, $messenger);
+    }
+
+    /**
+     * "Send by SMS" in Automatic mode: the document's link by text from the company number.
+     */
+    private function sms(Request $request, Estimate|Invoice $document, Messenger $messenger): RedirectResponse
+    {
+        Gate::authorize('view', $document);
+        abort_unless(currentCompany()->sms_mode === SmsMode::Automatic, 404);
+
+        $document->loadMissing(['customer', 'job']);
+        $message = $messenger->sms(
+            $document instanceof Invoice ? MessageKind::InvoiceLink : MessageKind::EstimateLink,
+            $document->customer,
+            $document->job,
+            MessagingPresenter::documentText($document),
+            $request->user(),
+        );
+
+        if ($message->status !== 'blocked') {
+            $document->forceFill(['sent_at' => now(), 'sent_to' => $message->to])->saveQuietly();
+        }
+
+        return JobMessageController::result($message->status, $message->status_reason, $message->send_after);
     }
 
     private function pdf(Estimate|Invoice $document): Response

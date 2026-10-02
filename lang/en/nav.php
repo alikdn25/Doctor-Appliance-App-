@@ -15,6 +15,8 @@ return [
     'taxes' => 'Taxes',
     'checklists' => 'Checklists',
     'services' => 'Services',
+    'google_reviews' => 'Google reviews',
+    'messaging' => 'Messaging',
     'company_settings' => 'Company settings',
     'companies' => 'Companies',
     'settings' => 'Settings',

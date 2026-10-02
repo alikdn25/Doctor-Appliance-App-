@@ -13,9 +13,12 @@ use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\ImpersonationLog;
 use App\Models\Membership;
+use App\Models\SmsAccount;
+use App\Models\SmsRegistration;
 use App\Services\AuditLogger;
 use App\Support\Locale\Countries;
 use App\Support\Locale\Currencies;
+use App\Support\Tenancy\CurrentCompany;
 use App\Support\TimezoneDatabase;
 use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
@@ -162,6 +165,15 @@ class CompanyController extends Controller
                 CompanyStatus::cases(),
             ),
             'subscriptionStatuses' => $this->subscriptionOptions(),
+            'sms' => app(CurrentCompany::class)->runAs($company, function () use ($company) {
+                $registration = SmsRegistration::query()->first();
+
+                return [
+                    'mode' => $company->sms_mode->label(),
+                    'number' => SmsAccount::query()->value('phone_number'),
+                    'registration' => $registration?->only(['status', 'business', 'brand_registration_sid', 'messaging_service_sid', 'campaign_sid', 'rejection_reason']),
+                ];
+            }),
         ]);
     }
 

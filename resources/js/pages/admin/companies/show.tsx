@@ -1,6 +1,8 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { UserCheck } from 'lucide-react';
 import type { FormEvent } from 'react';
+import type { AdminSms } from '@/components/admin/sms-registration';
+import { AdminSmsSection } from '@/components/admin/sms-registration';
 import { FormField } from '@/components/form-field';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +51,7 @@ type Props = {
     }[];
     statuses: Option[];
     subscriptionStatuses: Option[];
+    sms: AdminSms;
 };
 
 export default function AdminCompanyShow({
@@ -58,6 +61,7 @@ export default function AdminCompanyShow({
     auditLogs,
     statuses,
     subscriptionStatuses,
+    sms,
 }: Props) {
     const t = useTrans();
     const form = useForm({
@@ -169,6 +173,8 @@ export default function AdminCompanyShow({
                         {t('common.save')}
                     </Button>
                 </form>
+
+                <AdminSmsSection companyId={company.id} sms={sms} />
 
                 <section>
                     <h2 className="mb-3 text-base font-medium">

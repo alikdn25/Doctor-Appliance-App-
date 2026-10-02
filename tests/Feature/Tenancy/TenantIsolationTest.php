@@ -19,7 +19,12 @@ use App\Models\Estimate;
 use App\Models\EstimateItem;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\GoogleProfile;
 use App\Models\InvoicePaymentLink;
+use App\Models\Message;
+use App\Models\ReviewRequest;
+use App\Models\SmsAccount;
+use App\Models\SmsRegistration;
 use App\Models\JobAppliance;
 use App\Models\JobChecklistItem;
 use App\Models\JobPhoto;
@@ -107,6 +112,18 @@ beforeEach(function () {
             ]);
             $link->invoice_id = $invoice->id;
             $link->save();
+            $company = currentCompany();
+            SmsAccount::create(['provider' => 'twilio', 'account_sid' => 'AC'.$company->id, 'auth_token' => 'token-'.$company->id, 'phone_number' => '+1604555'.str_pad((string) $company->id, 4, '0', STR_PAD_LEFT)]);
+            SmsRegistration::create(['business' => ['legal_name' => $company->name]]);
+            $profile = GoogleProfile::create(['label' => 'Main', 'review_url' => 'https://g.page/r/'.$company->id.'/review']);
+            $message = Message::create([
+                'customer_id' => $job->customer_id, 'service_job_id' => $job->id, 'direction' => 'outbound', 'channel' => 'sms',
+                'kind' => 'general', 'to' => '+16045550000', 'body' => 'Secret text', 'status' => 'sent',
+            ]);
+            ReviewRequest::create([
+                'customer_id' => $job->customer_id, 'service_job_id' => $job->id, 'google_profile_id' => $profile->id,
+                'status' => 'sent', 'sent_at' => now(), 'message_id' => $message->id,
+            ]);
         });
     }
     $this->estimateB = Estimate::withoutCompanyScope()->where('company_id', $this->companyB->id)->sole();
@@ -147,6 +164,11 @@ dataset('tenant models', [
     'services' => [Service::class],
     'payment provider connections' => [PaymentProviderConnection::class],
     'invoice payment links' => [InvoicePaymentLink::class],
+    'sms accounts' => [SmsAccount::class],
+    'sms registrations' => [SmsRegistration::class],
+    'messages' => [Message::class],
+    'google profiles' => [GoogleProfile::class],
+    'review requests' => [ReviewRequest::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -162,7 +184,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         ->all();
 
     expect($tenantModels)->toBe(collect([
-        Appliance::class, Brand::class, BrandAddress::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class,
+        Appliance::class, Brand::class, BrandAddress::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class,
         CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceItem::class, InvoicePaymentLink::class, Payment::class,
         PaymentProviderConnection::class,
         JobAppliance::class, JobChecklistItem::class, JobPhoto::class, JobStatusChange::class,
@@ -624,4 +646,22 @@ test('another company\'s tax rate cannot be put on an estimate', function () {
 test('document numbers are counted per company', function () {
     expect(Invoice::withoutCompanyScope()->pluck('number')->all())->toBe(['INV-1', 'INV-1'])
         ->and(Company::find($this->companyA->id)->invoice_next_number)->toBe(2);
+});
+
+test('messages, review requests and SMS settings of another company stay hidden', function () {
+    $this->actingAs($this->ownerA);
+
+    $this->get(route('customers.show', $this->customerA))->assertInertia(fn (Assert $page) => $page
+        ->has('messaging.messages', 1)
+        ->where('messaging.messages.0.body', 'Secret text'));
+    $this->get(route('customers.show', $this->customerB))->assertNotFound();
+    $this->post(route('jobs.messages.opened', $this->jobB), ['kind' => 'general', 'to' => '+1', 'body' => 'x'])->assertNotFound();
+    $this->put(route('jobs.ask-for-review', $this->jobB), ['ask' => false])->assertNotFound();
+
+    // Profile ids of company B cannot be taken over through the list editor.
+    $foreign = GoogleProfile::withoutCompanyScope()->where('company_id', $this->companyB->id)->sole();
+    $this->put(route('company.google-profiles.update'), ['profiles' => [
+        ['id' => $foreign->id, 'label' => 'Hijacked', 'review_url' => 'https://example.com/r'],
+    ]])->assertRedirect();
+    expect($foreign->fresh()->label)->toBe('Main');
 });

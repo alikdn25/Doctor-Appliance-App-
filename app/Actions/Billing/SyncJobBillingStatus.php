@@ -5,6 +5,7 @@ namespace App\Actions\Billing;
 use App\Actions\Jobs\ChangeJobStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\JobStatus;
+use App\Messaging\ReviewRequests;
 use App\Models\ServiceJob;
 use App\Models\User;
 
@@ -15,7 +16,10 @@ use App\Models\User;
  */
 class SyncJobBillingStatus
 {
-    public function __construct(private readonly ChangeJobStatus $changeStatus) {}
+    public function __construct(
+        private readonly ChangeJobStatus $changeStatus,
+        private readonly ReviewRequests $reviews,
+    ) {}
 
     public function handle(ServiceJob $job, ?User $user): void
     {
@@ -31,6 +35,12 @@ class SyncJobBillingStatus
             default => JobStatus::Invoiced,
         };
 
+        $wasPaid = $job->status === JobStatus::Paid;
         $this->changeStatus->handle($job, $target, $user);
+
+        // Paid in full: the Google review request is scheduled (if asked for on the job).
+        if ($target === JobStatus::Paid && ! $wasPaid) {
+            $this->reviews->schedule($job);
+        }
     }
 }

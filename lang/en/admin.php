@@ -1,6 +1,16 @@
 <?php
 
 return [
+    'sms_registration_saved' => 'SMS registration updated.',
+    'sms' => [
+        'title' => 'SMS',
+        'mode' => 'Mode: :mode',
+        'number' => 'Number: :number',
+        'registration' => 'A2P 10DLC registration',
+        'none' => 'Not started by the company.',
+        'hint' => 'Register the brand and campaign in the Twilio console (subaccount of the company) with these details, then record the IDs and the status here. The daily sync follows the status at Twilio.',
+        'save' => 'Save registration',
+    ],
     'timezone_from_owner' => 'Detect from the Owner\'s browser',
     'tzdata_outdated_title' => 'Time zone database is out of date',
     'tzdata_outdated' => 'The server uses time zone data :version (released about :released). Time zone rules change several times a year, so visit times may be off by an hour. Update the server\'s tzdata package (and PHP\'s timezonedb, if installed) and restart PHP.',

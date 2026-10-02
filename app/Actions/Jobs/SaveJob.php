@@ -54,6 +54,8 @@ class SaveJob
 
             /** @var Customer $customer */
             $job = new ServiceJob;
+            // "Ask for a review" starts from the company setting unless the form says otherwise.
+            $job->ask_for_review = currentCompany()->review_requests_default;
             $job->fill($attributes);
             $job->customer()->associate($customer);
             $job->number = $this->nextNumber();

@@ -1,5 +1,5 @@
-import { useForm } from '@inertiajs/react';
-import { Download, Eye, Mail, Send } from 'lucide-react';
+import { router, useForm } from '@inertiajs/react';
+import { Download, Eye, Mail, MessageSquare, Send } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { FormField } from '@/components/form-field';
@@ -15,6 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
+import { smsUrl } from '@/lib/sms';
+import type { DocumentSms } from '@/components/messaging/types';
 
 export type Delivery = {
     pdf_url: string;
@@ -35,10 +37,12 @@ export function DocumentDelivery({
     delivery,
     kindLabel,
     number,
+    sms = null,
 }: {
     delivery: Delivery;
     kindLabel: string;
     number: string;
+    sms?: DocumentSms;
 }) {
     const t = useTrans();
     const time = useCompanyTime();
@@ -53,6 +57,26 @@ export function DocumentDelivery({
         // Reset only when the dialog opens.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
+
+    // "Send by SMS": sent by the app (Automatic) or opened in the phone's messages app (technician's phone).
+    const sendSms = () => {
+        if (!sms || !sms.phone) {
+            return;
+        }
+
+        if (sms.mode === 'automatic') {
+            router.post(sms.url, {}, { preserveScroll: true });
+
+            return;
+        }
+
+        router.post(
+            sms.opened_url,
+            { kind: sms.kind, to: sms.phone, body: sms.text },
+            { preserveScroll: true, preserveState: true },
+        );
+        window.location.href = smsUrl(sms.phone, sms.text);
+    };
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
@@ -79,7 +103,22 @@ export function DocumentDelivery({
                         <Mail /> {t('documents.send')}
                     </Button>
                 )}
+                {delivery.can_send && sms && (
+                    <Button
+                        variant="outline"
+                        className="col-span-2 h-11"
+                        disabled={sms.blocked !== null}
+                        onClick={sendSms}
+                    >
+                        <MessageSquare /> {t('messages.send_by_sms')}
+                    </Button>
+                )}
             </div>
+            {sms?.blocked && (
+                <p className="text-xs text-muted-foreground">
+                    {t('messages.sms_blocked', { reason: sms.blocked })}
+                </p>
+            )}
             {delivery.sent_at && delivery.sent_to && (
                 <p className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Send className="size-3" />

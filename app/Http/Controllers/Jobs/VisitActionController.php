@@ -4,7 +4,12 @@ namespace App\Http\Controllers\Jobs;
 
 use App\Actions\Jobs\VisitWorkflow;
 use App\Enums\JobStatus;
+use App\Enums\MessageKind;
+use App\Enums\SmsMode;
 use App\Http\Controllers\Controller;
+use App\Messaging\MessageContext;
+use App\Messaging\MessageTemplates;
+use App\Messaging\Messenger;
 use App\Models\JobVisit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,11 +21,22 @@ use Illuminate\Validation\Rule;
  */
 class VisitActionController extends Controller
 {
-    public function onMyWay(Request $request, JobVisit $visit, VisitWorkflow $workflow): RedirectResponse
+    /**
+     * Automatic: the customer gets an SMS with the arrival window. Off: the same text by email.
+     * From technician's phone: the page opens the phone's messages app itself (and records it).
+     */
+    public function onMyWay(Request $request, JobVisit $visit, VisitWorkflow $workflow, Messenger $messenger): RedirectResponse
     {
         Gate::authorize('work', $visit);
 
         $workflow->onMyWay($visit, $request->user());
+
+        if (currentCompany()->sms_mode !== SmsMode::TechnicianPhone) {
+            $job = $visit->job()->with(['customer', 'brand'])->firstOrFail();
+            $body = MessageTemplates::render(currentCompany(), MessageKind::OnMyWay, MessageContext::for($job->customer, $job, $visit, $request->user()));
+            $messenger->send(MessageKind::OnMyWay, $job->customer, $job, $body, $request->user(),
+                __('messages.email_subject.on_my_way', ['brand' => $job->brand?->name ?? currentCompany()->name]));
+        }
 
         return back();
     }

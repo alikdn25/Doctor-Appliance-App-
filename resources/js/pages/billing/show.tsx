@@ -16,6 +16,7 @@ import type { Delivery } from '@/components/billing/document-delivery';
 import { DocumentDelivery } from '@/components/billing/document-delivery';
 import type { OnlinePayment } from '@/components/billing/online-payment';
 import { OnlinePaymentSection } from '@/components/billing/online-payment';
+import type { DocumentSms } from '@/components/messaging/types';
 import { PaymentDialog } from '@/components/billing/payment-dialog';
 import type { BillingDocument, PaymentData } from '@/components/billing/types';
 import { FormField } from '@/components/form-field';
@@ -66,6 +67,7 @@ export default function BillingShow({
     today,
     online = null,
     delivery,
+    sms = null,
 }: {
     document: BillingDocument;
     can: Can;
@@ -73,6 +75,7 @@ export default function BillingShow({
     today: string;
     online?: OnlinePayment;
     delivery?: Delivery;
+    sms?: DocumentSms;
 }) {
     const t = useTrans();
     const phoneText = usePhone();
@@ -361,6 +364,7 @@ export default function BillingShow({
                                 : 'documents.estimate',
                         )}
                         number={doc.number}
+                        sms={sms}
                     />
                 )}
 

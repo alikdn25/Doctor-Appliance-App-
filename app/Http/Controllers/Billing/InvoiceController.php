@@ -9,6 +9,7 @@ use App\Enums\InvoiceStatus;
 use App\Enums\PaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
+use App\Messaging\MessagingPresenter;
 use App\Models\Invoice;
 use App\Models\ServiceJob;
 use App\Payments\PaymentProviders;
@@ -120,6 +121,7 @@ class InvoiceController extends Controller
             'today' => $this->today(),
             'online' => $this->online($invoice, $providers, $links),
             'delivery' => BillingPresenter::delivery($invoice),
+            'sms' => $invoice->isVoid() ? null : app(MessagingPresenter::class)->forDocument($invoice),
         ]);
     }
 

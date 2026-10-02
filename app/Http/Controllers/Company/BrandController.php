@@ -6,6 +6,7 @@ use App\Actions\Brands\SaveBrand;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\BrandRequest;
 use App\Models\Brand;
+use App\Models\GoogleProfile;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -41,7 +42,7 @@ class BrandController extends Controller
     {
         Gate::authorize('create', Brand::class);
 
-        return Inertia::render('brands/form', ['brand' => null]);
+        return Inertia::render('brands/form', ['brand' => null, 'googleProfiles' => $this->googleProfiles()]);
     }
 
     public function store(BrandRequest $request, SaveBrand $save): RedirectResponse
@@ -60,7 +61,19 @@ class BrandController extends Controller
         return Inertia::render('brands/form', [
             'brand' => $brand->load('addresses'),
             'canUpdate' => Gate::allows('update', $brand),
+            'googleProfiles' => $this->googleProfiles(),
         ]);
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    private function googleProfiles(): array
+    {
+        return GoogleProfile::query()->orderBy('label')->get()
+            ->map(fn (GoogleProfile $p) => ['value' => (string) $p->id, 'label' => $p->label])
+            ->values()
+            ->all();
     }
 
     public function update(BrandRequest $request, Brand $brand, SaveBrand $save): RedirectResponse

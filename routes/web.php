@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
+use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
 use App\Http\Controllers\Billing\DocumentDeliveryController;
 use App\Http\Controllers\Billing\EstimateController;
 use App\Http\Controllers\Billing\InvoiceController;
@@ -11,6 +12,8 @@ use App\Http\Controllers\Company\BrandController;
 use App\Http\Controllers\Company\ChecklistController;
 use App\Http\Controllers\Company\CompanySettingsController;
 use App\Http\Controllers\Company\DetectTimezoneController;
+use App\Http\Controllers\Company\GoogleProfileController;
+use App\Http\Controllers\Company\MessagingSettingsController;
 use App\Http\Controllers\Company\PaymentProviderController;
 use App\Http\Controllers\Company\ServiceController;
 use App\Http\Controllers\Company\SwitchCompanyController;
@@ -23,6 +26,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Jobs\CalendarController;
 use App\Http\Controllers\Jobs\JobController;
 use App\Http\Controllers\Jobs\JobFieldController;
+use App\Http\Controllers\Jobs\JobMessageController;
 use App\Http\Controllers\Jobs\JobStatusController;
 use App\Http\Controllers\Jobs\JobWorkController;
 use App\Http\Controllers\Jobs\VisitActionController;
@@ -30,6 +34,7 @@ use App\Http\Controllers\Jobs\VisitController;
 use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
+use App\Http\Controllers\SmsWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
@@ -39,6 +44,12 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('d/{token}', [PublicDocumentController::class, 'show'])->name('documents.public');
     Route::get('d/{token}/pdf', [PublicDocumentController::class, 'pdf'])->name('documents.public.pdf');
     Route::post('d/{token}/pay', [PublicDocumentController::class, 'pay'])->middleware('throttle:10,1')->name('documents.public.pay');
+});
+
+// SMS provider webhooks: incoming texts and delivery status (signature checked; no session, no CSRF).
+Route::middleware('throttle:300,1')->group(function () {
+    Route::post('webhooks/sms/{provider}', [SmsWebhookController::class, 'inbound'])->name('webhooks.sms.inbound');
+    Route::post('webhooks/sms/{provider}/status', [SmsWebhookController::class, 'status'])->name('webhooks.sms.status');
 });
 
 // Online payment provider webhooks (signature checked by the provider; no session, no CSRF).
@@ -114,6 +125,11 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('invoices/{invoice}/pdf', [DocumentDeliveryController::class, 'invoicePdf'])->name('invoices.pdf');
         Route::post('estimates/{estimate}/send', [DocumentDeliveryController::class, 'sendEstimate'])->middleware('throttle:30,1')->name('estimates.send');
         Route::post('invoices/{invoice}/send', [DocumentDeliveryController::class, 'sendInvoice'])->middleware('throttle:30,1')->name('invoices.send');
+        Route::post('estimates/{estimate}/sms', [DocumentDeliveryController::class, 'smsEstimate'])->middleware('throttle:30,1')->name('estimates.sms');
+        Route::post('invoices/{invoice}/sms', [DocumentDeliveryController::class, 'smsInvoice'])->middleware('throttle:30,1')->name('invoices.sms');
+        Route::post('jobs/{job}/sms', [JobMessageController::class, 'sms'])->middleware('throttle:30,1')->name('jobs.sms');
+        Route::post('jobs/{job}/messages/opened', [JobMessageController::class, 'opened'])->name('jobs.messages.opened');
+        Route::put('jobs/{job}/ask-for-review', [JobMessageController::class, 'askForReview'])->name('jobs.ask-for-review');
 
         // Connecting the company's own payment provider account (OAuth). The callback URL is registered at the provider.
         Route::get('payment-providers/{provider}/connect', [PaymentProviderController::class, 'connect'])->name('payment-providers.connect');
@@ -126,6 +142,12 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::put('timezone', DetectTimezoneController::class)->name('company.timezone.detect');
             Route::get('checklists', [ChecklistController::class, 'edit'])->name('company.checklists.edit');
             Route::put('checklists', [ChecklistController::class, 'update'])->name('company.checklists.update');
+            Route::get('messaging', [MessagingSettingsController::class, 'edit'])->name('company.messaging.edit');
+            Route::put('messaging', [MessagingSettingsController::class, 'update'])->name('company.messaging.update');
+            Route::post('messaging/number', [MessagingSettingsController::class, 'provision'])->middleware('throttle:5,1')->name('company.messaging.provision');
+            Route::put('messaging/registration', [MessagingSettingsController::class, 'registration'])->name('company.messaging.registration');
+            Route::get('google-reviews', [GoogleProfileController::class, 'edit'])->name('company.google-profiles.edit');
+            Route::put('google-reviews', [GoogleProfileController::class, 'update'])->name('company.google-profiles.update');
             Route::get('services', [ServiceController::class, 'edit'])->name('company.services.edit');
             Route::put('services', [ServiceController::class, 'update'])->name('company.services.update');
 
@@ -152,6 +174,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::prefix('admin')->name('admin.')->middleware(['super-admin', 'two-factor'])->group(function () {
         Route::redirect('/', '/admin/companies');
         Route::resource('companies', AdminCompanyController::class)->except(['edit', 'destroy']);
+        Route::put('companies/{company}/sms-registration', [AdminSmsRegistrationController::class, 'update'])->name('companies.sms-registration');
         Route::post('companies/{company}/impersonate/{user}', [ImpersonationController::class, 'store'])
             ->name('companies.impersonate');
     });
