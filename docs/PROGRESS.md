@@ -20,7 +20,7 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
-### Unfinished jobs queue — implemented, CI pending
+### Unfinished jobs queue — CI passed
 
 - Persistent compact "Not completed jobs" bar on tenant application screens, including a zero counter and a
   direct overdue shortcut. The count refreshes with every Inertia response, including partial navigation.
@@ -35,6 +35,8 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
   public/platform pages receive no queue data. Closed/billed/paid/cancelled/deleted jobs are excluded.
 - Tests cover old dates, waiting after diagnosis, multiple visits, future returns, closure/reopening, pagination,
   partial reloads, role/brand permissions and company switching. No database migration needed for this feature.
+- Build, PHP style, frontend lint/format, TypeScript and all 596 backend tests (4,458 assertions) passed on
+  commit `54d222f`: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37066318784.
 - Manual check: leave yesterday's visit unfinished; open the top bar from My Jobs or the calendar; try each
   filter, schedule a return, set Waiting for customer, close and reopen a job, then check as a technician and
   after switching companies. Mobile visual validation remains pending.
