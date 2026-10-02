@@ -2,6 +2,10 @@
 
 namespace App\Http\Requests\Billing;
 
+use App\Enums\LineKind;
+use App\Enums\WarrantyUnit;
+use App\Models\TaxRate;
+use App\Support\Billing\CostAccess;
 use App\Support\Locale\Currencies;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Eloquent\Model;
@@ -45,6 +49,19 @@ class DocumentRequest extends FormRequest
             'items.*.quantity' => ['required', 'numeric', 'gt:0', 'max:99999', 'regex:/^\d+(\.\d{1,2})?$/'],
             'items.*.unit_price' => ['required', 'numeric', self::moneyRule($this->currency(), negative: true)],
             'items.*.taxable' => ['boolean'],
+            'items.*.id' => ['nullable', 'integer'],
+            'items.*.kind' => ['nullable', Rule::enum(LineKind::class)],
+            'items.*.service_id' => ['nullable', 'integer', Rule::exists('services', 'id')->where('company_id', currentCompany()->id)],
+            'items.*.part_number' => ['nullable', 'string', 'max:100'],
+            'items.*.supplier' => ['nullable', 'string', 'max:150'],
+            'items.*.unit' => ['nullable', 'string', 'max:20'],
+            'items.*.unit_cost' => ['nullable', 'numeric', self::moneyRule($this->currency())],
+            'items.*.supplier_taxes' => ['nullable', 'array', 'max:5'],
+            'items.*.supplier_taxes.*.tax_rate_id' => ['required', 'integer', Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)],
+            'items.*.supplier_taxes.*.amount' => ['required', 'numeric', self::moneyRule($this->currency())],
+            'items.*.bill_to_customer' => ['boolean'],
+            'items.*.warranty_value' => ['nullable', 'integer', 'min:0', 'max:999'],
+            'items.*.warranty_unit' => ['nullable', Rule::enum(WarrantyUnit::class)],
             ...($this->isEstimate() ? [
                 'items.*.optional' => ['boolean'],
                 'items.*.selected' => ['boolean'],
@@ -88,11 +105,34 @@ class DocumentRequest extends FormRequest
     {
         $data = $this->validated();
 
+        $currency = $this->currency();
+        $costs = CostAccess::canSee($this->user());
+        $rates = TaxRate::query()->get()->keyBy('id');
+
         $data['items'] = array_map(fn (array $item) => [
+            'id' => isset($item['id']) ? (int) $item['id'] : null,
             'description' => $item['description'],
             'quantity' => (string) $item['quantity'],
-            'unit_price' => Currencies::toMinor($item['unit_price'], $this->currency()),
+            'unit_price' => Currencies::toMinor($item['unit_price'], $currency),
             'taxable' => (bool) ($item['taxable'] ?? true),
+            'kind' => $item['kind'] ?? LineKind::Service->value,
+            'service_id' => $item['service_id'] ?? null,
+            'part_number' => $item['part_number'] ?? null,
+            'unit' => $item['unit'] ?? null,
+            'bill_to_customer' => (bool) ($item['bill_to_customer'] ?? true),
+            'warranty_value' => isset($item['warranty_value']) ? (int) $item['warranty_value'] : null,
+            'warranty_unit' => $item['warranty_unit'] ?? null,
+            // Without access to costs these are left out, and the saved line keeps what it had.
+            ...($costs ? [
+                'supplier' => $item['supplier'] ?? null,
+                'unit_cost' => isset($item['unit_cost']) && $item['unit_cost'] !== '' ? Currencies::toMinor($item['unit_cost'], $currency) : null,
+                'supplier_taxes' => array_values(array_map(fn (array $tax) => [
+                    'tax_rate_id' => (int) $tax['tax_rate_id'],
+                    'name' => $rates[(int) $tax['tax_rate_id']]?->name,
+                    'amount' => Currencies::toMinor($tax['amount'], $currency),
+                    'recoverable' => (bool) ($rates[(int) $tax['tax_rate_id']]?->is_recoverable ?? true),
+                ], array_filter($item['supplier_taxes'] ?? [], fn (array $tax) => (float) $tax['amount'] > 0))) ?: null,
+            ] : []),
             ...($this->isEstimate() ? [
                 'optional' => (bool) ($item['optional'] ?? false),
                 'selected' => ! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false),

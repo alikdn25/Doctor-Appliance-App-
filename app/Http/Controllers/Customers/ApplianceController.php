@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customers;
 
 use App\Actions\Customers\SaveAppliance;
 use App\Enums\ApplianceType;
+use App\Enums\InvoiceStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customers\ApplianceRequest;
 use App\Models\Appliance;
@@ -39,7 +40,7 @@ class ApplianceController extends Controller
         // Repair history across all jobs: date, type and what was done. No prices.
         $history = ServiceJob::query()
             ->whereHas('appliances', fn ($q) => $q->whereKey($appliance->id))
-            ->with(['visits'])
+            ->with(['visits', 'invoices.items'])
             ->orderByDesc('id')
             ->get()
             ->map(fn (ServiceJob $job) => [
@@ -52,6 +53,15 @@ class ApplianceController extends Controller
                 'description' => $job->description,
                 'work_done' => $job->tech_notes,
                 'can_open' => $visibleIds->contains($job->id),
+                // Warranties of the billed lines (no prices).
+                'warranties' => $job->invoices->where('status', '!=', InvoiceStatus::Void)
+                    ->flatMap(fn ($invoice) => $invoice->items)
+                    ->filter(fn ($item) => $item->bill_to_customer && $item->warranty_ends_on !== null)
+                    ->map(fn ($item) => [
+                        'description' => $item->description,
+                        'warranty' => $item->warrantyLabel(),
+                        'ends_on' => $item->warranty_ends_on->toDateString(),
+                    ])->values(),
             ])
             ->values();
 

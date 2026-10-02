@@ -33,7 +33,8 @@ class RecordPayment
         CarbonInterface $receivedAt,
         User $user,
     ): Payment {
-        if (! in_array($method, PaymentMethod::manual(), true)) {
+        // Cash is refused when the company does not take cash.
+        if (! in_array($method, PaymentMethod::manual(currentCompany()), true)) {
             throw ValidationException::withMessages(['method' => __('payments.errors.invalid_method')]);
         }
 

@@ -10,6 +10,7 @@ return [
     'saved' => 'Services saved.',
     'no_price' => 'Price not set',
 
+    'warranty_default' => 'Default',
     'fields' => [
         'name' => 'Service',
         'description' => 'Description',

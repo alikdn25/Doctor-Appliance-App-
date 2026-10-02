@@ -25,8 +25,11 @@ class SyncInvoice
             $invoice->balance = 0;
             $invoice->paid_at = null;
         } else {
-            $invoice->balance = $invoice->total - $paid;
+            // Money refunded as settled (credited) is not owed again.
+            $invoice->balance = $invoice->total - $invoice->credited_amount - $paid;
             $invoice->status = match (true) {
+                $invoice->balance <= 0 && $invoice->credited_amount > 0 && $paid <= 0 => InvoiceStatus::Refunded,
+                $invoice->balance <= 0 && $invoice->credited_amount > 0 => InvoiceStatus::PartiallyRefunded,
                 $invoice->balance <= 0 && ($paid > 0 || ! $refunded) => InvoiceStatus::Paid,
                 $paid > 0 => InvoiceStatus::PartiallyPaid,
                 $refunded => InvoiceStatus::Refunded,

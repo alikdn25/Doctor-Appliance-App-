@@ -1,5 +1,5 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { FormEvent } from 'react';
 import {
     computeTotals,
@@ -8,6 +8,12 @@ import {
     useMoney,
 } from '@/components/billing/money';
 import { depositFor } from '@/components/billing/estimate-approval';
+import { LineEditor, newLine } from '@/components/billing/line-editor';
+import type {
+    Line,
+    LineKind,
+    LineSetup,
+} from '@/components/billing/line-editor';
 import type {
     BillingDocument,
     DocumentKind,
@@ -35,29 +41,6 @@ import {
     update as updateInvoice,
 } from '@/routes/invoices';
 import { show as showJob } from '@/routes/jobs';
-
-type Line = {
-    key: number;
-    description: string;
-    quantity: string;
-    unit_price: string;
-    taxable: boolean;
-    optional: boolean;
-    selected: boolean;
-};
-
-// Keys for React lists only; never sent to the server.
-let lineKey = 0;
-
-const newLine = (): Line => ({
-    key: ++lineKey,
-    description: '',
-    quantity: '1',
-    unit_price: '',
-    taxable: true,
-    optional: false,
-    selected: false,
-});
 
 type FormData = {
     issued_on: string;
@@ -88,6 +71,7 @@ export default function BillingForm({
     defaultValidUntil = null,
     canTakeDeposit = false,
     prefillItems = null,
+    lineSetup,
 }: {
     kind: DocumentKind;
     document: BillingDocument | null;
@@ -101,8 +85,17 @@ export default function BillingForm({
     canTakeDeposit?: boolean;
     /** Lines to start a new document with (e.g. the diagnostic fee). */
     prefillItems?:
-        | { description: string; unit_price: number | null; taxable: boolean }[]
+        | {
+              description: string;
+              unit_price: number | null;
+              taxable: boolean;
+              kind?: LineKind;
+              quantity?: string;
+              warranty_value?: number | null;
+              warranty_unit?: string | null;
+          }[]
         | null;
+    lineSetup: LineSetup;
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -134,25 +127,62 @@ export default function BillingForm({
                   .filter((id): id is number => id !== null)
             : taxRates.filter((r) => r.is_default).map((r) => r.id),
         items: document
-            ? document.items.map((item) => ({
-                  key: ++lineKey,
-                  description: item.description,
-                  quantity: String(Number(item.quantity)),
-                  unit_price: fromMinor(item.unit_price, currency),
-                  taxable: item.taxable,
-                  optional: item.optional,
-                  selected: item.selected,
-              }))
+            ? document.items.map((item) =>
+                  newLine({
+                      id: item.id,
+                      description: item.description,
+                      quantity: String(Number(item.quantity)),
+                      unit_price: fromMinor(item.unit_price, currency),
+                      taxable: item.taxable,
+                      optional: item.optional,
+                      selected: item.selected,
+                      kind: item.kind,
+                      service_id: item.service_id,
+                      part_number: item.part_number ?? '',
+                      supplier: item.supplier ?? '',
+                      unit: item.unit ?? '',
+                      unit_cost:
+                          item.unit_cost !== null
+                              ? fromMinor(item.unit_cost, currency)
+                              : '',
+                      supplier_taxes: Object.fromEntries(
+                          item.supplier_taxes.map((tax) => [
+                              String(tax.tax_rate_id),
+                              fromMinor(tax.amount, currency),
+                          ]),
+                      ),
+                      bill_to_customer: item.bill_to_customer,
+                      warranty_value:
+                          item.warranty_value === null
+                              ? ''
+                              : String(item.warranty_value),
+                      warranty_unit: item.warranty_unit ?? 'days',
+                      price_touched: true,
+                      warranty_touched: true,
+                  }),
+              )
             : prefillItems
-              ? prefillItems.map((item) => ({
-                    ...newLine(),
-                    description: item.description,
-                    unit_price:
-                        item.unit_price !== null
-                            ? fromMinor(item.unit_price, currency)
-                            : '',
-                    taxable: item.taxable,
-                }))
+              ? prefillItems.map((item) =>
+                    newLine({
+                        description: item.description,
+                        unit_price:
+                            item.unit_price !== null
+                                ? fromMinor(item.unit_price, currency)
+                                : '',
+                        taxable: item.taxable,
+                        price_touched: item.unit_price !== null,
+                        ...(item.kind ? { kind: item.kind } : {}),
+                        ...(item.quantity ? { quantity: item.quantity } : {}),
+                        ...(item.warranty_value !== undefined &&
+                        item.warranty_value !== null
+                            ? {
+                                  warranty_value: String(item.warranty_value),
+                                  warranty_unit: item.warranty_unit ?? 'days',
+                                  warranty_touched: true,
+                              }
+                            : {}),
+                    }),
+                )
               : [newLine()],
         deposit_type: document?.deposit_type ?? '',
         deposit_value:
@@ -172,7 +202,8 @@ export default function BillingForm({
     const totals = computeTotals({
         items: data.items.map((line) => ({
             ...line,
-            included: !line.optional || line.selected,
+            included:
+                (!line.optional || line.selected) && line.bill_to_customer,
         })),
         discount_type: data.discount_type,
         discount_value: data.discount_value,
@@ -188,26 +219,6 @@ export default function BillingForm({
                 i === index ? { ...line, ...patch } : line,
             ),
         );
-
-    // Fill a line from the price book: name (+ description), price and tax flag. A price in another
-    // currency than the document's is not copied.
-    const pickService = (index: number, id: string) => {
-        const service = services.find((s) => String(s.id) === id);
-
-        if (!service) {
-            return;
-        }
-
-        setLine(index, {
-            description: [service.name, service.description]
-                .filter(Boolean)
-                .join(' — '),
-            taxable: service.taxable,
-            ...(service.unit_price !== null && service.currency === currency
-                ? { unit_price: fromMinor(service.unit_price, currency) }
-                : {}),
-        });
-    };
 
     const toggleTax = (id: number, on: boolean) =>
         form.setData(
@@ -227,10 +238,35 @@ export default function BillingForm({
             discount_type: d.discount_type || null,
             discount_value: d.discount_type ? d.discount_value || 0 : null,
             items: d.items.map((line) => ({
+                id: line.id,
                 description: line.description,
                 quantity: line.quantity,
                 unit_price: line.unit_price.replace(/[^\d.-]/g, ''),
                 taxable: line.taxable,
+                kind: line.kind,
+                service_id: line.service_id,
+                part_number: line.part_number || null,
+                unit:
+                    line.kind === 'material' ? line.unit.trim() || null : null,
+                bill_to_customer: line.bill_to_customer,
+                warranty_value:
+                    line.warranty_value === ''
+                        ? null
+                        : Number(line.warranty_value),
+                warranty_unit: line.warranty_unit,
+                ...(lineSetup.costs_visible
+                    ? {
+                          supplier: line.supplier || null,
+                          unit_cost:
+                              line.unit_cost.replace(/[^\d.]/g, '') || null,
+                          supplier_taxes: Object.entries(line.supplier_taxes)
+                              .filter(([, amount]) => amount.trim() !== '')
+                              .map(([id, amount]) => ({
+                                  tax_rate_id: Number(id),
+                                  amount: amount.replace(/[^\d.]/g, ''),
+                              })),
+                      }
+                    : {}),
                 ...(kind === 'estimate'
                     ? { optional: line.optional, selected: line.selected }
                     : {}),
@@ -346,194 +382,27 @@ export default function BillingForm({
                     <InputError message={errors.items} />
                     <ul className="space-y-3">
                         {data.items.map((line, i) => (
-                            <li
+                            <LineEditor
                                 key={line.key}
-                                className="space-y-3 rounded-lg border p-3"
-                            >
-                                {services.length > 0 && (
-                                    <NativeSelect
-                                        aria-label={t('billing.pick_service')}
-                                        value=""
-                                        onChange={(e) =>
-                                            pickService(i, e.target.value)
-                                        }
-                                    >
-                                        <option value="">
-                                            {t('billing.pick_service')}
-                                        </option>
-                                        {services.map((service) => (
-                                            <option
-                                                key={service.id}
-                                                value={service.id}
-                                            >
-                                                {service.unit_price !== null
-                                                    ? `${service.name} · ${money(service.unit_price, service.currency)}`
-                                                    : service.name}
-                                            </option>
-                                        ))}
-                                    </NativeSelect>
-                                )}
-                                <div className="flex items-start gap-2">
-                                    <div className="flex-1">
-                                        <Textarea
-                                            aria-label={t(
-                                                'billing.fields.description',
-                                            )}
-                                            placeholder={t(
-                                                'billing.fields.description',
-                                            )}
-                                            rows={2}
-                                            maxLength={500}
-                                            value={line.description}
-                                            onChange={(e) =>
-                                                setLine(i, {
-                                                    description: e.target.value,
-                                                })
-                                            }
-                                        />
-                                        <InputError
-                                            message={
-                                                fieldErrors[
-                                                    `items.${i}.description`
-                                                ]
-                                            }
-                                        />
-                                    </div>
-                                    {data.items.length > 1 && (
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="size-10"
-                                            aria-label={t(
-                                                'billing.remove_item',
-                                            )}
-                                            onClick={() =>
-                                                form.setData(
-                                                    'items',
-                                                    data.items.filter(
-                                                        (_, j) => j !== i,
-                                                    ),
-                                                )
-                                            }
-                                        >
-                                            <Trash2 />
-                                        </Button>
-                                    )}
-                                </div>
-                                <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[5rem_10rem_1fr]">
-                                    <div>
-                                        <Input
-                                            aria-label={t(
-                                                'billing.fields.quantity',
-                                            )}
-                                            inputMode="decimal"
-                                            value={line.quantity}
-                                            onChange={(e) =>
-                                                setLine(i, {
-                                                    quantity: e.target.value,
-                                                })
-                                            }
-                                        />
-                                        <InputError
-                                            message={
-                                                fieldErrors[
-                                                    `items.${i}.quantity`
-                                                ]
-                                            }
-                                        />
-                                    </div>
-                                    <div>
-                                        <div className="relative">
-                                            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
-                                                {symbol}
-                                            </span>
-                                            <Input
-                                                aria-label={t(
-                                                    'billing.fields.unit_price',
-                                                )}
-                                                placeholder={fromMinor(
-                                                    0,
-                                                    currency,
-                                                )}
-                                                inputMode="decimal"
-                                                style={{
-                                                    paddingLeft: `${symbol.length * 0.6 + 1}rem`,
-                                                }}
-                                                value={line.unit_price}
-                                                onChange={(e) =>
-                                                    setLine(i, {
-                                                        unit_price:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                            />
-                                        </div>
-                                        <InputError
-                                            message={
-                                                fieldErrors[
-                                                    `items.${i}.unit_price`
-                                                ]
-                                            }
-                                        />
-                                    </div>
-                                    <div className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1">
-                                        <label className="flex min-h-10 items-center gap-2 text-sm">
-                                            <Checkbox
-                                                checked={line.taxable}
-                                                onCheckedChange={(c) =>
-                                                    setLine(i, {
-                                                        taxable: c === true,
-                                                    })
-                                                }
-                                            />
-                                            {t('billing.taxable')}
-                                        </label>
-                                        <span
-                                            className={
-                                                line.optional && !line.selected
-                                                    ? 'text-muted-foreground tabular-nums line-through'
-                                                    : 'font-medium tabular-nums'
-                                            }
-                                        >
-                                            {money(totals.itemTotals[i] ?? 0)}
-                                        </span>
-                                    </div>
-                                </div>
-                                {kind === 'estimate' && (
-                                    <div className="flex flex-wrap gap-x-4">
-                                        <label className="flex min-h-10 items-center gap-2 text-sm">
-                                            <Checkbox
-                                                checked={line.optional}
-                                                onCheckedChange={(c) =>
-                                                    setLine(i, {
-                                                        optional: c === true,
-                                                        selected: false,
-                                                    })
-                                                }
-                                            />
-                                            {t('estimates.optional')}
-                                            <span className="text-xs text-muted-foreground">
-                                                {t('estimates.optional_hint')}
-                                            </span>
-                                        </label>
-                                        {line.optional && (
-                                            <label className="flex min-h-10 items-center gap-2 text-sm">
-                                                <Checkbox
-                                                    checked={line.selected}
-                                                    onCheckedChange={(c) =>
-                                                        setLine(i, {
-                                                            selected:
-                                                                c === true,
-                                                        })
-                                                    }
-                                                />
-                                                {t('estimates.included')}
-                                            </label>
-                                        )}
-                                    </div>
-                                )}
-                            </li>
+                                line={line}
+                                index={i}
+                                currency={currency}
+                                symbol={symbol}
+                                total={totals.itemTotals[i] ?? 0}
+                                setup={lineSetup}
+                                services={services}
+                                estimate={kind === 'estimate'}
+                                canRemove={data.items.length > 1}
+                                errors={fieldErrors}
+                                money={money}
+                                onChange={(patch) => setLine(i, patch)}
+                                onRemove={() =>
+                                    form.setData(
+                                        'items',
+                                        data.items.filter((_, j) => j !== i),
+                                    )
+                                }
+                            />
                         ))}
                     </ul>
                     <Button

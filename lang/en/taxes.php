@@ -15,7 +15,9 @@ return [
     'deleted' => 'Tax deleted.',
     'confirm_delete' => 'Delete tax ":name"?',
 
+    'recoverable_hint' => 'This tax paid to suppliers is claimed back (e.g. GST input tax credits). Off: it counts as a cost of parts and materials.',
     'fields' => [
+        'is_recoverable' => 'Recoverable when paid to suppliers',
         'name' => 'Name',
         'rate' => 'Rate, %',
         'is_compound' => 'Compound tax',

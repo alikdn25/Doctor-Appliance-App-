@@ -53,12 +53,20 @@ export function PaymentDialog({
     const money = useMoney(currency);
     const { auth } = usePage().props;
     const symbol = currencySymbol(currency, auth.company?.locale);
-    const form = useForm({
+    const form = useForm<{
+        amount: string;
+        method: string;
+        reference: string;
+        note: string;
+        received_on: string;
+        receipt: File | null;
+    }>({
         amount: fromMinor(balance, currency),
         method: '',
         reference: '',
         note: '',
         received_on: today,
+        receipt: null,
     });
 
     useEffect(() => {
@@ -70,6 +78,7 @@ export function PaymentDialog({
                 reference: '',
                 note: '',
                 received_on: today,
+                receipt: null,
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -84,9 +93,12 @@ export function PaymentDialog({
             ...d,
             amount: d.amount.replace(/[^\d.]/g, ''),
             reference: referenceLabel[d.method] ? d.reference : '',
+            receipt: d.method === 'cash' ? d.receipt : null,
         }));
         form.post(store(invoiceId).url, {
             preserveScroll: true,
+            forceFormData:
+                form.data.method === 'cash' && form.data.receipt !== null,
             onSuccess: () => onOpenChange(false),
         });
     };
@@ -215,6 +227,29 @@ export function PaymentDialog({
                             }
                         />
                     </FormField>
+
+                    {method === 'cash' && (
+                        <FormField
+                            id="payment-receipt"
+                            label={t('payments.fields.receipt_photo')}
+                            error={
+                                (form.errors as Record<string, string>).receipt
+                            }
+                        >
+                            <Input
+                                id="payment-receipt"
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={(e) =>
+                                    form.setData(
+                                        'receipt',
+                                        e.target.files?.[0] ?? null,
+                                    )
+                                }
+                            />
+                        </FormField>
+                    )}
 
                     <FormField
                         id="payment-date"

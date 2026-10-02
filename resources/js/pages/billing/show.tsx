@@ -8,12 +8,13 @@ import {
     Pencil,
     Receipt,
     Trash2,
+    Undo2,
     XCircle,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { DocumentStatusBadge } from '@/components/billing/document-status-badge';
-import { useMoney } from '@/components/billing/money';
+import { fromMinor, useMoney } from '@/components/billing/money';
 import type { Delivery } from '@/components/billing/document-delivery';
 import { DocumentDelivery } from '@/components/billing/document-delivery';
 import type { OnlinePayment } from '@/components/billing/online-payment';
@@ -32,6 +33,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
@@ -48,6 +50,7 @@ import {
 import {
     edit as editInvoice,
     show as showInvoice,
+    refund as refundRoute,
     voidMethod as voidInvoice,
 } from '@/routes/invoices';
 import { show as showJob } from '@/routes/jobs';
@@ -62,6 +65,7 @@ type Can = {
     recordPayment?: boolean;
     void?: boolean;
     voidPayments?: boolean;
+    refund?: boolean;
 };
 
 export default function BillingShow({
@@ -87,6 +91,7 @@ export default function BillingShow({
     const time = useCompanyTime();
     const [paymentOpen, setPaymentOpen] = useState(false);
     const [voidOpen, setVoidOpen] = useState(false);
+    const [refundOpen, setRefundOpen] = useState(false);
     const [error, setError] = useState<string | undefined>();
     const isInvoice = doc.kind === 'invoice';
     const group = isInvoice ? 'invoices' : 'estimates';
@@ -304,16 +309,51 @@ export default function BillingShow({
                                                   )}
                                         </p>
                                     )}
+                                    {(item.kind !== 'service' ||
+                                        !item.bill_to_customer) && (
+                                        <p className="text-xs font-medium text-muted-foreground uppercase">
+                                            {[
+                                                t(`billing.kinds.${item.kind}`),
+                                                item.part_number,
+                                                item.bill_to_customer
+                                                    ? null
+                                                    : t(
+                                                          'billing.line.internal',
+                                                      ),
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                        </p>
+                                    )}
                                     <p className="whitespace-pre-line">
                                         {item.description}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                         {t('billing.qty_times_price', {
-                                            quantity: Number(item.quantity),
+                                            quantity: item.unit
+                                                ? `${Number(item.quantity)} ${item.unit}`
+                                                : Number(item.quantity),
                                             price: money(item.unit_price),
                                         })}
                                         {!item.taxable &&
                                             ` · ${t('billing.not_taxable')}`}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {item.warranty_ends_on
+                                            ? t('billing.warranty_until', {
+                                                  length: item.warranty_label,
+                                                  date: time.dateOnly(
+                                                      item.warranty_ends_on,
+                                                  ),
+                                              })
+                                            : item.warranty_value
+                                              ? t('billing.warranty_line', {
+                                                    length: item.warranty_label,
+                                                })
+                                              : item.warranty_label}
+                                        {item.total_cost !== null &&
+                                            item.total_cost > 0 &&
+                                            ` · ${t('billing.line.total_cost')} ${money(item.total_cost)}${item.supplier ? ` (${item.supplier})` : ''}`}
                                     </p>
                                 </div>
                                 <span
@@ -372,6 +412,16 @@ export default function BillingShow({
                             <dt>{t('billing.total')}</dt>
                             <dd className="tabular-nums">{money(doc.total)}</dd>
                         </div>
+                        {doc.cost_total !== null &&
+                            doc.cost_total !== undefined &&
+                            doc.cost_total > 0 && (
+                                <div className="flex justify-between text-muted-foreground">
+                                    <dt>{t('billing.cost_total')}</dt>
+                                    <dd className="tabular-nums">
+                                        {money(doc.cost_total)}
+                                    </dd>
+                                </div>
+                            )}
                         {isInvoice && doc.status !== 'void' && (
                             <>
                                 <div className="flex justify-between">
@@ -694,6 +744,11 @@ export default function BillingShow({
                                                     {p.void_reason}
                                                 </p>
                                             )}
+                                            {p.refund_reason && (
+                                                <p className="text-xs">
+                                                    {p.refund_reason}
+                                                </p>
+                                            )}
                                         </div>
                                         <span
                                             className={
@@ -726,15 +781,25 @@ export default function BillingShow({
                             </ul>
                         )}
 
-                        {can.void && (
-                            <Button
-                                variant="ghost"
-                                className="text-destructive"
-                                onClick={() => setVoidOpen(true)}
-                            >
-                                <Ban /> {t('invoices.void')}
-                            </Button>
-                        )}
+                        <div className="flex flex-wrap gap-2">
+                            {can.refund && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setRefundOpen(true)}
+                                >
+                                    <Undo2 /> {t('payments.refunds.action')}
+                                </Button>
+                            )}
+                            {can.void && (
+                                <Button
+                                    variant="ghost"
+                                    className="text-destructive"
+                                    onClick={() => setVoidOpen(true)}
+                                >
+                                    <Ban /> {t('invoices.void')}
+                                </Button>
+                            )}
+                        </div>
                     </section>
                 )}
 
@@ -760,6 +825,15 @@ export default function BillingShow({
                     currency={doc.currency}
                     methods={paymentMethods}
                     today={today}
+                />
+            )}
+            {can.refund && (
+                <RefundDialog
+                    open={refundOpen}
+                    onOpenChange={setRefundOpen}
+                    invoiceId={doc.id}
+                    paid={doc.amount_paid ?? 0}
+                    currency={doc.currency}
                 />
             )}
             {can.void && (
@@ -828,6 +902,85 @@ function VoidInvoiceDialog({
                         disabled={form.processing}
                     >
                         {t('invoices.void')}
+                    </Button>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function RefundDialog({
+    open,
+    onOpenChange,
+    invoiceId,
+    paid,
+    currency,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    invoiceId: number;
+    paid: number;
+    currency: string;
+}) {
+    const t = useTrans();
+    const money = useMoney(currency);
+    const form = useForm({ amount: fromMinor(paid, currency), reason: '' });
+
+    const submit = (e: FormEvent) => {
+        e.preventDefault();
+        form.post(refundRoute(invoiceId).url, {
+            preserveScroll: true,
+            onSuccess: () => onOpenChange(false),
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>{t('payments.refunds.title')}</DialogTitle>
+                    <DialogDescription>
+                        {t('payments.refunds.hint')}
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={submit} className="space-y-4">
+                    <FormField
+                        id="refund-amount"
+                        label={`${t('payments.refunds.amount')} (≤ ${money(paid)})`}
+                        error={form.errors.amount}
+                    >
+                        <Input
+                            id="refund-amount"
+                            inputMode="decimal"
+                            value={form.data.amount}
+                            onChange={(e) =>
+                                form.setData('amount', e.target.value)
+                            }
+                        />
+                    </FormField>
+                    <FormField
+                        id="refund-reason"
+                        label={t('payments.refunds.reason')}
+                        error={form.errors.reason}
+                    >
+                        <Textarea
+                            id="refund-reason"
+                            rows={2}
+                            maxLength={500}
+                            value={form.data.reason}
+                            onChange={(e) =>
+                                form.setData('reason', e.target.value)
+                            }
+                        />
+                    </FormField>
+                    <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={
+                            form.processing || form.data.reason.trim() === ''
+                        }
+                    >
+                        {t('payments.refunds.action')}
                     </Button>
                 </form>
             </DialogContent>

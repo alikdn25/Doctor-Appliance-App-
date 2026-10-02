@@ -56,7 +56,7 @@ class ReviseEstimate
             $new->save();
 
             $old->items->each(fn (EstimateItem $item) => $new->items()->create(
-                $item->only(['position', 'description', 'quantity', 'unit_price', 'taxable', 'total', 'optional', 'selected']),
+                $item->only(['position', 'description', 'quantity', 'unit_price', 'taxable', 'total', 'optional', 'selected', ...EstimateItem::LINE_FIELDS]),
             ));
 
             // The deposit belongs to the current version.

@@ -28,7 +28,14 @@ import InputError from '@/components/input-error';
 import { ChecklistSection } from '@/components/jobs/checklist-section';
 import type { ChecklistItemData } from '@/components/jobs/checklist-section';
 import { FinishDialog } from '@/components/jobs/finish-dialog';
-import type { ClosureReasons } from '@/components/jobs/finish-dialog';
+import type {
+    CallbackInfo,
+    ClosureReasons,
+} from '@/components/jobs/finish-dialog';
+import { JobCostsSection } from '@/components/jobs/job-costs';
+import type { JobCosts } from '@/components/jobs/job-costs';
+import { WarrantyDialog } from '@/components/jobs/warranty-dialog';
+import type { WarrantyLine } from '@/components/jobs/warranty-dialog';
 import {
     BringList,
     FollowUpLinks,
@@ -133,6 +140,11 @@ type Props = {
     };
     statusOptions: Option[];
     closureReasons: ClosureReasons;
+    callback: CallbackInfo;
+    warrantyLines: WarrantyLine[];
+    warrantyUnits: Option[];
+    openWarranty: boolean;
+    costs: JobCosts | null;
     assignableUsers: Assignable[];
     otherAppliances: ApplianceItem[];
     applianceTypes: Option[];
@@ -174,6 +186,11 @@ export default function JobShow({
     photoKinds,
     messaging,
     closureReasons,
+    callback,
+    warrantyLines,
+    warrantyUnits,
+    openWarranty,
+    costs,
 }: Props) {
     const t = useTrans();
     const phoneText = usePhone();
@@ -185,6 +202,7 @@ export default function JobShow({
     const [statusOpen, setStatusOpen] = useState(false);
     const [finishOpen, setFinishOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
+    const [warrantyOpen, setWarrantyOpen] = useState(openWarranty);
     const visitUnderWay = job.visits.some((v) =>
         ['on_the_way', 'in_progress'].includes(v.status),
     );
@@ -304,6 +322,17 @@ export default function JobShow({
                         </Button>
                     )}
                 </div>
+
+                {warrantyLines.length > 0 && can.work && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-fit"
+                        onClick={() => setWarrantyOpen(true)}
+                    >
+                        <ShieldCheck /> {t('jobs.warranty.review')}
+                    </Button>
+                )}
 
                 {job.outcome && job.outcome_label && (
                     <OutcomeCard
@@ -921,6 +950,8 @@ export default function JobShow({
                     )}
                 </section>
 
+                {costs && <JobCostsSection jobId={job.id} costs={costs} />}
+
                 {/* Status history */}
                 <section className="space-y-2">
                     <h2 className="flex items-center gap-2 text-base font-medium">
@@ -985,6 +1016,7 @@ export default function JobShow({
                     visitId={myVisit.id}
                     jobId={job.id}
                     reasons={closureReasons}
+                    callback={callback}
                 />
             )}
             {can.close && (
@@ -993,6 +1025,16 @@ export default function JobShow({
                     onOpenChange={setCloseOpen}
                     jobId={job.id}
                     reasons={closureReasons}
+                    callback={callback}
+                />
+            )}
+            {can.work && warrantyLines.length > 0 && (
+                <WarrantyDialog
+                    open={warrantyOpen}
+                    onOpenChange={setWarrantyOpen}
+                    jobId={job.id}
+                    lines={warrantyLines}
+                    units={warrantyUnits}
                 />
             )}
 

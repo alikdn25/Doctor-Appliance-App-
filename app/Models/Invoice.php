@@ -40,6 +40,7 @@ use Illuminate\Support\Carbon;
  * @property int $total
  * @property int $amount_paid
  * @property int $balance
+ * @property int $credited_amount Refunded money the customer no longer owes (warranty refunds …)
  * @property list<array{tax_rate_id: int|null, name: string, rate: string, compound?: bool, amount: int}> $taxes
  * @property string|null $notes
  * @property Carbon|null $paid_at
@@ -78,6 +79,7 @@ class Invoice extends Model
             'due_on' => 'date:Y-m-d',
             'amount_paid' => 'integer',
             'balance' => 'integer',
+            'credited_amount' => 'integer',
             'paid_at' => 'datetime',
             'voided_at' => 'datetime',
         ];

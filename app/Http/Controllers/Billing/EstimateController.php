@@ -33,6 +33,7 @@ class EstimateController extends Controller
             'job' => BillingPresenter::job($job),
             'taxRates' => BillingPresenter::taxOptions(),
             'services' => BillingPresenter::serviceOptions(),
+            'lineSetup' => BillingPresenter::lineSetup(),
             'today' => $this->today(),
             'defaultValidUntil' => $days ? CarbonImmutable::parse($this->today())->addDays($days)->toDateString() : null,
             'canTakeDeposit' => app(PaymentProviders::class)->readyFor(currentCompany()) !== null,
@@ -78,6 +79,7 @@ class EstimateController extends Controller
             'job' => BillingPresenter::job($estimate->job),
             'taxRates' => BillingPresenter::taxOptions($estimate->taxes),
             'services' => BillingPresenter::serviceOptions(),
+            'lineSetup' => BillingPresenter::lineSetup(),
             'today' => $this->today(),
             'canTakeDeposit' => app(PaymentProviders::class)->readyFor(currentCompany()) !== null,
         ]);

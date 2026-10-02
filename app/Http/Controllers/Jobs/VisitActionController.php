@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Jobs;
 
 use App\Actions\Jobs\CloseJob;
+use App\Actions\Jobs\RefundOriginalJob;
 use App\Actions\Jobs\VisitWorkflow;
 use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
@@ -15,8 +16,8 @@ use App\Messaging\Messenger;
 use App\Models\JobVisit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 
 /**
  * Status buttons in the field: On my way, Start, Finish.
@@ -53,44 +54,36 @@ class VisitActionController extends Controller
     }
 
     /**
-     * Finish on site: completed (repaired), waiting for parts, or closed without a repair (customer declined, unable to
-     * repair; with a reason). "Invoice diagnosis only" opens the invoice form with the diagnostic fee line.
+     * Finish on site: completed (repaired / fixed under warranty), waiting for parts, or closed without a repair
+     * (customer declined, unable to repair, no charge; with a reason). See JobCloseController for the rest.
      */
-    public function finish(Request $request, JobVisit $visit, VisitWorkflow $workflow, CloseJob $close): RedirectResponse
+    public function finish(Request $request, JobVisit $visit, VisitWorkflow $workflow, CloseJob $close, RefundOriginalJob $refund): RedirectResponse
     {
         Gate::authorize('work', $visit);
 
-        $outcome = JobOutcome::tryFrom((string) $request->input('outcome'));
-        $validated = $request->validate([
-            'outcome' => ['required', Rule::in([
-                JobStatus::Completed->value, JobStatus::WaitingForParts->value,
-                JobOutcome::CustomerDeclined->value, JobOutcome::UnableToRepair->value,
-            ])],
-            'note' => ['nullable', 'string', 'max:500'],
-            'reason' => $outcome?->needsReason()
-                ? ['required', Rule::in(currentCompany()->closureReasons($outcome))]
-                : ['nullable'],
-            'invoice_diagnosis' => ['boolean'],
-        ], [], ['reason' => __('jobs.fields.reason')]);
+        $job = JobCloseController::visitJob($visit);
+        $data = JobCloseController::validateClose($request, $job, [
+            JobStatus::Completed->value, JobStatus::WaitingForParts->value,
+            ...array_map(fn (JobOutcome $o) => $o->value, JobOutcome::closing()),
+        ]);
+        $note = $data['note'] ?? null;
 
-        $note = $validated['note'] ?? null;
-
-        if ($validated['outcome'] === JobStatus::WaitingForParts->value) {
+        if ($data['outcome'] === JobStatus::WaitingForParts->value) {
             $workflow->finish($visit, $request->user(), JobStatus::WaitingForParts, $note);
 
             return back();
         }
 
-        $outcome ??= JobOutcome::Repaired;
-        $workflow->finish($visit, $request->user(), JobStatus::Completed, $outcome === JobOutcome::Repaired
-            ? $note
-            : collect([$outcome->label(), $validated['reason'] ?? null, $note])->filter()->implode(' — '));
-        $close->close($visit->job, $outcome, $validated['reason'] ?? null, $note, $request->user(), $visit);
+        $outcome = JobOutcome::tryFrom($data['outcome']) ?? JobOutcome::Repaired;
 
-        if ($outcome->allowsDiagnosisInvoice() && $request->boolean('invoice_diagnosis')) {
-            return to_route('invoices.create', ['job' => $visit->service_job_id, 'diagnosis' => 1]);
-        }
+        DB::transaction(function () use ($visit, $workflow, $close, $refund, $request, $outcome, $data, $note, $job) {
+            $workflow->finish($visit, $request->user(), JobStatus::Completed, $outcome === JobOutcome::Repaired
+                ? $note
+                : collect([$outcome->label(), $data['reason'] ?? null, $note])->filter()->implode(' — '));
+            $close->close($job, $outcome, $data['reason'] ?? null, $note, $request->user(), $visit);
+            JobCloseController::refundOriginal($job, $outcome, $data, $request, $refund);
+        });
 
-        return back();
+        return JobCloseController::afterClose($job, $outcome, $request) ?? back();
     }
 }

@@ -30,6 +30,7 @@ return [
         'partially_paid' => 'Partially paid',
         'paid' => 'Paid',
         'refunded' => 'Refunded',
+        'partially_refunded' => 'Partially refunded',
         'void' => 'Void',
     ],
 

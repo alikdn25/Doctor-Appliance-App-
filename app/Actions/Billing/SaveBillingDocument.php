@@ -3,15 +3,20 @@
 namespace App\Actions\Billing;
 
 use App\Enums\EstimateStatus;
+use App\Enums\LineKind;
+use App\Enums\WarrantyUnit;
 use App\Models\Customer;
 use App\Models\Estimate;
 use App\Models\EstimateItem;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Models\User;
 use App\Support\Billing\DocumentTotals;
+use App\Support\Billing\Warranties;
+use App\Support\Billing\Warranty;
 use App\Support\Locale\Currencies;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -92,7 +97,7 @@ class SaveBillingDocument
                 // Optional lines the customer did not pick are left out.
                 'items' => $estimate->items
                     ->filter(fn (EstimateItem $item) => $item->isIncluded())
-                    ->map(fn (EstimateItem $item) => $item->only(['description', 'quantity', 'unit_price', 'taxable']))
+                    ->map(fn (EstimateItem $item) => $item->only(['description', 'quantity', 'unit_price', 'taxable', ...EstimateItem::LINE_FIELDS]))
                     ->values()
                     ->all(),
             ], $estimate->taxes);
@@ -145,19 +150,45 @@ class SaveBillingDocument
     private function fill(Estimate|Invoice $document, array $data, array $taxes): void
     {
         $estimate = $document instanceof Estimate;
-        $items = array_values(array_map(fn (array $item) => [
-            'description' => trim((string) $item['description']),
-            'quantity' => (string) $item['quantity'],
-            'unit_price' => (int) $item['unit_price'],
-            'taxable' => (bool) $item['taxable'],
-            ...($estimate ? [
-                'optional' => (bool) ($item['optional'] ?? false),
-                'selected' => ! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false),
-            ] : []),
-        ], $data['items']));
+        $company = currentCompany();
+        // Lines already saved, to keep their cost when the person editing cannot see costs.
+        $previous = $document->exists ? $document->items()->get()->keyBy('id') : collect();
+        $services = Service::query()->whereIn('id', array_filter(array_column($data['items'], 'service_id')))->get()->keyBy('id');
 
+        $items = array_values(array_map(function (array $item) use ($estimate, $company, $previous, $services) {
+            $kind = $item['kind'] ?? null;
+            $kind = $kind instanceof LineKind ? $kind : (LineKind::tryFrom((string) $kind) ?? LineKind::Service);
+            $old = isset($item['id']) ? $previous->get($item['id']) : null;
+            $line = [
+                'description' => trim((string) $item['description']),
+                'quantity' => (string) $item['quantity'],
+                'unit_price' => (int) $item['unit_price'],
+                'taxable' => (bool) $item['taxable'],
+                'kind' => $kind,
+                'service_id' => $item['service_id'] ?? null,
+                'part_number' => $item['part_number'] ?? null,
+                'unit' => $kind === LineKind::Material ? ($item['unit'] ?? null) : null,
+                'bill_to_customer' => (bool) ($item['bill_to_customer'] ?? true),
+                'supplier' => array_key_exists('supplier', $item) ? $item['supplier'] : $old?->supplier,
+                'unit_cost' => array_key_exists('unit_cost', $item) ? $item['unit_cost'] : $old?->unit_cost,
+                'supplier_taxes' => array_key_exists('supplier_taxes', $item) ? $item['supplier_taxes'] : $old?->supplier_taxes,
+                ...($estimate ? [
+                    'optional' => (bool) ($item['optional'] ?? false),
+                    'selected' => ! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false),
+                ] : []),
+            ];
+
+            // Warranty: as set on the line, else the price book item's, else the company's default.
+            $default = Warranty::default($company, $kind, $line['unit_price'], $services->get($line['service_id']));
+            $line['warranty_value'] = isset($item['warranty_value']) ? (int) $item['warranty_value'] : $default['value'];
+            $line['warranty_unit'] = $item['warranty_unit'] ?? ($line['warranty_value'] === $default['value'] ? $default['unit'] : WarrantyUnit::Days->value);
+
+            return $line;
+        }, $data['items']));
+
+        // Internal lines (not billed) and optional lines not picked are not in the total.
         $totals = DocumentTotals::calculate(
-            array_map(fn (array $item) => [...$item, 'included' => $item['selected'] ?? true], $items),
+            array_map(fn (array $item) => [...$item, 'included' => ($item['selected'] ?? true) && $item['bill_to_customer']], $items),
             $data['discount_type'] ?? null,
             $data['discount_value'] ?? 0,
             $taxes,
@@ -198,6 +229,10 @@ class SaveBillingDocument
             $document->items()->create([...$item, 'position' => $position, 'total' => $totals['item_totals'][$position]]);
         }
         $document->unsetRelation('items');
+
+        if ($document instanceof Invoice) {
+            Warranties::stamp($document);
+        }
     }
 
     /**
@@ -213,7 +248,7 @@ class SaveBillingDocument
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'taxable' => $item->taxable,
-                'included' => $item->isIncluded(),
+                'included' => $item->isIncluded() && $item->bill_to_customer,
             ])->values()->all(),
             $estimate->discount_type,
             $estimate->discount_value,

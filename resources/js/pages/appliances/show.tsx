@@ -31,6 +31,7 @@ type HistoryEntry = {
     description: string | null;
     work_done: string | null;
     can_open: boolean;
+    warranties: { description: string; warranty: string; ends_on: string }[];
 };
 
 type Props = {
@@ -260,6 +261,18 @@ export default function ApplianceShow({
                                             {entry.work_done}
                                         </p>
                                     )}
+                                    {entry.warranties.map((w, i) => (
+                                        <p
+                                            key={i}
+                                            className="text-xs text-muted-foreground"
+                                        >
+                                            {w.description} ·{' '}
+                                            {t('billing.warranty_until', {
+                                                length: w.warranty,
+                                                date: time.dateOnly(w.ends_on),
+                                            })}
+                                        </p>
+                                    ))}
                                 </li>
                             ))}
                         </ol>

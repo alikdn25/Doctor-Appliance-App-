@@ -13,9 +13,13 @@ enum JobOutcome: string
     use HasOptions;
 
     case Repaired = 'repaired';
+    // Warranty callback: fixed at no charge under the original job's warranty.
+    case FixedUnderWarranty = 'fixed_under_warranty';
     case CustomerDeclined = 'customer_declined';
     case UnableToRepair = 'unable_to_repair';
     case Cancelled = 'cancelled';
+    // Closed with no invoice or a zero invoice (goodwill, could not diagnose …).
+    case NoCharge = 'no_charge';
 
     public function label(): string
     {
@@ -24,7 +28,7 @@ enum JobOutcome: string
 
     public function needsReason(): bool
     {
-        return $this !== self::Repaired;
+        return ! in_array($this, [self::Repaired, self::FixedUnderWarranty], true);
     }
 
     /**
@@ -42,7 +46,15 @@ enum JobOutcome: string
      */
     public static function closing(): array
     {
-        return [self::Repaired, self::CustomerDeclined, self::UnableToRepair];
+        return [self::Repaired, self::FixedUnderWarranty, self::CustomerDeclined, self::UnableToRepair, self::NoCharge];
+    }
+
+    /**
+     * Customer declined / unable to repair on a warranty callback may refund the original job.
+     */
+    public function allowsCallbackRefund(): bool
+    {
+        return in_array($this, [self::CustomerDeclined, self::UnableToRepair], true);
     }
 
     /**

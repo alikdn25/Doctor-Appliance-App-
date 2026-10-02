@@ -55,6 +55,18 @@ use Illuminate\Support\Carbon;
  * @property array<string, list<string>>|null $closure_reasons Reasons per job outcome; null/missing = defaults
  * @property int|null $diagnostic_service_id Price book service for "Invoice diagnosis only"
  * @property int $strict_arrival_reminder_minutes
+ * @property int $warranty_labor_value
+ * @property string $warranty_labor_unit
+ * @property int $warranty_parts_value
+ * @property string $warranty_parts_unit
+ * @property int|null $warranty_parts_threshold Minor units
+ * @property int|null $warranty_parts_above_value
+ * @property string|null $warranty_parts_above_unit
+ * @property string|null $warranty_terms
+ * @property list<array{up_to: float|null, multiplier: float}>|null $markup_parts
+ * @property list<array{up_to: float|null, multiplier: float}>|null $markup_materials
+ * @property bool $technicians_see_costs
+ * @property bool $accepts_cash
  * @property string|null $payment_provider
  * @property bool $timezone_pending
  * @property array<string, array{closed: bool, open: string|null, close: string|null}>|null $business_hours
@@ -92,6 +104,18 @@ class Company extends Model
         'closure_reasons',
         'diagnostic_service_id',
         'strict_arrival_reminder_minutes',
+        'warranty_labor_value',
+        'warranty_labor_unit',
+        'warranty_parts_value',
+        'warranty_parts_unit',
+        'warranty_parts_threshold',
+        'warranty_parts_above_value',
+        'warranty_parts_above_unit',
+        'warranty_terms',
+        'markup_parts',
+        'markup_materials',
+        'technicians_see_costs',
+        'accepts_cash',
         'timezone_pending',
         'payment_provider',
         'online_tips',
@@ -106,6 +130,14 @@ class Company extends Model
 
     protected $attributes = [
         'status' => 'active',
+        'warranty_labor_value' => 30,
+        'warranty_labor_unit' => 'days',
+        'warranty_parts_value' => 90,
+        'warranty_parts_unit' => 'days',
+        'technicians_see_costs' => false,
+        'technicians_can_delete_jobs' => false,
+        'accepts_cash' => true,
+        'strict_arrival_reminder_minutes' => 60,
         'vertical' => 'appliance_repair',
         'prices_include_tax' => false,
         'default_payment_terms' => 'due_on_receipt',
@@ -155,6 +187,14 @@ class Company extends Model
             'technicians_can_delete_jobs' => 'boolean',
             'closure_reasons' => 'array',
             'strict_arrival_reminder_minutes' => 'integer',
+            'warranty_labor_value' => 'integer',
+            'warranty_parts_value' => 'integer',
+            'warranty_parts_threshold' => 'integer',
+            'warranty_parts_above_value' => 'integer',
+            'markup_parts' => 'array',
+            'markup_materials' => 'array',
+            'technicians_see_costs' => 'boolean',
+            'accepts_cash' => 'boolean',
             'timezone_pending' => 'boolean',
         ];
     }

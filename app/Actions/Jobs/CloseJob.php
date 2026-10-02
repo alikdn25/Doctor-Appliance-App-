@@ -3,12 +3,14 @@
 namespace App\Actions\Jobs;
 
 use App\Actions\Billing\SyncJobBillingStatus;
+use App\Enums\InvoiceStatus;
 use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\VisitStatus;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
 use App\Models\User;
+use App\Support\Billing\Warranties;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -40,6 +42,12 @@ class CloseJob
         DB::transaction(function () use ($job, $outcome, $reason, $note, $user, $visit) {
             $job = ServiceJob::query()->lockForUpdate()->findOrFail($job->id);
 
+            // No charge: nothing billed (no invoice, or invoices totalling zero).
+            if ($outcome === JobOutcome::NoCharge
+                && $job->invoices()->where('status', '!=', InvoiceStatus::Void->value)->where('total', '>', 0)->exists()) {
+                throw ValidationException::withMessages(['outcome' => __('jobs.no_charge.not_allowed')]);
+            }
+
             if ($job->status === JobStatus::Cancelled) {
                 throw ValidationException::withMessages(['outcome' => __('jobs.errors.cancelled')]);
             }
@@ -52,6 +60,8 @@ class CloseJob
             $job->visits()->where('status', VisitStatus::Scheduled->value)->update(['status' => VisitStatus::Cancelled->value]);
 
             $this->record($job, $outcome, $reason, $note, $user);
+            // Warranties run from the day the job was closed.
+            Warranties::stampJob($job);
 
             if (! $job->status->isLocked() && $job->status !== JobStatus::Completed) {
                 $this->changeStatus->handle($job, JobStatus::Completed, $user, $visit, $this->historyNote($outcome, $reason, $note));

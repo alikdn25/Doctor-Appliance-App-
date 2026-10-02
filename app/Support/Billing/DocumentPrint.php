@@ -50,7 +50,8 @@ class DocumentPrint
                 'email' => $document->customer?->primaryEmail?->email,
                 'address' => $document->property?->fullAddress(),
             ],
-            'items' => $document->items->map(fn ($item) => [
+            // Internal lines (cost only) are never shown to the customer.
+            'items' => $document->items->filter(fn ($item) => $item->bill_to_customer)->map(fn ($item) => [
                 'id' => $item->id,
                 'description' => $item->description,
                 'quantity' => rtrim(rtrim(number_format((float) $item->quantity, 2, '.', ''), '0'), '.'),
@@ -59,7 +60,12 @@ class DocumentPrint
                 'taxable' => $item->taxable,
                 'optional' => $estimate && $item->optional,
                 'included' => ! $estimate || $item->isIncluded(),
+                'unit' => $item->unit,
+                'part_number' => $item->part_number,
+                'warranty' => $item->warranty_value ? $item->warrantyLabel() : null,
+                'warranty_until' => ! $estimate ? self::date($item->warranty_ends_on) : null,
             ])->values()->all(),
+            'warranty_terms' => $company->warranty_terms,
             'subtotal' => $money($document->subtotal),
             'discount' => $document->discount_total > 0 ? $money(-$document->discount_total) : null,
             'taxes' => collect($document->taxes)->map(fn (array $tax) => [

@@ -22,4 +22,6 @@ return [
     'settings' => 'Settings',
     'log_out' => 'Log out',
     'switch_company' => 'Switch company',
+    'reports' => 'Reports',
+    'cash' => 'Cash on hand',
 ];

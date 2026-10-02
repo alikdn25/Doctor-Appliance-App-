@@ -27,11 +27,13 @@ class SyncJobBillingStatus
             return;
         }
 
-        $invoices = $job->invoices()->where('status', '!=', InvoiceStatus::Void->value)->get(['id', 'status']);
+        $invoices = $job->invoices()->where('status', '!=', InvoiceStatus::Void->value)->get(['id', 'status', 'balance']);
 
+        // Settled: paid in full, or refunded as settled (nothing left to pay).
         $target = match (true) {
             $invoices->isEmpty() => JobStatus::Completed,
-            $invoices->every(fn ($invoice) => $invoice->status === InvoiceStatus::Paid) => JobStatus::Paid,
+            $invoices->every(fn ($invoice) => in_array($invoice->status, [InvoiceStatus::Paid, InvoiceStatus::PartiallyRefunded], true)
+                || ($invoice->status === InvoiceStatus::Refunded && $invoice->balance <= 0)) => JobStatus::Paid,
             default => JobStatus::Invoiced,
         };
 

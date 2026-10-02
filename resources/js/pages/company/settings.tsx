@@ -41,12 +41,27 @@ type CompanySettings = {
     diagnostic_service_id: number | null;
     strict_arrival_reminder_minutes: number;
     closure_reasons: Record<string, string[]>;
+    warranty_labor_value: number;
+    warranty_labor_unit: string;
+    warranty_parts_value: number;
+    warranty_parts_unit: string;
+    warranty_parts_threshold: number | null;
+    warranty_parts_above_value: number | null;
+    warranty_parts_above_unit: string | null;
+    warranty_terms: string | null;
+    markup_parts: Tier[];
+    markup_materials: Tier[];
+    technicians_see_costs: boolean;
+    accepts_cash: boolean;
     payment_provider: string;
 };
+
+type Tier = { up_to: number | null; multiplier: number };
 
 const REASON_OUTCOMES = [
     'customer_declined',
     'unable_to_repair',
+    'no_charge',
     'cancelled',
 ] as const;
 
@@ -58,6 +73,7 @@ type Props = {
     locales: Option[];
     paymentTerms: Option[];
     services: Option[];
+    warrantyUnits: Option[];
     paymentProviders: Option[];
     providerConnections: ProviderConnection[];
 };
@@ -80,6 +96,7 @@ export default function CompanySettingsPage({
     locales,
     paymentTerms,
     services,
+    warrantyUnits,
     paymentProviders,
     providerConnections,
 }: Props) {
@@ -108,6 +125,18 @@ export default function CompanySettingsPage({
         diagnostic_service_id: company.diagnostic_service_id,
         strict_arrival_reminder_minutes:
             company.strict_arrival_reminder_minutes,
+        warranty_labor_value: company.warranty_labor_value,
+        warranty_labor_unit: company.warranty_labor_unit,
+        warranty_parts_value: company.warranty_parts_value,
+        warranty_parts_unit: company.warranty_parts_unit,
+        warranty_parts_threshold: company.warranty_parts_threshold,
+        warranty_parts_above_value: company.warranty_parts_above_value,
+        warranty_parts_above_unit: company.warranty_parts_above_unit,
+        warranty_terms: company.warranty_terms ?? '',
+        markup_parts: company.markup_parts,
+        markup_materials: company.markup_materials,
+        technicians_see_costs: company.technicians_see_costs,
+        accepts_cash: company.accepts_cash,
         // Edited as text, one reason per line; sent as lists.
         closure_reasons_text: Object.fromEntries(
             REASON_OUTCOMES.map((o) => [
@@ -563,7 +592,7 @@ export default function CompanySettingsPage({
                     <p className="text-xs text-muted-foreground">
                         {t('company.closure_reasons_hint')}
                     </p>
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                         {REASON_OUTCOMES.map((outcome) => (
                             <FormField
                                 key={outcome}
@@ -586,6 +615,268 @@ export default function CompanySettingsPage({
                                 />
                             </FormField>
                         ))}
+                    </div>
+                </section>
+
+                <section className="grid gap-3">
+                    <h2 className="text-base font-medium">
+                        {t('company.warranty_section')}
+                    </h2>
+                    {(
+                        [
+                            [
+                                'labor',
+                                'warranty_labor_value',
+                                'warranty_labor_unit',
+                            ],
+                            [
+                                'parts',
+                                'warranty_parts_value',
+                                'warranty_parts_unit',
+                            ],
+                        ] as const
+                    ).map(([key, value, unit]) => (
+                        <div
+                            key={key}
+                            className="grid grid-cols-[1fr_5rem_8rem] items-end gap-2"
+                        >
+                            <span className="text-sm">
+                                {t(`company.warranty_${key}`)}
+                            </span>
+                            <Input
+                                aria-label={t(`company.warranty_${key}`)}
+                                inputMode="numeric"
+                                value={form.data[value]}
+                                onChange={(e) =>
+                                    form.setData(
+                                        value,
+                                        Number(
+                                            e.target.value.replace(/\D/g, '') ||
+                                                0,
+                                        ),
+                                    )
+                                }
+                            />
+                            <NativeSelect
+                                aria-label={t(`company.warranty_${key}`)}
+                                value={form.data[unit]}
+                                onChange={(e) =>
+                                    form.setData(unit, e.target.value)
+                                }
+                            >
+                                {warrantyUnits.map((o) => (
+                                    <option key={o.value} value={o.value}>
+                                        {o.label}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </div>
+                    ))}
+                    <div className="grid grid-cols-[1fr_6rem] items-end gap-2">
+                        <span className="text-sm">
+                            {t('company.warranty_threshold')}
+                        </span>
+                        <Input
+                            aria-label={t('company.warranty_threshold')}
+                            inputMode="decimal"
+                            value={form.data.warranty_parts_threshold ?? ''}
+                            onChange={(e) =>
+                                form.setData(
+                                    'warranty_parts_threshold',
+                                    e.target.value === ''
+                                        ? null
+                                        : Number(e.target.value),
+                                )
+                            }
+                        />
+                    </div>
+                    <div className="grid grid-cols-[1fr_5rem_8rem] items-end gap-2">
+                        <span className="text-sm">
+                            {t('company.warranty_above')}
+                        </span>
+                        <Input
+                            aria-label={t('company.warranty_above')}
+                            inputMode="numeric"
+                            value={form.data.warranty_parts_above_value ?? ''}
+                            onChange={(e) =>
+                                form.setData(
+                                    'warranty_parts_above_value',
+                                    e.target.value === ''
+                                        ? null
+                                        : Number(
+                                              e.target.value.replace(/\D/g, ''),
+                                          ),
+                                )
+                            }
+                        />
+                        <NativeSelect
+                            aria-label={t('company.warranty_above')}
+                            value={
+                                form.data.warranty_parts_above_unit ?? 'months'
+                            }
+                            onChange={(e) =>
+                                form.setData(
+                                    'warranty_parts_above_unit',
+                                    e.target.value,
+                                )
+                            }
+                        >
+                            {warrantyUnits.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </NativeSelect>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        {t('company.warranty_hint')}
+                    </p>
+                    <FormField
+                        id="warranty_terms"
+                        label={t('company.fields.warranty_terms')}
+                        error={errors.warranty_terms}
+                    >
+                        <Textarea
+                            id="warranty_terms"
+                            rows={4}
+                            value={form.data.warranty_terms ?? ''}
+                            onChange={(e) =>
+                                form.setData('warranty_terms', e.target.value)
+                            }
+                        />
+                    </FormField>
+                </section>
+
+                <section className="grid gap-3">
+                    <h2 className="text-base font-medium">
+                        {t('company.costs_section')}
+                    </h2>
+                    <label className="flex min-h-10 items-center gap-2 text-sm">
+                        <Checkbox
+                            checked={form.data.technicians_see_costs}
+                            onCheckedChange={(c) =>
+                                form.setData(
+                                    'technicians_see_costs',
+                                    c === true,
+                                )
+                            }
+                        />
+                        {t('company.fields.technicians_see_costs')}
+                    </label>
+                    <label className="flex min-h-10 items-center gap-2 text-sm">
+                        <Checkbox
+                            checked={form.data.accepts_cash}
+                            onCheckedChange={(c) =>
+                                form.setData('accepts_cash', c === true)
+                            }
+                        />
+                        <span>
+                            {t('company.fields.accepts_cash')}
+                            <span className="block text-xs text-muted-foreground">
+                                {t('company.accepts_cash_hint')}
+                            </span>
+                        </span>
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                        {t('company.markup_hint')}
+                    </p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        {(['markup_parts', 'markup_materials'] as const).map(
+                            (key) => (
+                                <fieldset key={key} className="space-y-2">
+                                    <legend className="text-sm font-medium">
+                                        {t(`company.${key}`)}
+                                    </legend>
+                                    {form.data[key].map((tier, i) => (
+                                        <div
+                                            key={i}
+                                            className="grid grid-cols-[1fr_1fr_auto] items-center gap-2"
+                                        >
+                                            <Input
+                                                aria-label={t(
+                                                    'company.markup_up_to',
+                                                )}
+                                                placeholder={t(
+                                                    'company.markup_above',
+                                                )}
+                                                inputMode="decimal"
+                                                value={tier.up_to ?? ''}
+                                                onChange={(e) =>
+                                                    form.setData(
+                                                        key,
+                                                        form.data[key].map(
+                                                            (x, j) =>
+                                                                j === i
+                                                                    ? {
+                                                                          ...x,
+                                                                          up_to:
+                                                                              e
+                                                                                  .target
+                                                                                  .value ===
+                                                                              ''
+                                                                                  ? null
+                                                                                  : Number(
+                                                                                        e
+                                                                                            .target
+                                                                                            .value,
+                                                                                    ),
+                                                                      }
+                                                                    : x,
+                                                        ),
+                                                    )
+                                                }
+                                            />
+                                            <Input
+                                                aria-label={t(
+                                                    'company.markup_multiplier',
+                                                )}
+                                                inputMode="decimal"
+                                                value={tier.multiplier}
+                                                onChange={(e) =>
+                                                    form.setData(
+                                                        key,
+                                                        form.data[key].map(
+                                                            (x, j) =>
+                                                                j === i
+                                                                    ? {
+                                                                          ...x,
+                                                                          multiplier:
+                                                                              Number(
+                                                                                  e
+                                                                                      .target
+                                                                                      .value,
+                                                                              ) ||
+                                                                              1,
+                                                                      }
+                                                                    : x,
+                                                        ),
+                                                    )
+                                                }
+                                            />
+                                            <span className="text-xs text-muted-foreground">
+                                                ×
+                                            </span>
+                                        </div>
+                                    ))}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            form.setData(key, [
+                                                ...form.data[key],
+                                                {
+                                                    up_to: null,
+                                                    multiplier: 1.5,
+                                                },
+                                            ])
+                                        }
+                                    >
+                                        {t('company.markup_add')}
+                                    </Button>
+                                </fieldset>
+                            ),
+                        )}
                     </div>
                 </section>
 

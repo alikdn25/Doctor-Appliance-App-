@@ -1,8 +1,8 @@
 ; /etc/supervisor/conf.d/fieldservice-worker.conf
-; Queue worker for SMS, emails, PDFs and reminders (Redis queue).
+; Queue worker for SMS, emails, PDFs and reminders (uses QUEUE_CONNECTION from .env: database or redis).
 [program:fieldservice-worker]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/fieldservice/artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+command=php /var/www/fieldservice/artisan queue:work --sleep=3 --tries=3 --max-time=3600
 autostart=true
 autorestart=true
 stopasgroup=true

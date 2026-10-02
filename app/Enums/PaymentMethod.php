@@ -3,6 +3,7 @@
 namespace App\Enums;
 
 use App\Enums\Concerns\HasOptions;
+use App\Models\Company;
 
 /**
  * How a payment was made. The manual methods are available in every company;
@@ -25,19 +26,25 @@ enum PaymentMethod: string
     }
 
     /**
+     * Manual methods; cash only when the company takes cash (company setting).
+     *
      * @return list<self>
      */
-    public static function manual(): array
+    public static function manual(?Company $company = null): array
     {
-        return [self::Cash, self::Check, self::BankTransfer, self::CardTerminal, self::Other];
+        $methods = [self::Cash, self::Check, self::BankTransfer, self::CardTerminal, self::Other];
+
+        return $company !== null && $company->accepts_cash === false
+            ? array_values(array_filter($methods, fn (self $m) => $m !== self::Cash))
+            : $methods;
     }
 
     /**
      * @return list<array{value: string, label: string}>
      */
-    public static function manualOptions(): array
+    public static function manualOptions(?Company $company = null): array
     {
-        return array_map(fn (self $m) => ['value' => $m->value, 'label' => $m->label()], self::manual());
+        return array_map(fn (self $m) => ['value' => $m->value, 'label' => $m->label()], self::manual($company));
     }
 
     public function requiresReference(): bool

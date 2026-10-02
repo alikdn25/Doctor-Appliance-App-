@@ -20,21 +20,21 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
-| #   | Task                                                                         | Status         |
-| --- | ---------------------------------------------------------------------------- | -------------- |
-| 1   | Customers, properties (manual address), appliances (§6, §7.1)                | ✅ Done        |
-| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)               | ✅ Done        |
-| 3   | Calendar & dispatch                                                          | ✅ Done        |
-| 4   | Technician PWA view, photos, signatures                                      | ✅ Done        |
-| 5   | Estimates, invoices, manual payments (§7.5, §7.6)                            | ✅ Done        |
-| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6)  | ✅ Done        |
-| 7   | PDF + email sending of documents, price book on lines, Square tips/refunds   | ✅ Done        |
-| 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done        |
-| 9   | Online estimate approval (signature, options, expiry, deposit) + Places      | ✅ Done        |
-| 10A | Estimate revisions, deleting jobs, outcomes, visit types, strict arrival     | ✅ Done        |
-| 10B | Warranty & callbacks, refunds, costs & profit, no charge, cash               | 🚧 Next PR     |
-| —   | Price book: parts with cost/margin, categories (services + picker done)      | 🚧 Partly      |
-| —   | Basic reports                                                                | ⏳ Not started |
+| #   | Task                                                                         | Status    |
+| --- | ---------------------------------------------------------------------------- | --------- |
+| 1   | Customers, properties (manual address), appliances (§6, §7.1)                | ✅ Done   |
+| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)               | ✅ Done   |
+| 3   | Calendar & dispatch                                                          | ✅ Done   |
+| 4   | Technician PWA view, photos, signatures                                      | ✅ Done   |
+| 5   | Estimates, invoices, manual payments (§7.5, §7.6)                            | ✅ Done   |
+| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6)  | ✅ Done   |
+| 7   | PDF + email sending of documents, price book on lines, Square tips/refunds   | ✅ Done   |
+| 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done   |
+| 9   | Online estimate approval (signature, options, expiry, deposit) + Places      | ✅ Done   |
+| 10A | Estimate revisions, deleting jobs, outcomes, visit types, strict arrival     | ✅ Done   |
+| 10B | Warranty & callbacks, refunds, costs & profit, no charge, cash               | ✅ Done   |
+| —   | Price book: categories (parts/materials with cost and markup done in 10B)    | 🚧 Partly |
+| —   | Basic reports (profit, callbacks, no charge done in 10B; revenue/conversion) | 🚧 Partly |
 
 ### Task 1 — Customers, properties, appliances ✅
 
@@ -578,12 +578,108 @@ Decisions made without asking (change if needed):
 - Visit type is set on the job (first visit); later visits of the same job keep it.
 - Staff reminders ignore the customers' quiet hours (they are work alerts).
 
+### Task 10B — Warranty and callbacks, refunds, costs and profit, no charge, cash ✅
+
+**Lines: service / part / material** on estimates and invoices (typed freely; the price book is optional).
+Part: name, part number, supplier, cost, price. Material: the same + quantity and unit (pcs, ft, m, lb, oz or a custom
+word), cost and price per unit. The price is filled from the cost by the company's **markup scale** (Company settings →
+Costs and payments; separate tiers for parts and materials: "cost up to → multiplier"), and can always be changed.
+Typing a part number or name shows the company's **earlier costs** (date, cost, supplier, part number — a price rise is
+visible). "Save to price book" stores the line as a price book item. **Supplier tax paid** per company tax rate; each tax
+rate has "Recoverable when paid to suppliers" (e.g. GST yes, BC PST no): non-recoverable tax is part of the cost.
+**Bill to customer** off = internal line: cost only, never in the total, the PDF, the online page or the email. Cost,
+internal flag and warranty work on estimates too and carry over on Convert to invoice and Revise; customers never see
+costs. Who sees costs and profit: Owners/Admins; technicians only with "Technicians see costs and profit" (off by
+default; without it their edits keep the costs already entered).
+
+**Warranty per line**: length in days / weeks / months, 0 = no warranty. Default: the line's own value → the price book
+item's warranty (new field, e.g. "Drain unclogging 14 days") → company settings (labour and materials; parts; parts
+priced above a threshold, e.g. 3 months manufacturer warranty). End dates are stored per line (from the day the job is
+closed, the invoice date before that). Closing a repaired job opens the **warranty summary** (change per line, "Apply
+to all lines"). Shown per line on the invoice page, PDF, online page and in the appliance's repair history; the
+company's **warranty terms** text is printed with them.
+
+**Warranty callbacks**: always linked to the original job (10A). The job form shows which warranties of the original job
+still run on the visit day, line by line. The callback's first invoice starts with the original lines: free while under
+warranty, the original price otherwise (editable). Outcomes: **Fixed under warranty** / Customer declined repair /
+Unable to repair. For the last two, the close dialog offers a **refund on the original job** (none / full / partial,
+reason required) through the refund module; the original job's invoice shows **Refunded / Partially refunded** and the
+job links its callbacks.
+
+**Refunds** (invoice page → Refund, office): money given back **as settled** — the customer does not owe it again
+(`invoices.credited_amount`). Spread over the payments, newest first: Square payments are refunded at Square
+(`/v2/refunds`, recorded at once; the later webhook is recognised), manual payments get a refund row with the reason.
+New invoice status **Partially refunded**. Square's processing fee is stored on each payment from the webhook.
+
+**Costs and profit**: job page → "Costs & profit" (people who see costs): revenue without tax (less settled refunds) −
+cost of every line and of the job's **cost lines that are on no invoice** (part used on a declined/no-charge job,
+consumables) − processor fees = profit and margin %. **Supplier receipts** (photo/PDF) are attached to a job and can be
+linked to other jobs by number; strictly internal; kept when a job is deleted; only the uploader can remove a wrong
+file within an hour.
+
+**No charge**: closing outcome for jobs with no invoice or invoices totalling zero; reason (Goodwill / Could not
+diagnose / Other, editable list) + comment; costs stay, so the profit shows the loss.
+
+**Reports** (office, jobs closed in a period): profit and margin by technician and appliance type; callback rate by
+technician, brand and appliance type; no-charge jobs (count and loss) by technician; **Expenses CSV** and **supplier
+receipts ZIP** for the bookkeeper.
+
+**Cash**: a technician records a cash payment on the invoice (amount, date, optional receipt photo). **Cash on hand**
+per person (office page; the technician sees their own on My jobs). The office records a **cash deposit** (handed to the
+office: person, date, amount). Every movement is in a journal; nothing is deleted — a wrong entry is reversed with a
+reason; voiding a cash payment reverses it automatically. **"Accept cash payments"** (Company settings, on by default):
+off = cash is not offered and refused on the server, so technicians cannot take cash.
+
+**Deployment docs** (`docs/DEPLOYMENT.md` §5–7): Redis is optional (queue, cache and sessions on PostgreSQL; how to
+switch to Redis later), the Google Maps key (APIs, referrer restriction to app.doctor-appliance.ca), the full `.env`
+list. `.env.example` now defaults to the database queue and cache; the supervisor worker uses `QUEUE_CONNECTION`.
+
+How to test manually:
+
+1. Company settings → Warranty (labour 30 days, parts 90 days, above $300: 3 months, terms) and Costs (markup tiers,
+   technicians see costs, accept cash). Taxes → PST: untick "Recoverable".
+2. Job → New invoice → Part: part number, supplier, cost 40 → price fills from the markup; Cost & warranty → supplier
+   tax, warranty; add a Material in ft; add an internal line (Bill to customer off). Save → PDF / online page: no internal
+   line, warranties with end dates and terms.
+3. Type the same part number on another invoice → "Earlier costs". "Save to price book" → Company → Services.
+4. Close the job (repaired) → warranty summary → "Apply to all lines".
+5. Job page → Costs & profit: add a cost line, upload a receipt, link it to another job number.
+6. New job → Callback (warranty) → pick the original job → the warranty list; schedule; New invoice → original lines
+   free/charged. Close → Customer declined repair → partial refund + reason → original invoice "Partially refunded".
+7. Invoice → Refund (office) on a cash-paid invoice.
+8. Close a job without an invoice as No charge → Reports: no-charge loss, profit by technician, callback rate;
+   download Expenses CSV and Receipts ZIP.
+9. As tech: take a cash payment with a photo → My jobs shows cash on hand → office: Cash on hand → Record cash deposit →
+   reverse it with a reason. Turn "Accept cash payments" off → cash is gone from the payment dialog.
+
+Decisions made without asking (change if needed):
+
+- One line model for all kinds (estimate/invoice items got kind, cost, supplier, unit, supplier taxes, internal flag,
+  warranty); job-level cost lines exist only for costs that belong to no invoice.
+- Revenue for profit = invoice total minus its taxes, reduced in proportion by refunds given as settled; costs of
+  estimate lines count only once invoiced.
+- Warranty runs from the day the job was closed (company time zone); "months" use calendar months.
+- Refunds from this module are "settled" (credited); refunds made directly in the Square dashboard still come back by
+  webhook and reopen the balance as before. Cash refunds are recorded as refund rows; handing the cash back is not
+  taken off anyone's cash on hand automatically.
+- Square refunds are recorded when Square accepts them (PENDING); a later failure at Square is not reverted
+  automatically (rare; check Square).
+- Technician of a job in reports = first person on its last started visit; callback rate = callbacks / jobs closed in
+  the period that were not callbacks or cancelled.
+- No charge is refused if a non-void invoice has a total above zero.
+- Cash deposits and reversals are office-only; balances are per currency.
+- Supplier receipts can't be deleted after an hour (kept for the bookkeeper, 6+ years).
+- Markup tiers are stored in major units of the company currency; prices from markup are suggestions only.
+
+Ideas for later: **stock / inventory of materials** (van stock, reorder levels, consumption per job) — out of scope
+now; automatic supplier price import; categories in the price book; cash refunds tied to cash on hand.
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started
 
 ## Next
 
-Stage 1 — basic reports (revenue by brand/technician/job type/lead source, average ticket, estimate conversion), price
-book parts/costs, estimate follow-up reminders, map of the day from property coordinates. Stripe as the second payment
+Stage 1 — remaining reports (revenue by brand/job type/lead source, average ticket, estimate conversion), price book
+categories, estimate follow-up reminders, map of the day from property coordinates. Stripe as the second payment
 provider. Then Stage 2 (parts orders, warranty claims, online booking, payment reminders, shared SMS inbox).

@@ -29,6 +29,9 @@ use Illuminate\Support\Carbon;
  * @property int|null $user_id
  * @property string|null $provider
  * @property string|null $provider_payment_id
+ * @property int $processing_fee Fee the provider kept (e.g. Square), minor units
+ * @property string|null $refund_reason
+ * @property string|null $receipt_path Photo of a cash receipt (private disk)
  * @property Carbon|null $voided_at
  * @property int|null $voided_by
  * @property string|null $void_reason
@@ -50,6 +53,7 @@ class Payment extends Model
         return [
             'amount' => 'integer',
             'tip_amount' => 'integer',
+            'processing_fee' => 'integer',
             'method' => PaymentMethod::class,
             'received_at' => 'datetime',
             'voided_at' => 'datetime',
