@@ -12,6 +12,8 @@ const tones: Record<string, string> = {
     partially_paid:
         'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
     paid: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200',
+    partially_refunded:
+        'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200',
     refunded:
         'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200',
     void: 'bg-zinc-200 text-zinc-700 line-through dark:bg-zinc-800 dark:text-zinc-300',

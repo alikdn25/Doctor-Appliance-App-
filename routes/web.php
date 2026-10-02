@@ -8,6 +8,7 @@ use App\Http\Controllers\Billing\EstimateController;
 use App\Http\Controllers\Billing\InvoiceController;
 use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Billing\PaymentLinkController;
+use App\Http\Controllers\Billing\PriceBookController;
 use App\Http\Controllers\Company\BrandController;
 use App\Http\Controllers\Company\ChecklistController;
 use App\Http\Controllers\Company\CompanySettingsController;
@@ -129,6 +130,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('invoices/{invoice}/void', [InvoiceController::class, 'void'])->name('invoices.void');
         Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('payments.store');
         Route::post('payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
+        Route::get('pricebook/history', [PriceBookController::class, 'history'])->name('pricebook.history');
+        Route::post('pricebook', [PriceBookController::class, 'store'])->name('pricebook.store');
         Route::post('invoices/{invoice}/payment-link', [PaymentLinkController::class, 'store'])->name('invoices.payment-link');
         Route::get('estimates/{estimate}/pdf', [DocumentDeliveryController::class, 'estimatePdf'])->name('estimates.pdf');
         Route::get('invoices/{invoice}/pdf', [DocumentDeliveryController::class, 'invoicePdf'])->name('invoices.pdf');

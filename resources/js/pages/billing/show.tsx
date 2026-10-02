@@ -304,16 +304,51 @@ export default function BillingShow({
                                                   )}
                                         </p>
                                     )}
+                                    {(item.kind !== 'service' ||
+                                        !item.bill_to_customer) && (
+                                        <p className="text-xs font-medium text-muted-foreground uppercase">
+                                            {[
+                                                t(`billing.kinds.${item.kind}`),
+                                                item.part_number,
+                                                item.bill_to_customer
+                                                    ? null
+                                                    : t(
+                                                          'billing.line.internal',
+                                                      ),
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                        </p>
+                                    )}
                                     <p className="whitespace-pre-line">
                                         {item.description}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                         {t('billing.qty_times_price', {
-                                            quantity: Number(item.quantity),
+                                            quantity: item.unit
+                                                ? `${Number(item.quantity)} ${item.unit}`
+                                                : Number(item.quantity),
                                             price: money(item.unit_price),
                                         })}
                                         {!item.taxable &&
                                             ` · ${t('billing.not_taxable')}`}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {item.warranty_ends_on
+                                            ? t('billing.warranty_until', {
+                                                  length: item.warranty_label,
+                                                  date: time.dateOnly(
+                                                      item.warranty_ends_on,
+                                                  ),
+                                              })
+                                            : item.warranty_value
+                                              ? t('billing.warranty_line', {
+                                                    length: item.warranty_label,
+                                                })
+                                              : item.warranty_label}
+                                        {item.total_cost !== null &&
+                                            item.total_cost > 0 &&
+                                            ` · ${t('billing.line.total_cost')} ${money(item.total_cost)}${item.supplier ? ` (${item.supplier})` : ''}`}
                                     </p>
                                 </div>
                                 <span
@@ -372,6 +407,16 @@ export default function BillingShow({
                             <dt>{t('billing.total')}</dt>
                             <dd className="tabular-nums">{money(doc.total)}</dd>
                         </div>
+                        {doc.cost_total !== null &&
+                            doc.cost_total !== undefined &&
+                            doc.cost_total > 0 && (
+                                <div className="flex justify-between text-muted-foreground">
+                                    <dt>{t('billing.cost_total')}</dt>
+                                    <dd className="tabular-nums">
+                                        {money(doc.cost_total)}
+                                    </dd>
+                                </div>
+                            )}
                         {isInvoice && doc.status !== 'void' && (
                             <>
                                 <div className="flex justify-between">

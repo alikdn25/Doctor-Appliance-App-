@@ -56,7 +56,12 @@ type PrintedDocument = {
         taxable: boolean;
         optional: boolean;
         included: boolean;
+        unit: string | null;
+        part_number: string | null;
+        warranty: string | null;
+        warranty_until: string | null;
     }[];
+    warranty_terms: string | null;
     subtotal: string;
     discount: string | null;
     taxes: { label: string; amount: string }[];
@@ -290,10 +295,24 @@ export default function PublicDocument({
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                         {t('billing.qty_times_price', {
-                                            quantity: item.quantity,
+                                            quantity: item.unit
+                                                ? `${item.quantity} ${item.unit}`
+                                                : item.quantity,
                                             price: item.unit_price,
                                         })}
                                     </p>
+                                    {item.warranty && (
+                                        <p className="text-xs text-muted-foreground">
+                                            {item.warranty_until
+                                                ? t('billing.warranty_until', {
+                                                      length: item.warranty,
+                                                      date: item.warranty_until,
+                                                  })
+                                                : t('billing.warranty_line', {
+                                                      length: item.warranty,
+                                                  })}
+                                        </p>
+                                    )}
                                 </div>
                                 <span className="tabular-nums">
                                     {item.total}
@@ -450,6 +469,17 @@ export default function PublicDocument({
                             {doc.notes}
                         </p>
                     )}
+                    {doc.warranty_terms &&
+                        doc.items.some((item) => item.warranty) && (
+                            <div className="text-sm">
+                                <p className="font-medium">
+                                    {t('billing.warranty_terms')}
+                                </p>
+                                <p className="whitespace-pre-line text-muted-foreground">
+                                    {doc.warranty_terms}
+                                </p>
+                            </div>
+                        )}
                     {doc.terms && (
                         <div className="text-sm">
                             <p className="font-medium">

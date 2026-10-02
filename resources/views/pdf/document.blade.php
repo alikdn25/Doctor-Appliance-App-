@@ -95,8 +95,8 @@
         <tbody>
             @foreach ($doc['items'] as $item)
                 <tr @class(['excluded' => ! $item['included']])>
-                    <td style="white-space: pre-line;">@if ($item['optional'])<span class="tag">{{ $item['included'] ? __('estimates.optional_included') : __('estimates.optional_not_included') }}</span><br>@endif{{ $item['description'] }}@unless ($item['taxable'])<span class="muted"> · {{ __('billing.not_taxable') }}</span>@endunless</td>
-                    <td class="num">{{ $item['quantity'] }}</td>
+                    <td style="white-space: pre-line;">@if ($item['optional'])<span class="tag">{{ $item['included'] ? __('estimates.optional_included') : __('estimates.optional_not_included') }}</span><br>@endif{{ $item['description'] }}@if ($item['part_number'])<span class="muted"> · #{{ $item['part_number'] }}</span>@endif @unless ($item['taxable'])<span class="muted"> · {{ __('billing.not_taxable') }}</span>@endunless @if ($item['warranty'])<br><span class="tag">{{ $item['warranty_until'] ? __('billing.warranty_until', ['length' => $item['warranty'], 'date' => $item['warranty_until']]) : __('billing.warranty_line', ['length' => $item['warranty']]) }}</span>@endif</td>
+                    <td class="num">{{ $item['quantity'] }}@if ($item['unit']) {{ $item['unit'] }}@endif</td>
                     <td class="num">{{ $item['unit_price'] }}</td>
                     <td class="num">{{ $item['total'] }}</td>
                 </tr>
@@ -154,6 +154,13 @@
 
     @if ($doc['notes'])
         <div class="box">{{ $doc['notes'] }}</div>
+    @endif
+
+    @if ($doc['warranty_terms'] && collect($doc['items'])->contains(fn ($item) => $item['warranty']))
+        <div class="section">
+            <div style="font-weight: bold;">{{ __('billing.warranty_terms') }}</div>
+            <div style="white-space: pre-line;" class="muted">{{ $doc['warranty_terms'] }}</div>
+        </div>
     @endif
 
     @if ($doc['terms'])

@@ -27,13 +27,14 @@ class TaxRate extends Model
     /** @use HasFactory<TaxRateFactory> */
     use HasFactory;
 
-    protected $fillable = ['name', 'rate', 'is_compound', 'is_default', 'is_active', 'sort_order'];
+    protected $fillable = ['name', 'rate', 'is_compound', 'is_default', 'is_active', 'sort_order', 'is_recoverable'];
 
     protected $attributes = [
         'is_compound' => false,
         'is_default' => false,
         'is_active' => true,
         'sort_order' => 0,
+        'is_recoverable' => true,
     ];
 
     /**
@@ -47,6 +48,7 @@ class TaxRate extends Model
             'is_default' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
+            'is_recoverable' => 'boolean',
         ];
     }
 }

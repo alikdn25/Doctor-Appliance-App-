@@ -24,6 +24,24 @@ export type DocumentItem = {
     /** Estimates: the customer may add it; counted only when selected. */
     optional: boolean;
     selected: boolean;
+    kind: 'service' | 'part' | 'material';
+    service_id: number | null;
+    part_number: string | null;
+    unit: string | null;
+    bill_to_customer: boolean;
+    warranty_value: number | null;
+    warranty_unit: string | null;
+    warranty_label: string;
+    warranty_ends_on: string | null;
+    supplier: string | null;
+    unit_cost: number | null;
+    supplier_taxes: {
+        tax_rate_id: number | null;
+        name: string;
+        amount: number;
+        recoverable: boolean;
+    }[];
+    total_cost: number | null;
 };
 
 export type DocumentTax = {
@@ -82,6 +100,8 @@ export type BillingDocument = DocumentRow & {
     brand: string | null;
     created_by: string | null;
     created_at: string | null;
+    costs_visible?: boolean;
+    cost_total?: number | null;
     // Estimate
     valid_until?: string | null;
     expired?: boolean;
@@ -132,6 +152,13 @@ export type ServiceOption = {
     unit_price: number | null;
     currency: string;
     taxable: boolean;
+    kind: 'service' | 'part' | 'material';
+    part_number: string | null;
+    unit: string | null;
+    unit_cost: number | null;
+    supplier: string | null;
+    warranty_value: number | null;
+    warranty_unit: string | null;
 };
 
 export type TaxOption = {

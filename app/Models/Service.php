@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\LineKind;
 use App\Models\Concerns\BelongsToCompany;
 use App\Support\Jobs\ServiceDefaults;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * A service of the company's price book (SPEC §7.11). The starting set comes from the company's vertical;
- * the full price book (parts, costs, picker on estimate/invoice lines) is a later task.
+ * An item of the company's price book (SPEC §7.11): a service, part or material, with price, cost and a default
+ * warranty. The starting services come from the company's vertical.
  *
  * @property int $id
  * @property int $company_id
@@ -18,17 +19,28 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool $taxable
  * @property bool $is_active
  * @property int $sort_order
+ * @property LineKind $kind
+ * @property string|null $part_number
+ * @property string|null $supplier
+ * @property string|null $unit
+ * @property int|null $unit_cost
+ * @property int|null $warranty_value Default warranty of lines made from it (0 = none, null = company default)
+ * @property string|null $warranty_unit
  */
 class Service extends Model
 {
     use BelongsToCompany;
 
-    protected $fillable = ['name', 'description', 'unit_price', 'taxable', 'is_active', 'sort_order'];
+    protected $fillable = [
+        'name', 'description', 'unit_price', 'taxable', 'is_active', 'sort_order',
+        'kind', 'part_number', 'supplier', 'unit', 'unit_cost', 'warranty_value', 'warranty_unit',
+    ];
 
     protected $attributes = [
         'taxable' => true,
         'is_active' => true,
         'sort_order' => 0,
+        'kind' => 'service',
     ];
 
     /**
@@ -41,6 +53,9 @@ class Service extends Model
             'taxable' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
+            'kind' => LineKind::class,
+            'unit_cost' => 'integer',
+            'warranty_value' => 'integer',
         ];
     }
 

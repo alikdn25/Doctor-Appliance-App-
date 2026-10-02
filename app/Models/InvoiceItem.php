@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\IsBillingLine;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class InvoiceItem extends Model
 {
-    use BelongsToCompany;
+    use BelongsToCompany, IsBillingLine;
 
     protected $fillable = ['position', 'description', 'quantity', 'unit_price', 'taxable', 'total'];
 

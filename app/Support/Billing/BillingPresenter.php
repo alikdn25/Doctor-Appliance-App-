@@ -5,6 +5,8 @@ namespace App\Support\Billing;
 use App\Actions\Billing\SendDocument;
 use App\Enums\EstimateStatus;
 use App\Enums\InvoiceStatus;
+use App\Enums\LineKind;
+use App\Enums\WarrantyUnit;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -12,6 +14,7 @@ use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Jobs\JobPresenter;
+use App\Support\Locale\Currencies;
 
 /**
  * Shapes estimates, invoices and payments for the React pages. Money stays in minor units, with its currency.
@@ -51,6 +54,7 @@ class BillingPresenter
     {
         $document->loadMissing(['items', 'job', 'customer.primaryPhone', 'customer.primaryEmail', 'property', 'brand', 'creator']);
         $invoice = $document instanceof Invoice;
+        $costs = CostAccess::canSee(auth()->user());
 
         $data = [
             ...self::row($document),
@@ -71,7 +75,23 @@ class BillingPresenter
                 'total' => $item->total,
                 'optional' => $invoice ? false : $item->optional,
                 'selected' => $invoice ? true : $item->selected,
+                'kind' => $item->kind->value,
+                'service_id' => $item->service_id,
+                'part_number' => $item->part_number,
+                'unit' => $item->unit,
+                'bill_to_customer' => $item->bill_to_customer,
+                'warranty_value' => $item->warranty_value,
+                'warranty_unit' => $item->warranty_unit,
+                'warranty_label' => $item->warrantyLabel(),
+                'warranty_ends_on' => $invoice ? $item->warranty_ends_on?->toDateString() : null,
+                // Costs only for those allowed to see them.
+                'supplier' => $costs ? $item->supplier : null,
+                'unit_cost' => $costs ? $item->unit_cost : null,
+                'supplier_taxes' => $costs ? ($item->supplier_taxes ?? []) : [],
+                'total_cost' => $costs ? $item->totalCost() : null,
             ])->values(),
+            'costs_visible' => $costs,
+            'cost_total' => $costs ? $document->items->sum(fn ($item) => $item->totalCost()) : null,
             'job' => self::job($document->job),
             'customer' => [
                 'id' => $document->customer->id,
@@ -254,9 +274,52 @@ class BillingPresenter
                 'unit_price' => $service->unit_price,
                 'currency' => $currency,
                 'taxable' => $service->taxable,
+                'kind' => $service->kind->value,
+                'part_number' => $service->part_number,
+                'unit' => $service->unit,
+                'unit_cost' => CostAccess::canSee(auth()->user()) ? $service->unit_cost : null,
+                'supplier' => CostAccess::canSee(auth()->user()) ? $service->supplier : null,
+                'warranty_value' => $service->warranty_value,
+                'warranty_unit' => $service->warranty_unit,
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * What the line editor needs: cost access, markup scales (minor units), warranty defaults, units, supplier taxes.
+     *
+     * @return array<string, mixed>
+     */
+    public static function lineSetup(): array
+    {
+        $company = currentCompany();
+        $factor = Currencies::factor($company->currency);
+        $scale = fn (LineKind $kind) => array_map(fn (array $tier) => [
+            'up_to' => $tier['up_to'] === null ? null : (int) round((float) $tier['up_to'] * $factor),
+            'multiplier' => (float) $tier['multiplier'],
+        ], Markup::scale($company, $kind));
+
+        return [
+            'costs_visible' => CostAccess::canSee(auth()->user()),
+            'markup' => ['part' => $scale(LineKind::Part), 'material' => $scale(LineKind::Material)],
+            'warranty' => [
+                'labor' => ['value' => $company->warranty_labor_value, 'unit' => $company->warranty_labor_unit],
+                'parts' => ['value' => $company->warranty_parts_value, 'unit' => $company->warranty_parts_unit],
+                'parts_threshold' => $company->warranty_parts_threshold,
+                'parts_above' => $company->warranty_parts_above_value === null ? null
+                    : ['value' => $company->warranty_parts_above_value, 'unit' => $company->warranty_parts_above_unit ?? 'days'],
+            ],
+            'warranty_units' => WarrantyUnit::options(),
+            'units' => array_map(fn (string $unit) => ['value' => $unit, 'label' => __("billing.units.{$unit}")], ['pcs', 'ft', 'm', 'lb', 'oz']),
+            'supplier_taxes' => TaxRate::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get()
+                ->map(fn (TaxRate $rate) => [
+                    'id' => $rate->id,
+                    'name' => $rate->name,
+                    'rate' => rtrim(rtrim((string) $rate->rate, '0'), '.'),
+                    'recoverable' => $rate->is_recoverable,
+                ])->values()->all(),
+        ];
     }
 
     /**

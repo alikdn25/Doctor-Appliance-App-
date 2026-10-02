@@ -9,6 +9,7 @@ use App\Enums\VisitStatus;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
 use App\Models\User;
+use App\Support\Billing\Warranties;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -52,6 +53,8 @@ class CloseJob
             $job->visits()->where('status', VisitStatus::Scheduled->value)->update(['status' => VisitStatus::Cancelled->value]);
 
             $this->record($job, $outcome, $reason, $note, $user);
+            // Warranties run from the day the job was closed.
+            Warranties::stampJob($job);
 
             if (! $job->status->isLocked() && $job->status !== JobStatus::Completed) {
                 $this->changeStatus->handle($job, JobStatus::Completed, $user, $visit, $this->historyNote($outcome, $reason, $note));
