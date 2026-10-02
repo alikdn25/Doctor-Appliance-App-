@@ -138,7 +138,6 @@ test('a technician who is not on the job cannot revise', function () {
     $this->post(route('estimates.revise', $this->estimate))->assertForbidden();
 });
 
-
 test('revising a signed estimate keeps the individual tax selections', function () {
     $tax = TaxRate::factory()->create(['company_id' => $this->company->id]);
     $this->put(route('estimates.update', $this->estimate), documentPayload([

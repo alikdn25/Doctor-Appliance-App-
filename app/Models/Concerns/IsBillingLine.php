@@ -73,4 +73,3 @@ trait IsBillingLine
         return Warranty::label($this->warranty_value, $this->warranty_unit);
     }
 }
-

@@ -158,4 +158,3 @@ class JobCostController extends Controller
         abort_unless(CostAccess::canSee($request->user()), 403);
     }
 }
-

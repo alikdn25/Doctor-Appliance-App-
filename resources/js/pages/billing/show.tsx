@@ -335,9 +335,12 @@ export default function BillingShow({
                                                 : Number(item.quantity),
                                             price: money(item.unit_price),
                                         })}
-                                        {(!item.taxable || item.tax_rate_ids?.length === 0) &&
+                                        {(!item.taxable ||
+                                            item.tax_rate_ids?.length === 0) &&
                                             ` · ${t('billing.not_taxable')}`}
-                                        {item.taxable && item.tax_names.length > 0 && ` · ${item.tax_names.join(', ')}`}
+                                        {item.taxable &&
+                                            item.tax_names.length > 0 &&
+                                            ` · ${item.tax_names.join(', ')}`}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                         {item.warranty_ends_on
@@ -988,4 +991,3 @@ function RefundDialog({
         </Dialog>
     );
 }
-

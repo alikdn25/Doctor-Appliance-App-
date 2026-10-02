@@ -61,32 +61,66 @@ export default function BusinessExpenseForm({
         amount: expense ? fromMinor(expense.amount, currency) : '',
         tax_amount: expense ? fromMinor(expense.tax_amount, currency) : '0',
         use_named_taxes: !expense || expense.taxes !== null,
-        tax_rate_ids: expense?.taxes?.map((tax) => tax.tax_rate_id) ?? taxRates.filter((tax) => tax.is_default).map((tax) => tax.id),
-        tax_amounts: Object.fromEntries((expense?.taxes ?? []).map((tax) => [String(tax.tax_rate_id), fromMinor(tax.amount, currency)])),
-        notes: expense?.notes ?? '', 
+        tax_rate_ids:
+            expense?.taxes?.map((tax) => tax.tax_rate_id) ??
+            taxRates.filter((tax) => tax.is_default).map((tax) => tax.id),
+        tax_amounts: Object.fromEntries(
+            (expense?.taxes ?? []).map((tax) => [
+                String(tax.tax_rate_id),
+                fromMinor(tax.amount, currency),
+            ]),
+        ),
+        notes: expense?.notes ?? '',
         receipt: null,
     });
     const decimals = currencyDecimals(currency);
     const step = decimals === 0 ? '1' : (1 / 10 ** decimals).toFixed(decimals);
-    const selectedTaxes = taxRates.filter((tax) => form.data.tax_rate_ids.includes(tax.id)).map((tax) =>
-        expense?.taxes?.find((saved) => saved.tax_rate_id === tax.id) ?? { tax_rate_id: tax.id, name: tax.name, rate: tax.rate, compound: tax.is_compound },
-    );
+    const selectedTaxes = taxRates
+        .filter((tax) => form.data.tax_rate_ids.includes(tax.id))
+        .map(
+            (tax) =>
+                expense?.taxes?.find(
+                    (saved) => saved.tax_rate_id === tax.id,
+                ) ?? {
+                    tax_rate_id: tax.id,
+                    name: tax.name,
+                    rate: tax.rate,
+                    compound: tax.is_compound,
+                },
+        );
     const calculated = computeTotals({
         items: [{ quantity: '1', unit_price: form.data.amount, taxable: true }],
-        discount_type: '', discount_value: '', taxes: selectedTaxes, currency, prices_include_tax: false,
+        discount_type: '',
+        discount_value: '',
+        taxes: selectedTaxes,
+        currency,
+        prices_include_tax: false,
     });
-    const amounts = Object.fromEntries(selectedTaxes.map((tax, i) => [String(tax.tax_rate_id),
-        form.data.tax_amounts[String(tax.tax_rate_id)] ?? fromMinor(calculated.taxes[i].amount, currency),
-    ]));
+    const amounts = Object.fromEntries(
+        selectedTaxes.map((tax, i) => [
+            String(tax.tax_rate_id),
+            form.data.tax_amounts[String(tax.tax_rate_id)] ??
+                fromMinor(calculated.taxes[i].amount, currency),
+        ]),
+    );
     const taxTotal = form.data.use_named_taxes
-        ? Object.values(amounts).reduce((sum, amount) => sum + toMinor(amount, currency), 0)
+        ? Object.values(amounts).reduce(
+              (sum, amount) => sum + toMinor(amount, currency),
+              0,
+          )
         : toMinor(form.data.tax_amount, currency);
     const total = toMinor(form.data.amount, currency) + taxTotal;
     const fieldErrors = form.errors as Record<string, string | undefined>;
 
     function submit(event: FormEvent) {
         event.preventDefault();
-        form.transform((data) => ({ ...data, tax_amounts: data.use_named_taxes ? amounts : {}, tax_amount: data.use_named_taxes ? fromMinor(taxTotal, currency) : data.tax_amount }));
+        form.transform((data) => ({
+            ...data,
+            tax_amounts: data.use_named_taxes ? amounts : {},
+            tax_amount: data.use_named_taxes
+                ? fromMinor(taxTotal, currency)
+                : data.tax_amount,
+        }));
         // POST with method override also supports receipt replacement on an existing expense.
         form.post(expense ? update(expense.id).url : store().url, {
             forceFormData: true,
@@ -224,53 +258,157 @@ export default function BusinessExpenseForm({
                                 }
                             />
                         </FormField>
-                        {!form.data.use_named_taxes && <FormField
-                            id="tax_amount"
-                            label={`${t('expenses.fields.tax')} (${currency})`}
-                            error={form.errors.tax_amount}
-                        >
-                            <Input
+                        {!form.data.use_named_taxes && (
+                            <FormField
                                 id="tax_amount"
-                                type="number"
-                                inputMode="decimal"
-                                min="0"
-                                step={step}
-                                required
-                                value={form.data.tax_amount}
-                                onChange={(event) =>
-                                    form.setData(
-                                        'tax_amount',
-                                        event.target.value,
-                                    )
-                                }
-                            />
-                        </FormField>}
+                                label={`${t('expenses.fields.tax')} (${currency})`}
+                                error={form.errors.tax_amount}
+                            >
+                                <Input
+                                    id="tax_amount"
+                                    type="number"
+                                    inputMode="decimal"
+                                    min="0"
+                                    step={step}
+                                    required
+                                    value={form.data.tax_amount}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'tax_amount',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </FormField>
+                        )}
                     </div>
                     <fieldset className="space-y-3 rounded-lg border p-4">
-                        <legend className="px-1 text-sm font-medium">{t('expenses.named_taxes')}</legend>
-                        {!form.data.use_named_taxes && <Button type="button" variant="outline" onClick={() => form.setData('use_named_taxes', true)}>{t('expenses.allocate_taxes')}</Button>}
-                        {form.data.use_named_taxes && <>
-                            <p className="text-sm text-muted-foreground">{t('expenses.tax_hint')}</p>
-                            {taxRates.length === 0 && <p className="text-sm">{t('expenses.no_taxes')}</p>}
-                            {taxRates.map((tax) => {
-                                const saved = expense?.taxes?.find((entry) => entry.tax_rate_id === tax.id);
-                                const selected = form.data.tax_rate_ids.includes(tax.id);
-                                return <div key={tax.id} className="grid items-center gap-2 sm:grid-cols-2">
-                                    <label className="flex min-h-11 items-center gap-2 text-sm">
-                                        <Checkbox checked={selected} onCheckedChange={(checked) => form.setData('tax_rate_ids', checked === true ? [...form.data.tax_rate_ids, tax.id] : form.data.tax_rate_ids.filter((id) => id !== tax.id))} />
-                                        {saved?.name ?? tax.name} ({saved?.rate ?? tax.rate}%)
-                                    </label>
-                                    {selected && <FormField id={`tax-${tax.id}`} label={`${t('expenses.actual_tax')} (${currency})`} error={fieldErrors[`tax_amounts.${tax.id}`]}>
-                                        <Input id={`tax-${tax.id}`} type="number" min="0" step={step} inputMode="decimal" required
-                                            value={amounts[String(tax.id)] ?? '0'}
-                                            onChange={(event) => form.setData('tax_amounts', { ...form.data.tax_amounts, [String(tax.id)]: event.target.value })} />
-                                    </FormField>}
-                                </div>;
-                            })}
-                            {fieldErrors.tax_rate_ids && <p className="text-sm text-destructive">{fieldErrors.tax_rate_ids}</p>}
-                            {Object.entries(fieldErrors).filter(([key]) => key.startsWith('tax_rate_ids.')).map(([key, error]) => <p key={key} className="text-sm text-destructive">{error}</p>)}
-                        </>}
-                        <p className="text-right text-sm font-medium tabular-nums">{t('expenses.fields.tax')}: {money(taxTotal)}</p>
+                        <legend className="px-1 text-sm font-medium">
+                            {t('expenses.named_taxes')}
+                        </legend>
+                        {!form.data.use_named_taxes && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                    form.setData('use_named_taxes', true)
+                                }
+                            >
+                                {t('expenses.allocate_taxes')}
+                            </Button>
+                        )}
+                        {form.data.use_named_taxes && (
+                            <>
+                                <p className="text-sm text-muted-foreground">
+                                    {t('expenses.tax_hint')}
+                                </p>
+                                {taxRates.length === 0 && (
+                                    <p className="text-sm">
+                                        {t('expenses.no_taxes')}
+                                    </p>
+                                )}
+                                {taxRates.map((tax) => {
+                                    const saved = expense?.taxes?.find(
+                                        (entry) => entry.tax_rate_id === tax.id,
+                                    );
+                                    const selected =
+                                        form.data.tax_rate_ids.includes(tax.id);
+                                    return (
+                                        <div
+                                            key={tax.id}
+                                            className="grid items-center gap-2 sm:grid-cols-2"
+                                        >
+                                            <label className="flex min-h-11 items-center gap-2 text-sm">
+                                                <Checkbox
+                                                    checked={selected}
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        form.setData(
+                                                            'tax_rate_ids',
+                                                            checked === true
+                                                                ? [
+                                                                      ...form
+                                                                          .data
+                                                                          .tax_rate_ids,
+                                                                      tax.id,
+                                                                  ]
+                                                                : form.data.tax_rate_ids.filter(
+                                                                      (id) =>
+                                                                          id !==
+                                                                          tax.id,
+                                                                  ),
+                                                        )
+                                                    }
+                                                />
+                                                {saved?.name ?? tax.name} (
+                                                {saved?.rate ?? tax.rate}%)
+                                            </label>
+                                            {selected && (
+                                                <FormField
+                                                    id={`tax-${tax.id}`}
+                                                    label={`${t('expenses.actual_tax')} (${currency})`}
+                                                    error={
+                                                        fieldErrors[
+                                                            `tax_amounts.${tax.id}`
+                                                        ]
+                                                    }
+                                                >
+                                                    <Input
+                                                        id={`tax-${tax.id}`}
+                                                        type="number"
+                                                        min="0"
+                                                        step={step}
+                                                        inputMode="decimal"
+                                                        required
+                                                        value={
+                                                            amounts[
+                                                                String(tax.id)
+                                                            ] ?? '0'
+                                                        }
+                                                        onChange={(event) =>
+                                                            form.setData(
+                                                                'tax_amounts',
+                                                                {
+                                                                    ...form.data
+                                                                        .tax_amounts,
+                                                                    [String(
+                                                                        tax.id,
+                                                                    )]:
+                                                                        event
+                                                                            .target
+                                                                            .value,
+                                                                },
+                                                            )
+                                                        }
+                                                    />
+                                                </FormField>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                {fieldErrors.tax_rate_ids && (
+                                    <p className="text-sm text-destructive">
+                                        {fieldErrors.tax_rate_ids}
+                                    </p>
+                                )}
+                                {Object.entries(fieldErrors)
+                                    .filter(([key]) =>
+                                        key.startsWith('tax_rate_ids.'),
+                                    )
+                                    .map(([key, error]) => (
+                                        <p
+                                            key={key}
+                                            className="text-sm text-destructive"
+                                        >
+                                            {error}
+                                        </p>
+                                    ))}
+                            </>
+                        )}
+                        <p className="text-right text-sm font-medium tabular-nums">
+                            {t('expenses.fields.tax')}: {money(taxTotal)}
+                        </p>
                     </fieldset>
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/40 p-4">
                         <p className="text-sm text-muted-foreground">

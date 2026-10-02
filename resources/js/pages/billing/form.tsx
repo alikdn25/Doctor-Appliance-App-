@@ -198,7 +198,13 @@ export default function BillingForm({
     const selectedTaxes = taxRates
         .filter((r) => data.tax_rate_ids.includes(r.id))
         .map(
-            (r) => document?.taxes.find((tax) => tax.tax_rate_id === r.id) ?? { tax_rate_id: r.id, name: r.name, rate: r.rate, compound: r.is_compound },
+            (r) =>
+                document?.taxes.find((tax) => tax.tax_rate_id === r.id) ?? {
+                    tax_rate_id: r.id,
+                    name: r.name,
+                    rate: r.rate,
+                    compound: r.is_compound,
+                },
         );
     const totals = computeTotals({
         items: data.items.map((line) => ({
@@ -244,7 +250,12 @@ export default function BillingForm({
                 quantity: line.quantity,
                 unit_price: line.unit_price.replace(/[^\d.-]/g, ''),
                 taxable: line.taxable,
-                tax_rate_ids: line.tax_rate_ids === null ? null : line.tax_rate_ids.filter((id) => d.tax_rate_ids.includes(id)),
+                tax_rate_ids:
+                    line.tax_rate_ids === null
+                        ? null
+                        : line.tax_rate_ids.filter((id) =>
+                              d.tax_rate_ids.includes(id),
+                          ),
                 kind: line.kind,
                 service_id: line.service_id,
                 part_number: line.part_number || null,
@@ -644,4 +655,3 @@ export default function BillingForm({
         </>
     );
 }
-

@@ -101,4 +101,3 @@ return [
     ],
     'cost_total' => 'Total cost',
 ];
-

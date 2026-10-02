@@ -15,7 +15,15 @@ export type ExpenseRow = {
     merchant: string | null;
     amount: number;
     tax_amount: number;
-    taxes: { tax_rate_id: number; name: string; rate: string; compound: boolean; amount: number }[] | null;
+    taxes:
+        | {
+              tax_rate_id: number;
+              name: string;
+              rate: string;
+              compound: boolean;
+              amount: number;
+          }[]
+        | null;
     total: number;
     currency: string;
     creator: string | null;

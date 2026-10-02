@@ -163,7 +163,6 @@ test('optional lines that are not picked keep their line total but are not count
         ->and($totals['total'])->toBe(11700);
 });
 
-
 test('each line chooses its own taxes and shares discounts with exempt and excluded lines', function () {
     $totals = DocumentTotals::calculate([
         ['quantity' => 1, 'unit_price' => 10000, 'taxable' => true, 'tax_rate_ids' => [1]],

@@ -173,4 +173,3 @@ class DocumentTotals
         return $formatted === '' ? '0' : $formatted;
     }
 }
-

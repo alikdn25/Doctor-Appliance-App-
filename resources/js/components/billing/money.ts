@@ -80,7 +80,12 @@ export type TotalsInput = {
     }[];
     discount_type: '' | 'amount' | 'percent';
     discount_value: string;
-    taxes: { tax_rate_id?: number | null; name: string; rate: string; compound?: boolean }[];
+    taxes: {
+        tax_rate_id?: number | null;
+        name: string;
+        rate: string;
+        compound?: boolean;
+    }[];
     currency: string;
     prices_include_tax: boolean;
 };
@@ -147,7 +152,10 @@ export function computeTotals(input: TotalsInput): Totals {
     input.items.forEach((item, i) => {
         if (!item.taxable || !counted[i]) return;
         const indices = input.taxes.flatMap((tax, index) =>
-            item.tax_rate_ids == null || item.tax_rate_ids.includes(tax.tax_rate_id ?? 0) ? [index] : [],
+            item.tax_rate_ids == null ||
+            item.tax_rate_ids.includes(tax.tax_rate_id ?? 0)
+                ? [index]
+                : [],
         );
         if (indices.length === 0) return;
         const key = indices.join(',');
@@ -171,11 +179,18 @@ export function computeTotals(input: TotalsInput): Totals {
 
     const amounts = input.taxes.map(() => 0);
     for (const group of groups.values()) {
-        const share = subtotal > 0 ? Math.round(discount * group.subtotal / subtotal) : 0;
+        const share =
+            subtotal > 0
+                ? Math.round((discount * group.subtotal) / subtotal)
+                : 0;
         const base = Math.max(0, group.subtotal - share);
         const taxes = group.indices.map((index) => input.taxes[index]);
-        const selected = input.prices_include_tax ? includedTaxes(base, taxes) : addedTaxes(base, taxes);
-        group.indices.forEach((index, position) => { amounts[index] += selected[position]; });
+        const selected = input.prices_include_tax
+            ? includedTaxes(base, taxes)
+            : addedTaxes(base, taxes);
+        group.indices.forEach((index, position) => {
+            amounts[index] += selected[position];
+        });
     }
     const taxTotal = amounts.reduce((sum, amount) => sum + amount, 0);
 
@@ -191,4 +206,3 @@ export function computeTotals(input: TotalsInput): Totals {
         total: subtotal - discount + (input.prices_include_tax ? 0 : taxTotal),
     };
 }
-

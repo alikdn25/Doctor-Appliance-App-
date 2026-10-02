@@ -216,6 +216,8 @@ class BillingPresenter
     public static function taxOptions(array $onDocument = []): array
     {
         $ids = array_filter(array_column($onDocument, 'tax_rate_id'));
+        $saved = collect($onDocument)->keyBy('tax_rate_id');
+        $positions = array_flip($ids);
 
         return TaxRate::query()
             ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', $ids))
@@ -225,11 +227,12 @@ class BillingPresenter
             ->get()
             ->map(fn (TaxRate $rate) => [
                 'id' => $rate->id,
-                'name' => $rate->name,
-                'rate' => rtrim(rtrim((string) $rate->rate, '0'), '.'),
-                'is_compound' => $rate->is_compound,
+                'name' => $saved[$rate->id]['name'] ?? $rate->name,
+                'rate' => isset($saved[$rate->id]) ? (string) $saved[$rate->id]['rate'] : rtrim(rtrim((string) $rate->rate, '0'), '.'),
+                'is_compound' => $saved[$rate->id]['compound'] ?? $rate->is_compound,
                 'is_default' => $rate->is_default && $rate->is_active,
             ])
+            ->sortBy(fn ($rate) => [(int) $rate['is_compound'], $positions[$rate['id']] ?? count($positions)])
             ->values()
             ->all();
     }

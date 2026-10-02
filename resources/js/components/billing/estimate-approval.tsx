@@ -37,7 +37,12 @@ export type EstimateActions = {
         discount_type: '' | 'amount' | 'percent' | null;
         discount_value: string;
         prices_include_tax: boolean;
-        taxes: { tax_rate_id: number | null; name: string; rate: string; compound: boolean }[];
+        taxes: {
+            tax_rate_id: number | null;
+            name: string;
+            rate: string;
+            compound: boolean;
+        }[];
         items: {
             id: number;
             quantity: string;
@@ -338,4 +343,3 @@ export function DeclineDialog({
         </Dialog>
     );
 }
-

@@ -10,8 +10,8 @@ use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseCategory;
 use App\Models\Membership;
 use App\Services\AuditLogger;
-use App\Support\Locale\Currencies;
 use App\Support\Billing\BillingPresenter;
+use App\Support\Locale\Currencies;
 use App\Support\PrivateMedia;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -44,6 +44,10 @@ class BusinessExpenseController extends Controller
         $employees = $companyView ? Membership::query()->with('user')->get()
             ->filter(fn (Membership $member) => $member->user !== null)
             ->map(fn (Membership $member) => ['id' => $member->user_id, 'name' => $member->user->name])
+            ->concat(BusinessExpense::query()->select('created_by')->distinct()->with('creator')->get()
+                ->filter(fn ($expense) => $expense->created_by !== null)
+                ->map(fn ($expense) => ['id' => $expense->created_by, 'name' => $expense->creator?->name ?? __('expenses.former_employee')]))
+            ->unique('id')
             ->sortBy('name')->values() : collect();
         $employeeTotals = $companyView ? $this->query($request, $filters)->with('creator')
             ->select('created_by', 'currency')
@@ -185,7 +189,9 @@ class BusinessExpenseController extends Controller
             'to' => ['nullable', 'date_format:Y-m-d'],
             'category' => ['nullable', 'integer', Rule::exists('business_expense_categories', 'id')->where('company_id', currentCompany()->id)],
             'search' => ['nullable', 'string', 'max:255'],
-            'employee' => ['nullable', 'integer', Rule::exists('company_user', 'user_id')->where('company_id', currentCompany()->id)],
+            'employee' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query
+                ->whereIn('id', Membership::query()->select('user_id'))
+                ->orWhereIn('id', BusinessExpense::query()->select('created_by')))],
         ]);
         $now = CarbonImmutable::now(currentCompany()->timezone);
         $from = $data['from'] ?? $now->startOfMonth()->toDateString();

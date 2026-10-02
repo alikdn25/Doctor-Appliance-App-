@@ -211,7 +211,7 @@ class PublicDocumentController extends Controller
                     'quantity' => (string) $item->quantity,
                     'unit_price' => $item->unit_price,
                     'taxable' => $item->taxable,
-                'tax_rate_ids' => $item->tax_rate_ids,
+                    'tax_rate_ids' => $item->tax_rate_ids,
                     'optional' => $item->optional,
                     'selected' => $item->selected,
                 ])->values()->all(),
@@ -235,4 +235,3 @@ class PublicDocumentController extends Controller
         return [$document, $company];
     }
 }
-

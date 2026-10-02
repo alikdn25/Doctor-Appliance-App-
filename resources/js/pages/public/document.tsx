@@ -301,7 +301,8 @@ export default function PublicDocument({
                                                 : item.quantity,
                                             price: item.unit_price,
                                         })}
-                                        {item.tax_names.length > 0 && ` · ${item.tax_names.join(', ')}`}
+                                        {item.tax_names.length > 0 &&
+                                            ` · ${item.tax_names.join(', ')}`}
                                     </p>
                                     {item.warranty && (
                                         <p className="text-xs text-muted-foreground">
@@ -690,4 +691,3 @@ function Row({
         </div>
     );
 }
-

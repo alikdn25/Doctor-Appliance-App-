@@ -193,7 +193,6 @@ test('the job page lists its estimates and invoices', function () {
             ->where('job.invoices.0.balance', 28050));
 });
 
-
 test('per item tax choices persist through edits and conversion using historical names and rates', function () {
     $items = [
         ['description' => 'Labor', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => [$this->gst->id]],
@@ -239,4 +238,22 @@ test('documents accept more than five company taxes on an item and its supplier 
     ]))->assertSessionHasNoErrors();
     $invoice = inCompany($this->company, fn () => Invoice::query()->with('items')->sole());
     expect($invoice->taxes)->toHaveCount(7)->and($invoice->total)->toBe(10700)->and($invoice->items->first()->supplier_taxes)->toHaveCount(7);
+});
+
+test('saved compound ordering and edit form rates survive changed company settings', function () {
+    $this->pst->update(['is_compound' => true]);
+    $payload = documentPayload(['tax_rate_ids' => [$this->gst->id, $this->pst->id], 'items' => [
+        ['description' => 'Repair', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => [$this->gst->id, $this->pst->id]],
+        ['description' => 'Regional only', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => [$this->pst->id]],
+    ]]);
+    $this->post(route('estimates.store', $this->job), $payload)->assertSessionHasNoErrors();
+    $estimate = estimateOf($this->company);
+    expect($estimate->total)->toBe(21935);
+    $this->gst->update(['is_compound' => true, 'name' => 'Changed federal', 'rate' => 20]);
+    $this->pst->update(['is_compound' => false, 'name' => 'Changed regional', 'rate' => 15]);
+    $this->get(route('estimates.edit', $estimate))->assertInertia(fn (Assert $page) => $page
+        ->where('taxRates.0.id', $this->gst->id)->where('taxRates.0.name', 'GST')->where('taxRates.0.rate', '5')
+        ->where('taxRates.0.is_compound', false)->where('taxRates.1.is_compound', true));
+    $this->put(route('estimates.update', $estimate), $payload)->assertSessionHasNoErrors();
+    expect(estimateOf($this->company)->total)->toBe(21935)->and(estimateOf($this->company)->taxes)->toBe($estimate->taxes);
 });

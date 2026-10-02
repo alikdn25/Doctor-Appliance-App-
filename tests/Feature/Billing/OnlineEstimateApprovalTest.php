@@ -527,7 +527,6 @@ describe('tenant isolation', function () {
     });
 });
 
-
 test('online optional selection recalculates the taxes selected on each item and exposes matching preview inputs', function () {
     $regional = inCompany($this->company, fn () => $this->company->taxRates()->create(['name' => 'Regional', 'rate' => 5]));
     $estimate = approvalEstimate($this->company, $this->job, [

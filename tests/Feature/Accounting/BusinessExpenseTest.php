@@ -5,8 +5,9 @@ use App\Models\AuditLog;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseCategory;
 use App\Models\Company;
-use App\Models\User;
+use App\Models\Membership;
 use App\Models\TaxRate;
+use App\Models\User;
 use App\Support\PrivateMedia;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -287,7 +288,19 @@ test('company employee filters and summaries cover the whole period and export w
     $this->actingAs($this->tech)->get(route('expenses.index', ['employee' => $this->owner->id]))->assertInertia(fn (Assert $page) => $page
         ->where('companyView', false)->where('employees', [])->where('employeeTotals', [])
         ->where('filters.employee', '')->where('expenses.total', 27));
-    $foreign = memberOf();
+    $foreignCompany = Company::factory()->create();
+    $foreign = inCompany($foreignCompany, fn () => memberOf($foreignCompany));
     $this->actingAs($this->owner)->get(route('expenses.index', ['employee' => $foreign->id]))->assertSessionHasErrors('employee');
     $this->get(route('expenses.download', ['employee' => $foreign->id]))->assertSessionHasErrors('employee');
+});
+
+test('expenses of former employees remain available to the company filter and export', function () {
+    overheadRecord($this->company, $this->tech, $this->category, ['description' => 'Former employee tools']);
+    inCompany($this->company, fn () => Membership::query()->where('user_id', $this->tech->id)->delete());
+    $this->get(route('expenses.index', ['employee' => $this->tech->id]))->assertSessionHasNoErrors()
+        ->assertInertia(fn (Assert $page) => $page->where('expenses.total', 1)
+            ->where('employeeTotals.0.id', $this->tech->id)->where('employeeTotals.0.name', $this->tech->name)
+            ->has('employees', 2));
+    $csv = $this->get(route('expenses.download', ['employee' => $this->tech->id]))->assertOk()->streamedContent();
+    expect($csv)->toContain('Former employee tools');
 });
