@@ -29,7 +29,7 @@ Therefore the system is **multi-tenant from day one**: every company is an isola
 - Hierarchy: **Platform → Company (tenant) → Brands → Users / Customers / Jobs**.
 - **Super-admin panel** (platform owner only): list of companies, status, plan, usage, ability to impersonate for support (logged).
 - Company-level settings: timezone, currency (CAD default), tax rates, invoice numbering, business hours.
-- Subscription billing for tenants is NOT built in v1, but the data model includes `plan` and `subscription_status` on Company.
+- Subscription billing for tenants (companies paying for the app) is specified in §11 and built as a separate task before the Phase B launch. The data model already includes `plan` and `subscription_status` on Company.
 
 ## 4. Brands
 
@@ -214,15 +214,69 @@ Parts orders, manufacturer warranty claims, online booking page, click-to-call, 
 
 ### Stage 3
 
-Strata features & inspection PDFs, service plans & recurring jobs, QuickBooks, advanced reports, tenant subscription billing, onboarding flow for new companies.
+Strata features & inspection PDFs, service plans & recurring jobs, QuickBooks, advanced reports, onboarding flow for new companies.
+
+Tenant subscription billing (§11) is a separate task scheduled before the Phase B launch.
 
 ### Later (not in scope now)
 
 AI features (call answering, plate OCR, estimate drafting), native mobile apps, payroll.
 
-## 11. Open questions
+## 11. Platform subscription billing
+
+How companies (tenants) pay **us** for the app. Not to be confused with §7.6, where companies take payments from **their customers**: the two modules share no code, settings or credentials.
+
+### 11.1 Provider
+
+- **Stripe Billing** is used for company subscriptions to the app.
+- It is a separate module from the invoice payment providers of §7.6 (Square etc.).
+- Stripe keys, webhook secret and account come from env config only (`.env`), nothing hardcoded. No Stripe price/product IDs in code either; they are created or looked up from our plan data.
+
+### 11.2 Plans and prices (CAD per month)
+
+| Plan | Users    | Regular price | Founding member price |
+| ---- | -------- | ------------- | --------------------- |
+| Solo | 1        | $29           | $25                   |
+| Team | up to 5  | $79           | $59                   |
+| Pro  | up to 15 | $149          | — (regular price)     |
+
+- **Founding members:** the first 20–30 companies (the exact cut-off is a platform setting). Their price is **locked for life**: later price changes never apply to them while their subscription stays active.
+- Prices are stored per company subscription in our database, so a price change for new customers never changes existing subscriptions by accident.
+
+### 11.3 Trial and signup
+
+- Trial: **3 months** for founding members, **2 months** otherwise.
+- A card is required at signup (collected by Stripe Checkout / Elements; the card never touches our servers).
+- The subscription starts billing automatically at trial end.
+
+### 11.4 Self-service
+
+- Companies update their card, see invoices/receipts and billing history via the **Stripe Customer Portal**, opened from the Owner's billing page.
+- We show no bank details and issue no manual subscription invoices.
+- Only the Owner sees and manages the company subscription.
+
+### 11.5 Source of truth
+
+- **Our database is the source of truth** for: plan, price (amount and currency), founding member status, trial end date and billing anchor date (the day of month the subscription renews), subscription status.
+- Stripe stores the billing objects; our database keeps only references: `stripe_customer_id` and `stripe_subscription_id`. **No card data** (not even last 4 digits) is stored in our database.
+- Stripe webhooks update `subscription_status` (active, past_due, cancelled …) in our database; they never change plan, price, founding status or dates. Changes to those are made in our app and pushed to Stripe.
+- The super-admin panel shows plan, price, founding status, trial end, anchor date and status per company.
+
+### 11.6 Moving to a new Stripe account
+
+The legal entity that owns the app will change later, so the billing setup must survive a move to a **new Stripe account**:
+
+- Stripe can copy customers and their cards from the old account to the new one. **Customer IDs stay the same; payment method IDs change.** Subscriptions are **not** copied.
+- An artisan command recreates every active (and trialing) subscription on the new Stripe account from our database, keeping each company's price, founding status, trial end and billing anchor date, so no customer is charged early, twice or at a different price. It must:
+    - read the Stripe keys of the new account from env config;
+    - be idempotent (safe to re-run; skips companies already migrated) and support a dry run;
+    - attach each customer's copied default payment method on the new account;
+    - store the new subscription ID in our database and report every company it could not migrate;
+    - leave cancelling the old subscriptions as a separate, explicit step after checking the new ones.
+- The full procedure (request the data copy from Stripe, switch env keys and webhook, dry run, run, verify, cancel old subscriptions, rollback) is documented in `docs/BILLING-MIGRATION.md`.
+
+## 12. Open questions
 
 - Product name and domain.
-- Subscription billing provider for tenants (Square Subscriptions vs Stripe).
 - Object storage provider.
 - Transactional email provider.
