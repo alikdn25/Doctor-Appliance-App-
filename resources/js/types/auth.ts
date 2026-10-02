@@ -20,6 +20,7 @@ export type CurrentCompany = {
 export type Permissions = {
     viewCustomers?: boolean;
     viewJobs?: boolean;
+    viewInvoices?: boolean;
     viewMyJobs?: boolean;
     viewCalendar?: boolean;
     manageChecklists?: boolean;

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Jobs;
 
+use App\Actions\Billing\SyncJobBillingStatus;
 use App\Enums\JobStatus;
 use App\Enums\VisitStatus;
 use App\Models\JobVisit;
@@ -15,7 +16,10 @@ use Illuminate\Validation\ValidationException;
  */
 class VisitWorkflow
 {
-    public function __construct(private readonly ChangeJobStatus $changeStatus) {}
+    public function __construct(
+        private readonly ChangeJobStatus $changeStatus,
+        private readonly SyncJobBillingStatus $syncBilling,
+    ) {}
 
     public function onMyWay(JobVisit $visit, User $user): void
     {
@@ -54,6 +58,9 @@ class VisitWorkflow
             $visit->save();
 
             $this->changeStatus->handle($visit->job, $outcome, $user, $visit, $note);
+
+            // Invoiced or paid already on site: the finished job moves on to invoiced/paid.
+            $this->syncBilling->handle($visit->job, $user);
         });
     }
 

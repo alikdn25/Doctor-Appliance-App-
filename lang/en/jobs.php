@@ -11,6 +11,7 @@ return [
     'created' => 'Job #:number created.',
     'updated' => 'Job saved.',
     'deleted' => 'Job deleted.',
+    'has_invoices' => 'This job has invoices and cannot be deleted. Void the invoices and cancel the job instead.',
     'count' => ':count jobs',
     'empty' => 'No jobs yet.',
     'no_results' => 'No jobs match your filters.',

@@ -23,11 +23,11 @@ test('an owner can add BC taxes as settings', function () {
     $this->get(route('taxes.index'))->assertInertia(fn (Assert $page) => $page->has('taxRates', 2)->where('canManage', true));
 });
 
-test('only one tax rate is the default', function () {
+test('several taxes can apply by default (GST and PST in BC)', function () {
     $this->post(route('taxes.store'), ['name' => 'GST', 'rate' => 5, 'is_default' => true]);
-    $this->post(route('taxes.store'), ['name' => 'HST', 'rate' => 13, 'is_default' => true]);
+    $this->post(route('taxes.store'), ['name' => 'PST', 'rate' => 7, 'is_default' => true]);
 
-    expect(inCompany($this->company, fn () => TaxRate::where('is_default', true)->pluck('name')->all()))->toBe(['HST']);
+    expect(inCompany($this->company, fn () => TaxRate::where('is_default', true)->orderBy('name')->pluck('name')->all()))->toBe(['GST', 'PST']);
 });
 
 test('a tax rate can be updated and deleted', function () {

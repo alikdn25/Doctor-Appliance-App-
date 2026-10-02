@@ -1,0 +1,88 @@
+<?php
+
+namespace App\Models;
+
+use App\Enums\PaymentMethod;
+use App\Models\Concerns\BelongsToCompany;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+
+/**
+ * A payment towards an invoice, recorded by hand or by a payment provider.
+ * Payments are never deleted: a mistake is voided and stays in the history.
+ *
+ * @property int $id
+ * @property int $company_id
+ * @property int $invoice_id
+ * @property int $amount Cents
+ * @property PaymentMethod $method
+ * @property string|null $reference
+ * @property string|null $note
+ * @property Carbon $received_at
+ * @property int|null $user_id
+ * @property string|null $provider
+ * @property string|null $provider_payment_id
+ * @property Carbon|null $voided_at
+ * @property int|null $voided_by
+ * @property string|null $void_reason
+ * @property-read Invoice $invoice
+ * @property-read User|null $user
+ */
+class Payment extends Model
+{
+    use BelongsToCompany;
+
+    protected $fillable = ['amount', 'method', 'reference', 'note', 'received_at', 'provider', 'provider_payment_id'];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'amount' => 'integer',
+            'method' => PaymentMethod::class,
+            'received_at' => 'datetime',
+            'voided_at' => 'datetime',
+        ];
+    }
+
+    public function isVoid(): bool
+    {
+        return $this->voided_at !== null;
+    }
+
+    /**
+     * @param  Builder<Payment>  $query
+     */
+    public function scopeValid(Builder $query): void
+    {
+        $query->whereNull('voided_at');
+    }
+
+    /**
+     * @return BelongsTo<Invoice, $this>
+     */
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class)->withTrashed();
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function voider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voided_by');
+    }
+}

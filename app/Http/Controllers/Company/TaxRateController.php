@@ -7,7 +7,6 @@ use App\Http\Requests\Company\TaxRateRequest;
 use App\Models\TaxRate;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,12 +25,7 @@ class TaxRateController extends Controller
 
     public function store(TaxRateRequest $request, AuditLogger $audit): RedirectResponse
     {
-        $taxRate = DB::transaction(function () use ($request) {
-            $taxRate = TaxRate::create($request->validated() + ['sort_order' => 0]);
-            $this->ensureSingleDefault($taxRate);
-
-            return $taxRate;
-        });
+        $taxRate = TaxRate::create($request->validated() + ['sort_order' => 0]);
 
         $audit->record('tax_rate.created', $taxRate, $taxRate->only(['name', 'rate']));
 
@@ -42,10 +36,7 @@ class TaxRateController extends Controller
 
     public function update(TaxRateRequest $request, TaxRate $taxRate, AuditLogger $audit): RedirectResponse
     {
-        DB::transaction(function () use ($request, $taxRate) {
-            $taxRate->update($request->validated());
-            $this->ensureSingleDefault($taxRate);
-        });
+        $taxRate->update($request->validated());
 
         $audit->record('tax_rate.updated', $taxRate, $taxRate->only(['name', 'rate', 'is_active']));
 
@@ -64,12 +55,5 @@ class TaxRateController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('taxes.deleted')]);
 
         return to_route('taxes.index');
-    }
-
-    private function ensureSingleDefault(TaxRate $taxRate): void
-    {
-        if ($taxRate->is_default) {
-            TaxRate::query()->whereKeyNot($taxRate->id)->update(['is_default' => false]);
-        }
     }
 }

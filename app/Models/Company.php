@@ -31,6 +31,7 @@ use Illuminate\Support\Carbon;
  * @property int $estimate_next_number
  * @property int $job_next_number
  * @property int $travel_buffer_minutes
+ * @property string|null $payment_provider
  * @property bool $timezone_pending
  * @property array<string, array{closed: bool, open: string|null, close: string|null}>|null $business_hours
  * @property Carbon|null $created_at
@@ -58,6 +59,7 @@ class Company extends Model
         'business_hours',
         'travel_buffer_minutes',
         'timezone_pending',
+        'payment_provider',
     ];
 
     protected $attributes = [

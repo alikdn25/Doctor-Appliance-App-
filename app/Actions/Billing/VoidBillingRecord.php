@@ -1,0 +1,88 @@
+<?php
+
+namespace App\Actions\Billing;
+
+use App\Enums\EstimateStatus;
+use App\Enums\InvoiceStatus;
+use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\User;
+use App\Services\AuditLogger;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * Voids a payment entered by mistake, or a whole invoice. Nothing is deleted: voided records stay in
+ * the history with who voided them, when and why. Both are audited.
+ */
+class VoidBillingRecord
+{
+    public function __construct(
+        private readonly SyncInvoice $syncInvoice,
+        private readonly AuditLogger $audit,
+    ) {}
+
+    public function payment(Payment $payment, User $user, ?string $reason): void
+    {
+        DB::transaction(function () use ($payment, $user, $reason) {
+            $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+
+            if ($payment->isVoid()) {
+                return;
+            }
+
+            if ($payment->provider !== null) {
+                // Online payments are refunded at the provider, which reports back.
+                throw ValidationException::withMessages(['payment' => __('payments.errors.provider_payment')]);
+            }
+
+            $payment->forceFill(['voided_at' => now(), 'voided_by' => $user->id, 'void_reason' => $reason])->save();
+            $this->syncInvoice->handle($payment->invoice()->firstOrFail(), $user);
+
+            $this->audit->record('payment.voided', $payment, [
+                'invoice_id' => $payment->invoice_id,
+                'amount' => $payment->amount,
+                'method' => $payment->method->value,
+                'reason' => $reason,
+            ]);
+        });
+    }
+
+    /**
+     * An invoice with payments cannot be voided; void the payments first.
+     * An estimate the invoice was made from can be turned into an invoice again.
+     */
+    public function invoice(Invoice $invoice, User $user, ?string $reason): void
+    {
+        DB::transaction(function () use ($invoice, $user, $reason) {
+            $invoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+
+            if ($invoice->isVoid()) {
+                return;
+            }
+
+            if ($invoice->payments()->valid()->exists()) {
+                throw ValidationException::withMessages(['invoice' => __('invoices.errors.has_payments')]);
+            }
+
+            $invoice->forceFill([
+                'status' => InvoiceStatus::Void,
+                'voided_at' => now(),
+                'voided_by' => $user->id,
+                'void_reason' => $reason,
+            ]);
+            $this->syncInvoice->handle($invoice, $user);
+
+            $estimate = $invoice->estimate;
+            if ($estimate !== null && $estimate->status === EstimateStatus::Invoiced) {
+                $estimate->forceFill(['status' => $estimate->approved_at ? EstimateStatus::Approved : EstimateStatus::Draft])->save();
+            }
+
+            $this->audit->record('invoice.voided', $invoice, [
+                'number' => $invoice->number,
+                'total' => $invoice->total,
+                'reason' => $reason,
+            ]);
+        });
+    }
+}

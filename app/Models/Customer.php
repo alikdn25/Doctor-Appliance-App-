@@ -118,6 +118,14 @@ class Customer extends Model
     }
 
     /**
+     * @return HasOne<CustomerEmail, $this>
+     */
+    public function primaryEmail(): HasOne
+    {
+        return $this->hasOne(CustomerEmail::class)->orderByDesc('is_primary')->orderBy('id');
+    }
+
+    /**
      * @return HasMany<Property, $this>
      */
     public function properties(): HasMany

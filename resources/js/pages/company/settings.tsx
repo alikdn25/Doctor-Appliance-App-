@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
 import { edit, update } from '@/routes/company/settings';
+import type { Option } from '@/types';
 
 const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
@@ -24,18 +25,21 @@ type CompanySettings = {
     estimate_next_number: number;
     business_hours: Record<string, Day>;
     travel_buffer_minutes: number;
+    payment_provider: string;
 };
 
 type Props = {
     company: CompanySettings & { id: number };
     timezones: string[];
     currencies: string[];
+    paymentProviders: Option[];
 };
 
 export default function CompanySettingsPage({
     company,
     timezones,
     currencies,
+    paymentProviders,
 }: Props) {
     const t = useTrans();
     const form = useForm<CompanySettings>({
@@ -48,6 +52,7 @@ export default function CompanySettingsPage({
         estimate_next_number: company.estimate_next_number,
         business_hours: company.business_hours,
         travel_buffer_minutes: company.travel_buffer_minutes,
+        payment_provider: company.payment_provider ?? '',
     });
     const errors = form.errors as Record<string, string | undefined>;
 
@@ -59,6 +64,10 @@ export default function CompanySettingsPage({
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
+        form.transform((data) => ({
+            ...data,
+            payment_provider: data.payment_provider || null,
+        }));
         form.put(update().url, { preserveScroll: true });
     };
 
@@ -316,6 +325,36 @@ export default function CompanySettingsPage({
                                 )
                             }
                         />
+                    </FormField>
+                </section>
+
+                <section className="grid gap-3">
+                    <h2 className="text-base font-medium">
+                        {t('company.payments')}
+                    </h2>
+                    <FormField
+                        id="payment_provider"
+                        label={t('company.fields.payment_provider')}
+                        hint={t('company.payments_hint')}
+                        error={errors.payment_provider}
+                        className="sm:max-w-md"
+                    >
+                        <NativeSelect
+                            id="payment_provider"
+                            value={form.data.payment_provider}
+                            onChange={(e) =>
+                                form.setData('payment_provider', e.target.value)
+                            }
+                        >
+                            <option value="">
+                                {t('company.no_payment_provider')}
+                            </option>
+                            {paymentProviders.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </NativeSelect>
                     </FormField>
                 </section>
 

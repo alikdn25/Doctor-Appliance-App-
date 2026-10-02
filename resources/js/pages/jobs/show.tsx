@@ -11,12 +11,15 @@ import {
     Phone,
     Play,
     Plus,
+    Receipt,
     ShieldCheck,
     Trash2,
     User,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import { DocumentList } from '@/components/billing/document-list';
+import type { DocumentRow } from '@/components/billing/types';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
 import InputError from '@/components/input-error';
@@ -41,6 +44,8 @@ import { formatMinutes, useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { show as showAppliance } from '@/routes/appliances';
 import { show as showCustomer } from '@/routes/customers';
+import { create as createEstimate } from '@/routes/estimates';
+import { create as createInvoice } from '@/routes/invoices';
 import { destroy, edit, index, techNotes } from '@/routes/jobs';
 import { destroy as destroyVisit, onMyWay, start } from '@/routes/visits';
 import type { Option } from '@/types';
@@ -70,6 +75,8 @@ type Job = {
     photos: JobPhotoData[];
     checklist: ChecklistItemData[];
     signature: SignatureData;
+    estimates: DocumentRow[];
+    invoices: DocumentRow[];
     minutes_on_job: number;
     history: {
         id: number;
@@ -184,8 +191,6 @@ export default function JobShow({
             });
         }
     };
-
-    const placeholders = ['estimates', 'invoices'] as const;
 
     return (
         <>
@@ -732,21 +737,37 @@ export default function JobShow({
                     )}
                 </section>
 
-                {/* Coming later */}
-                <section className="grid gap-2 sm:grid-cols-2">
-                    {placeholders.map((section) => (
-                        <div
-                            key={section}
-                            className="rounded-lg border border-dashed p-4"
-                        >
-                            <h2 className="text-sm font-medium">
-                                {t(`jobs.sections.${section}`)}
-                            </h2>
-                            <p className="text-xs text-muted-foreground">
-                                {t('jobs.coming_soon')}
-                            </p>
-                        </div>
-                    ))}
+                {/* Estimates and invoices */}
+                <section className="space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h2 className="flex items-center gap-2 text-base font-medium">
+                            <Receipt className="size-4" />
+                            {t('billing.section')}
+                        </h2>
+                        {can.work && (
+                            <div className="flex gap-2">
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link href={createEstimate(job.id)}>
+                                        <Plus /> {t('billing.new_estimate')}
+                                    </Link>
+                                </Button>
+                                <Button size="sm" asChild>
+                                    <Link href={createInvoice(job.id)}>
+                                        <Plus /> {t('billing.new_invoice')}
+                                    </Link>
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                    {job.estimates.length + job.invoices.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            {t('billing.empty')}
+                        </p>
+                    ) : (
+                        <DocumentList
+                            documents={[...job.invoices, ...job.estimates]}
+                        />
+                    )}
                 </section>
 
                 {/* Status history */}

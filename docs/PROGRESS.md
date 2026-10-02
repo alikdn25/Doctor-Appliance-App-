@@ -24,9 +24,9 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 | --- | -------------------------------------------------------------- | -------------- |
 | 1   | Customers, properties (manual address), appliances (§6, §7.1)  | ✅ Done        |
 | 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4) | ✅ Done        |
-| —   | Calendar & dispatch                                            | ⏳ Not started |
-| —   | Technician PWA view, photos, signatures                        | ⏳ Not started |
-| —   | Estimates, invoices                                            | ⏳ Not started |
+| 3   | Calendar & dispatch                                            | ✅ Done        |
+| 4   | Technician PWA view, photos, signatures                        | ✅ Done        |
+| 5   | Estimates, invoices, manual payments (§7.5, §7.6)              | ✅ Done        |
 | —   | Square payments                                                | ⏳ Not started |
 | —   | Twilio SMS (automated messages + inbox)                        | ⏳ Not started |
 | —   | Review request toggle                                          | ⏳ Not started |
@@ -149,7 +149,7 @@ Decisions made without asking (change if needed):
 - The installed app opens on My jobs (fewer taps for technicians; the owner also goes on calls).
 - Photos are only "before" and "after" (no third kind). One signature per job; signing again replaces it.
 - Job photos and signatures are served through the app (permission check), not by public URL. Rating plate
-  photos still use the storage URL as in task 1; move to private storage with the S3 decision.
+  photos still used the storage URL as in task 1 — fixed in task 5 (see below).
 - Upload errors that cannot be fixed by retrying (validation, no access, deleted job) stop and show Retry /
   Discard; network errors and server errors retry automatically.
 - Icon: a neutral wrench in the brand teal until the product name and logo are decided.
@@ -158,11 +158,74 @@ Decisions made without asking (change if needed):
 Deferred on purpose: estimates/invoices/payment on site (next tasks), SMS on "On my way" (Twilio task),
 plate OCR (later), background sync while the app is closed (the queue resumes when the app is opened).
 
+### Task 5 — Estimates, invoices, manual payments ✅
+
+**Security fix first.** Job photos, signatures and rating plate photos were stored on the public disk, and rating
+plates were opened by a direct `/storage/...` URL without a login. They now live on a private disk
+(`PRIVATE_MEDIA_DISK`, default `local` = `storage/app/private`) and are only served by routes that check access.
+Rating plates: `GET /appliances/{appliance}/rating-plate` with the appliance view policy (office, or a technician
+with a job at that property). A migration moves existing files off the public disk. Tests: access by role, and a
+user of another company gets 404.
+
+**SPEC.** New §11 "Platform subscription billing" (Stripe Billing for company subscriptions, plans, founding
+members, trials, Customer Portal, our DB as source of truth, moving to a new Stripe account) and
+`docs/BILLING-MIGRATION.md` with the full procedure. Not implemented — separate task before the Phase B launch.
+
+**Estimates and invoices** (tables `estimates`, `estimate_items`, `invoices`, `invoice_items`, `payments`; money in
+cents; all tenant-scoped and in the isolation tests):
+
+- Created from a job ("Estimates & invoices" section on the job page, also listed on the customer card). Customer,
+  brand and address come from the job. Numbers: company prefix + counter (`EST-…`, `INV-…`), taken numbers are skipped.
+- Line items: description, quantity (2 decimals), price (negative allowed for credits), taxable flag. Discount as a
+  $ amount or % of the subtotal, taken before taxes. Taxes chosen per document (defaults ticked), copied onto the
+  document with name and rate, so later rate changes never change existing documents. Totals are calculated on the
+  server (`DocumentTotals`) and previewed live in the form.
+- Estimate: draft → customer approved / declined (buttons, for on-site agreement) → "Create invoice" copies lines,
+  discount, taxes and notes; the estimate becomes "invoiced" and read-only.
+- Invoice: unpaid → partially paid → paid, from its payments. Editable until void; the total cannot go below what
+  is already paid (such edits are audited). Void (office only, with reason, audited) needs its payments voided first;
+  a voided invoice made from an estimate frees the estimate to be invoiced again.
+- **Manual payments** on every company: cash, cheque (number optional), e-Transfer (reference optional), card on own
+  terminal (transaction # required), other (note required). Partial payments; not more than the balance; date
+  received (today = now, earlier day = noon that day). Method picked with one tap, amount defaults to the balance.
+  Payments are never deleted: the office voids one with a reason (audited) and it stays in the history.
+- Job status: a job that is completed moves to `invoiced` when it has invoices and to `paid` when all are paid;
+  back to `completed` if they are voided. A job still in progress keeps its status and moves on when the visit is
+  finished (tech invoices and takes payment, then taps Finish).
+- Access: office of the job's brand and people assigned to the job (technicians create estimates/invoices and take
+  payments on their jobs). Voiding invoices/payments and the invoice list (`/invoices`, outstanding by default,
+  with the outstanding total) are for the office. A job with invoices cannot be deleted.
+- **Payment provider interface** (`App\Payments\PaymentProvider`: key, label, isConnected, createPaymentLink),
+  registry from `config/payments.php` (empty until Square), company setting "Online payment provider" (None by
+  default), and `RecordPayment::fromProvider()` for webhooks (idempotent on the provider's payment ID; online
+  payments are refunded at the provider, not voided here). Tested with a fake provider.
+- Demo seeder: the waiting-for-parts job has a paid diagnosis invoice and a repair estimate with a fee credit.
+
+Decisions made without asking (change if needed):
+
+- **Several taxes can be "apply by default"** (was: only one). BC needs GST and PST on most appliance repairs; the
+  demo company now has both on by default.
+- Good / Better / Best options on estimates were **not** built (not in this task's list); the data model keeps lines
+  on the document so options can be added as groups later.
+- No invoice "draft" status: an invoice is issued when created (fewer taps on site). Due date defaults to the
+  invoice date (due on receipt).
+- Invoices stay editable after payments (e.g. an extra part added on site), as long as the total ≥ paid; changes
+  of the total on an invoice with payments are written to the audit log.
+- An invoice with payments cannot be voided until the payments are voided — no silent loss of money records.
+- Overpayment is refused for manual payments; provider payments are recorded as reported.
+- Estimates and invoices of a job follow the job's access rules; technicians see prices on their own jobs' documents
+  (they create them on site, SPEC §5).
+- Estimate approval is recorded by staff; online approval/signature comes with sending by SMS/email.
+
+Deferred on purpose: Square (next task), sending estimates/invoices by SMS/email with a PDF and online approval,
+price book picker on lines, review request toggle, payment reminders and aging report (Stage 2), deposits as a
+separate concept (a partial payment covers it for now), platform subscription billing (SPEC §11, before launch).
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started
 
 ## Next
 
-Stage 1 — Estimates and invoices (line items, taxes, Good/Better/Best options, invoice from job, manual payments
-per the updated SPEC §7.6), then Square payments behind the payment provider interface.
+Stage 1 — Square payments behind the `PaymentProvider` interface (OAuth per company, payment link / QR on the
+invoice, webhooks into `RecordPayment::fromProvider()`). Then Twilio SMS and sending estimates/invoices.
