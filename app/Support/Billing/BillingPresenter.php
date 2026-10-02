@@ -2,10 +2,12 @@
 
 namespace App\Support\Billing;
 
+use App\Actions\Billing\SendDocument;
 use App\Enums\InvoiceStatus;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Jobs\JobPresenter;
@@ -115,6 +117,8 @@ class BillingPresenter
         return [
             'id' => $payment->id,
             'amount' => $payment->amount,
+            'tip_amount' => $payment->tip_amount,
+            'is_refund' => $payment->isRefund(),
             'currency' => $payment->currency,
             'method' => $payment->method->value,
             'method_label' => $payment->method->label(),
@@ -167,6 +171,56 @@ class BillingPresenter
                 'rate' => rtrim(rtrim((string) $rate->rate, '0'), '.'),
                 'is_compound' => $rate->is_compound,
                 'is_default' => $rate->is_default && $rate->is_active,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * PDF, sending by email and the customer's online page.
+     *
+     * @return array<string, mixed>
+     */
+    public static function delivery(Estimate|Invoice $document): array
+    {
+        $document->loadMissing('customer.primaryEmail');
+        $invoice = $document instanceof Invoice;
+
+        return [
+            'pdf_url' => route($invoice ? 'invoices.pdf' : 'estimates.pdf', $document),
+            'send_url' => route($invoice ? 'invoices.send' : 'estimates.send', $document),
+            'public_url' => $document->public_token ? route('documents.public', $document->public_token) : null,
+            'can_send' => ! ($invoice && $document->isVoid()),
+            'sent_at' => JobPresenter::iso($document->sent_at),
+            'sent_to' => $document->sent_to,
+            'viewed_at' => JobPresenter::iso($document->viewed_at),
+            'email' => $document->customer?->primaryEmail?->email ?? '',
+            'message' => SendDocument::defaultMessage($document),
+        ];
+    }
+
+    /**
+     * Active services of the price book, to fill estimate and invoice lines with one tap.
+     * Prices are in the company currency; a document in another currency gets the description only.
+     *
+     * @return list<array{id: int, name: string, description: string|null, unit_price: int|null, currency: string, taxable: bool}>
+     */
+    public static function serviceOptions(): array
+    {
+        $currency = currentCompany()->currency;
+
+        return Service::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Service $service) => [
+                'id' => $service->id,
+                'name' => $service->name,
+                'description' => $service->description,
+                'unit_price' => $service->unit_price,
+                'currency' => $currency,
+                'taxable' => $service->taxable,
             ])
             ->values()
             ->all();

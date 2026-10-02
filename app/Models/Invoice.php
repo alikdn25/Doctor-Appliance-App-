@@ -25,6 +25,10 @@ use Illuminate\Support\Carbon;
  * @property string $number
  * @property string $currency ISO 4217; amounts are in its minor units
  * @property bool $prices_include_tax
+ * @property string|null $public_token Key of the customer's online page
+ * @property Carbon|null $sent_at
+ * @property string|null $sent_to
+ * @property Carbon|null $viewed_at
  * @property InvoiceStatus $status
  * @property Carbon $issued_on
  * @property Carbon|null $due_on

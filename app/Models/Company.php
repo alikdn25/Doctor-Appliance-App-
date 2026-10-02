@@ -33,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @property string $currency ISO 4217
  * @property string $locale Regional format (BCP 47), e.g. en-US
  * @property bool $prices_include_tax
+ * @property bool $online_tips Customers may add a tip when paying online
  * @property PaymentTerms $default_payment_terms
  * @property string $invoice_prefix
  * @property int $invoice_next_number
@@ -74,6 +75,7 @@ class Company extends Model
         'travel_buffer_minutes',
         'timezone_pending',
         'payment_provider',
+        'online_tips',
     ];
 
     protected $attributes = [
@@ -105,6 +107,7 @@ class Company extends Model
             'vertical' => Vertical::class,
             'default_payment_terms' => PaymentTerms::class,
             'prices_include_tax' => 'boolean',
+            'online_tips' => 'boolean',
             'business_hours' => 'array',
             'invoice_next_number' => 'integer',
             'estimate_next_number' => 'integer',

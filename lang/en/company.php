@@ -12,6 +12,7 @@ return [
     'timezone_detected' => 'Time zone set to :timezone from your browser. You can change it in company settings.',
     'payments' => 'Payments',
     'payments_hint' => 'Cash, check, bank transfer, your own card terminal and other payments can always be recorded by hand. An online provider adds card payments by link or QR code.',
+    'online_tips_hint' => 'Tips are recorded on the payment, apart from the invoice amount, so totals match your provider payouts.',
     'no_payment_provider' => 'None — record payments by hand',
     'regional' => 'Country and formats',
     'billing' => 'Invoices and taxes',
@@ -37,6 +38,7 @@ return [
         'next_number' => 'Next number',
         'travel_buffer_minutes' => 'Travel buffer (minutes)',
         'payment_provider' => 'Online payment provider',
+        'online_tips' => 'Let customers add a tip when paying online',
     ],
 
     'verticals' => [

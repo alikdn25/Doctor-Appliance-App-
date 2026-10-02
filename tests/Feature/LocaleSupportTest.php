@@ -50,3 +50,10 @@ test('addresses are written in the order of their country', function () {
         ->and(AddressFormatter::oneLine('10 Downing St', 'London', null, 'SW1A 2AA', 'GB'))->toBe('10 Downing St, London, SW1A 2AA')
         ->and(AddressFormatter::oneLine('Hauptstr. 5', 'Berlin', null, '10115', 'DE'))->toBe('Hauptstr. 5, 10115 Berlin');
 });
+
+test('phones are displayed in the national format of the company country', function () {
+    expect(PhoneNumber::display('+16045550142', 'CA'))->toBe('(604) 555-0142')
+        ->and(PhoneNumber::display('+15125550142', 'CA'))->toBe('(512) 555-0142')
+        ->and(PhoneNumber::display('+442079460958', 'US'))->toBe('+44 20 7946 0958')
+        ->and(PhoneNumber::display('+442079460958', 'GB'))->toBe('020 7946 0958');
+});

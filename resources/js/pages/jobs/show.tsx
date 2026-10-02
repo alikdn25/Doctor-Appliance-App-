@@ -42,6 +42,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatMinutes, useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
+import { usePhone } from '@/lib/phone';
 import { show as showAppliance } from '@/routes/appliances';
 import { show as showCustomer } from '@/routes/customers';
 import { create as createEstimate } from '@/routes/estimates';
@@ -139,6 +140,7 @@ export default function JobShow({
     photoKinds,
 }: Props) {
     const t = useTrans();
+    const phoneText = usePhone();
     const { auth } = usePage().props;
     // Handyman companies do not record appliances; show the section only when the job has some.
     const showAppliances =
@@ -372,7 +374,7 @@ export default function JobShow({
                                 >
                                     <Phone />{' '}
                                     {property.site_contact_name ??
-                                        property.site_contact_phone}
+                                        phoneText(property.site_contact_phone)}
                                 </a>
                             </Button>
                         )}
@@ -386,7 +388,7 @@ export default function JobShow({
                                         href={telUrl(p.number)}
                                         className="underline-offset-4 hover:underline"
                                     >
-                                        {p.number}
+                                        {phoneText(p.number)}
                                     </a>{' '}
                                     <span className="text-xs text-muted-foreground">
                                         {p.label_text}

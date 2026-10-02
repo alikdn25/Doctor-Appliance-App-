@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
+use App\Http\Controllers\Billing\DocumentDeliveryController;
 use App\Http\Controllers\Billing\EstimateController;
 use App\Http\Controllers\Billing\InvoiceController;
 use App\Http\Controllers\Billing\PaymentController;
@@ -28,9 +29,17 @@ use App\Http\Controllers\Jobs\VisitActionController;
 use App\Http\Controllers\Jobs\VisitController;
 use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\PaymentWebhookController;
+use App\Http\Controllers\PublicDocumentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
+
+// Customer's online page of an estimate or invoice (link in the email; the token is the key).
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('d/{token}', [PublicDocumentController::class, 'show'])->name('documents.public');
+    Route::get('d/{token}/pdf', [PublicDocumentController::class, 'pdf'])->name('documents.public.pdf');
+    Route::post('d/{token}/pay', [PublicDocumentController::class, 'pay'])->middleware('throttle:10,1')->name('documents.public.pay');
+});
 
 // Online payment provider webhooks (signature checked by the provider; no session, no CSRF).
 Route::post('webhooks/payments/{provider}', PaymentWebhookController::class)
@@ -101,6 +110,10 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('payments.store');
         Route::post('payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
         Route::post('invoices/{invoice}/payment-link', [PaymentLinkController::class, 'store'])->name('invoices.payment-link');
+        Route::get('estimates/{estimate}/pdf', [DocumentDeliveryController::class, 'estimatePdf'])->name('estimates.pdf');
+        Route::get('invoices/{invoice}/pdf', [DocumentDeliveryController::class, 'invoicePdf'])->name('invoices.pdf');
+        Route::post('estimates/{estimate}/send', [DocumentDeliveryController::class, 'sendEstimate'])->middleware('throttle:30,1')->name('estimates.send');
+        Route::post('invoices/{invoice}/send', [DocumentDeliveryController::class, 'sendInvoice'])->middleware('throttle:30,1')->name('invoices.send');
 
         // Connecting the company's own payment provider account (OAuth). The callback URL is registered at the provider.
         Route::get('payment-providers/{provider}/connect', [PaymentProviderController::class, 'connect'])->name('payment-providers.connect');

@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
+import { formatPhone } from '@/lib/phone';
 import { duplicates, index, show, store, update } from '@/routes/customers';
 import type { Option } from '@/types';
 
@@ -141,7 +142,7 @@ export default function CustomerForm({
         phones: customer?.phones.map(({ id, label, number, is_primary }) => ({
             id,
             label,
-            number,
+            number: formatPhone(number, auth.company?.country ?? 'US'),
             is_primary,
         })) ?? [{ label: 'mobile', number: '', is_primary: true }],
         emails: customer?.emails.map(({ id, label, email, is_primary }) => ({

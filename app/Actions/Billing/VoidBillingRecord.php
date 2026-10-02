@@ -61,7 +61,8 @@ class VoidBillingRecord
                 return;
             }
 
-            if ($invoice->payments()->valid()->exists()) {
+            // Manual payments are voided first; online payments must be refunded in full at the provider.
+            if ($invoice->payments()->valid()->whereNull('provider')->exists() || $invoice->amount_paid !== 0) {
                 throw ValidationException::withMessages(['invoice' => __('invoices.errors.has_payments')]);
             }
 

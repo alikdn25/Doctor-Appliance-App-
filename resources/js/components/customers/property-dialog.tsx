@@ -11,6 +11,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { useTrans } from '@/lib/i18n';
+import { usePhone } from '@/lib/phone';
 import { store, update } from '@/routes/properties';
 import { PropertyFields } from './property-fields';
 import { emptyProperty, propertyToForm } from './types';
@@ -31,6 +32,7 @@ export function PropertyDialog({
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
+    const phoneText = usePhone();
     const country = auth.company?.country ?? 'US';
     const form = useForm<PropertyFormData>(emptyProperty(country));
     const errors = form.errors as Record<string, string | undefined>;
@@ -39,7 +41,9 @@ export function PropertyDialog({
         if (open) {
             form.clearErrors();
             form.setData(
-                property ? propertyToForm(property) : emptyProperty(country),
+                property
+                    ? propertyToForm(property, phoneText)
+                    : emptyProperty(country),
             );
         }
         // Reset only when the dialog opens.

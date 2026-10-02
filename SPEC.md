@@ -163,6 +163,9 @@ Permissions are configurable per role later; v1 uses fixed roles above.
     - Payments recorded back to the invoice automatically (webhooks), as a payment through the provider. A repeated
       webhook never creates a duplicate payment.
     - Partial and manual payments keep working next to the provider.
+    - Tips taken by the provider are stored on the payment apart from the amount applied to the invoice (invoice
+      revenue = invoice total; amount + tip = provider payout). Refunds made at the provider come back by webhook and
+      reopen the invoice balance (status Refunded when everything was refunded).
     - Square keys (application ID/secret, webhook signature key, sandbox/production) come only from `.env`.
 - **Payment providers are pluggable.** Build a provider interface; Square is the first implementation. Others (Stripe, Moneris, Helcim, Clover) can be added later without changing invoice logic. Each company picks its provider in settings, or none.
 - A company with no provider records all payments manually.

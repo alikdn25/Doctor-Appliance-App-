@@ -63,8 +63,9 @@ class RecordPayment
         CarbonInterface $receivedAt,
         ?string $reference = null,
         ?string $currency = null,
+        int $tip = 0,
     ): Payment {
-        return DB::transaction(function () use ($invoice, $provider, $providerPaymentId, $amount, $receivedAt, $reference, $currency) {
+        return DB::transaction(function () use ($invoice, $provider, $providerPaymentId, $amount, $receivedAt, $reference, $currency, $tip) {
             $invoice = $this->lock($invoice);
 
             if ($currency !== null && strtoupper($currency) !== $invoice->currency) {
@@ -84,12 +85,59 @@ class RecordPayment
 
             return $this->create($invoice, [
                 'amount' => $amount,
+                // A tip is the customer's extra to the company: kept on the payment, not applied to the invoice.
+                'tip_amount' => max(0, $tip),
                 'method' => PaymentMethod::Online,
                 'reference' => $reference,
                 'received_at' => $receivedAt,
                 'provider' => $provider,
                 'provider_payment_id' => $providerPaymentId,
             ], null);
+        });
+    }
+
+    /**
+     * A refund reported by the provider for one of its payments. Stored as a payment row with a negative amount,
+     * so the invoice's paid amount, balance and status follow. Idempotent on the provider's refund ID.
+     * The refund is applied to the invoice up to what is left of the payment; anything beyond it refunds the tip.
+     */
+    public function refundFromProvider(Payment $original, string $providerRefundId, int $amount, CarbonInterface $refundedAt): Payment
+    {
+        return DB::transaction(function () use ($original, $providerRefundId, $amount, $refundedAt) {
+            $invoice = Invoice::query()->lockForUpdate()->findOrFail($original->invoice_id);
+
+            $existing = Payment::query()
+                ->where('provider', $original->provider)
+                ->where('provider_payment_id', $providerRefundId)
+                ->first();
+
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            $earlier = Payment::query()->valid()->where('refunded_payment_id', $original->id)->get();
+            $left = $original->amount + (int) $earlier->sum('amount');
+            $tipLeft = $original->tip_amount + (int) $earlier->sum('tip_amount');
+            $applied = min(max(0, $amount), max(0, $left));
+            $tip = min(max(0, $amount - $applied), max(0, $tipLeft));
+
+            $refund = new Payment([
+                'amount' => -$applied,
+                'tip_amount' => -$tip,
+                'method' => PaymentMethod::Online,
+                'reference' => __('payments.refund_of', ['reference' => $original->reference ?? $original->provider_payment_id]),
+                'received_at' => $refundedAt,
+                'provider' => $original->provider,
+                'provider_payment_id' => $providerRefundId,
+            ]);
+            $refund->invoice_id = $invoice->id;
+            $refund->currency = $invoice->currency;
+            $refund->refunded_payment_id = $original->id;
+            $refund->save();
+
+            $this->syncInvoice->handle($invoice, null);
+
+            return $refund;
         });
     }
 

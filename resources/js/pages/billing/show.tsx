@@ -12,6 +12,8 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { DocumentStatusBadge } from '@/components/billing/document-status-badge';
 import { useMoney } from '@/components/billing/money';
+import type { Delivery } from '@/components/billing/document-delivery';
+import { DocumentDelivery } from '@/components/billing/document-delivery';
 import type { OnlinePayment } from '@/components/billing/online-payment';
 import { OnlinePaymentSection } from '@/components/billing/online-payment';
 import { PaymentDialog } from '@/components/billing/payment-dialog';
@@ -30,6 +32,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
+import { usePhone } from '@/lib/phone';
 import { show as showCustomer } from '@/routes/customers';
 import {
     convert,
@@ -62,14 +65,17 @@ export default function BillingShow({
     paymentMethods = [],
     today,
     online = null,
+    delivery,
 }: {
     document: BillingDocument;
     can: Can;
     paymentMethods?: Option[];
     today: string;
     online?: OnlinePayment;
+    delivery?: Delivery;
 }) {
     const t = useTrans();
+    const phoneText = usePhone();
     const money = useMoney(doc.currency);
     const time = useCompanyTime();
     const [paymentOpen, setPaymentOpen] = useState(false);
@@ -237,7 +243,7 @@ export default function BillingShow({
                     )}
                     {(doc.customer.phone || doc.customer.email) && (
                         <span className="text-muted-foreground">
-                            {[doc.customer.phone, doc.customer.email]
+                            {[phoneText(doc.customer.phone), doc.customer.email]
                                 .filter(Boolean)
                                 .join(' · ')}
                         </span>
@@ -346,6 +352,18 @@ export default function BillingShow({
                     )}
                 </section>
 
+                {delivery && (
+                    <DocumentDelivery
+                        delivery={delivery}
+                        kindLabel={t(
+                            isInvoice
+                                ? 'documents.invoice'
+                                : 'documents.estimate',
+                        )}
+                        number={doc.number}
+                    />
+                )}
+
                 {isInvoice && online && balance > 0 && (
                     <OnlinePaymentSection
                         invoiceId={doc.id}
@@ -426,12 +444,17 @@ export default function BillingShow({
                                                             : undefined
                                                     }
                                                 >
-                                                    {p.provider
-                                                        ? t('payments.online', {
-                                                              provider:
-                                                                  p.provider,
-                                                          })
-                                                        : p.method_label}
+                                                    {p.is_refund
+                                                        ? t('payments.refund')
+                                                        : p.provider
+                                                          ? t(
+                                                                'payments.online',
+                                                                {
+                                                                    provider:
+                                                                        p.provider,
+                                                                },
+                                                            )
+                                                          : p.method_label}
                                                 </span>
                                                 {p.voided_at && (
                                                     <span className="text-xs">
@@ -449,6 +472,13 @@ export default function BillingShow({
                                                           )
                                                         : null,
                                                     p.reference,
+                                                    p.tip_amount !== 0
+                                                        ? t('payments.tip', {
+                                                              amount: money(
+                                                                  p.tip_amount,
+                                                              ),
+                                                          })
+                                                        : null,
                                                     p.user
                                                         ? t('payments.by', {
                                                               name: p.user,

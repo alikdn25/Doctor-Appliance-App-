@@ -30,6 +30,7 @@ class CompanySettingsRequest extends FormRequest
             'currency' => ['required', Rule::in(Currencies::codes())],
             'locale' => ['required', Rule::in(array_column(Countries::localeOptions(), 'value'))],
             'prices_include_tax' => ['boolean'],
+            'online_tips' => ['boolean'],
             'default_payment_terms' => ['required', Rule::enum(PaymentTerms::class)],
             'invoice_prefix' => ['nullable', 'string', 'max:20'],
             'invoice_next_number' => ['required', 'integer', 'min:1', 'max:999999999'],
@@ -73,6 +74,7 @@ class CompanySettingsRequest extends FormRequest
         $data['estimate_prefix'] ??= '';
         $data['payment_provider'] ??= null;
         $data['prices_include_tax'] = (bool) ($data['prices_include_tax'] ?? false);
+        $data['online_tips'] = (bool) ($data['online_tips'] ?? false);
 
         return $data;
     }

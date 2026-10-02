@@ -34,6 +34,9 @@ export type DocumentTax = {
 export type PaymentData = {
     id: number;
     amount: number;
+    /** Tip taken by the provider, not part of the invoice (negative on a refund). */
+    tip_amount: number;
+    is_refund: boolean;
     currency: string;
     method: string;
     method_label: string;
@@ -90,6 +93,16 @@ export type BillingDocument = DocumentRow & {
     void_reason?: string | null;
     estimate?: { id: number; number: string } | null;
     payments?: PaymentData[];
+};
+
+/** A price book service to fill a line with. Price in the company currency (null = not set). */
+export type ServiceOption = {
+    id: number;
+    name: string;
+    description: string | null;
+    unit_price: number | null;
+    currency: string;
+    taxable: boolean;
 };
 
 export type TaxOption = {

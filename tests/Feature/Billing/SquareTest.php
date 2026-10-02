@@ -355,3 +355,78 @@ test('the daily command refreshes tokens that expire soon', function () {
     Http::assertSentCount(1);
     expect(inCompany($this->company, fn () => PaymentProviderConnection::sole()->token_expires_at->isAfter(now()->addDays(20))))->toBeTrue();
 });
+
+describe('tips and refunds', function () {
+    beforeEach(function () {
+        fakeSquare();
+        connectSquare($this->company);
+        $this->invoice = squareInvoice($this->company, $this->job);
+        $this->post(route('invoices.payment-link', $this->invoice));
+    });
+
+    test('a tip is kept on the payment and not applied to the invoice', function () {
+        $event = squarePayment('PAY1', 28050);
+        $event['data']['object']['payment']['tip_money'] = ['amount' => 4000, 'currency' => 'USD'];
+        $event['data']['object']['payment']['total_money'] = ['amount' => 32050, 'currency' => 'USD'];
+
+        squareWebhook($event)->assertNoContent();
+
+        $payment = inCompany($this->company, fn () => Payment::sole());
+        expect($payment)->amount->toBe(28050)->tip_amount->toBe(4000)
+            ->and($this->invoice->fresh())->amount_paid->toBe(28050)->balance->toBe(0)->status->toBe(InvoiceStatus::Paid);
+    });
+
+    test('tips are offered in the Square checkout when the company allows them', function () {
+        $this->company->update(['online_tips' => true]);
+        $this->post(route('payments.store', $this->invoice), ['amount' => '1.00', 'method' => 'cash']);
+        $this->post(route('invoices.payment-link', $this->invoice));
+
+        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/payment-links')
+            && ($r['checkout_options']['allow_tipping'] ?? false) === true);
+    });
+
+    test('a Square refund puts the amount back on the invoice, once', function () {
+        squareWebhook(squarePayment('PAY1', 28050))->assertNoContent();
+
+        $refund = fn (string $id, int $amount, string $status = 'COMPLETED') => [
+            'merchant_id' => 'MLR1', 'type' => 'refund.updated', 'event_id' => (string) Str::uuid(),
+            'data' => ['type' => 'refund', 'id' => $id, 'object' => ['refund' => [
+                'id' => $id, 'status' => $status, 'payment_id' => 'PAY1', 'order_id' => 'ORDER1', 'location_id' => 'LOC1',
+                'amount_money' => ['amount' => $amount, 'currency' => 'USD'],
+                'created_at' => now()->toIso8601String(), 'updated_at' => now()->toIso8601String(),
+            ]]],
+        ];
+
+        squareWebhook($refund('REF1', 10000, 'PENDING'))->assertNoContent();
+        expect($this->invoice->fresh()->status)->toBe(InvoiceStatus::Paid);
+
+        squareWebhook($refund('REF1', 10000))->assertNoContent();
+        squareWebhook($refund('REF1', 10000))->assertNoContent();
+
+        expect($this->invoice->fresh())->amount_paid->toBe(18050)->balance->toBe(10000)->status->toBe(InvoiceStatus::PartiallyPaid)
+            ->and(inCompany($this->company, fn () => Payment::where('provider_payment_id', 'REF1')->sole()))
+            ->amount->toBe(-10000)->refunded_payment_id->not->toBeNull();
+
+        // The rest refunded: nothing is paid any more.
+        squareWebhook($refund('REF2', 18050))->assertNoContent();
+        expect($this->invoice->fresh())->amount_paid->toBe(0)->status->toBe(InvoiceStatus::Refunded)
+            ->and(ServiceJob::withoutCompanyScope()->find($this->job->id)->status->value)->not->toBe('paid');
+
+        // A fully refunded invoice can be voided.
+        $this->post(route('invoices.void', $this->invoice), ['reason' => 'Job cancelled'])->assertSessionHasNoErrors();
+        expect($this->invoice->fresh()->status)->toBe(InvoiceStatus::Void);
+    });
+
+    test('a refund larger than the payment amount refunds the tip too', function () {
+        $event = squarePayment('PAY1', 28050);
+        $event['data']['object']['payment']['tip_money'] = ['amount' => 4000, 'currency' => 'USD'];
+        squareWebhook($event);
+
+        squareWebhook(['merchant_id' => 'MLR1', 'type' => 'refund.created', 'data' => ['object' => ['refund' => [
+            'id' => 'REF1', 'status' => 'COMPLETED', 'payment_id' => 'PAY1', 'amount_money' => ['amount' => 32050, 'currency' => 'USD'],
+        ]]]])->assertNoContent();
+
+        expect(inCompany($this->company, fn () => Payment::where('provider_payment_id', 'REF1')->sole()))
+            ->amount->toBe(-28050)->tip_amount->toBe(-4000);
+    });
+});

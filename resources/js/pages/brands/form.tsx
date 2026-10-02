@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
+import { formatPhone } from '@/lib/phone';
 import { destroy, index, store, update } from '@/routes/brands';
 
 type Address = {
@@ -95,7 +96,7 @@ export default function BrandForm({
         secondary_color: brand?.secondary_color ?? '',
         website: brand?.website ?? '',
         email: brand?.email ?? '',
-        phone: brand?.phone ?? '',
+        phone: formatPhone(brand?.phone, country),
         sender_name: brand?.sender_name ?? '',
         sender_email: brand?.sender_email ?? '',
         tax_number: brand?.tax_number ?? '',

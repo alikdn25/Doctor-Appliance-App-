@@ -27,6 +27,7 @@ class EstimateController extends Controller
             'document' => null,
             'job' => BillingPresenter::job($job),
             'taxRates' => BillingPresenter::taxOptions(),
+            'services' => BillingPresenter::serviceOptions(),
             'today' => $this->today(),
         ]);
     }
@@ -54,6 +55,7 @@ class EstimateController extends Controller
                 'convert' => Gate::allows('update', $estimate) && Gate::allows('work', $estimate->job),
             ],
             'today' => $this->today(),
+            'delivery' => BillingPresenter::delivery($estimate),
         ]);
     }
 
@@ -66,6 +68,7 @@ class EstimateController extends Controller
             'document' => BillingPresenter::document($estimate),
             'job' => BillingPresenter::job($estimate->job),
             'taxRates' => BillingPresenter::taxOptions($estimate->taxes),
+            'services' => BillingPresenter::serviceOptions(),
             'today' => $this->today(),
         ]);
     }
