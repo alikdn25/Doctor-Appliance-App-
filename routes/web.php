@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
+use App\Http\Controllers\Accounting\BusinessExpenseCategoryController;
+use App\Http\Controllers\Accounting\BusinessExpenseController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
 use App\Http\Controllers\Billing\CashController;
@@ -147,6 +149,11 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('invoices/{invoice}/refund', [PaymentController::class, 'refund'])->name('invoices.refund');
         Route::post('payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('business-expenses/export.csv', [BusinessExpenseController::class, 'export'])->name('expenses.download');
+        Route::get('business-expenses/{expense}/receipt', [BusinessExpenseController::class, 'receipt'])->name('expenses.receipt');
+        Route::resource('business-expenses', BusinessExpenseController::class)->parameters(['business-expenses' => 'expense'])->names('expenses')->except('show');
+        Route::post('business-expense-categories', [BusinessExpenseCategoryController::class, 'store'])->name('expense-categories.store');
+        Route::put('business-expense-categories/{category}', [BusinessExpenseCategoryController::class, 'update'])->name('expense-categories.update');
         Route::get('reports/expenses.csv', [ReportController::class, 'expenses'])->name('reports.expenses');
         Route::get('reports/receipts.zip', [ReportController::class, 'receipts'])->name('reports.receipts');
         Route::get('cash', [CashController::class, 'index'])->name('cash.index');

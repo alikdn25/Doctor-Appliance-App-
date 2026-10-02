@@ -28,6 +28,7 @@ export type CurrentCompany = {
 };
 
 export type Permissions = {
+    viewBusinessExpenses?: boolean;
     viewCustomers?: boolean;
     viewJobs?: boolean;
     viewInvoices?: boolean;

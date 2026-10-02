@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Brand;
+use App\Models\BusinessExpense;
 use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
@@ -95,6 +96,7 @@ class HandleInertiaRequests extends Middleware
                 : $user->accessibleCompanies()->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name])->values(),
             'can' => $company === null ? [] : [
                 'viewCustomers' => $user->can('viewAny', Customer::class),
+                'viewBusinessExpenses' => $user->can('viewAny', BusinessExpense::class),
                 'viewJobs' => $user->can('viewAny', ServiceJob::class),
                 'viewInvoices' => $user->can('viewAny', Invoice::class),
                 'viewMyJobs' => $user->can('viewMine', ServiceJob::class),

@@ -252,6 +252,18 @@ from the company number (Twilio voice).
 - Jobs waiting for parts.
 - Warranty claims outstanding.
 
+#### Business expenses (bookkeeping)
+
+- Expenses independent of jobs and customer invoices: fuel, meals, tools and other overhead.
+- Company members create shared custom categories. Each record has a date, description, merchant, price before
+  tax, actual tax paid, original currency, notes and an optional private receipt photo/PDF.
+- Show price, tax and total beside each category for the chosen period, with separate rows for currencies.
+  No combined expense counter or overall amount. Filter/search/pagination and CSV export for bookkeeping.
+- Owners/Admins see company expenses; technicians see and manage their own entries. Members manage categories
+  they created; the office manages all categories. Archive categories without losing historical records.
+- Expenses do not change a job's margin or appear on customer documents. Receipts and removed records are
+  retained privately; changes are audited.
+
 ### 7.14 Integrations
 
 - Square (required, v1)

@@ -24,4 +24,5 @@ return [
     'switch_company' => 'Switch company',
     'reports' => 'Reports',
     'cash' => 'Cash on hand',
+    'business_expenses' => 'Business expenses',
 ];
