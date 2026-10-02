@@ -47,8 +47,28 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 | 9   | Online estimate approval (signature, options, expiry, deposit) + Places      | ✅ Done   |
 | 10A | Estimate revisions, deleting jobs, outcomes, visit types, strict arrival     | ✅ Done   |
 | 10B | Warranty & callbacks, refunds, costs & profit, no charge, cash               | ✅ Done   |
-| —   | Price book: categories (parts/materials with cost and markup done in 10B)    | 🚧 Partly |
-| —   | Basic reports (profit, callbacks, no charge done in 10B; revenue/conversion) | 🚧 Partly |
+| —   | Price book: categories (parts/materials with cost and markup done in 10B)    | 🚧 Testing |
+| —   | Basic reports (profit, callbacks, no charge, revenue and conversion)        | 🚧 Testing |
+
+### Price book categories and business reports — implemented, CI pending
+
+- Price book: optional category on every service, part and material; suggestions from the company's current
+  catalogue; grouped choices on estimate and invoice lines. Blank categories remain uncategorized.
+- Revenue: invoices issued in the selected period, excluding void invoices, taxes and tips; settled refunds
+  reduce net revenue proportionally. Totals, average invoice, brand, technician, job type and source breakdowns
+  keep each document currency separate. The first assignee on the last started visit identifies the technician
+  (last scheduled visit when none started); people with the same name are kept separate.
+- Conversion: current estimate versions issued in the period, with a sent timestamp or customer decision.
+  Approved and invoiced count as converted; unsent drafts and superseded versions do not count.
+- Reports enforce company and office brand access, validate real calendar dates and reject reversed ranges.
+  Removed silent truncation after 5,000 closed jobs; receipt ZIP names include only accessible jobs.
+- CI runs frontend checks, TypeScript and backend tests independently, keeping failed checks visible. Suggested
+  formatting diffs are printed after tests on failures; CI never writes fixes back to the repository.
+- Tests added for categories, currency separation, refunds, periods, conversion, role/brand access and tenant
+  isolation. Build/test results and manual validation are still pending.
+- Manual check: set categories in Company → Services; select grouped items on an invoice; open Reports, choose a
+  period and compare invoice totals and currencies, average invoices and estimate decisions with the documents.
+- Still left: per-brand price-book availability and the remaining Stage 2/3/billing specification tasks.
 
 ### Task 1 — Customers, properties, appliances ✅
 

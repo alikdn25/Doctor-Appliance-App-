@@ -34,6 +34,7 @@ class ServiceController extends Controller
                     'id' => $service->id,
                     'name' => $service->name,
                     'description' => $service->description,
+                    'category' => $service->category,
                     'unit_price' => $service->unit_price,
                     'taxable' => $service->taxable,
                     'is_active' => $service->is_active,
@@ -60,6 +61,7 @@ class ServiceController extends Controller
             'services.*.id' => ['nullable', 'integer'],
             'services.*.name' => ['required', 'string', 'max:255'],
             'services.*.description' => ['nullable', 'string', 'max:500'],
+            'services.*.category' => ['nullable', 'string', 'max:80'],
             'services.*.unit_price' => ['nullable', 'numeric', 'min:0', DocumentRequest::moneyRule($currency)],
             'services.*.taxable' => ['boolean'],
             'services.*.is_active' => ['boolean'],
@@ -85,6 +87,7 @@ class ServiceController extends Controller
                 $service->fill([
                     'name' => trim($row['name']),
                     'description' => $row['description'] ?? null,
+                    'category' => trim($row['category'] ?? '') ?: null,
                     'unit_price' => filled($row['unit_price'] ?? null) ? Currencies::toMinor($row['unit_price'], $currency) : null,
                     'taxable' => (bool) ($row['taxable'] ?? true),
                     'is_active' => (bool) ($row['is_active'] ?? true),

@@ -41,6 +41,39 @@ test('technicians cannot change services', function () {
     $this->put(route('company.services.update'), ['services' => []])->assertForbidden();
 });
 
+test('price book categories are saved, trimmed and offered on billing lines', function () {
+    $this->put(route('company.services.update'), ['services' => [
+        ['name' => 'Drain pump', 'kind' => 'part', 'category' => '  Dishwasher parts  ', 'unit_price' => '185.50'],
+        ['name' => 'Diagnosis', 'category' => '   ', 'unit_price' => '95.00'],
+    ]])->assertSessionHasNoErrors();
+
+    $this->get(route('company.services.edit'))->assertInertia(fn (Assert $page) => $page
+        ->where('services.0.category', 'Dishwasher parts')
+        ->where('services.1.category', null));
+
+    $job = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($this->company)))
+        ->create(['brand_id' => Brand::factory()->create(['company_id' => $this->company->id])->id]);
+    foreach (['invoices.create', 'estimates.create'] as $route) {
+        $this->get(route($route, $job))->assertInertia(fn (Assert $page) => $page
+            ->where('services.0.category', 'Dishwasher parts'));
+    }
+});
+
+test('category length is validated without changing the existing catalogue', function () {
+    $count = inCompany($this->company, fn () => Service::query()->count());
+    $this->put(route('company.services.update'), ['services' => [
+        ['name' => 'Pump', 'category' => str_repeat('x', 81)],
+    ]])->assertSessionHasErrors('services.0.category');
+    expect(inCompany($this->company, fn () => Service::query()->count()))->toBe($count);
+});
+
+test('categories from another company do not appear in this company catalogue', function () {
+    $other = Company::factory()->create();
+    inCompany($other, fn () => Service::query()->create(['name' => 'Secret part', 'category' => 'Private category']));
+    $this->get(route('company.services.edit'))->assertInertia(fn (Assert $page) => $page
+        ->where('services', fn ($services) => ! collect($services)->contains('category', 'Private category')));
+});
+
 test('services of another company cannot be changed through their ids', function () {
     $other = Company::factory()->create();
     $foreign = inCompany($other, function () {

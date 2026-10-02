@@ -273,6 +273,7 @@ class BillingPresenter
             ->map(fn (Service $service) => [
                 'id' => $service->id,
                 'name' => $service->name,
+                'category' => $service->category,
                 'description' => $service->description,
                 'unit_price' => $service->unit_price,
                 'currency' => $currency,

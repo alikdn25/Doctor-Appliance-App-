@@ -354,13 +354,24 @@ export function LineEditor({
                     onChange={(e) => pickService(e.target.value)}
                 >
                     <option value="">{t('billing.pick_service')}</option>
-                    {services.map((service) => (
-                        <option key={service.id} value={service.id}>
-                            {service.unit_price !== null
-                                ? `${service.name} · ${money(service.unit_price, service.currency)}`
-                                : service.name}
-                        </option>
-                    ))}
+                    {[...new Set(services.map((service) => service.category))]
+                        .sort((a, b) => (a ?? '').localeCompare(b ?? ''))
+                        .map((category) => (
+                            <optgroup
+                                key={category ?? ''}
+                                label={category ?? t('services.uncategorized')}
+                            >
+                                {services
+                                    .filter((service) => service.category === category)
+                                    .map((service) => (
+                                        <option key={service.id} value={service.id}>
+                                            {service.unit_price !== null
+                                                ? `${service.name} · ${money(service.unit_price, service.currency)}`
+                                                : service.name}
+                                        </option>
+                                    ))}
+                            </optgroup>
+                        ))}
                 </NativeSelect>
             )}
 

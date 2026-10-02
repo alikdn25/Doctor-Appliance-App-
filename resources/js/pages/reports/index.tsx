@@ -4,6 +4,8 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { useMoney } from '@/components/billing/money';
 import { PageHeader } from '@/components/page-header';
+import { BusinessReport } from '@/components/reports/business-report';
+import type { BusinessReportData } from '@/components/reports/business-report';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTrans } from '@/lib/i18n';
@@ -31,11 +33,13 @@ export default function Reports({
     byAppliance,
     callbacks,
     noCharge,
+    business,
 }: {
     from: string;
     to: string;
     currency: string;
     totals: Profit;
+    business: BusinessReportData;
     byTechnician: (Profit & { name: string })[];
     byAppliance: (Profit & { name: string })[];
     callbacks: {
@@ -168,6 +172,8 @@ export default function Reports({
                     </label>
                     <Button type="submit">{t('reports.apply')}</Button>
                 </form>
+
+                <BusinessReport data={business} />
 
                 <section className="space-y-3">
                     <h2 className="text-base font-medium">

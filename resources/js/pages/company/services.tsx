@@ -16,6 +16,7 @@ type Service = {
     id: number | null;
     name: string;
     description: string | null;
+    category: string | null;
     unit_price: number | null;
     taxable: boolean;
     is_active: boolean;
@@ -33,6 +34,7 @@ type Row = {
     id: number | null;
     name: string;
     description: string;
+    category: string;
     unit_price: string;
     taxable: boolean;
     is_active: boolean;
@@ -68,6 +70,7 @@ export default function Services({
             id: s.id,
             name: s.name,
             description: s.description ?? '',
+            category: s.category ?? '',
             unit_price:
                 s.unit_price === null ? '' : fromMinor(s.unit_price, currency),
             taxable: s.taxable,
@@ -99,6 +102,7 @@ export default function Services({
                 id: row.id,
                 name: row.name,
                 description: row.description || null,
+                category: row.category.trim() || null,
                 unit_price: row.unit_price.replace(/[^\d.]/g, '') || null,
                 taxable: row.taxable,
                 is_active: row.is_active,
@@ -207,6 +211,19 @@ export default function Services({
                                 onChange={(e) =>
                                     setRow(i, { description: e.target.value })
                                 }
+                            />
+                            <Input
+                                aria-label={t('services.fields.category')}
+                                placeholder={t('services.fields.category')}
+                                list="price-book-categories"
+                                maxLength={80}
+                                value={row.category}
+                                onChange={(e) =>
+                                    setRow(i, { category: e.target.value })
+                                }
+                            />
+                            <InputError
+                                message={errors[`services.${i}.category`]}
                             />
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                 <NativeSelect
@@ -327,6 +344,7 @@ export default function Services({
                                 id: null,
                                 name: '',
                                 description: '',
+                                category: '',
                                 unit_price: '',
                                 taxable: true,
                                 is_active: true,
@@ -351,6 +369,14 @@ export default function Services({
                 >
                     {t('common.save')}
                 </Button>
+                <datalist id="price-book-categories">
+                    {[...new Set(rows.map((row) => row.category.trim()))]
+                        .filter(Boolean)
+                        .sort()
+                        .map((category) => (
+                            <option key={category} value={category} />
+                        ))}
+                </datalist>
             </form>
         </>
     );

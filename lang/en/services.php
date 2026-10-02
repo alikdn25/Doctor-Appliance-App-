@@ -11,9 +11,11 @@ return [
     'no_price' => 'Price not set',
 
     'warranty_default' => 'Default',
+    'uncategorized' => 'Uncategorized',
     'fields' => [
         'name' => 'Service',
         'description' => 'Description',
+        'category' => 'Category',
         'unit_price' => 'Price',
         'taxable' => 'Taxable',
         'is_active' => 'Active',

@@ -150,6 +150,7 @@ export type BillingDocument = DocumentRow & {
 export type ServiceOption = {
     id: number;
     name: string;
+    category: string | null;
     description: string | null;
     unit_price: number | null;
     currency: string;

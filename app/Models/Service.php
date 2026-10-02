@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $company_id
  * @property string $name
  * @property string|null $description
+ * @property string|null $category
  * @property int|null $unit_price Minor units of the company currency; null = not set yet
  * @property bool $taxable
  * @property bool $is_active
@@ -32,7 +33,7 @@ class Service extends Model
     use BelongsToCompany;
 
     protected $fillable = [
-        'name', 'description', 'unit_price', 'taxable', 'is_active', 'sort_order',
+        'name', 'description', 'category', 'unit_price', 'taxable', 'is_active', 'sort_order',
         'kind', 'part_number', 'supplier', 'unit', 'unit_cost', 'warranty_value', 'warranty_unit',
     ];
 

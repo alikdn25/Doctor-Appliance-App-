@@ -75,6 +75,7 @@ class PriceBookController extends Controller
         $data = $request->validate([
             'kind' => ['required', Rule::enum(LineKind::class)],
             'name' => ['required', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:80'],
             'part_number' => ['nullable', 'string', 'max:100'],
             'supplier' => ['nullable', 'string', 'max:150'],
             'unit' => ['nullable', 'string', 'max:20'],
@@ -87,6 +88,7 @@ class PriceBookController extends Controller
 
         $service = Service::query()->create([
             ...$data,
+            'category' => trim($data['category'] ?? '') ?: null,
             'unit_cost' => filled($data['unit_cost'] ?? null) ? Currencies::toMinor($data['unit_cost'], $currency) : null,
             'unit_price' => filled($data['unit_price'] ?? null) ? Currencies::toMinor($data['unit_price'], $currency) : null,
             'taxable' => (bool) ($data['taxable'] ?? true),

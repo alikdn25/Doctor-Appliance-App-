@@ -71,11 +71,26 @@ jobs:
       - name: Build assets
         run: npm run build
 
-      - name: Lint and type-check
-        run: |
-          vendor/bin/pint --parallel --test
-          npm run check
-          npm run types:check
+      - name: PHP code style
+        id: php_style
+        run: vendor/bin/pint --parallel --test
+
+      - name: Frontend code style and lint
+        id: frontend
+        if: ${{ !cancelled() }}
+        run: npm run check
+
+      - name: Type-check
+        if: ${{ !cancelled() }}
+        run: npm run types:check
 
       - name: Run tests
+        if: ${{ !cancelled() }}
         run: php artisan test
+
+      - name: Show suggested code style fixes
+        if: ${{ failure() && (steps.frontend.outcome == 'failure' || steps.php_style.outcome == 'failure') }}
+        run: |
+          npm run check:fix || true
+          vendor/bin/pint || true
+          git diff -- app database tests resources lang docs
