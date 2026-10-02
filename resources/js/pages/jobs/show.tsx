@@ -265,8 +265,8 @@ export default function JobShow({
             <div
                 className={
                     myVisit && job.allows_visit_work
-                        ? 'max-w-3xl space-y-6 p-4 pb-28 md:pb-4'
-                        : 'max-w-3xl space-y-6 p-4'
+                        ? 'mx-auto w-full max-w-3xl space-y-6 p-4 pb-[calc(10rem+env(safe-area-inset-bottom))] sm:p-6 md:pb-6'
+                        : 'mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6'
                 }
             >
                 <PageHeader
@@ -371,7 +371,7 @@ export default function JobShow({
 
                 {/* Field actions for the current user's visit */}
                 {myVisit && job.allows_visit_work && (
-                    <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 shadow-lg backdrop-blur md:static md:rounded-lg md:border md:shadow-none">
+                    <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:static md:rounded-2xl md:border md:p-4 md:shadow-none">
                         <div className="mx-auto flex max-w-3xl flex-col gap-2">
                             <div className="flex items-center justify-between text-sm">
                                 <span className="font-medium">
@@ -390,7 +390,7 @@ export default function JobShow({
                                 <div className="grid grid-cols-2 gap-2">
                                     <Button
                                         size="lg"
-                                        className="h-12"
+                                        className="min-h-12 rounded-xl"
                                         onClick={() => {
                                             act(onMyWay(myVisit.id).url);
 
@@ -415,7 +415,7 @@ export default function JobShow({
                                     <Button
                                         size="lg"
                                         variant="outline"
-                                        className="h-12"
+                                        className="min-h-12 rounded-xl"
                                         onClick={() =>
                                             act(start(myVisit.id).url)
                                         }
@@ -427,7 +427,7 @@ export default function JobShow({
                             {myVisit.status === 'on_the_way' && (
                                 <Button
                                     size="lg"
-                                    className="h-12"
+                                    className="min-h-12 rounded-xl"
                                     onClick={() => act(start(myVisit.id).url)}
                                 >
                                     <Play /> {t('jobs.actions.start')}
@@ -436,7 +436,7 @@ export default function JobShow({
                             {myVisit.status === 'in_progress' && (
                                 <Button
                                     size="lg"
-                                    className="h-12"
+                                    className="min-h-12 rounded-xl"
                                     onClick={() => setFinishOpen(true)}
                                 >
                                     <CheckCircle2 />{' '}
@@ -449,7 +449,7 @@ export default function JobShow({
                 )}
 
                 {/* Customer and address */}
-                <section className="space-y-3 rounded-lg border p-4">
+                <section className="space-y-4 rounded-3xl border bg-card p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-2">
                         <div>
                             <h2 className="text-xs text-muted-foreground">
@@ -458,16 +458,18 @@ export default function JobShow({
                             {can.viewCustomer ? (
                                 <Link
                                     href={showCustomer(job.customer.id)}
-                                    className="text-base font-medium underline-offset-4 hover:underline"
+                                    className="text-lg font-semibold underline-offset-4 hover:underline"
                                 >
                                     {job.customer.display_name}
                                 </Link>
                             ) : (
-                                <span className="text-base font-medium">
+                                <span className="text-lg font-semibold">
                                     {job.customer.display_name}
                                 </span>
                             )}
-                            <p className="text-sm">{property.full_address}</p>
+                            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                                {property.full_address}
+                            </p>
                         </div>
                     </div>
 

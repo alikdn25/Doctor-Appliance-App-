@@ -20,6 +20,20 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
+### Bolt technician UI — draft, validation pending
+
+- My Jobs: rounded cards, larger touch targets, active-tab accessibility, wrapping time/status rows,
+  and full-width contact actions when only one contact method is available.
+- Job Detail: centered mobile layout, larger customer summary, rounded action buttons, and safe-area spacing
+  for the fixed visit action bar.
+- These changes are in the `chatgpt/bolt-ui` draft branch. They are not released or marked complete.
+- Validation blocked locally: PHP is unavailable and the sandbox cannot connect to the configured proxy
+  to install npm dependencies. Build, formatting, TypeScript and backend tests must pass in GitHub Actions.
+- Manual validation still required: narrow mobile screens, long names/addresses, every visit state,
+  iPhone home-indicator spacing, navigation/call links, dark mode and keyboard focus.
+- Next functional work: finish price-book categories and basic revenue/conversion reports, then the remaining
+  stages in SPEC.md. Stage 2, Stage 3 and platform subscription billing are not complete.
+
 | #   | Task                                                                         | Status    |
 | --- | ---------------------------------------------------------------------------- | --------- |
 | 1   | Customers, properties (manual address), appliances (§6, §7.1)                | ✅ Done   |

@@ -56,7 +56,7 @@ export default function MyJobs({
         <>
             <Head title={t('jobs.my_jobs')} />
 
-            <div className="mx-auto w-full max-w-2xl p-4">
+            <div className="mx-auto w-full max-w-2xl space-y-5 p-4 sm:p-6">
                 <PageHeader
                     title={t('jobs.my_jobs')}
                     actions={
@@ -89,17 +89,21 @@ export default function MyJobs({
                         </p>
                     ))}
 
-                <nav className="mb-4 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+                <nav
+                    aria-label={t('jobs.my_jobs')}
+                    className="grid grid-cols-3 gap-1 rounded-2xl border bg-muted/50 p-1.5"
+                >
                     {tabs.map((name) => (
                         <Link
                             key={name}
                             href={mine({ query: { tab: name } })}
                             preserveScroll
+                            aria-current={tab === name ? 'page' : undefined}
                             className={cn(
-                                'rounded-md px-3 py-2 text-center text-sm font-medium',
+                                'flex min-h-12 items-center justify-center rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                                 tab === name
-                                    ? 'bg-background shadow-sm'
-                                    : 'text-muted-foreground',
+                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:bg-background hover:text-foreground',
                             )}
                         >
                             {t(`jobs.tabs.${name}`)}
@@ -108,23 +112,23 @@ export default function MyJobs({
                 </nav>
 
                 {visits.length === 0 && (
-                    <p className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
+                    <p className="rounded-3xl border border-dashed bg-card p-10 text-center text-sm text-muted-foreground">
                         {t(`jobs.mine_empty.${tab}`)}
                     </p>
                 )}
 
-                <ul className="space-y-3">
+                <ul className="space-y-4">
                     {visits.map((visit) => (
                         <li
                             key={visit.id}
-                            className="overflow-hidden rounded-lg border"
+                            className="overflow-hidden rounded-3xl border bg-card shadow-sm"
                         >
                             <Link
                                 href={show(visit.job.id)}
-                                className="block space-y-1 p-4 hover:bg-muted/50"
+                                className="block space-y-3 p-5 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                             >
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className="text-base font-semibold">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="text-base font-bold text-primary tabular-nums">
                                         {tab === 'today'
                                             ? time.timeRange(
                                                   visit.scheduled_start,
@@ -135,7 +139,7 @@ export default function MyJobs({
                                                   visit.scheduled_end,
                                               )}
                                     </span>
-                                    <span className="flex items-center gap-1">
+                                    <span className="flex flex-wrap items-center gap-1">
                                         {visit.strict_arrival && (
                                             <StrictBadge />
                                         )}
@@ -145,11 +149,11 @@ export default function MyJobs({
                                         />
                                     </span>
                                 </div>
-                                <div className="font-medium">
+                                <div className="text-lg font-semibold tracking-tight">
                                     {visit.job.customer}
                                 </div>
                                 {visit.job.address && (
-                                    <div className="text-sm">
+                                    <div className="text-sm leading-relaxed text-muted-foreground">
                                         {visit.job.address}
                                     </div>
                                 )}
@@ -186,12 +190,20 @@ export default function MyJobs({
                             </Link>
                             {tab !== 'recent' &&
                                 (visit.job.address || visit.job.phone) && (
-                                    <div className="grid grid-cols-2 gap-2 border-t p-2">
+                                    <div
+                                        className={cn(
+                                            'grid gap-3 border-t bg-muted/20 p-3',
+                                            visit.job.address && visit.job.phone
+                                                ? 'grid-cols-2'
+                                                : 'grid-cols-1',
+                                        )}
+                                    >
                                         {visit.job.address && (
                                             <Button
                                                 asChild
                                                 variant="outline"
                                                 size="lg"
+                                                className="min-h-12 rounded-xl bg-background"
                                             >
                                                 <a
                                                     href={mapsUrl(
@@ -210,6 +222,7 @@ export default function MyJobs({
                                                 asChild
                                                 variant="outline"
                                                 size="lg"
+                                                className="min-h-12 rounded-xl bg-background"
                                             >
                                                 <a
                                                     href={telUrl(
