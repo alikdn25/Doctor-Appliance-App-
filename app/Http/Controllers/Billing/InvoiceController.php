@@ -60,7 +60,14 @@ class InvoiceController extends Controller
             'invoices' => $invoices,
             'filters' => $filters,
             'statuses' => InvoiceStatus::options(),
-            'outstandingTotal' => (int) (clone $base)->outstanding()->sum('balance'),
+            // One sum per currency: documents keep the currency they were created in.
+            'outstandingTotals' => (clone $base)->outstanding()
+                ->selectRaw('currency, sum(balance) as amount')
+                ->groupBy('currency')
+                ->orderBy('currency')
+                ->get()
+                ->map(fn ($row) => ['currency' => $row->currency, 'amount' => (int) $row->amount])
+                ->values(),
         ]);
     }
 

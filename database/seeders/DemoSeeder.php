@@ -78,7 +78,7 @@ class DemoSeeder extends Seeder
 
             app(SaveCustomer::class)->handle(null, ['type' => 'residential', 'first_name' => 'Victoria', 'last_name' => 'Island'],
                 [['label' => 'mobile', 'number' => '250-555-0199']], [],
-                ['line1' => '10 Government St', 'city' => 'Victoria', 'province' => 'BC', 'country' => 'CA']);
+                ['line1' => '10 Government St', 'city' => 'Victoria', 'region' => 'BC', 'country' => 'CA']);
         });
     }
 
@@ -115,7 +115,7 @@ class DemoSeeder extends Seeder
             'label' => 'Main office',
             'line1' => fake()->streetAddress(),
             'city' => $city,
-            'province' => 'BC',
+            'region' => 'BC',
             'postal_code' => 'V3T 1A1',
             'country' => 'CA',
             'is_primary' => true,
@@ -139,7 +139,7 @@ class DemoSeeder extends Seeder
             ['type' => 'residential', 'first_name' => 'Jane', 'last_name' => 'Cooper', 'lead_source' => 'google_business_profile', 'tags' => ['VIP']],
             [['label' => 'mobile', 'number' => '604-555-0142', 'is_primary' => true]],
             [['label' => 'personal', 'email' => 'jane.cooper@example.com', 'is_primary' => true]],
-            ['line1' => '8450 128 St', 'city' => 'Surrey', 'province' => 'BC', 'postal_code' => 'V3W 4G1', 'country' => 'CA', 'gate_code' => '#1234'],
+            ['line1' => '8450 128 St', 'city' => 'Surrey', 'region' => 'BC', 'postal_code' => 'V3W 4G1', 'country' => 'CA', 'gate_code' => '#1234'],
         );
         $property = $jane->properties()->first();
         $saveAppliance->handle($property, null, ['type' => 'washer', 'manufacturer' => 'LG', 'model_number' => 'WM3900HWA', 'serial_number' => '912KWPX4B123', 'warranty_expires_on' => now()->addYear()->toDateString()]);
@@ -150,7 +150,7 @@ class DemoSeeder extends Seeder
             ['type' => 'property_manager', 'company_name' => 'Westside Property Management', 'first_name' => 'Mark', 'last_name' => 'Lee', 'lead_source' => 'referral'],
             [['label' => 'work', 'number' => '604-555-0177', 'is_primary' => true]],
             [['label' => 'billing', 'email' => 'ap@westside-pm.example.com', 'is_primary' => true]],
-            ['label' => 'Rental on Main', 'line1' => '4120 Main St', 'unit' => '204', 'city' => 'Vancouver', 'province' => 'BC', 'postal_code' => 'V5V 3P6', 'country' => 'CA',
+            ['label' => 'Rental on Main', 'line1' => '4120 Main St', 'unit' => '204', 'city' => 'Vancouver', 'region' => 'BC', 'postal_code' => 'V5V 3P6', 'country' => 'CA',
                 'site_contact_name' => 'Sam Tenant', 'site_contact_phone' => '778-555-0110', 'access_notes' => 'Call the tenant 30 minutes before arrival.'],
         );
         $saveAppliance->handle($pm->properties()->first(), null, ['type' => 'dishwasher', 'manufacturer' => 'Bosch', 'model_number' => 'SHPM88Z75N']);
@@ -160,7 +160,7 @@ class DemoSeeder extends Seeder
             ['type' => 'residential', 'first_name' => 'Robert', 'last_name' => 'Fox', 'lead_source' => 'homestars'],
             [['label' => 'mobile', 'number' => '778-555-0123', 'is_primary' => true]],
             [],
-            ['line1' => '6200 McKay Ave', 'city' => 'Burnaby', 'province' => 'BC', 'postal_code' => 'V5H 4M9', 'country' => 'CA'],
+            ['line1' => '6200 McKay Ave', 'city' => 'Burnaby', 'region' => 'BC', 'postal_code' => 'V5H 4M9', 'country' => 'CA'],
         );
 
         return [$jane, $pm, $robert];

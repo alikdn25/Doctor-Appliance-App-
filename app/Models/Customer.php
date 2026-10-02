@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CustomerType;
 use App\Enums\LeadSource;
+use App\Enums\PaymentTerms;
 use App\Models\Concerns\BelongsToCompany;
 use App\Support\PhoneNumber;
 use Database\Factories\CustomerFactory;
@@ -25,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $company_name
  * @property string $display_name
  * @property LeadSource|null $lead_source
+ * @property PaymentTerms|null $payment_terms Null = the company default
  * @property list<string> $tags
  * @property string|null $notes
  * @property Carbon|null $created_at
@@ -43,6 +45,7 @@ class Customer extends Model
         'last_name',
         'company_name',
         'lead_source',
+        'payment_terms',
         'tags',
         'notes',
     ];
@@ -60,6 +63,7 @@ class Customer extends Model
         return [
             'type' => CustomerType::class,
             'lead_source' => LeadSource::class,
+            'payment_terms' => PaymentTerms::class,
             'tags' => 'array',
         ];
     }
@@ -76,6 +80,14 @@ class Customer extends Model
                 $customer->properties()->get()->each->delete();
             }
         });
+    }
+
+    /**
+     * The customer's own payment terms, or the company default.
+     */
+    public function paymentTerms(): PaymentTerms
+    {
+        return $this->payment_terms ?? currentCompany()->default_payment_terms;
     }
 
     /**
@@ -163,7 +175,7 @@ class Customer extends Model
         }
 
         $like = '%'.addcslashes($term, '%_\\').'%';
-        $digits = PhoneNumber::digits($term);
+        $digits = PhoneNumber::searchDigits($term);
 
         $query->where(function (Builder $q) use ($like, $digits) {
             $q->where('display_name', 'ilike', $like)

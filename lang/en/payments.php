@@ -16,8 +16,8 @@ return [
 
     'methods' => [
         'cash' => 'Cash',
-        'cheque' => 'Cheque',
-        'e_transfer' => 'e-Transfer',
+        'check' => 'Check',
+        'bank_transfer' => 'Bank transfer',
         'card_terminal' => 'Card (own terminal)',
         'other' => 'Other',
         'online' => 'Online',
@@ -28,7 +28,8 @@ return [
         'method' => 'Method',
         'reference' => 'Reference',
         'transaction_reference' => 'Transaction #',
-        'cheque_number' => 'Cheque #',
+        'check_number' => 'Check #',
+        'transfer_reference' => 'Transfer reference (e-Transfer, Zelle, ACH …)',
         'note' => 'Note',
         'received_on' => 'Date received',
     ],
@@ -44,5 +45,6 @@ return [
         'more_than_balance' => 'The amount is more than the balance due.',
         'amount_required' => 'Enter an amount above zero.',
         'provider_payment' => 'Online payments are refunded in the payment provider.',
+        'currency_mismatch' => 'The payment is in :currency but the invoice is in :expected.',
     ],
 ];

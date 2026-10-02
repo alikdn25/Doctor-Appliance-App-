@@ -50,7 +50,7 @@ class PropertyRequest extends FormRequest
             "{$prefix}line2" => ['nullable', 'string', 'max:255'],
             "{$prefix}unit" => ['nullable', 'string', 'max:50'],
             "{$prefix}city" => [$required, 'string', 'max:100'],
-            "{$prefix}province" => ['nullable', 'string', 'max:50'],
+            "{$prefix}region" => ['nullable', 'string', 'max:50'],
             "{$prefix}postal_code" => ['nullable', 'string', 'max:20'],
             "{$prefix}country" => [$required, 'string', 'size:2'],
             "{$prefix}access_notes" => ['nullable', 'string', 'max:2000'],

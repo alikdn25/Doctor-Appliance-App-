@@ -25,14 +25,29 @@ return [
         'line2' => 'Address line 2',
         'unit' => 'Unit / suite',
         'city' => 'City',
-        'province' => 'Province',
-        'postal_code' => 'Postal code',
-        'country' => 'Country code',
+        'region' => 'State / province / region',
+        'postal_code' => 'ZIP / postal code',
+        'country' => 'Country',
         'access_notes' => 'Access notes',
         'gate_code' => 'Gate / buzzer code',
         'site_contact_name' => 'On-site contact name',
         'site_contact_phone' => 'On-site contact phone',
     ],
+
+    // Labels of the region and postal code fields per country (config/countries.php).
+    'regions' => [
+        'state' => 'State',
+        'province' => 'Province',
+        'county' => 'County',
+        'region' => 'Region',
+    ],
+    'postals' => [
+        'zip_code' => 'ZIP code',
+        'postal_code' => 'Postal code',
+        'postcode' => 'Postcode',
+        'eircode' => 'Eircode',
+    ],
+    'invalid_postal' => 'Enter a valid :label.',
 
     'site_contact_hint' => 'For example a tenant, when the landlord or property manager pays.',
 ];

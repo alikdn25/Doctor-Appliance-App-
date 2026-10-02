@@ -35,11 +35,11 @@ class ChecklistTemplate extends Model
     }
 
     /**
-     * Creates the default checklists for the current company.
+     * Creates the default checklists of the current company's vertical.
      */
     public static function createDefaults(): void
     {
-        foreach (ChecklistDefaults::all() as $jobType => $items) {
+        foreach (ChecklistDefaults::forVertical(currentCompany()->vertical) as $jobType => $items) {
             static::query()->firstOrCreate(['job_type' => $jobType], ['items' => $items]);
         }
     }

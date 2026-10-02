@@ -108,7 +108,7 @@ class JobRequest extends FormRequest
             $this->validateCustomerAndProperty($validator);
 
             if ($this->boolean('new_customer_mode')
-                && strlen(PhoneNumber::digits((string) $this->input('new_customer.phone'))) < 7) {
+                && ! PhoneNumber::isPossible((string) $this->input('new_customer.phone'))) {
                 $validator->errors()->add('new_customer.phone', __('customers.invalid_phone'));
             }
 

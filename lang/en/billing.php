@@ -17,6 +17,9 @@ return [
     'taxes' => 'Taxes',
     'no_taxes' => 'No taxes set up. Add them under Company → Taxes.',
     'tax_line' => ':name :rate%',
+    'compound' => 'compound',
+    'prices_include_tax' => 'Prices include tax.',
+    'includes_tax' => 'Includes :name :rate%',
     'notes_hint' => 'Shown on the document (warranty on the repair, terms, etc.).',
     'job' => 'Job #:number',
     'issued' => 'Issued :date',
@@ -25,7 +28,7 @@ return [
 
     'discount_types' => [
         'none' => 'No discount',
-        'amount' => '$ amount',
+        'amount' => 'Amount (:symbol)',
         'percent' => '% of subtotal',
     ],
 

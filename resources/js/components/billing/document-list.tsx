@@ -64,14 +64,14 @@ export function DocumentList({
                             </div>
                             <div className="text-right">
                                 <div className="font-medium tabular-nums">
-                                    {money(d.total)}
+                                    {money(d.total, d.currency)}
                                 </div>
                                 {d.balance !== null &&
                                     d.balance > 0 &&
                                     d.status !== 'void' && (
                                         <div className="text-xs text-amber-700 tabular-nums dark:text-amber-300">
                                             {t('invoices.balance')}:{' '}
-                                            {money(d.balance)}
+                                            {money(d.balance, d.currency)}
                                         </div>
                                     )}
                             </div>

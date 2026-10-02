@@ -102,7 +102,7 @@ class CustomerRequest extends FormRequest
             function (Validator $validator) {
                 foreach ((array) $this->input('phones', []) as $i => $phone) {
                     $number = (string) ($phone['number'] ?? '');
-                    if ($number !== '' && strlen(PhoneNumber::digits($number)) < 7) {
+                    if ($number !== '' && ! PhoneNumber::isPossible($number)) {
                         $validator->errors()->add("phones.{$i}.number", __('customers.invalid_phone'));
                     }
                 }

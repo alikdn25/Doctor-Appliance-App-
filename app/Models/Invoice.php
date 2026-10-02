@@ -23,6 +23,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $property_id
  * @property int|null $estimate_id
  * @property string $number
+ * @property string $currency ISO 4217; amounts are in its minor units
+ * @property bool $prices_include_tax
  * @property InvoiceStatus $status
  * @property Carbon $issued_on
  * @property Carbon|null $due_on
@@ -34,7 +36,7 @@ use Illuminate\Support\Carbon;
  * @property int $total
  * @property int $amount_paid
  * @property int $balance
- * @property list<array{tax_rate_id: int|null, name: string, rate: string, amount: int}> $taxes
+ * @property list<array{tax_rate_id: int|null, name: string, rate: string, compound?: bool, amount: int}> $taxes
  * @property string|null $notes
  * @property Carbon|null $paid_at
  * @property Carbon|null $voided_at

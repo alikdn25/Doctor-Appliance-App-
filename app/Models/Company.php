@@ -3,7 +3,11 @@
 namespace App\Models;
 
 use App\Enums\CompanyStatus;
+use App\Enums\PaymentTerms;
 use App\Enums\SubscriptionStatus;
+use App\Enums\Vertical;
+use App\Support\Locale\Countries;
+use App\Support\Locale\Currencies;
 use App\Models\Scopes\CompanyScope;
 use Database\Factories\CompanyFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,8 +27,13 @@ use Illuminate\Support\Carbon;
  * @property CompanyStatus $status
  * @property string|null $plan
  * @property SubscriptionStatus|null $subscription_status
+ * @property string $country ISO 3166-1 alpha-2
+ * @property Vertical $vertical
  * @property string $timezone
- * @property string $currency
+ * @property string $currency ISO 4217
+ * @property string $locale Regional format (BCP 47), e.g. en-US
+ * @property bool $prices_include_tax
+ * @property PaymentTerms $default_payment_terms
  * @property string $invoice_prefix
  * @property int $invoice_next_number
  * @property string $estimate_prefix
@@ -50,8 +59,13 @@ class Company extends Model
         'status',
         'plan',
         'subscription_status',
+        'country',
+        'vertical',
         'timezone',
         'currency',
+        'locale',
+        'prices_include_tax',
+        'default_payment_terms',
         'invoice_prefix',
         'invoice_next_number',
         'estimate_prefix',
@@ -64,9 +78,21 @@ class Company extends Model
 
     protected $attributes = [
         'status' => 'active',
-        'timezone' => 'America/Vancouver',
-        'currency' => 'CAD',
+        'vertical' => 'appliance_repair',
+        'prices_include_tax' => false,
+        'default_payment_terms' => 'due_on_receipt',
     ];
+
+    protected static function booted(): void
+    {
+        // Country defaults (SPEC §1.1) for whatever was not given explicitly.
+        static::creating(function (Company $company) {
+            $company->country = strtoupper($company->country ?: (string) config('fieldservice.default_country'));
+            $company->currency ??= Countries::currency($company->country);
+            $company->locale ??= Countries::locale($company->country);
+            $company->timezone ??= Countries::timezone($company->country);
+        });
+    }
 
     /**
      * @return array<string, string>
@@ -76,12 +102,43 @@ class Company extends Model
         return [
             'status' => CompanyStatus::class,
             'subscription_status' => SubscriptionStatus::class,
+            'vertical' => Vertical::class,
+            'default_payment_terms' => PaymentTerms::class,
+            'prices_include_tax' => 'boolean',
             'business_hours' => 'array',
             'invoice_next_number' => 'integer',
             'estimate_next_number' => 'integer',
             'job_next_number' => 'integer',
             'travel_buffer_minutes' => 'integer',
             'timezone_pending' => 'boolean',
+        ];
+    }
+
+    /**
+     * Digits after the decimal point of the company's currency.
+     */
+    public function currencyDecimals(): int
+    {
+        return Currencies::decimals($this->currency);
+    }
+
+    /**
+     * Formats and labels the React pages need: regional format, currency, address layout.
+     *
+     * @return array<string, mixed>
+     */
+    public function formatSettings(): array
+    {
+        return [
+            'country' => $this->country,
+            'currency' => $this->currency,
+            'currency_decimals' => $this->currencyDecimals(),
+            'locale' => $this->locale,
+            'timezone' => $this->timezone,
+            'vertical' => $this->vertical->value,
+            'tracks_appliances' => $this->vertical->tracksAppliances(),
+            'prices_include_tax' => $this->prices_include_tax,
+            'address' => Countries::addressLabels($this->country),
         ];
     }
 

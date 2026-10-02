@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\Locale\AddressFormatter;
+use App\Support\PhoneNumber;
 use Database\Factories\PropertyFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,7 +24,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $line2
  * @property string|null $unit
  * @property string $city
- * @property string|null $province
+ * @property string|null $region State, province, county …
  * @property string|null $postal_code
  * @property string $country
  * @property string|null $latitude
@@ -47,7 +49,7 @@ class Property extends Model
         'line2',
         'unit',
         'city',
-        'province',
+        'region',
         'postal_code',
         'country',
         'access_notes',
@@ -58,7 +60,6 @@ class Property extends Model
     ];
 
     protected $attributes = [
-        'country' => 'CA',
         'is_primary' => false,
     ];
 
@@ -74,6 +75,15 @@ class Property extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (Property $property) {
+            // The country of the company unless the address says otherwise.
+            $property->country = strtoupper($property->country ?: PhoneNumber::defaultCountry());
+
+            if (filled($property->site_contact_phone)) {
+                $property->site_contact_phone = PhoneNumber::normalize($property->site_contact_phone, $property->country);
+            }
+        });
+
         static::deleting(function (Property $property) {
             if (! $property->isForceDeleting()) {
                 $property->appliances()->get()->each->delete();
@@ -82,7 +92,7 @@ class Property extends Model
     }
 
     /**
-     * One-line address, e.g. "Unit 204, 123 Main St, Surrey, BC V3T 1A1".
+     * One-line address in the order of its country, e.g. "Unit 204, 123 Main St, Surrey, BC V3T 1A1".
      */
     public function fullAddress(): string
     {
@@ -90,9 +100,7 @@ class Property extends Model
             ->filter()
             ->implode(', ');
 
-        $region = trim("{$this->province} {$this->postal_code}");
-
-        return collect([$street, $this->city, $region])->filter()->implode(', ');
+        return AddressFormatter::oneLine($street, $this->city, $this->region, $this->postal_code, $this->country);
     }
 
     /**

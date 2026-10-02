@@ -25,6 +25,7 @@ trait IsBillingDocument
         return [
             'issued_on' => 'date:Y-m-d',
             'discount_value' => 'decimal:2',
+            'prices_include_tax' => 'boolean',
             'subtotal' => 'integer',
             'discount_total' => 'integer',
             'tax_total' => 'integer',

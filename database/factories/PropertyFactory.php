@@ -18,7 +18,7 @@ class PropertyFactory extends Factory
             'company_id' => fn (array $attributes) => Customer::withoutCompanyScope()->find($attributes['customer_id'])?->company_id,
             'line1' => fake()->streetAddress(),
             'city' => fake()->randomElement(['Vancouver', 'Surrey', 'Burnaby', 'Richmond', 'Coquitlam']),
-            'province' => 'BC',
+            'region' => 'BC',
             'postal_code' => strtoupper(fake()->bothify('V#? #?#')),
             'country' => 'CA',
             'is_primary' => true,

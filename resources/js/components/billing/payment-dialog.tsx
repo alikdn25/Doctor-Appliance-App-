@@ -1,7 +1,12 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { useEffect } from 'react';
-import { toCents, toDollars, useMoney } from '@/components/billing/money';
+import {
+    currencySymbol,
+    fromMinor,
+    toMinor,
+    useMoney,
+} from '@/components/billing/money';
 import { FormField } from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,8 +24,8 @@ import { store } from '@/routes/payments';
 import type { Option } from '@/types';
 
 const referenceLabel: Record<string, string> = {
-    cheque: 'payments.fields.cheque_number',
-    e_transfer: 'payments.fields.reference',
+    check: 'payments.fields.check_number',
+    bank_transfer: 'payments.fields.transfer_reference',
     card_terminal: 'payments.fields.transaction_reference',
 };
 
@@ -32,6 +37,7 @@ export function PaymentDialog({
     onOpenChange,
     invoiceId,
     balance,
+    currency,
     methods,
     today,
 }: {
@@ -39,13 +45,16 @@ export function PaymentDialog({
     onOpenChange: (open: boolean) => void;
     invoiceId: number;
     balance: number;
+    currency: string;
     methods: Option[];
     today: string;
 }) {
     const t = useTrans();
-    const money = useMoney();
+    const money = useMoney(currency);
+    const { auth } = usePage().props;
+    const symbol = currencySymbol(currency, auth.company?.locale);
     const form = useForm({
-        amount: toDollars(balance),
+        amount: fromMinor(balance, currency),
         method: '',
         reference: '',
         note: '',
@@ -56,7 +65,7 @@ export function PaymentDialog({
         if (open) {
             form.clearErrors();
             form.setData({
-                amount: toDollars(balance),
+                amount: fromMinor(balance, currency),
                 method: '',
                 reference: '',
                 note: '',
@@ -67,13 +76,13 @@ export function PaymentDialog({
     }, [open, balance, today]);
 
     const method = form.data.method;
-    const amount = toCents(form.data.amount);
+    const amount = toMinor(form.data.amount, currency);
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
         form.transform((d) => ({
             ...d,
-            amount: d.amount.replace(/[$,\s]/g, ''),
+            amount: d.amount.replace(/[^\d.]/g, ''),
             reference: referenceLabel[d.method] ? d.reference : '',
         }));
         form.post(store(invoiceId).url, {
@@ -129,12 +138,15 @@ export function PaymentDialog({
                         <div className="flex gap-2">
                             <div className="relative flex-1">
                                 <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
-                                    $
+                                    {symbol}
                                 </span>
                                 <Input
                                     id="payment-amount"
                                     inputMode="decimal"
-                                    className="h-11 pl-6 text-base"
+                                    className="h-11 text-base"
+                                    style={{
+                                        paddingLeft: `${symbol.length * 0.6 + 1}rem`,
+                                    }}
                                     value={form.data.amount}
                                     onChange={(e) =>
                                         form.setData('amount', e.target.value)
@@ -149,7 +161,7 @@ export function PaymentDialog({
                                     onClick={() =>
                                         form.setData(
                                             'amount',
-                                            toDollars(balance),
+                                            fromMinor(balance, currency),
                                         )
                                     }
                                 >

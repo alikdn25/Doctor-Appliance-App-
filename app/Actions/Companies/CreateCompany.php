@@ -6,7 +6,9 @@ use App\Actions\Members\AddMember;
 use App\Enums\UserRole;
 use App\Models\ChecklistTemplate;
 use App\Models\Company;
+use App\Models\Service;
 use App\Services\AuditLogger;
+use App\Support\Locale\Countries;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -23,7 +25,9 @@ class CreateCompany
     ) {}
 
     /**
-     * @param  array{name: string, timezone?: string|null, currency?: string, plan?: string|null, subscription_status?: string|null}  $data
+     * Country defaults (currency, regional format, time zone) apply to whatever is not given.
+     *
+     * @param  array{name: string, country?: string, vertical?: string, timezone?: string|null, currency?: string, locale?: string, plan?: string|null, subscription_status?: string|null}  $data
      * @param  array{name: string, email: string}  $owner
      */
     public function handle(array $data, array $owner): Company
@@ -31,10 +35,11 @@ class CreateCompany
         return DB::transaction(function () use ($data, $owner) {
             // Without a time zone the company starts on the default one until the Owner's browser reports theirs.
             $pending = blank($data['timezone'] ?? null);
+            $data['country'] = strtoupper($data['country'] ?? (string) config('fieldservice.default_country'));
 
             $company = Company::create([
                 ...$data,
-                'timezone' => $pending ? config('fieldservice.default_timezone') : $data['timezone'],
+                'timezone' => $pending ? Countries::timezone($data['country']) : $data['timezone'],
                 'timezone_pending' => $pending,
                 'slug' => $this->uniqueSlug($data['name']),
                 'business_hours' => Company::defaultBusinessHours(),
@@ -44,6 +49,7 @@ class CreateCompany
 
             $this->currentCompany->runAs($company, function () use ($company, $owner) {
                 ChecklistTemplate::createDefaults();
+                Service::createDefaults();
                 $this->addMember->handle($company, $owner['name'], $owner['email'], UserRole::Owner);
             });
 

@@ -20,12 +20,12 @@ export default function InvoicesIndex({
     invoices,
     filters,
     statuses,
-    outstandingTotal,
+    outstandingTotals,
 }: {
     invoices: Paginated<DocumentRow>;
     filters: Filters;
     statuses: Option[];
-    outstandingTotal: number;
+    outstandingTotals: { currency: string; amount: number }[];
 }) {
     const t = useTrans();
     const money = useMoney();
@@ -55,7 +55,14 @@ export default function InvoicesIndex({
                 <PageHeader
                     title={t('invoices.title')}
                     description={t('invoices.outstanding_total', {
-                        amount: money(outstandingTotal),
+                        amount:
+                            outstandingTotals.length > 0
+                                ? outstandingTotals
+                                      .map((row) =>
+                                          money(row.amount, row.currency),
+                                      )
+                                      .join(' + ')
+                                : money(0),
                     })}
                 />
 

@@ -13,8 +13,8 @@ enum PaymentMethod: string
     use HasOptions;
 
     case Cash = 'cash';
-    case Cheque = 'cheque';
-    case ETransfer = 'e_transfer';
+    case Check = 'check';
+    case BankTransfer = 'bank_transfer';
     case CardTerminal = 'card_terminal';
     case Other = 'other';
     case Online = 'online';
@@ -29,7 +29,7 @@ enum PaymentMethod: string
      */
     public static function manual(): array
     {
-        return [self::Cash, self::Cheque, self::ETransfer, self::CardTerminal, self::Other];
+        return [self::Cash, self::Check, self::BankTransfer, self::CardTerminal, self::Other];
     }
 
     /**

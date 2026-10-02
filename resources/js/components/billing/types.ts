@@ -7,6 +7,7 @@ export type DocumentRow = {
     status: string;
     status_label: string;
     issued_on: string;
+    currency: string;
     total: number;
     balance: number | null;
     job_id: number;
@@ -26,12 +27,14 @@ export type DocumentTax = {
     tax_rate_id: number | null;
     name: string;
     rate: string;
+    compound?: boolean;
     amount: number;
 };
 
 export type PaymentData = {
     id: number;
     amount: number;
+    currency: string;
     method: string;
     method_label: string;
     reference: string | null;
@@ -55,6 +58,7 @@ export type JobSummary = {
 export type BillingDocument = DocumentRow & {
     discount_type: 'amount' | 'percent' | null;
     discount_value: string;
+    prices_include_tax: boolean;
     subtotal: number;
     discount_total: number;
     tax_total: number;
@@ -92,5 +96,6 @@ export type TaxOption = {
     id: number;
     name: string;
     rate: string;
+    is_compound: boolean;
     is_default: boolean;
 };

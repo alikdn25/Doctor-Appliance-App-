@@ -1,7 +1,12 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { computeTotals, toDollars, useMoney } from '@/components/billing/money';
+import {
+    computeTotals,
+    currencySymbol,
+    fromMinor,
+    useMoney,
+} from '@/components/billing/money';
 import type {
     BillingDocument,
     DocumentKind,
@@ -69,21 +74,33 @@ export default function BillingForm({
     job,
     taxRates,
     today,
+    defaultDueOn,
+    paymentTerms,
 }: {
     kind: DocumentKind;
     document: BillingDocument | null;
     job: JobSummary;
     taxRates: TaxOption[];
     today: string;
+    defaultDueOn?: string;
+    paymentTerms?: string;
 }) {
     const t = useTrans();
-    const money = useMoney();
+    const { auth } = usePage().props;
+    // A document keeps the currency and tax mode it was created with.
+    const currency = document?.currency ?? auth.company?.currency ?? 'USD';
+    const pricesIncludeTax =
+        document?.prices_include_tax ??
+        auth.company?.prices_include_tax ??
+        false;
+    const symbol = currencySymbol(currency, auth.company?.locale);
+    const money = useMoney(currency);
     const group = kind === 'invoice' ? 'invoices' : 'estimates';
 
     const form = useForm<FormData>({
         issued_on: document?.issued_on ?? today,
         valid_until: document?.valid_until ?? '',
-        due_on: document?.due_on ?? (document ? '' : today),
+        due_on: document?.due_on ?? (document ? '' : (defaultDueOn ?? today)),
         discount_type: document?.discount_type ?? '',
         discount_value:
             document?.discount_type && document.discount_value
@@ -100,7 +117,7 @@ export default function BillingForm({
                   key: ++lineKey,
                   description: item.description,
                   quantity: String(Number(item.quantity)),
-                  unit_price: toDollars(item.unit_price),
+                  unit_price: fromMinor(item.unit_price, currency),
                   taxable: item.taxable,
               }))
             : [newLine()],
@@ -119,6 +136,8 @@ export default function BillingForm({
         discount_type: data.discount_type,
         discount_value: data.discount_value,
         taxes: selectedTaxes,
+        currency,
+        prices_include_tax: pricesIncludeTax,
     });
 
     const setLine = (index: number, patch: Partial<Line>) =>
@@ -149,7 +168,7 @@ export default function BillingForm({
             items: d.items.map((line) => ({
                 description: line.description,
                 quantity: line.quantity,
-                unit_price: line.unit_price.replace(/[$,\s]/g, ''),
+                unit_price: line.unit_price.replace(/[^\d.-]/g, ''),
                 taxable: line.taxable,
             })),
         }));
@@ -215,6 +234,12 @@ export default function BillingForm({
                         <FormField
                             id="due_on"
                             label={t('invoices.fields.due_on')}
+                            hint={
+                                paymentTerms &&
+                                t('invoices.terms_hint', {
+                                    terms: paymentTerms,
+                                })
+                            }
                             error={errors.due_on}
                         >
                             <Input
@@ -328,15 +353,20 @@ export default function BillingForm({
                                     <div>
                                         <div className="relative">
                                             <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
-                                                $
+                                                {symbol}
                                             </span>
                                             <Input
                                                 aria-label={t(
                                                     'billing.fields.unit_price',
                                                 )}
-                                                placeholder="0.00"
+                                                placeholder={fromMinor(
+                                                    0,
+                                                    currency,
+                                                )}
                                                 inputMode="decimal"
-                                                className="pl-6"
+                                                style={{
+                                                    paddingLeft: `${symbol.length * 0.6 + 1}rem`,
+                                                }}
                                                 value={line.unit_price}
                                                 onChange={(e) =>
                                                     setLine(i, {
@@ -408,7 +438,9 @@ export default function BillingForm({
                                     {t('billing.discount_types.none')}
                                 </option>
                                 <option value="amount">
-                                    {t('billing.discount_types.amount')}
+                                    {t('billing.discount_types.amount', {
+                                        symbol,
+                                    })}
                                 </option>
                                 <option value="percent">
                                     {t('billing.discount_types.percent')}
@@ -513,6 +545,11 @@ export default function BillingForm({
                         <dt>{t('billing.total')}</dt>
                         <dd className="tabular-nums">{money(totals.total)}</dd>
                     </div>
+                    {pricesIncludeTax && (
+                        <p className="text-right text-xs text-muted-foreground">
+                            {t('billing.prices_include_tax')}
+                        </p>
+                    )}
                 </dl>
 
                 <div className="fixed inset-x-0 bottom-0 z-20 flex gap-2 border-t bg-background/95 p-3 shadow-lg backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">

@@ -73,7 +73,7 @@ type FormData = {
             line1: string;
             unit: string;
             city: string;
-            province: string;
+            region: string;
             postal_code: string;
             country: string;
             gate_code: string;
@@ -148,7 +148,7 @@ export default function JobForm({
                 line1: '',
                 unit: '',
                 city: '',
-                province: 'BC',
+                region: 'BC',
                 postal_code: '',
                 country: 'CA',
                 gate_code: '',

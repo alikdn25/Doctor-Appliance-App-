@@ -16,7 +16,8 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $company_id
  * @property int $invoice_id
- * @property int $amount Cents
+ * @property int $amount Minor units of $currency
+ * @property string $currency ISO 4217 (the invoice's currency)
  * @property PaymentMethod $method
  * @property string|null $reference
  * @property string|null $note

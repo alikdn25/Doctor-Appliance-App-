@@ -63,7 +63,7 @@ return new class extends Migration
         // Existing companies start with the default checklists.
         $now = now();
         foreach (DB::table('companies')->pluck('id') as $companyId) {
-            foreach (ChecklistDefaults::all() as $jobType => $items) {
+            foreach (ChecklistDefaults::applianceRepair() as $jobType => $items) {
                 DB::table('checklist_templates')->insert([
                     'company_id' => $companyId,
                     'job_type' => $jobType,

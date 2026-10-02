@@ -4,7 +4,7 @@ export type PropertyFormData = {
     line2: string;
     unit: string;
     city: string;
-    province: string;
+    region: string;
     postal_code: string;
     country: string;
     access_notes: string;
@@ -28,7 +28,7 @@ export const emptyProperty = (): PropertyFormData => ({
     line2: '',
     unit: '',
     city: '',
-    province: 'BC',
+    region: 'BC',
     postal_code: '',
     country: 'CA',
     access_notes: '',
@@ -44,7 +44,7 @@ export const propertyToForm = (p: PropertyData): PropertyFormData => ({
     line2: p.line2 ?? '',
     unit: p.unit ?? '',
     city: p.city,
-    province: p.province ?? '',
+    region: p.region ?? '',
     postal_code: p.postal_code ?? '',
     country: p.country,
     access_notes: p.access_notes ?? '',

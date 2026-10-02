@@ -16,7 +16,7 @@ type Address = {
     line1: string;
     line2: string;
     city: string;
-    province: string;
+    region: string;
     postal_code: string;
     country: string;
     is_primary: boolean;
@@ -33,19 +33,19 @@ type Brand = {
     phone: string | null;
     sender_name: string | null;
     sender_email: string | null;
-    gst_number: string | null;
+    tax_number: string | null;
     business_number: string | null;
     invoice_footer: string | null;
     invoice_terms: string | null;
     is_active: boolean;
     addresses: (Omit<
         Address,
-        'label' | 'line2' | 'province' | 'postal_code'
+        'label' | 'line2' | 'region' | 'postal_code'
     > & {
         id: number;
         label: string | null;
         line2: string | null;
-        province: string | null;
+        region: string | null;
         postal_code: string | null;
     })[];
 };
@@ -59,7 +59,7 @@ type FormData = {
     phone: string;
     sender_name: string;
     sender_email: string;
-    gst_number: string;
+    tax_number: string;
     business_number: string;
     invoice_footer: string;
     invoice_terms: string;
@@ -74,7 +74,7 @@ const emptyAddress = (primary: boolean): Address => ({
     line1: '',
     line2: '',
     city: '',
-    province: 'BC',
+    region: 'BC',
     postal_code: '',
     country: 'CA',
     is_primary: primary,
@@ -99,7 +99,7 @@ export default function BrandForm({
         phone: brand?.phone ?? '',
         sender_name: brand?.sender_name ?? '',
         sender_email: brand?.sender_email ?? '',
-        gst_number: brand?.gst_number ?? '',
+        tax_number: brand?.tax_number ?? '',
         business_number: brand?.business_number ?? '',
         invoice_footer: brand?.invoice_footer ?? '',
         invoice_terms: brand?.invoice_terms ?? '',
@@ -112,7 +112,7 @@ export default function BrandForm({
             line1: a.line1,
             line2: a.line2 ?? '',
             city: a.city,
-            province: a.province ?? '',
+            region: a.region ?? '',
             postal_code: a.postal_code ?? '',
             country: a.country,
             is_primary: a.is_primary,
@@ -318,7 +318,7 @@ export default function BrandForm({
                                     ['line1', 'sm:col-span-2'],
                                     ['line2', 'sm:col-span-2'],
                                     ['city', ''],
-                                    ['province', ''],
+                                    ['region', ''],
                                     ['postal_code', ''],
                                     ['country', ''],
                                 ] as const
@@ -386,7 +386,7 @@ export default function BrandForm({
                         {t('brands.sections.documents')}
                     </h2>
                     <div className="grid gap-4 sm:grid-cols-2">
-                        {text('gst_number')}
+                        {text('tax_number')}
                         {text('business_number')}
                     </div>
                     {(['invoice_footer', 'invoice_terms'] as const).map(

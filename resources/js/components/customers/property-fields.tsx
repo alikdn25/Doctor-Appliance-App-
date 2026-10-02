@@ -11,7 +11,7 @@ const layout: [TextField, string, string?][] = [
     ['unit', '', 'address-line2'],
     ['line2', ''],
     ['city', '', 'address-level2'],
-    ['province', '', 'address-level1'],
+    ['region', '', 'address-level1'],
     ['postal_code', '', 'postal-code'],
     ['country', ''],
     ['label', 'sm:col-span-2'],

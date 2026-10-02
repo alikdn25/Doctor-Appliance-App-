@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\PhoneNumber;
 use Database\Factories\BrandFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,7 +27,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $phone
  * @property string|null $sender_name
  * @property string|null $sender_email
- * @property string|null $gst_number
+ * @property string|null $tax_number Tax registration (GST/HST, VAT, EIN …)
  * @property string|null $business_number
  * @property string|null $invoice_footer
  * @property string|null $invoice_terms
@@ -52,7 +53,7 @@ class Brand extends Model
         'phone',
         'sender_name',
         'sender_email',
-        'gst_number',
+        'tax_number',
         'business_number',
         'invoice_footer',
         'invoice_terms',
@@ -64,6 +65,15 @@ class Brand extends Model
     ];
 
     protected $appends = ['logo_url'];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Brand $brand) {
+            if (filled($brand->phone)) {
+                $brand->phone = PhoneNumber::normalize($brand->phone);
+            }
+        });
+    }
 
     /**
      * @return array<string, string>

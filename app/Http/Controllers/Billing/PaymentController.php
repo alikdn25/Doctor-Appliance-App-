@@ -29,7 +29,7 @@ class PaymentController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('payments.recorded', [
-            'amount' => Money::format($payment->amount),
+            'amount' => Money::format($payment->amount, $payment->currency),
             'method' => $payment->method->label(),
         ])]);
 

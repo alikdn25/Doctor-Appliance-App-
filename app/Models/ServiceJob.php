@@ -252,7 +252,7 @@ class ServiceJob extends Model
 
         $number = ltrim($term, '#');
         $like = '%'.addcslashes($term, '%_\\').'%';
-        $digits = PhoneNumber::digits($term);
+        $digits = PhoneNumber::searchDigits($term);
 
         $query->where(function (Builder $q) use ($number, $like, $digits) {
             if (ctype_digit($number) && strlen($number) <= 9) {

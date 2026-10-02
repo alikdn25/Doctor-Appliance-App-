@@ -90,7 +90,7 @@ test('creating an invoice for a completed job marks it invoiced; paying it marks
     $this->post(route('payments.store', $invoice), ['amount' => '100.00', 'method' => 'cash']);
     expect(jobStatus($this->job))->toBe(JobStatus::Invoiced);
 
-    $this->post(route('payments.store', $invoice), ['amount' => '180.50', 'method' => 'e_transfer']);
+    $this->post(route('payments.store', $invoice), ['amount' => '180.50', 'method' => 'bank_transfer']);
     expect(jobStatus($this->job))->toBe(JobStatus::Paid)
         ->and(latestInvoice($this->company)->status)->toBe(InvoiceStatus::Paid);
 

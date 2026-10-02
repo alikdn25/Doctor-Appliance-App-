@@ -218,7 +218,7 @@ class CustomerController extends Controller
         ]);
 
         $phones = collect($validated['phones'] ?? [])
-            ->filter(fn ($p) => strlen(PhoneNumber::digits($p)) >= 7)
+            ->filter(fn ($p) => PhoneNumber::isPossible($p))
             ->map(fn ($p) => PhoneNumber::normalize($p))
             ->unique()
             ->values();
@@ -302,7 +302,7 @@ class CustomerController extends Controller
     public static function propertyData(Property $property): array
     {
         return $property->only([
-            'id', 'label', 'line1', 'line2', 'unit', 'city', 'province', 'postal_code', 'country',
+            'id', 'label', 'line1', 'line2', 'unit', 'city', 'region', 'postal_code', 'country',
             'access_notes', 'gate_code', 'site_contact_name', 'site_contact_phone', 'is_primary',
         ]);
     }

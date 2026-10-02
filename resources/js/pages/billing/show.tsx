@@ -66,7 +66,7 @@ export default function BillingShow({
     today: string;
 }) {
     const t = useTrans();
-    const money = useMoney();
+    const money = useMoney(doc.currency);
     const time = useCompanyTime();
     const [paymentOpen, setPaymentOpen] = useState(false);
     const [voidOpen, setVoidOpen] = useState(false);
@@ -301,10 +301,12 @@ export default function BillingShow({
                                 className="flex justify-between"
                             >
                                 <dt>
-                                    {t('billing.tax_line', {
-                                        name: tax.name,
-                                        rate: tax.rate,
-                                    })}
+                                    {t(
+                                        doc.prices_include_tax
+                                            ? 'billing.includes_tax'
+                                            : 'billing.tax_line',
+                                        { name: tax.name, rate: tax.rate },
+                                    )}
                                 </dt>
                                 <dd className="tabular-nums">
                                     {money(tax.amount)}
@@ -516,6 +518,7 @@ export default function BillingShow({
                     onOpenChange={setPaymentOpen}
                     invoiceId={doc.id}
                     balance={balance}
+                    currency={doc.currency}
                     methods={paymentMethods}
                     today={today}
                 />

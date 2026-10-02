@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Billing;
 
 use App\Enums\PaymentMethod;
+use App\Support\Locale\Currencies;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -10,7 +11,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * A manual payment: amount (dollars), method, reference for the own terminal, note for "other".
+ * A manual payment: amount (major units of the invoice currency, e.g. dollars), method, reference for the own terminal, note for "other".
  */
 class PaymentRequest extends FormRequest
 {
@@ -25,7 +26,7 @@ class PaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'amount' => ['required', 'numeric', 'gt:0', 'regex:/^\d{1,7}(\.\d{1,2})?$/'],
+            'amount' => ['required', 'numeric', 'gt:0', DocumentRequest::moneyRule($this->currency())],
             'method' => ['required', Rule::in(array_map(fn (PaymentMethod $m) => $m->value, PaymentMethod::manual()))],
             'reference' => ['nullable', 'string', 'max:100', Rule::requiredIf($this->input('method') === PaymentMethod::CardTerminal->value)],
             'note' => ['nullable', 'string', 'max:1000', Rule::requiredIf($this->input('method') === PaymentMethod::Other->value)],
@@ -51,7 +52,12 @@ class PaymentRequest extends FormRequest
 
     public function amount(): int
     {
-        return DocumentRequest::cents($this->validated('amount'));
+        return Currencies::toMinor($this->validated('amount'), $this->currency());
+    }
+
+    private function currency(): string
+    {
+        return $this->route('invoice')->currency;
     }
 
     public function paymentMethod(): PaymentMethod
@@ -60,7 +66,7 @@ class PaymentRequest extends FormRequest
     }
 
     /**
-     * Today means now; an earlier date (a cheque received yesterday) is noon of that day in the company's zone.
+     * Today means now; an earlier date (a check received yesterday) is noon of that day in the company's zone.
      */
     public function receivedAt(): CarbonInterface
     {

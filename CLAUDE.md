@@ -16,12 +16,26 @@ Read `SPEC.md` before any task. It is the source of truth for scope and stages.
 - If something in SPEC.md is unclear or contradictory, stop and ask instead of guessing.
 
 ## Business context
-- First user: the owner's own appliance repair company (Doctor Appliance, Metro Vancouver). Later the app will be sold to other appliance repair companies.
+- The product is international. First markets: USA and Canada; later the whole world. Nothing in the code may assume
+  Canada (or any other country): no hard-coded currency, "$" sign, taxes (GST/PST), provinces, postal code formats,
+  phone formats or time zones.
+- Currency is set per company (ISO 4217); every amount is stored together with its currency and formatted by it.
+- Taxes are configured by each company: several named rates, compound taxes, prices with or without tax.
+- Time zone, date/number format (regional format) and address format are per company; the country is chosen when the
+  company is created.
+- Phone numbers are stored in E.164.
+- All UI strings go through translation files; English is the default.
+- Verticals: appliance repair is the main one; handyman is the second (own job types, default checklists and services).
+  Full construction/renovation projects (multi-phase projects, change orders, progress billing, subcontractor
+  management) are out of scope.
+- First user: the owner's own appliance repair company (Doctor Appliance, Metro Vancouver). Later the app will be sold
+  to other repair companies.
 - Small teams: 1–5 people plus occasional subcontractors. The owner often goes on calls himself as a technician.
-- Typical flow: phone call → job created in under a minute while still on the phone → diagnosis visit → parts ordered → second visit to repair → invoice → payment on site via Square.
+- Typical flow: phone call → job created in under a minute while still on the phone → diagnosis visit → parts ordered →
+  second visit to repair → invoice → payment on site (Square or another provider).
 - The technician learns brand, model and serial on site from the rating plate. The office often doesn't know them.
 - Technicians use Android phones, often one-handed, in basements and laundry rooms with weak signal.
 - Manufacturer warranty jobs are common and are billed to the manufacturer, not the customer.
 - A remote office worker handles collections and calls customers.
-- Canada/BC: CAD, GST/PST, Canadian addresses and postal codes.
+- Commercial customers (stratas/HOAs, property managers) often pay on terms (e.g. Net 30).
 - When unsure, choose the option with fewer taps for a technician in the field.

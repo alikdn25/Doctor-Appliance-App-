@@ -21,11 +21,11 @@ function brandPayload(array $overrides = []): array
         'website' => 'https://ductworks.example.com',
         'email' => 'hello@ductworks.example.com',
         'phone' => '604-555-0100',
-        'gst_number' => '123456789RT0001',
+        'tax_number' => '123456789RT0001',
         'is_active' => true,
         'addresses' => [
-            ['label' => 'Main', 'line1' => '1 Main St', 'city' => 'Burnaby', 'province' => 'BC', 'postal_code' => 'V5H 1A1', 'country' => 'CA', 'is_primary' => true],
-            ['label' => 'Warehouse', 'line1' => '2 Side St', 'city' => 'Surrey', 'province' => 'BC', 'postal_code' => 'V3T 1A1', 'country' => 'CA', 'is_primary' => false],
+            ['label' => 'Main', 'line1' => '1 Main St', 'city' => 'Burnaby', 'region' => 'BC', 'postal_code' => 'V5H 1A1', 'country' => 'CA', 'is_primary' => true],
+            ['label' => 'Warehouse', 'line1' => '2 Side St', 'city' => 'Surrey', 'region' => 'BC', 'postal_code' => 'V3T 1A1', 'country' => 'CA', 'is_primary' => false],
         ],
     ], $overrides);
 }
