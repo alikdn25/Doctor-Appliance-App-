@@ -57,6 +57,11 @@ return new class extends Migration
         DB::table('payments')->where('method', 'cheque')->update(['method' => 'check']);
         DB::table('payments')->where('method', 'e_transfer')->update(['method' => 'bank_transfer']);
 
+        // HomeStars (Canada only) becomes one "online directory" lead source for every country.
+        foreach (['customers', 'service_jobs'] as $table) {
+            DB::table($table)->where('lead_source', 'homestars')->update(['lead_source' => 'directory']);
+        }
+
         foreach (['properties', 'brand_addresses'] as $addresses) {
             Schema::table($addresses, function (Blueprint $table) {
                 $table->renameColumn('province', 'region');
@@ -86,6 +91,10 @@ return new class extends Migration
 
         DB::table('payments')->where('method', 'check')->update(['method' => 'cheque']);
         DB::table('payments')->where('method', 'bank_transfer')->update(['method' => 'e_transfer']);
+
+        foreach (['customers', 'service_jobs'] as $table) {
+            DB::table($table)->where('lead_source', 'directory')->update(['lead_source' => 'homestars']);
+        }
 
         Schema::table('payments', fn (Blueprint $table) => $table->dropColumn('currency'));
 

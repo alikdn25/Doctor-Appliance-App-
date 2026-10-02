@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { FormField } from '@/components/form-field';
@@ -38,10 +38,7 @@ type Brand = {
     invoice_footer: string | null;
     invoice_terms: string | null;
     is_active: boolean;
-    addresses: (Omit<
-        Address,
-        'label' | 'line2' | 'region' | 'postal_code'
-    > & {
+    addresses: (Omit<Address, 'label' | 'line2' | 'region' | 'postal_code'> & {
         id: number;
         label: string | null;
         line2: string | null;
@@ -69,14 +66,14 @@ type FormData = {
     addresses: Address[];
 };
 
-const emptyAddress = (primary: boolean): Address => ({
+const emptyAddress = (primary: boolean, country: string): Address => ({
     label: '',
     line1: '',
     line2: '',
     city: '',
-    region: 'BC',
+    region: '',
     postal_code: '',
-    country: 'CA',
+    country,
     is_primary: primary,
 });
 
@@ -88,6 +85,8 @@ export default function BrandForm({
     canUpdate?: boolean;
 }) {
     const t = useTrans();
+    const { auth } = usePage().props;
+    const country = auth.company?.country ?? 'US';
     const readOnly = brand !== null && !canUpdate;
 
     const form = useForm<FormData>({
@@ -116,7 +115,7 @@ export default function BrandForm({
             postal_code: a.postal_code ?? '',
             country: a.country,
             is_primary: a.is_primary,
-        })) ?? [emptyAddress(true)],
+        })) ?? [emptyAddress(true, country)],
     });
     const errors = form.errors as Record<string, string | undefined>;
 
@@ -297,6 +296,7 @@ export default function BrandForm({
                                         ...form.data.addresses,
                                         emptyAddress(
                                             form.data.addresses.length === 0,
+                                            country,
                                         ),
                                     ])
                                 }

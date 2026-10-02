@@ -39,6 +39,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useTouchDrag } from '@/hooks/use-touch-drag';
 import { useTrans } from '@/lib/i18n';
+import { useLocale } from '@/lib/locale';
 import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
 import { show as showJob } from '@/routes/jobs';
@@ -78,6 +79,7 @@ export default function CalendarPage({
     assignableUsers,
 }: Props) {
     const t = useTrans();
+    const locale = useLocale();
     const drag = useRef<DragItem | null>(null);
     const [dragging, setDragging] = useState(false);
     const [details, setDetails] = useState<CalendarVisit | null>(null);
@@ -220,14 +222,14 @@ export default function CalendarPage({
 
     const title =
         view === 'day'
-            ? dayLabel(date, {
+            ? dayLabel(date, locale, {
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric',
                   year: 'numeric',
               })
             : t('calendar.week_of', {
-                  date: dayLabel(days[0], {
+                  date: dayLabel(days[0], locale, {
                       month: 'long',
                       day: 'numeric',
                       year: 'numeric',
@@ -524,7 +526,7 @@ export default function CalendarPage({
                                     #{details.job.number} {details.job.customer}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    {dayLabel(details.date)} ·{' '}
+                                    {dayLabel(details.date, locale)} ·{' '}
                                     {details.start_time}–{details.end_time}
                                 </DialogDescription>
                             </DialogHeader>

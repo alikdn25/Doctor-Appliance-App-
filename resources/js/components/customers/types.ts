@@ -22,15 +22,16 @@ export type PropertyData = {
           : string | null;
 } & { id: number };
 
-export const emptyProperty = (): PropertyFormData => ({
+/** A new address in the company's country. */
+export const emptyProperty = (country: string): PropertyFormData => ({
     label: '',
     line1: '',
     line2: '',
     unit: '',
     city: '',
-    region: 'BC',
+    region: '',
     postal_code: '',
-    country: 'CA',
+    country,
     access_notes: '',
     gate_code: '',
     site_contact_name: '',

@@ -22,9 +22,10 @@ export function formatMoney(
     currency: string,
     locale = 'en-US',
 ): string {
-    return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(
-        minor / 10 ** currencyDecimals(currency),
-    );
+    return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency,
+    }).format(minor / 10 ** currencyDecimals(currency));
 }
 
 /**
@@ -85,10 +86,7 @@ export type Totals = {
     total: number;
 };
 
-function addedTaxes(
-    net: number,
-    taxes: TotalsInput['taxes'],
-): number[] {
+function addedTaxes(net: number, taxes: TotalsInput['taxes']): number[] {
     let running = net;
 
     return taxes.map((tax) => {
@@ -102,10 +100,7 @@ function addedTaxes(
     });
 }
 
-function includedTaxes(
-    gross: number,
-    taxes: TotalsInput['taxes'],
-): number[] {
+function includedTaxes(gross: number, taxes: TotalsInput['taxes']): number[] {
     if (taxes.length === 0 || gross === 0) {
         return taxes.map(() => 0);
     }

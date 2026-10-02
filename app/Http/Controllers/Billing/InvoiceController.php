@@ -75,12 +75,18 @@ class InvoiceController extends Controller
     {
         Gate::authorize('work', $job);
 
+        // Due date from the customer's payment terms (or the company default), editable on the form.
+        $terms = $job->customer()->withTrashed()->first()?->paymentTerms() ?? currentCompany()->default_payment_terms;
+        $today = CarbonImmutable::now(currentCompany()->timezone)->startOfDay();
+
         return Inertia::render('billing/form', [
             'kind' => 'invoice',
             'document' => null,
             'job' => BillingPresenter::job($job),
             'taxRates' => BillingPresenter::taxOptions(),
-            'today' => $this->today(),
+            'today' => $today->format('Y-m-d'),
+            'defaultDueOn' => $terms->dueOn($today)->format('Y-m-d'),
+            'paymentTerms' => $terms->label(),
         ]);
     }
 

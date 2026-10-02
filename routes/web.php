@@ -9,6 +9,7 @@ use App\Http\Controllers\Company\BrandController;
 use App\Http\Controllers\Company\ChecklistController;
 use App\Http\Controllers\Company\CompanySettingsController;
 use App\Http\Controllers\Company\DetectTimezoneController;
+use App\Http\Controllers\Company\ServiceController;
 use App\Http\Controllers\Company\SwitchCompanyController;
 use App\Http\Controllers\Company\TaxRateController;
 use App\Http\Controllers\Company\TeamController;
@@ -98,6 +99,8 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::put('timezone', DetectTimezoneController::class)->name('company.timezone.detect');
             Route::get('checklists', [ChecklistController::class, 'edit'])->name('company.checklists.edit');
             Route::put('checklists', [ChecklistController::class, 'update'])->name('company.checklists.update');
+            Route::get('services', [ServiceController::class, 'edit'])->name('company.services.edit');
+            Route::put('services', [ServiceController::class, 'update'])->name('company.services.update');
 
             Route::resource('brands', BrandController::class)->except('show');
 

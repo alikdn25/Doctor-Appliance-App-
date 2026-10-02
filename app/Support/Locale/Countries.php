@@ -3,7 +3,6 @@
 namespace App\Support\Locale;
 
 use DateTimeZone;
-use Illuminate\Support\Facades\Cache;
 use libphonenumber\PhoneNumberUtil;
 use Locale;
 use NumberFormatter;
@@ -14,6 +13,9 @@ use NumberFormatter;
  */
 class Countries
 {
+    /** @var list<array{value: string, label: string}>|null Computed once per process. */
+    private static ?array $options = null;
+
     /**
      * ISO 3166-1 alpha-2 codes, sorted by name (pinned countries first).
      *
@@ -34,7 +36,7 @@ class Countries
      */
     public static function options(): array
     {
-        return Cache::driver('array')->rememberForever('countries.options', function () {
+        return self::$options ??= (function () {
             $codes = array_filter(
                 PhoneNumberUtil::getInstance()->getSupportedRegions(),
                 fn (string $code) => preg_match('/^[A-Z]{2}$/', $code) === 1,
@@ -48,7 +50,7 @@ class Countries
             usort($first, fn ($a, $b) => array_search($a['value'], $pinned, true) <=> array_search($b['value'], $pinned, true));
 
             return [...$first, ...array_values(array_filter($options, fn ($o) => ! in_array($o['value'], $pinned, true)))];
-        });
+        })();
     }
 
     public static function name(string $code): string

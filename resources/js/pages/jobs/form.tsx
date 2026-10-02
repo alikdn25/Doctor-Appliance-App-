@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Plus, Search, Trash2, UserPlus, X } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
@@ -116,6 +116,8 @@ export default function JobForm({
     assignableUsers,
 }: Props) {
     const t = useTrans();
+    const { auth } = usePage().props;
+    const tracksAppliances = auth.company?.tracks_appliances ?? true;
     const editing = job !== null;
     const [customer, setCustomer] = useState<CustomerOption | null>(
         initialCustomer,
@@ -148,9 +150,9 @@ export default function JobForm({
                 line1: '',
                 unit: '',
                 city: '',
-                region: 'BC',
+                region: '',
                 postal_code: '',
-                country: 'CA',
+                country: auth.company?.country ?? 'US',
                 gate_code: '',
             },
         },
@@ -453,7 +455,8 @@ export default function JobForm({
                                 )}
                                 {textField(
                                     'nc-postal_code',
-                                    t('properties.fields.postal_code'),
+                                    auth.company?.address.postal_label ??
+                                        t('properties.fields.postal_code'),
                                     data.new_customer.property.postal_code,
                                     (v) => setNewAddress({ postal_code: v }),
                                     errors['new_customer.property.postal_code'],
@@ -594,8 +597,8 @@ export default function JobForm({
                     )}
                 </section>
 
-                {/* Appliances */}
-                {(customer || data.new_customer_mode) && (
+                {/* Appliances (appliance repair vertical only) */}
+                {tracksAppliances && (customer || data.new_customer_mode) && (
                     <section className="space-y-3 rounded-lg border p-4">
                         <h2 className="text-base font-medium">
                             {t('jobs.sections.appliances')}

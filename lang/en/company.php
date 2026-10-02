@@ -14,6 +14,7 @@ return [
     'payments_hint' => 'Cash, check, bank transfer, your own card terminal and other payments can always be recorded by hand. An online provider adds card payments by link or QR code.',
     'no_payment_provider' => 'None — record payments by hand',
     'regional' => 'Country and formats',
+    'billing' => 'Invoices and taxes',
     'currency_hint' => 'Existing estimates, invoices and payments keep the currency they were created in.',
     'prices_include_tax_hint' => 'Turn on if your prices already include tax (common for VAT/GST in the UK, EU and Australia). New estimates and invoices only.',
     'payment_terms_hint' => 'Due date of new invoices. Can be changed for each customer (e.g. Net 30 for property managers).',
@@ -36,6 +37,11 @@ return [
         'next_number' => 'Next number',
         'travel_buffer_minutes' => 'Travel buffer (minutes)',
         'payment_provider' => 'Online payment provider',
+    ],
+
+    'verticals' => [
+        'appliance_repair' => 'Appliance repair',
+        'handyman' => 'Handyman',
     ],
 
     'weekdays' => [

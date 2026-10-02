@@ -38,7 +38,8 @@ class CreateCompany
             $data['country'] = strtoupper($data['country'] ?? (string) config('fieldservice.default_country'));
 
             $company = Company::create([
-                ...$data,
+                // Missing values (vertical, currency, regional format) fall back to the defaults.
+                ...array_filter($data, fn ($value) => $value !== null),
                 'timezone' => $pending ? Countries::timezone($data['country']) : $data['timezone'],
                 'timezone_pending' => $pending,
                 'slug' => $this->uniqueSlug($data['name']),

@@ -66,7 +66,8 @@ test('a company picks an installed provider in settings', function () {
         ->assertInertia(fn (Assert $page) => $page->where('paymentProviders', [['value' => 'fakepay', 'label' => 'FakePay']]));
 
     $payload = [
-        'name' => 'Doctor Appliance', 'timezone' => 'America/Vancouver', 'currency' => 'CAD',
+        'name' => 'Doctor Appliance', 'country' => 'CA', 'timezone' => 'America/Vancouver', 'currency' => 'CAD', 'locale' => 'en-CA',
+        'default_payment_terms' => 'due_on_receipt',
         'invoice_prefix' => 'INV-', 'invoice_next_number' => 1, 'estimate_prefix' => 'EST-', 'estimate_next_number' => 1,
         'business_hours' => Company::defaultBusinessHours(), 'travel_buffer_minutes' => 30,
     ];

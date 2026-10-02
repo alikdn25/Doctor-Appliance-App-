@@ -22,6 +22,7 @@ type TaxRate = {
     id: number;
     name: string;
     rate: string;
+    is_compound: boolean;
     is_default: boolean;
     is_active: boolean;
     sort_order: number;
@@ -30,6 +31,7 @@ type TaxRate = {
 type TaxForm = {
     name: string;
     rate: string;
+    is_compound: boolean;
     is_default: boolean;
     is_active: boolean;
     sort_order: number;
@@ -51,6 +53,7 @@ export default function TaxesIndex({
     const form = useForm<TaxForm>({
         name: '',
         rate: '',
+        is_compound: false,
         is_default: false,
         is_active: true,
         sort_order: 0,
@@ -64,6 +67,7 @@ export default function TaxesIndex({
                 ? {
                       name: taxRate.name,
                       rate: String(Number(taxRate.rate)),
+                      is_compound: taxRate.is_compound,
                       is_default: taxRate.is_default,
                       is_active: taxRate.is_active,
                       sort_order: taxRate.sort_order,
@@ -71,6 +75,7 @@ export default function TaxesIndex({
                 : {
                       name: '',
                       rate: '',
+                      is_compound: false,
                       is_default: taxRates.length === 0,
                       is_active: true,
                       sort_order: taxRates.length,
@@ -134,6 +139,11 @@ export default function TaxesIndex({
                                     <span className="text-muted-foreground">
                                         {formatRate(taxRate.rate)}
                                     </span>
+                                    {taxRate.is_compound && (
+                                        <Badge variant="outline">
+                                            {t('taxes.compound')}
+                                        </Badge>
+                                    )}
                                     {taxRate.is_default && (
                                         <Badge>{t('taxes.default')}</Badge>
                                     )}
@@ -193,7 +203,7 @@ export default function TaxesIndex({
                                 onChange={(e) =>
                                     form.setData('name', e.target.value)
                                 }
-                                placeholder="GST"
+                                placeholder={t('taxes.name_placeholder')}
                                 required
                             />
                         </FormField>
@@ -216,6 +226,20 @@ export default function TaxesIndex({
                                 required
                             />
                         </FormField>
+                        <label className="flex min-h-9 items-start gap-2 text-sm">
+                            <Checkbox
+                                checked={form.data.is_compound}
+                                onCheckedChange={(c) =>
+                                    form.setData('is_compound', c === true)
+                                }
+                            />
+                            <span>
+                                {t('taxes.fields.is_compound')}
+                                <span className="block text-xs text-muted-foreground">
+                                    {t('taxes.compound_hint')}
+                                </span>
+                            </span>
+                        </label>
                         <label className="flex min-h-9 items-center gap-2 text-sm">
                             <Checkbox
                                 checked={form.data.is_default}

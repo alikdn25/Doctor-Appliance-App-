@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -30,13 +30,17 @@ export function PropertyDialog({
     property: PropertyData | null;
 }) {
     const t = useTrans();
-    const form = useForm<PropertyFormData>(emptyProperty());
+    const { auth } = usePage().props;
+    const country = auth.company?.country ?? 'US';
+    const form = useForm<PropertyFormData>(emptyProperty(country));
     const errors = form.errors as Record<string, string | undefined>;
 
     useEffect(() => {
         if (open) {
             form.clearErrors();
-            form.setData(property ? propertyToForm(property) : emptyProperty());
+            form.setData(
+                property ? propertyToForm(property) : emptyProperty(country),
+            );
         }
         // Reset only when the dialog opens.
         // eslint-disable-next-line react-hooks/exhaustive-deps

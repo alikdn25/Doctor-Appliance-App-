@@ -16,6 +16,7 @@ use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Membership;
+use App\Models\Service;
 use App\Models\TaxRate;
 use App\Models\User;
 use App\Support\Tenancy\CurrentCompany;
@@ -31,6 +32,10 @@ use Illuminate\Support\Facades\DB;
  *  office@example.com  Admin of Doctor Appliance Group
  *  tech@example.com    Technician in both companies (shows the company switcher)
  *  other@example.com   Owner of Coastal Repair Co
+ *  us@example.com      Owner of Lone Star Appliance Repair (Austin, Texas: USD, sales tax, en-US)
+ *
+ * The BC companies show GST + PST; the US company shows a single sales tax. Both are only examples:
+ * taxes, currency and formats are company settings.
  */
 class DemoSeeder extends Seeder
 {
@@ -40,21 +45,27 @@ class DemoSeeder extends Seeder
 
         $this->user('admin@example.com', 'Platform Admin', superAdmin: true);
 
-        $group = Company::factory()->create(['name' => 'Doctor Appliance Group', 'slug' => 'doctor-appliance-group']);
-        $coastal = Company::factory()->create(['name' => 'Coastal Repair Co', 'slug' => 'coastal-repair-co']);
+        $bc = ['country' => 'CA', 'currency' => 'CAD', 'locale' => 'en-CA', 'timezone' => 'America/Vancouver'];
+        $group = Company::factory()->create(['name' => 'Doctor Appliance Group', 'slug' => 'doctor-appliance-group', ...$bc]);
+        $coastal = Company::factory()->create(['name' => 'Coastal Repair Co', 'slug' => 'coastal-repair-co', ...$bc]);
+        $lonestar = Company::factory()->create([
+            'name' => 'Lone Star Appliance Repair', 'slug' => 'lone-star-appliance-repair',
+            'country' => 'US', 'currency' => 'USD', 'locale' => 'en-US', 'timezone' => 'America/Chicago',
+        ]);
 
         $owner = $this->user('owner@example.com', 'Alex Owner');
         $office = $this->user('office@example.com', 'Olivia Office');
         $tech = $this->user('tech@example.com', 'Tom Technician');
         $other = $this->user('other@example.com', 'Chris Coastal');
+        $us = $this->user('us@example.com', 'Jordan Austin');
 
         $tenancy->runAs($group, function () use ($group, $owner, $office, $tech) {
             $this->member($group, $owner, UserRole::Owner);
             $this->member($group, $office, UserRole::Admin);
             $this->member($group, $tech, UserRole::Technician);
 
-            $doctor = $this->brand('Doctor Appliance', '#0E7490', 'Surrey');
-            $this->brand('Duct Works', '#B45309', 'Burnaby');
+            $doctor = $this->brand('Doctor Appliance', '#0E7490', $this->bcAddress('Surrey'), '604-555-0100');
+            $this->brand('Duct Works', '#B45309', $this->bcAddress('Burnaby'), '604-555-0111');
 
             DB::table('brand_user')->insert([
                 'company_id' => $group->id, 'brand_id' => $doctor->id, 'user_id' => $tech->id,
@@ -62,23 +73,39 @@ class DemoSeeder extends Seeder
             ]);
 
             ChecklistTemplate::createDefaults();
+            Service::createDefaults();
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true, 'sort_order' => 1]);
             TaxRate::create(['name' => 'PST', 'rate' => 7, 'is_default' => true, 'sort_order' => 2]);
 
-            $this->jobs($this->customers(), $doctor, $owner, $tech);
+            $this->jobs($this->bcCustomers(), $doctor, $owner, $tech);
         });
 
         $tenancy->runAs($coastal, function () use ($coastal, $other, $tech) {
             $this->member($coastal, $other, UserRole::Owner);
             $this->member($coastal, $tech, UserRole::Technician);
 
-            $this->brand('Coastal Appliance Repair', '#1D4ED8', 'Victoria');
+            $this->brand('Coastal Appliance Repair', '#1D4ED8', $this->bcAddress('Victoria'), '250-555-0100');
             ChecklistTemplate::createDefaults();
+            Service::createDefaults();
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true]);
 
             app(SaveCustomer::class)->handle(null, ['type' => 'residential', 'first_name' => 'Victoria', 'last_name' => 'Island'],
                 [['label' => 'mobile', 'number' => '250-555-0199']], [],
                 ['line1' => '10 Government St', 'city' => 'Victoria', 'region' => 'BC', 'country' => 'CA']);
+        });
+
+        $tenancy->runAs($lonestar, function () use ($lonestar, $us) {
+            $this->member($lonestar, $us, UserRole::Owner);
+
+            $brand = $this->brand('Lone Star Appliance Repair', '#9A3412',
+                ['line1' => '500 W 2nd St', 'city' => 'Austin', 'region' => 'TX', 'postal_code' => '78701', 'country' => 'US'],
+                '512-555-0100');
+            ChecklistTemplate::createDefaults();
+            Service::createDefaults();
+            // Austin: Texas 6.25% + local 2% = 8.25%, entered as one combined rate.
+            TaxRate::create(['name' => 'Sales tax', 'rate' => 8.25, 'is_default' => true]);
+
+            $this->jobs($this->usCustomers(), $brand, $us, $us);
         });
     }
 
@@ -100,26 +127,29 @@ class DemoSeeder extends Seeder
         $user->save();
     }
 
-    private function brand(string $name, string $color, string $city): Brand
+    /**
+     * @return array<string, string>
+     */
+    private function bcAddress(string $city): array
+    {
+        return ['line1' => '100 King George Blvd', 'city' => $city, 'region' => 'BC', 'postal_code' => 'V3T 1A1', 'country' => 'CA'];
+    }
+
+    /**
+     * @param  array<string, string>  $address
+     */
+    private function brand(string $name, string $color, array $address, string $phone): Brand
     {
         $brand = Brand::create([
             'name' => $name,
             'slug' => str($name)->slug()->toString(),
             'primary_color' => $color,
-            'phone' => fake()->numerify('604-###-####'),
+            'phone' => $phone,
             'email' => str($name)->slug()->append('@example.com')->toString(),
             'website' => 'https://'.str($name)->slug()->append('.example.com'),
         ]);
 
-        $brand->addresses()->create([
-            'label' => 'Main office',
-            'line1' => fake()->streetAddress(),
-            'city' => $city,
-            'region' => 'BC',
-            'postal_code' => 'V3T 1A1',
-            'country' => 'CA',
-            'is_primary' => true,
-        ]);
+        $brand->addresses()->create(['label' => 'Main office', ...$address, 'is_primary' => true]);
 
         return $brand;
     }
@@ -129,7 +159,7 @@ class DemoSeeder extends Seeder
      *
      * @return list<Customer>
      */
-    private function customers(): array
+    private function bcCustomers(): array
     {
         $saveCustomer = app(SaveCustomer::class);
         $saveAppliance = app(SaveAppliance::class);
@@ -147,7 +177,7 @@ class DemoSeeder extends Seeder
 
         $pm = $saveCustomer->handle(
             null,
-            ['type' => 'property_manager', 'company_name' => 'Westside Property Management', 'first_name' => 'Mark', 'last_name' => 'Lee', 'lead_source' => 'referral'],
+            ['type' => 'property_manager', 'company_name' => 'Westside Property Management', 'first_name' => 'Mark', 'last_name' => 'Lee', 'lead_source' => 'referral', 'payment_terms' => 'net_30'],
             [['label' => 'work', 'number' => '604-555-0177', 'is_primary' => true]],
             [['label' => 'billing', 'email' => 'ap@westside-pm.example.com', 'is_primary' => true]],
             ['label' => 'Rental on Main', 'line1' => '4120 Main St', 'unit' => '204', 'city' => 'Vancouver', 'region' => 'BC', 'postal_code' => 'V5V 3P6', 'country' => 'CA',
@@ -157,13 +187,52 @@ class DemoSeeder extends Seeder
 
         $robert = $saveCustomer->handle(
             null,
-            ['type' => 'residential', 'first_name' => 'Robert', 'last_name' => 'Fox', 'lead_source' => 'homestars'],
+            ['type' => 'residential', 'first_name' => 'Robert', 'last_name' => 'Fox', 'lead_source' => 'directory'],
             [['label' => 'mobile', 'number' => '778-555-0123', 'is_primary' => true]],
             [],
             ['line1' => '6200 McKay Ave', 'city' => 'Burnaby', 'region' => 'BC', 'postal_code' => 'V5H 4M9', 'country' => 'CA'],
         );
 
         return [$jane, $pm, $robert];
+    }
+
+    /**
+     * Customers of the US demo company (Austin, Texas).
+     *
+     * @return list<Customer>
+     */
+    private function usCustomers(): array
+    {
+        $saveCustomer = app(SaveCustomer::class);
+        $saveAppliance = app(SaveAppliance::class);
+
+        $maria = $saveCustomer->handle(
+            null,
+            ['type' => 'residential', 'first_name' => 'Maria', 'last_name' => 'Garcia', 'lead_source' => 'google_business_profile'],
+            [['label' => 'mobile', 'number' => '(512) 555-0142', 'is_primary' => true]],
+            [['label' => 'personal', 'email' => 'maria.garcia@example.com', 'is_primary' => true]],
+            ['line1' => '2200 S Lamar Blvd', 'city' => 'Austin', 'region' => 'TX', 'postal_code' => '78704', 'country' => 'US'],
+        );
+        $saveAppliance->handle($maria->properties()->first(), null, ['type' => 'washer', 'manufacturer' => 'Whirlpool', 'model_number' => 'WTW5000DW1', 'serial_number' => 'C81204567']);
+
+        $hoa = $saveCustomer->handle(
+            null,
+            ['type' => 'strata', 'company_name' => 'Barton Creek HOA', 'first_name' => 'Dana', 'last_name' => 'Brooks', 'lead_source' => 'property_manager', 'payment_terms' => 'net_30'],
+            [['label' => 'work', 'number' => '512-555-0177', 'is_primary' => true]],
+            [['label' => 'billing', 'email' => 'billing@bartoncreek-hoa.example.com', 'is_primary' => true]],
+            ['label' => 'Clubhouse', 'line1' => '3600 Barton Creek Blvd', 'city' => 'Austin', 'region' => 'TX', 'postal_code' => '78735', 'country' => 'US'],
+        );
+        $saveAppliance->handle($hoa->properties()->first(), null, ['type' => 'dishwasher', 'manufacturer' => 'KitchenAid', 'model_number' => 'KDTM404KPS']);
+
+        $kevin = $saveCustomer->handle(
+            null,
+            ['type' => 'residential', 'first_name' => 'Kevin', 'last_name' => 'Nguyen', 'lead_source' => 'directory'],
+            [['label' => 'mobile', 'number' => '737-555-0123', 'is_primary' => true]],
+            [],
+            ['line1' => '1100 E 6th St', 'city' => 'Austin', 'region' => 'TX', 'postal_code' => '78702', 'country' => 'US'],
+        );
+
+        return [$maria, $hoa, $kevin];
     }
 
     /**
@@ -223,7 +292,7 @@ class DemoSeeder extends Seeder
             ],
         ], $tech);
 
-        $job($robert, ['lead_source' => 'homestars', 'job_type' => 'installation', 'description' => 'Install new range.'], null);
+        $job($robert, ['lead_source' => 'directory', 'job_type' => 'installation', 'description' => 'Install new range.'], null);
 
         // The owner goes on calls too.
         $job($jane, ['lead_source' => 'repeat_customer', 'description' => 'Fridge not cooling.'],

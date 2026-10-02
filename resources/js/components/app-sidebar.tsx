@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    BookOpen,
     Building,
     Building2,
     ListChecks,
@@ -31,6 +32,7 @@ import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as brands } from '@/routes/brands';
 import { index as customers } from '@/routes/customers';
 import { edit as checklists } from '@/routes/company/checklists';
+import { edit as services } from '@/routes/company/services';
 import { edit as companySettings } from '@/routes/company/settings';
 import { index as invoices } from '@/routes/invoices';
 import { index as jobs, mine as myJobs } from '@/routes/jobs';
@@ -81,6 +83,11 @@ export function AppSidebar() {
             title: 'nav.checklists',
             href: checklists(),
             icon: ListChecks,
+        },
+        can.manageChecklists && {
+            title: 'nav.services',
+            href: services(),
+            icon: BookOpen,
         },
         can.manageCompany && {
             title: 'nav.company_settings',

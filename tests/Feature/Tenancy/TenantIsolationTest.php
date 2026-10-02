@@ -28,6 +28,7 @@ use App\Models\JobVisitAssignee;
 use App\Models\Membership;
 use App\Models\Payment;
 use App\Models\Property;
+use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Tenancy\MissingTenantException;
@@ -85,6 +86,7 @@ beforeEach(function () {
     }
     foreach ([[$this->companyA, $this->jobA, $this->ownerA, $this->taxA], [$this->companyB, $this->jobB, $this->ownerB, $this->taxB]] as [$company, $job, $owner, $tax]) {
         inCompany($company, function () use ($job, $owner, $tax) {
+            Service::createDefaults();
             $document = [
                 'issued_on' => now()->toDateString(),
                 'tax_rate_ids' => [$tax->id],
@@ -131,6 +133,7 @@ dataset('tenant models', [
     'invoices' => [Invoice::class],
     'invoice items' => [InvoiceItem::class],
     'payments' => [Payment::class],
+    'services' => [Service::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -150,7 +153,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceItem::class, Payment::class,
         JobAppliance::class, JobChecklistItem::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
-        Membership::class, Property::class, ServiceJob::class, TaxRate::class,
+        Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class,
     ])->sort()->values()->all());
 });
 
@@ -332,7 +335,7 @@ test('phones and emails of another company cannot be taken over through a custom
         ])
         ->assertRedirect();
 
-    expect($phoneB->fresh())->number->toBe('604-555-0202')->customer_id->toBe($this->customerB->id)
+    expect($phoneB->fresh())->number->toBe('+16045550202')->customer_id->toBe($this->customerB->id)
         ->and($emailB->fresh())->email->toBe('b@example.com')->customer_id->toBe($this->customerB->id);
 });
 
@@ -582,7 +585,7 @@ test('lists of invoices and estimates only show the current company\'s', functio
         ->assertInertia(fn (Assert $page) => $page
             ->has('invoices.data', 1)
             ->where('invoices.data.0.job_id', $this->jobA->id)
-            ->where('outstandingTotal', Invoice::withoutCompanyScope()->where('company_id', $this->companyA->id)->sole()->balance));
+            ->where('outstandingTotals', [['currency' => 'CAD', 'amount' => Invoice::withoutCompanyScope()->where('company_id', $this->companyA->id)->sole()->balance]]));
 
     $this->get(route('invoices.index', ['status' => 'all', 'search' => 'Bella']))
         ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 0));

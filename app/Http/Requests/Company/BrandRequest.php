@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Company;
 
 use App\Models\Brand;
+use App\Rules\PostalCode;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -60,7 +61,7 @@ class BrandRequest extends FormRequest
             'addresses.*.line2' => ['nullable', 'string', 'max:255'],
             'addresses.*.city' => ['required', 'string', 'max:100'],
             'addresses.*.region' => ['nullable', 'string', 'max:50'],
-            'addresses.*.postal_code' => ['nullable', 'string', 'max:20'],
+            'addresses.*.postal_code' => ['nullable', 'string', 'max:20', new PostalCode],
             'addresses.*.country' => ['required', 'string', 'size:2'],
             'addresses.*.is_primary' => ['boolean'],
         ];

@@ -24,9 +24,12 @@ class ChecklistController extends Controller
 
         $templates = ChecklistTemplate::query()->get()->keyBy(fn (ChecklistTemplate $t) => $t->job_type->value);
 
+        // Job types of the company's vertical (SPEC §1.2).
+        $jobTypes = currentCompany()->vertical->jobTypes();
+
         return Inertia::render('company/checklists', [
-            'jobTypes' => JobType::options(),
-            'templates' => collect(JobType::cases())
+            'jobTypes' => currentCompany()->vertical->jobTypeOptions(),
+            'templates' => collect($jobTypes)
                 ->mapWithKeys(fn (JobType $type) => [$type->value => $templates->get($type->value)?->items ?? []])
                 ->all(),
         ]);
@@ -46,7 +49,7 @@ class ChecklistController extends Controller
                 ->all(),
         ]);
 
-        $types = implode(',', array_column(JobType::cases(), 'value'));
+        $types = implode(',', array_column(currentCompany()->vertical->jobTypes(), 'value'));
         $validated = $request->validate([
             'templates' => ['required', "array:{$types}"],
             'templates.*' => ['array', 'max:30'],

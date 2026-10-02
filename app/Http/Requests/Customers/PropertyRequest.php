@@ -4,6 +4,7 @@ namespace App\Http\Requests\Customers;
 
 use App\Models\Customer;
 use App\Models\Property;
+use App\Rules\PostalCode;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -25,7 +26,7 @@ class PropertyRequest extends FormRequest
     {
         $this->merge([
             'is_primary' => $this->boolean('is_primary'),
-            'country' => strtoupper((string) $this->input('country', 'CA')),
+            'country' => strtoupper((string) $this->input('country', currentCompany()->country)),
         ]);
     }
 
@@ -51,7 +52,7 @@ class PropertyRequest extends FormRequest
             "{$prefix}unit" => ['nullable', 'string', 'max:50'],
             "{$prefix}city" => [$required, 'string', 'max:100'],
             "{$prefix}region" => ['nullable', 'string', 'max:50'],
-            "{$prefix}postal_code" => ['nullable', 'string', 'max:20'],
+            "{$prefix}postal_code" => ['nullable', 'string', 'max:20', new PostalCode],
             "{$prefix}country" => [$required, 'string', 'size:2'],
             "{$prefix}access_notes" => ['nullable', 'string', 'max:2000'],
             "{$prefix}gate_code" => ['nullable', 'string', 'max:100'],

@@ -13,8 +13,12 @@ function settingsPayload(array $overrides = []): array
 {
     return array_replace_recursive([
         'name' => 'Doctor Appliance Group',
+        'country' => 'CA',
         'timezone' => 'America/Vancouver',
         'currency' => 'CAD',
+        'locale' => 'en-CA',
+        'prices_include_tax' => false,
+        'default_payment_terms' => 'due_on_receipt',
         'invoice_prefix' => 'DA-',
         'invoice_next_number' => 1001,
         'estimate_prefix' => 'EST-',
@@ -44,7 +48,7 @@ test('the owner can update company settings', function () {
 test('company settings are validated', function () {
     $this->put(route('company.settings.update'), settingsPayload([
         'timezone' => 'Mars/Olympus',
-        'currency' => 'EUR',
+        'currency' => 'XYZ',
         'invoice_next_number' => 0,
         'business_hours' => ['mon' => ['closed' => false, 'open' => '17:00', 'close' => '08:00']],
     ]))->assertSessionHasErrors(['timezone', 'currency', 'invoice_next_number', 'business_hours.mon.close']);

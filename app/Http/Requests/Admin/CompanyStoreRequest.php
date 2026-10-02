@@ -27,9 +27,9 @@ class CompanyStoreRequest extends FormRequest
             // Empty: detect from the Owner's browser on their first visit.
             'timezone' => ['nullable', 'timezone:all'],
             'country' => ['required', Rule::in(Countries::codes())],
-            'vertical' => ['required', Rule::enum(Vertical::class)],
+            'vertical' => ['nullable', Rule::enum(Vertical::class)],
             'currency' => ['required', Rule::in(Currencies::codes())],
-            'locale' => ['required', Rule::in(array_column(Countries::localeOptions(), 'value'))],
+            'locale' => ['nullable', Rule::in(array_column(Countries::localeOptions(), 'value'))],
             'plan' => ['nullable', 'string', 'max:50'],
             'subscription_status' => ['nullable', Rule::enum(SubscriptionStatus::class)],
             'owner_name' => ['required', 'string', 'max:255'],

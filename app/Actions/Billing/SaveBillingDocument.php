@@ -201,7 +201,8 @@ class SaveBillingDocument
     {
         $ids = array_values(array_unique(array_map('intval', $taxRateIds)));
         $kept = collect($current)->filter(fn (array $tax) => in_array((int) $tax['tax_rate_id'], $ids, true))->keyBy('tax_rate_id');
-        $rates = TaxRate::query()->whereIn('id', $ids)->orderBy('sort_order')->orderBy('name')->get();
+        // Compound taxes come last: they are charged on the amount plus the other taxes.
+        $rates = TaxRate::query()->whereIn('id', $ids)->orderBy('is_compound')->orderBy('sort_order')->orderBy('name')->get();
 
         return $rates->map(fn (TaxRate $rate) => $kept->has($rate->id)
             ? ['tax_rate_id' => $rate->id, 'name' => $kept[$rate->id]['name'], 'rate' => (string) $kept[$rate->id]['rate'], 'compound' => (bool) ($kept[$rate->id]['compound'] ?? false)]

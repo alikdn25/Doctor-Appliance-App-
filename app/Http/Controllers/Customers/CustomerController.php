@@ -7,6 +7,7 @@ use App\Enums\ApplianceType;
 use App\Enums\CustomerType;
 use App\Enums\EmailLabel;
 use App\Enums\LeadSource;
+use App\Enums\PaymentTerms;
 use App\Enums\PhoneLabel;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customers\CustomerRequest;
@@ -117,6 +118,7 @@ class CustomerController extends Controller
                 ...$this->customerData($customer),
                 'type_label' => $customer->type->label(),
                 'lead_source_label' => $customer->lead_source?->label(),
+                'payment_terms_label' => $customer->payment_terms?->label(),
                 'created_at' => $customer->created_at?->toDateString(),
                 'properties' => $customer->properties->map(fn (Property $property) => [
                     ...self::propertyData($property),
@@ -277,6 +279,7 @@ class CustomerController extends Controller
             'company_name' => $customer->company_name,
             'display_name' => $customer->display_name,
             'lead_source' => $customer->lead_source?->value,
+            'payment_terms' => $customer->payment_terms?->value,
             'tags' => $customer->tags,
             'notes' => $customer->notes,
             'phones' => $customer->phones->map(fn (CustomerPhone $p) => [
@@ -345,6 +348,8 @@ class CustomerController extends Controller
         return [
             'types' => CustomerType::options(),
             'leadSources' => LeadSource::options(),
+            'paymentTerms' => PaymentTerms::options(),
+            'defaultPaymentTerms' => currentCompany()->default_payment_terms->label(),
             'phoneLabels' => PhoneLabel::options(),
             'emailLabels' => EmailLabel::options(),
             'tags' => $this->tags(),

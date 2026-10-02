@@ -32,6 +32,15 @@ return [
         'void' => 'Void',
     ],
 
+    'terms_hint' => 'Customer terms: :terms',
+
+    'terms' => [
+        'due_on_receipt' => 'Due on receipt',
+        'net_7' => 'Net 7',
+        'net_15' => 'Net 15',
+        'net_30' => 'Net 30',
+    ],
+
     'fields' => [
         'due_on' => 'Due date',
     ],

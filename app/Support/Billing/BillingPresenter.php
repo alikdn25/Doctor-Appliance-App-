@@ -157,6 +157,7 @@ class BillingPresenter
 
         return TaxRate::query()
             ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', $ids))
+            ->orderBy('is_compound')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()

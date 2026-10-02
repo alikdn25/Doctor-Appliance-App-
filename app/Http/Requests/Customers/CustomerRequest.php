@@ -5,6 +5,7 @@ namespace App\Http\Requests\Customers;
 use App\Enums\CustomerType;
 use App\Enums\EmailLabel;
 use App\Enums\LeadSource;
+use App\Enums\PaymentTerms;
 use App\Enums\PhoneLabel;
 use App\Models\Customer;
 use App\Support\PhoneNumber;
@@ -52,7 +53,7 @@ class CustomerRequest extends FormRequest
 
         if ($this->boolean('add_property')) {
             $property = (array) $this->input('property', []);
-            $property['country'] = strtoupper((string) ($property['country'] ?? 'CA'));
+            $property['country'] = strtoupper((string) ($property['country'] ?? currentCompany()->country));
             $this->merge(['property' => $property]);
         }
     }
@@ -68,6 +69,8 @@ class CustomerRequest extends FormRequest
             'last_name' => ['nullable', 'string', 'max:100'],
             'company_name' => ['nullable', 'string', 'max:255'],
             'lead_source' => ['nullable', Rule::enum(LeadSource::class)],
+            // Empty = the company's default payment terms.
+            'payment_terms' => ['nullable', Rule::enum(PaymentTerms::class)],
             'tags' => ['array', 'max:20'],
             'tags.*' => ['string', 'max:50'],
             'notes' => ['nullable', 'string', 'max:10000'],
@@ -131,7 +134,7 @@ class CustomerRequest extends FormRequest
     public function customerAttributes(): array
     {
         return collect($this->validated())
-            ->only(['type', 'first_name', 'last_name', 'company_name', 'lead_source', 'tags', 'notes'])
+            ->only(['type', 'first_name', 'last_name', 'company_name', 'lead_source', 'payment_terms', 'tags', 'notes'])
             ->all();
     }
 

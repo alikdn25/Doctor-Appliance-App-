@@ -14,7 +14,8 @@ enum LeadSource: string
     case GoogleBusinessProfile = 'google_business_profile';
     case GoogleAds = 'google_ads';
     case Website = 'website';
-    case HomeStars = 'homestars';
+    // Yelp, Angi, Thumbtack, HomeStars, Checkatrade … (one bucket for every country)
+    case Directory = 'directory';
     case Facebook = 'facebook';
     case Referral = 'referral';
     case RepeatCustomer = 'repeat_customer';

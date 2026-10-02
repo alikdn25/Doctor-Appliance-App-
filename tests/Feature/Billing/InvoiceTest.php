@@ -191,7 +191,7 @@ test('the invoice list shows outstanding invoices by default', function () {
             ->component('invoices/index')
             ->has('invoices.data', 1)
             ->where('invoices.data.0.number', 'INV-1042')
-            ->where('outstandingTotal', 28050));
+            ->where('outstandingTotals', [['currency' => 'CAD', 'amount' => 28050]]));
 
     $this->get(route('invoices.index', ['status' => 'paid']))
         ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 1)->where('invoices.data.0.number', 'INV-1043'));

@@ -2,7 +2,6 @@
 
 namespace App\Support\Locale;
 
-use Illuminate\Support\Facades\Cache;
 use libphonenumber\PhoneNumberUtil;
 use NumberFormatter;
 use ResourceBundle;
@@ -14,12 +13,15 @@ use ResourceBundle;
  */
 class Currencies
 {
+    /** @var list<string>|null Computed once per process. */
+    private static ?array $codes = null;
+
     /**
      * @return list<string>
      */
     public static function codes(): array
     {
-        return Cache::driver('array')->rememberForever('currencies.codes', function () {
+        return self::$codes ??= (function () {
             $codes = [];
 
             foreach (PhoneNumberUtil::getInstance()->getSupportedRegions() as $region) {
@@ -35,7 +37,7 @@ class Currencies
             sort($codes);
 
             return $codes;
-        });
+        })();
     }
 
     public static function exists(?string $code): bool

@@ -45,9 +45,26 @@ class JobRequest extends FormRequest
 
         if ($this->boolean('new_customer_mode')) {
             $property = (array) $this->input('new_customer.property', []);
-            $property['country'] = strtoupper((string) ($property['country'] ?? 'CA'));
+            $property['country'] = strtoupper((string) ($property['country'] ?? currentCompany()->country));
             $this->merge(['new_customer' => [...(array) $this->input('new_customer', []), 'property' => $property]]);
         }
+    }
+
+    /**
+     * Job types of the company's vertical; an existing job may keep a type outside it.
+     *
+     * @return list<string>
+     */
+    private function allowedJobTypes(): array
+    {
+        $types = array_map(fn (JobType $type) => $type->value, currentCompany()->vertical->jobTypes());
+        $job = $this->route('job');
+
+        if ($job instanceof ServiceJob) {
+            $types[] = $job->job_type->value;
+        }
+
+        return array_values(array_unique($types));
     }
 
     /**
@@ -57,7 +74,7 @@ class JobRequest extends FormRequest
     {
         $rules = [
             'brand_id' => ['required', 'integer'],
-            'job_type' => ['required', Rule::enum(JobType::class)],
+            'job_type' => ['required', Rule::in($this->allowedJobTypes())],
             'lead_source' => ['nullable', Rule::enum(LeadSource::class)],
             'description' => ['nullable', 'string', 'max:5000'],
             'notes' => ['nullable', 'string', 'max:5000'],

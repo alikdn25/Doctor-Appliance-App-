@@ -71,8 +71,8 @@ test('an estimate is created from a job with lines, discount and taxes', functio
         ->notes->toBe('90-day warranty on parts.')
         ->and($estimate->items->pluck('total')->all())->toBe([9500, 18550])
         ->and($estimate->taxes)->toEqual([
-            ['tax_rate_id' => $this->gst->id, 'name' => 'GST', 'rate' => '5', 'amount' => 1300],
-            ['tax_rate_id' => $this->pst->id, 'name' => 'PST', 'rate' => '7', 'amount' => 1820],
+            ['tax_rate_id' => $this->gst->id, 'name' => 'GST', 'rate' => '5', 'compound' => false, 'amount' => 1300],
+            ['tax_rate_id' => $this->pst->id, 'name' => 'PST', 'rate' => '7', 'compound' => false, 'amount' => 1820],
         ])
         ->and($this->company->fresh()->estimate_next_number)->toBe(101);
 

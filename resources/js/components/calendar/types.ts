@@ -62,13 +62,14 @@ export const toTime = (minutes: number) => {
 /** "Tue, Oct 6" for a "2026-10-06" calendar date (no timezone shift). */
 export const dayLabel = (
     date: string,
+    locale: string,
     options: Intl.DateTimeFormatOptions = {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
     },
 ) =>
-    new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', ...options }).format(
+    new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...options }).format(
         new Date(`${date}T12:00:00Z`),
     );
 

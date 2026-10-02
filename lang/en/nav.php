@@ -14,6 +14,7 @@ return [
     'team' => 'Team',
     'taxes' => 'Taxes',
     'checklists' => 'Checklists',
+    'services' => 'Services',
     'company_settings' => 'Company settings',
     'companies' => 'Companies',
     'settings' => 'Settings',

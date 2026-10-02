@@ -17,8 +17,12 @@ type Day = { closed: boolean; open: string | null; close: string | null };
 
 type CompanySettings = {
     name: string;
+    country: string;
     timezone: string;
     currency: string;
+    locale: string;
+    prices_include_tax: boolean;
+    default_payment_terms: string;
     invoice_prefix: string;
     invoice_next_number: number;
     estimate_prefix: string;
@@ -29,9 +33,12 @@ type CompanySettings = {
 };
 
 type Props = {
-    company: CompanySettings & { id: number };
+    company: CompanySettings & { id: number; vertical: string };
     timezones: string[];
-    currencies: string[];
+    currencies: Option[];
+    countries: Option[];
+    locales: Option[];
+    paymentTerms: Option[];
     paymentProviders: Option[];
 };
 
@@ -39,13 +46,20 @@ export default function CompanySettingsPage({
     company,
     timezones,
     currencies,
+    countries,
+    locales,
+    paymentTerms,
     paymentProviders,
 }: Props) {
     const t = useTrans();
     const form = useForm<CompanySettings>({
         name: company.name,
+        country: company.country,
         timezone: company.timezone,
         currency: company.currency,
+        locale: company.locale,
+        prices_include_tax: company.prices_include_tax,
+        default_payment_terms: company.default_payment_terms,
         invoice_prefix: company.invoice_prefix ?? '',
         invoice_next_number: company.invoice_next_number,
         estimate_prefix: company.estimate_prefix ?? '',
@@ -61,6 +75,52 @@ export default function CompanySettingsPage({
             ...form.data.business_hours,
             [day]: { ...form.data.business_hours[day], ...patch },
         });
+
+    const select = (
+        field:
+            | 'country'
+            | 'timezone'
+            | 'currency'
+            | 'locale'
+            | 'default_payment_terms',
+        options: Option[],
+        hint?: string,
+    ) => (
+        <FormField
+            id={field}
+            label={t(`company.fields.${field}`)}
+            hint={hint}
+            error={errors[field]}
+        >
+            <NativeSelect
+                id={field}
+                value={form.data[field]}
+                onChange={(e) => form.setData(field, e.target.value)}
+            >
+                {options.map((o) => (
+                    <option key={o.value} value={o.value}>
+                        {o.label}
+                    </option>
+                ))}
+            </NativeSelect>
+        </FormField>
+    );
+
+    // A sample of the regional format: date, time and a number.
+    let localeExample = '';
+
+    try {
+        localeExample = new Intl.DateTimeFormat(form.data.locale, {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+        }).format(new Date(Date.UTC(2026, 9, 6, 16, 30)));
+        localeExample += ` · ${new Intl.NumberFormat(form.data.locale, {
+            style: 'currency',
+            currency: form.data.currency,
+        }).format(1234.5)}`;
+    } catch {
+        localeExample = '';
+    }
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
@@ -97,47 +157,60 @@ export default function CompanySettingsPage({
                         />
                     </FormField>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <FormField
-                            id="timezone"
-                            label={t('company.fields.timezone')}
-                            error={errors.timezone}
-                        >
-                            <NativeSelect
-                                id="timezone"
-                                value={form.data.timezone}
-                                onChange={(e) =>
-                                    form.setData('timezone', e.target.value)
-                                }
-                            >
-                                {timezones.map((tz) => (
-                                    <option key={tz} value={tz}>
-                                        {tz}
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                        </FormField>
+                    <p className="text-sm text-muted-foreground">
+                        {t('company.fields.vertical')}: {company.vertical}
+                    </p>
+                </section>
 
-                        <FormField
-                            id="currency"
-                            label={t('company.fields.currency')}
-                            error={errors.currency}
-                        >
-                            <NativeSelect
-                                id="currency"
-                                value={form.data.currency}
-                                onChange={(e) =>
-                                    form.setData('currency', e.target.value)
-                                }
-                            >
-                                {currencies.map((c) => (
-                                    <option key={c} value={c}>
-                                        {c}
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                        </FormField>
+                <section className="grid gap-4">
+                    <h2 className="text-base font-medium">
+                        {t('company.regional')}
+                    </h2>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        {select('country', countries)}
+                        {select(
+                            'timezone',
+                            timezones.map((tz) => ({ value: tz, label: tz })),
+                        )}
+                        {select(
+                            'locale',
+                            locales,
+                            localeExample &&
+                                t('company.locale_example', {
+                                    example: localeExample,
+                                }),
+                        )}
+                        {select(
+                            'currency',
+                            currencies,
+                            t('company.currency_hint'),
+                        )}
                     </div>
+                </section>
+
+                <section className="grid gap-4">
+                    <h2 className="text-base font-medium">
+                        {t('company.billing')}
+                    </h2>
+                    {select(
+                        'default_payment_terms',
+                        paymentTerms,
+                        t('company.payment_terms_hint'),
+                    )}
+                    <label className="flex min-h-10 items-start gap-2 text-sm">
+                        <Checkbox
+                            checked={form.data.prices_include_tax}
+                            onCheckedChange={(c) =>
+                                form.setData('prices_include_tax', c === true)
+                            }
+                        />
+                        <span>
+                            {t('company.fields.prices_include_tax')}
+                            <span className="block text-xs text-muted-foreground">
+                                {t('company.prices_include_tax_hint')}
+                            </span>
+                        </span>
+                    </label>
                 </section>
 
                 <section className="grid gap-4">
