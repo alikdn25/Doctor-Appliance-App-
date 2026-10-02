@@ -44,7 +44,7 @@ test('an expense saves price and tax separately with a private receipt and serve
     $this->post(route('expenses.store'), overheadPayload([
         'receipt' => UploadedFile::fake()->image('fuel.jpg'), 'currency' => 'USD', 'company_id' => 999,
         'created_by' => $this->tech->id, 'service_job_id' => 999,
-    ]))->assertRedirect(route('expenses.index'))->assertSessionHasNoErrors();
+    ]))->assertRedirect(route('expenses.index', ['from' => '2030-06-01', 'to' => '2030-06-30']))->assertSessionHasNoErrors();
 
     $expense = inCompany($this->company, fn () => BusinessExpense::query()->sole());
     expect($expense->amount)->toBe(8025)->and($expense->tax_amount)->toBe(963)
@@ -66,6 +66,13 @@ test('members can create categories inline and reuse names without creating dupl
     $category = inCompany($this->company, fn () => BusinessExpenseCategory::query()->where('normalized_name', 'lunches')->sole());
     expect($category->name)->toBe('Lunches')->and($category->created_by)->toBe($this->tech->id)
         ->and(inCompany($this->company, fn () => BusinessExpense::query()->where('category_id', $category->id)->count()))->toBe(2);
+});
+
+test('saving a backdated expense opens its month so it remains visible', function () {
+    $this->post(route('expenses.store'), overheadPayload(['spent_on' => '2029-01-15']))
+        ->assertRedirect(route('expenses.index', ['from' => '2029-01-01', 'to' => '2029-01-31']))->assertSessionHasNoErrors();
+    $this->get(route('expenses.index', ['from' => '2029-01-01', 'to' => '2029-01-31']))
+        ->assertInertia(fn (Assert $page) => $page->where('expenses.total', 1)->where('expenses.data.0.spent_on', '2029-01-15'));
 });
 
 test('categories can be renamed and archived without losing old expenses', function () {

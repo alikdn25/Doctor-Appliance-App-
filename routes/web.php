@@ -1,8 +1,8 @@
 <?php
 
-use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Accounting\BusinessExpenseCategoryController;
 use App\Http\Controllers\Accounting\BusinessExpenseController;
+use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
 use App\Http\Controllers\Billing\CashController;

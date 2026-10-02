@@ -9,6 +9,8 @@ use App\Models\Appliance;
 use App\Models\AuditLog;
 use App\Models\Brand;
 use App\Models\BrandAddress;
+use App\Models\BusinessExpense;
+use App\Models\BusinessExpenseCategory;
 use App\Models\CashMovement;
 use App\Models\ChecklistTemplate;
 use App\Models\Company;
@@ -129,6 +131,12 @@ beforeEach(function () {
             SupplierReceiptLink::create(['supplier_receipt_id' => $receipt->id, 'service_job_id' => $job->id]);
             CashMovement::create(['user_id' => $owner->id, 'type' => 'collected', 'amount' => 5000, 'currency' => $invoice->currency, 'occurred_on' => now()->toDateString()]);
             $company = currentCompany();
+            $expenseCategory = BusinessExpenseCategory::query()->forceCreate(['name' => 'Fuel', 'created_by' => $owner->id]);
+            BusinessExpense::query()->forceCreate([
+                'category_id' => $expenseCategory->id, 'spent_on' => now()->toDateString(),
+                'description' => 'Secret overhead', 'amount' => 1000, 'tax_amount' => 50,
+                'currency' => $company->currency, 'created_by' => $owner->id,
+            ]);
             SmsAccount::create(['provider' => 'twilio', 'account_sid' => 'AC'.$company->id, 'auth_token' => 'token-'.$company->id, 'phone_number' => '+1604555'.str_pad((string) $company->id, 4, '0', STR_PAD_LEFT)]);
             SmsRegistration::create(['business' => ['legal_name' => $company->name]]);
             $profile = GoogleProfile::create(['label' => 'Main', 'review_url' => 'https://g.page/r/'.$company->id.'/review']);
@@ -176,6 +184,8 @@ dataset('tenant models', [
     'supplier receipts' => [SupplierReceipt::class],
     'supplier receipt links' => [SupplierReceiptLink::class],
     'cash movements' => [CashMovement::class],
+    'business expenses' => [BusinessExpense::class],
+    'business expense categories' => [BusinessExpenseCategory::class],
     'checklist templates' => [ChecklistTemplate::class],
     'estimates' => [Estimate::class],
     'estimate items' => [EstimateItem::class],
@@ -205,7 +215,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         ->all();
 
     expect($tenantModels)->toBe(collect([
-        Appliance::class, Brand::class, BrandAddress::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class,
+        Appliance::class, Brand::class, BrandAddress::class, BusinessExpense::class, BusinessExpenseCategory::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class,
         CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceItem::class, InvoicePaymentLink::class, Payment::class,
         PaymentProviderConnection::class,
         JobAppliance::class, JobBringItem::class, JobChecklistItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,

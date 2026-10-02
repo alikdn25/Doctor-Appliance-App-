@@ -63,10 +63,10 @@ class BusinessExpenseController extends Controller
 
     public function store(BusinessExpenseRequest $request, SaveBusinessExpense $save, AuditLogger $audit): RedirectResponse
     {
-        $save->handle($request, null, $audit);
+        $expense = $save->handle($request, null, $audit);
         Inertia::flash('toast', ['type' => 'success', 'message' => __('expenses.saved')]);
 
-        return to_route('expenses.index');
+        return $this->savedRedirect($expense);
     }
 
     public function update(BusinessExpenseRequest $request, BusinessExpense $expense, SaveBusinessExpense $save, AuditLogger $audit): RedirectResponse
@@ -74,7 +74,7 @@ class BusinessExpenseController extends Controller
         $save->handle($request, $expense, $audit);
         Inertia::flash('toast', ['type' => 'success', 'message' => __('expenses.saved')]);
 
-        return to_route('expenses.index');
+        return $this->savedRedirect($expense);
     }
 
     public function destroy(BusinessExpense $expense, AuditLogger $audit): RedirectResponse
@@ -93,6 +93,15 @@ class BusinessExpenseController extends Controller
         abort_if($expense->receipt_path === null, 404);
 
         return PrivateMedia::response($expense->receipt_path);
+    }
+
+    private function savedRedirect(BusinessExpense $expense): RedirectResponse
+    {
+        // Keep a backdated expense visible immediately after it is saved.
+        return to_route('expenses.index', [
+            'from' => $expense->spent_on->copy()->startOfMonth()->toDateString(),
+            'to' => $expense->spent_on->copy()->endOfMonth()->toDateString(),
+        ]);
     }
 
     public function export(Request $request): StreamedResponse
