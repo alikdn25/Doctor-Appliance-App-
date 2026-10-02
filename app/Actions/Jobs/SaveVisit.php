@@ -40,6 +40,8 @@ class SaveVisit
             $visit->assignees()->sync($assigneeIds);
 
             if ($creating && $job->status->reschedulable()) {
+                // A closed job booked again is open again.
+                CloseJob::reopen($job);
                 $this->changeStatus->handle($job, JobStatus::Scheduled, $user, $visit);
             }
 

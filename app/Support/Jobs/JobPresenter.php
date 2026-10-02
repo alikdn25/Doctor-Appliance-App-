@@ -31,6 +31,10 @@ class JobPresenter
             'status' => $job->status->value,
             'status_label' => $job->status->label(),
             'job_type_label' => $job->job_type->label(),
+            'visit_type' => $job->visit_type->value,
+            'visit_type_label' => $job->visit_type->label(),
+            'outcome' => $job->outcome?->value,
+            'outcome_label' => $job->outcome?->label(),
             'brand' => $job->brand?->name,
             'customer' => $job->customer?->display_name,
             'address' => $job->property?->fullAddress(),
@@ -38,6 +42,7 @@ class JobPresenter
             'visit' => $visit ? [
                 'scheduled_start' => self::iso($visit->scheduled_start),
                 'scheduled_end' => self::iso($visit->scheduled_end),
+                'strict_arrival' => $visit->strict_arrival,
                 'assignees' => $visit->assignees->pluck('name')->values(),
             ] : null,
         ];
@@ -75,6 +80,7 @@ class JobPresenter
             'finished_at' => self::iso($visit->finished_at),
             'minutes_on_job' => $visit->minutesOnJob(),
             'assignees' => $visit->assignees->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])->values(),
+            'strict_arrival' => $visit->strict_arrival,
             'is_mine' => $user !== null && $visit->assignees->contains('id', $user->id),
         ];
     }

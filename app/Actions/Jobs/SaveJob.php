@@ -7,6 +7,7 @@ use App\Enums\JobStatus;
 use App\Models\Appliance;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\JobBringItem;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\User;
@@ -30,6 +31,7 @@ class SaveJob
      * @param  list<array<string, mixed>>  $newAppliances  Appliances to add at the property.
      * @param  array{customer: array<string, mixed>, phones: list<array<string, mixed>>, emails: list<array<string, mixed>>, property: array<string, mixed>}|null  $newCustomer
      * @param  array{attributes: array<string, mixed>, assignee_ids: list<int>}|null  $visit
+     * @param  list<array{description: string, quantity: string}>|null  $bringItems
      */
     public function create(
         ?Customer $customer,
@@ -39,8 +41,9 @@ class SaveJob
         ?array $newCustomer,
         ?array $visit,
         User $user,
+        ?array $bringItems = null,
     ): ServiceJob {
-        return DB::transaction(function () use ($customer, $attributes, $applianceIds, $newAppliances, $newCustomer, $visit, $user) {
+        return DB::transaction(function () use ($customer, $attributes, $applianceIds, $newAppliances, $newCustomer, $visit, $user, $bringItems) {
             if ($newCustomer !== null) {
                 $customer = $this->saveCustomer->handle(
                     null,
@@ -64,6 +67,7 @@ class SaveJob
             $job->save();
 
             $this->syncAppliances($job, $applianceIds, $newAppliances);
+            $this->syncBringItems($job, $bringItems);
             $job->applyChecklistTemplate();
             $this->changeStatus->created($job, $user);
 
@@ -80,13 +84,17 @@ class SaveJob
      * @param  list<int>  $applianceIds
      * @param  list<array<string, mixed>>  $newAppliances
      */
-    public function update(ServiceJob $job, array $attributes, array $applianceIds, array $newAppliances): ServiceJob
+    /**
+     * @param  list<array{description: string, quantity: string}>|null  $bringItems
+     */
+    public function update(ServiceJob $job, array $attributes, array $applianceIds, array $newAppliances, ?array $bringItems = null): ServiceJob
     {
-        return DB::transaction(function () use ($job, $attributes, $applianceIds, $newAppliances) {
+        return DB::transaction(function () use ($job, $attributes, $applianceIds, $newAppliances, $bringItems) {
             $job->fill($attributes);
             $typeChanged = $job->isDirty('job_type');
             $job->save();
             $this->syncAppliances($job, $applianceIds, $newAppliances);
+            $this->syncBringItems($job, $bringItems);
 
             if ($typeChanged) {
                 $job->applyChecklistTemplate();
@@ -142,5 +150,30 @@ class SaveJob
         $company->increment('job_next_number');
 
         return $number;
+    }
+
+    /**
+     * Replaces the "Bring with you" list; items already ticked stay ticked when they are kept.
+     *
+     * @param  list<array{description: string, quantity: string}>|null  $items
+     */
+    private function syncBringItems(ServiceJob $job, ?array $items): void
+    {
+        if ($items === null) {
+            return;
+        }
+
+        $existing = $job->bringItems()->get()->keyBy(fn (JobBringItem $item) => mb_strtolower($item->description));
+        $kept = [];
+
+        foreach (array_values($items) as $position => $data) {
+            $item = $existing->pull(mb_strtolower($data['description'])) ?? new JobBringItem;
+            $item->fill([...$data, 'position' => $position]);
+            $item->service_job_id = $job->id;
+            $item->save();
+            $kept[] = $item->id;
+        }
+
+        $job->bringItems()->whereKeyNot($kept)->delete();
     }
 }

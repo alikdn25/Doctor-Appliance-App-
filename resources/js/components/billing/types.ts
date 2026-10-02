@@ -99,6 +99,20 @@ export type BillingDocument = DocumentRow & {
         ip: string | null;
     } | null;
     decline_reason?: string | null;
+    revision?: number;
+    revised_at?: string | null;
+    revised_from?: string | null;
+    versions?: {
+        id: number;
+        number: string;
+        revision: number;
+        status: string;
+        status_label: string;
+        signer_name: string | null;
+        approved_at: string | null;
+        revised_at: string | null;
+        total: number;
+    }[];
     // Invoice
     due_on?: string | null;
     amount_paid?: number;

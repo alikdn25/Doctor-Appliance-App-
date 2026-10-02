@@ -20,6 +20,7 @@ const toForm = (visit: Visit | null, today: string): VisitFormValue => ({
     end_time: visit?.end_time ?? '11:00',
     estimated_duration_minutes: String(visit?.estimated_duration_minutes ?? 60),
     assignee_ids: visit?.assignees.map((a) => a.id) ?? [],
+    strict_arrival: visit?.strict_arrival ?? false,
 });
 
 /**

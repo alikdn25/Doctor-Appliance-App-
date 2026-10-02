@@ -4,6 +4,10 @@ export type JobRow = {
     status: string;
     status_label: string;
     job_type_label: string;
+    visit_type: string;
+    visit_type_label: string;
+    outcome: string | null;
+    outcome_label: string | null;
     brand: string | null;
     customer: string | null;
     address: string | null;
@@ -11,6 +15,7 @@ export type JobRow = {
     visit: {
         scheduled_start: string;
         scheduled_end: string;
+        strict_arrival: boolean;
         assignees: string[];
     } | null;
 };
@@ -41,6 +46,7 @@ export type Visit = {
     finished_at: string | null;
     minutes_on_job: number | null;
     assignees: { id: number; name: string }[];
+    strict_arrival: boolean;
     is_mine: boolean;
 };
 

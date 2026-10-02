@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Messaging\MessagingPresenter;
 use App\Models\Invoice;
+use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Payments\PaymentProviders;
 use App\Services\AuditLogger;
@@ -74,7 +75,7 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function create(ServiceJob $job): Response
+    public function create(Request $request, ServiceJob $job): Response
     {
         Gate::authorize('work', $job);
 
@@ -91,7 +92,27 @@ class InvoiceController extends Controller
             'today' => $today->format('Y-m-d'),
             'defaultDueOn' => $terms->dueOn($today)->format('Y-m-d'),
             'paymentTerms' => $terms->label(),
+            // "Invoice diagnosis only" after the customer declined the repair: one line, the diagnostic fee.
+            'prefillItems' => $request->boolean('diagnosis') ? [self::diagnosisLine()] : null,
         ]);
+    }
+
+    /**
+     * The diagnostic fee from the price book service picked in Company settings (price only in the company currency),
+     * or an empty-priced line to fill in.
+     *
+     * @return array{description: string, unit_price: int|null, taxable: bool}
+     */
+    public static function diagnosisLine(): array
+    {
+        $company = currentCompany();
+        $service = $company->diagnostic_service_id ? Service::query()->find($company->diagnostic_service_id) : null;
+
+        return [
+            'description' => $service ? collect([$service->name, $service->description])->filter()->implode(' — ') : __('jobs.diagnosis_line'),
+            'unit_price' => $service?->unit_price,
+            'taxable' => $service?->taxable ?? true,
+        ];
     }
 
     public function store(DocumentRequest $request, ServiceJob $job, SaveBillingDocument $save): RedirectResponse

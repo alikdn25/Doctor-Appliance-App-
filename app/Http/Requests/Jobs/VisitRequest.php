@@ -71,6 +71,7 @@ class VisitRequest extends FormRequest
             "{$prefix}estimated_duration_minutes" => ['nullable', 'integer', 'min:5', 'max:1440'],
             "{$prefix}assignee_ids" => ['array', 'max:10'],
             "{$prefix}assignee_ids.*" => ['integer', 'distinct'],
+            "{$prefix}strict_arrival" => ['boolean'],
         ];
     }
 
@@ -114,6 +115,7 @@ class VisitRequest extends FormRequest
                 'scheduled_start' => $at($data['start_time']),
                 'scheduled_end' => $at($data['end_time']),
                 'estimated_duration_minutes' => $data['estimated_duration_minutes'] ?? null,
+                'strict_arrival' => (bool) ($data['strict_arrival'] ?? false),
             ],
             'assignee_ids' => array_values(array_map('intval', $data['assignee_ids'] ?? [])),
         ];

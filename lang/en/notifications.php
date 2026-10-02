@@ -19,6 +19,7 @@ return [
     'estimate_decided' => [
         'greeting' => 'Hello :name,',
         'action' => 'Open estimate',
+        'action_job' => 'Open job',
     ],
 
     'estimate_approved' => [

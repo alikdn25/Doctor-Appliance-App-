@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { AlertTriangle } from 'lucide-react';
+import { AlarmClock, AlertTriangle } from 'lucide-react';
 import type { DragEvent, TouchEvent } from 'react';
 import type { CalendarVisit, Lane } from '@/components/calendar/types';
 import { dayLabel, inLane } from '@/components/calendar/types';
@@ -162,6 +162,14 @@ export function WeekGrid({
                                                                         minutes:
                                                                             travelBuffer,
                                                                     },
+                                                                )}
+                                                            />
+                                                        )}
+                                                        {visit.strict_arrival && (
+                                                            <AlarmClock
+                                                                className="size-3 shrink-0 text-red-600"
+                                                                aria-label={t(
+                                                                    'jobs.strict.badge',
                                                                 )}
                                                             />
                                                         )}

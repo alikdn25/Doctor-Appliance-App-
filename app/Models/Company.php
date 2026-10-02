@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\CompanyStatus;
+use App\Enums\JobOutcome;
 use App\Enums\PaymentTerms;
 use App\Enums\SmsMode;
 use App\Enums\SubscriptionStatus;
@@ -50,6 +51,10 @@ use Illuminate\Support\Carbon;
  * @property int $job_next_number
  * @property int $travel_buffer_minutes
  * @property int|null $estimate_valid_days Prefills "Valid until" on new estimates
+ * @property bool $technicians_can_delete_jobs
+ * @property array<string, list<string>>|null $closure_reasons Reasons per job outcome; null/missing = defaults
+ * @property int|null $diagnostic_service_id Price book service for "Invoice diagnosis only"
+ * @property int $strict_arrival_reminder_minutes
  * @property string|null $payment_provider
  * @property bool $timezone_pending
  * @property array<string, array{closed: bool, open: string|null, close: string|null}>|null $business_hours
@@ -83,6 +88,10 @@ class Company extends Model
         'business_hours',
         'travel_buffer_minutes',
         'estimate_valid_days',
+        'technicians_can_delete_jobs',
+        'closure_reasons',
+        'diagnostic_service_id',
+        'strict_arrival_reminder_minutes',
         'timezone_pending',
         'payment_provider',
         'online_tips',
@@ -143,6 +152,9 @@ class Company extends Model
             'job_next_number' => 'integer',
             'travel_buffer_minutes' => 'integer',
             'estimate_valid_days' => 'integer',
+            'technicians_can_delete_jobs' => 'boolean',
+            'closure_reasons' => 'array',
+            'strict_arrival_reminder_minutes' => 'integer',
             'timezone_pending' => 'boolean',
         ];
     }
@@ -174,6 +186,18 @@ class Company extends Model
             'sms_mode' => $this->sms_mode->value,
             'address' => Countries::addressLabels($this->country),
         ];
+    }
+
+    /**
+     * Reasons to pick from when a job ends with this outcome (the company's list, or the defaults).
+     *
+     * @return list<string>
+     */
+    public function closureReasons(JobOutcome $outcome): array
+    {
+        $own = $this->closure_reasons[$outcome->value] ?? null;
+
+        return is_array($own) && $own !== [] ? array_values($own) : $outcome->defaultReasons();
     }
 
     public function isActive(): bool

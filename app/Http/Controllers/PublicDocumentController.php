@@ -181,7 +181,14 @@ class PublicDocumentController extends Controller
         $open = $estimate->awaitsCustomer();
         $online = $providers->readyFor($company) !== null;
 
+        // A replaced version points to the newest one once that one was sent to the customer.
+        $latest = $estimate->status === EstimateStatus::Revised ? $estimate->latestVersion() : null;
+        $latestUrl = $latest !== null && $latest->id !== $estimate->id && $latest->sent_at !== null && ! $latest->trashed()
+            ? PublicDocument::url($latest)
+            : null;
+
         return [
+            'latest_url' => $latestUrl,
             'online_payments' => $online,
             'can_approve' => $open && ! $estimate->isExpired(),
             'can_decline' => $open && $estimate->status === EstimateStatus::Draft,

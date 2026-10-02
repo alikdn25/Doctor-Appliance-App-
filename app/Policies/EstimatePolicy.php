@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Actions\Billing\ReviseEstimate;
 use App\Models\Estimate;
 use App\Models\User;
 use App\Policies\Concerns\AccessesJobs;
@@ -42,6 +43,14 @@ class EstimatePolicy
     public function delete(User $user, Estimate $estimate): bool
     {
         return $this->update($user, $estimate) && $estimate->depositPayments()->doesntExist();
+    }
+
+    /**
+     * A new version of an estimate the customer signed online.
+     */
+    public function revise(User $user, Estimate $estimate): bool
+    {
+        return $this->view($user, $estimate) && ReviseEstimate::canBeRevised($estimate) && $this->worksOn($user, $estimate);
     }
 
     private function worksOn(User $user, Estimate $estimate): bool

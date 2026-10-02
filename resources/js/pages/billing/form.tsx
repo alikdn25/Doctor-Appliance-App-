@@ -87,6 +87,7 @@ export default function BillingForm({
     paymentTerms,
     defaultValidUntil = null,
     canTakeDeposit = false,
+    prefillItems = null,
 }: {
     kind: DocumentKind;
     document: BillingDocument | null;
@@ -98,6 +99,10 @@ export default function BillingForm({
     services?: ServiceOption[];
     defaultValidUntil?: string | null;
     canTakeDeposit?: boolean;
+    /** Lines to start a new document with (e.g. the diagnostic fee). */
+    prefillItems?:
+        | { description: string; unit_price: number | null; taxable: boolean }[]
+        | null;
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -138,7 +143,17 @@ export default function BillingForm({
                   optional: item.optional,
                   selected: item.selected,
               }))
-            : [newLine()],
+            : prefillItems
+              ? prefillItems.map((item) => ({
+                    ...newLine(),
+                    description: item.description,
+                    unit_price:
+                        item.unit_price !== null
+                            ? fromMinor(item.unit_price, currency)
+                            : '',
+                    taxable: item.taxable,
+                }))
+              : [newLine()],
         deposit_type: document?.deposit_type ?? '',
         deposit_value:
             document?.deposit_type && document.deposit_value

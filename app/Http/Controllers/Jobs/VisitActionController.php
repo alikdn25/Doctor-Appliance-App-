@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Jobs;
 
+use App\Actions\Jobs\CloseJob;
 use App\Actions\Jobs\VisitWorkflow;
+use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\MessageKind;
 use App\Enums\SmsMode;
@@ -50,16 +52,44 @@ class VisitActionController extends Controller
         return back();
     }
 
-    public function finish(Request $request, JobVisit $visit, VisitWorkflow $workflow): RedirectResponse
+    /**
+     * Finish on site: completed (repaired), waiting for parts, or closed without a repair (customer declined, unable to
+     * repair; with a reason). "Invoice diagnosis only" opens the invoice form with the diagnostic fee line.
+     */
+    public function finish(Request $request, JobVisit $visit, VisitWorkflow $workflow, CloseJob $close): RedirectResponse
     {
         Gate::authorize('work', $visit);
 
+        $outcome = JobOutcome::tryFrom((string) $request->input('outcome'));
         $validated = $request->validate([
-            'outcome' => ['required', Rule::in([JobStatus::Completed->value, JobStatus::WaitingForParts->value])],
+            'outcome' => ['required', Rule::in([
+                JobStatus::Completed->value, JobStatus::WaitingForParts->value,
+                JobOutcome::CustomerDeclined->value, JobOutcome::UnableToRepair->value,
+            ])],
             'note' => ['nullable', 'string', 'max:500'],
-        ]);
+            'reason' => $outcome?->needsReason()
+                ? ['required', Rule::in(currentCompany()->closureReasons($outcome))]
+                : ['nullable'],
+            'invoice_diagnosis' => ['boolean'],
+        ], [], ['reason' => __('jobs.fields.reason')]);
 
-        $workflow->finish($visit, $request->user(), JobStatus::from($validated['outcome']), $validated['note'] ?? null);
+        $note = $validated['note'] ?? null;
+
+        if ($validated['outcome'] === JobStatus::WaitingForParts->value) {
+            $workflow->finish($visit, $request->user(), JobStatus::WaitingForParts, $note);
+
+            return back();
+        }
+
+        $outcome ??= JobOutcome::Repaired;
+        $workflow->finish($visit, $request->user(), JobStatus::Completed, $outcome === JobOutcome::Repaired
+            ? $note
+            : collect([$outcome->label(), $validated['reason'] ?? null, $note])->filter()->implode(' — '));
+        $close->close($visit->job, $outcome, $validated['reason'] ?? null, $note, $request->user(), $visit);
+
+        if ($outcome->allowsDiagnosisInvoice() && $request->boolean('invoice_diagnosis')) {
+            return to_route('invoices.create', ['job' => $visit->service_job_id, 'diagnosis' => 1]);
+        }
 
         return back();
     }

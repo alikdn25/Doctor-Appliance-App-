@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
-import { Download, Navigation, Phone } from 'lucide-react';
+import { Download, Navigation, PackageCheck, Phone } from 'lucide-react';
 import { mapsUrl, telUrl } from '@/components/customers/types';
+import { StrictBadge } from '@/components/jobs/job-outcome';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import type { Visit } from '@/components/jobs/types';
 import { PageHeader } from '@/components/page-header';
@@ -18,6 +19,9 @@ type MyVisit = Visit & {
         status: string;
         status_label: string;
         job_type_label: string;
+        visit_type: string;
+        visit_type_label: string;
+        bring: { done: number; total: number } | null;
         customer: string | null;
         phone: string | null;
         address: string | null;
@@ -103,10 +107,15 @@ export default function MyJobs({
                                                   visit.scheduled_end,
                                               )}
                                     </span>
-                                    <StatusBadge
-                                        status={visit.job.status}
-                                        label={visit.job.status_label}
-                                    />
+                                    <span className="flex items-center gap-1">
+                                        {visit.strict_arrival && (
+                                            <StrictBadge />
+                                        )}
+                                        <StatusBadge
+                                            status={visit.job.status}
+                                            label={visit.job.status_label}
+                                        />
+                                    </span>
                                 </div>
                                 <div className="font-medium">
                                     {visit.job.customer}
@@ -120,11 +129,32 @@ export default function MyJobs({
                                     {[
                                         `#${visit.job.number}`,
                                         visit.job.job_type_label,
+                                        visit.job.visit_type !== 'new_diagnosis'
+                                            ? visit.job.visit_type_label
+                                            : null,
                                         visit.job.appliances.join(', '),
                                     ]
                                         .filter(Boolean)
                                         .join(' · ')}
                                 </div>
+                                {visit.job.bring && (
+                                    <div
+                                        className={cn(
+                                            'flex items-center gap-1 text-sm font-medium',
+                                            visit.job.bring.done <
+                                                visit.job.bring.total
+                                                ? 'text-amber-700 dark:text-amber-400'
+                                                : 'text-emerald-700 dark:text-emerald-400',
+                                        )}
+                                    >
+                                        <PackageCheck className="size-4" />
+                                        {t('jobs.bring.title')}:{' '}
+                                        {t('jobs.bring.loaded', {
+                                            done: visit.job.bring.done,
+                                            total: visit.job.bring.total,
+                                        })}
+                                    </div>
+                                )}
                             </Link>
                             {tab !== 'recent' &&
                                 (visit.job.address || visit.job.phone) && (

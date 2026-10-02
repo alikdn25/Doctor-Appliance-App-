@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Jobs;
 
 use App\Actions\Jobs\SaveJob;
 use App\Enums\ApplianceType;
+use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\JobType;
 use App\Enums\LeadSource;
 use App\Enums\PhotoKind;
 use App\Enums\VisitStatus;
+use App\Enums\VisitType;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Requests\Jobs\JobRequest;
@@ -18,6 +20,7 @@ use App\Models\Brand;
 use App\Models\Customer;
 use App\Models\Estimate;
 use App\Models\Invoice;
+use App\Models\JobBringItem;
 use App\Models\JobChecklistItem;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
@@ -33,6 +36,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -57,12 +61,17 @@ class JobController extends Controller
             'brand' => (string) $request->query('brand', ''),
             'technician' => (string) $request->query('technician', ''),
             'type' => (string) $request->query('type', ''),
+            'visit_type' => (string) $request->query('visit_type', ''),
+            'outcome' => (string) $request->query('outcome', ''),
+            'strict' => $request->boolean('strict') ? '1' : '',
             'from' => $this->date($request->query('from')),
             'to' => $this->date($request->query('to')),
         ];
 
         $status = JobStatus::tryFrom($filters['status']);
         $type = JobType::tryFrom($filters['type']);
+        $visitType = VisitType::tryFrom($filters['visit_type']);
+        $outcome = JobOutcome::tryFrom($filters['outcome']);
 
         $jobs = ServiceJob::query()
             ->visibleTo($user)
@@ -70,6 +79,10 @@ class JobController extends Controller
             ->when($filters['status'] === 'open', fn ($q) => $q->whereNotIn('status', self::CLOSED))
             ->when($status, fn ($q) => $q->where('status', $status))
             ->when($type, fn ($q) => $q->where('job_type', $type))
+            ->when($visitType, fn ($q) => $q->where('visit_type', $visitType))
+            ->when($outcome, fn ($q) => $q->where('outcome', $outcome))
+            ->when($filters['outcome'] === 'none', fn ($q) => $q->whereNull('outcome'))
+            ->when($filters['strict'] === '1', fn ($q) => $q->whereHas('visits', fn (Builder $v) => $v->where('strict_arrival', true)))
             ->when($filters['brand'] !== '', fn ($q) => $q->where('brand_id', (int) $filters['brand']))
             ->when($filters['technician'] !== '', fn ($q) => $q->whereHas(
                 'visits.assignees',
@@ -94,6 +107,9 @@ class JobController extends Controller
             'filters' => $filters,
             'statuses' => JobStatus::options(),
             'types' => currentCompany()->vertical->jobTypeOptions(),
+            'visitTypes' => VisitType::options(),
+            'outcomes' => JobOutcome::options(),
+            'canViewTrash' => Gate::allows('viewTrash', ServiceJob::class),
             'brands' => $this->brandOptions($user, activeOnly: false),
             'technicians' => $this->assignableUsers(),
             'canCreate' => Gate::allows('create', ServiceJob::class),
@@ -129,7 +145,7 @@ class JobController extends Controller
                 ->where('scheduled_start', '<', $todayStart)
                 ->where('scheduled_start', '>=', $todayStart->subDays(30))
                 ->orderByDesc('scheduled_start'))
-            ->with(['assignees', 'job.customer.primaryPhone', 'job.property', 'job.appliances'])
+            ->with(['assignees', 'job.customer.primaryPhone', 'job.property', 'job.appliances', 'job.bringItems'])
             ->limit(100)
             ->get();
 
@@ -146,6 +162,12 @@ class JobController extends Controller
                         'status' => $job->status->value,
                         'status_label' => $job->status->label(),
                         'job_type_label' => $job->job_type->label(),
+                        'visit_type' => $job->visit_type->value,
+                        'visit_type_label' => $job->visit_type->label(),
+                        'bring' => $job->bringItems->isEmpty() ? null : [
+                            'done' => $job->bringItems->where('is_checked', true)->count(),
+                            'total' => $job->bringItems->count(),
+                        ],
                         'customer' => $job->customer?->display_name,
                         'phone' => $job->customer?->primaryPhone?->number,
                         'address' => $job->property?->fullAddress(),
@@ -182,6 +204,7 @@ class JobController extends Controller
             $request->newCustomer(),
             $request->visit(),
             $request->user(),
+            $request->bringItems(),
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.created', ['number' => $job->number])]);
@@ -198,6 +221,7 @@ class JobController extends Controller
         $job->load([
             'brand', 'customer.phones', 'property', 'appliances', 'visits.assignees', 'statusChanges.user',
             'photos.user', 'checklistItems.doneBy', 'signer', 'estimates', 'invoices',
+            'bringItems.checker', 'previousJob', 'followUps', 'closer',
         ]);
         $canUpdate = Gate::allows('update', $job);
         $property = $job->property;
@@ -210,6 +234,28 @@ class JobController extends Controller
                 'status' => $job->status->value,
                 'status_label' => $job->status->label(),
                 'job_type_label' => $job->job_type->label(),
+                'visit_type' => $job->visit_type->value,
+                'visit_type_label' => $job->visit_type->label(),
+                'previous_job' => $job->previousJob ? ['id' => $job->previousJob->id, 'number' => $job->previousJob->number] : null,
+                'follow_ups' => $job->followUps->map(fn (ServiceJob $f) => [
+                    'id' => $f->id,
+                    'number' => $f->number,
+                    'visit_type_label' => $f->visit_type->label(),
+                    'status_label' => $f->status->label(),
+                ])->values(),
+                'outcome' => $job->outcome?->value,
+                'outcome_label' => $job->outcome?->label(),
+                'outcome_reason' => $job->outcome_reason,
+                'outcome_note' => $job->outcome_note,
+                'closed_at' => JobPresenter::iso($job->closed_at),
+                'closed_by' => $job->closer?->name,
+                'bring_items' => $job->bringItems->map(fn (JobBringItem $item) => [
+                    'id' => $item->id,
+                    'description' => $item->description,
+                    'quantity' => rtrim(rtrim((string) $item->quantity, '0'), '.'),
+                    'is_checked' => $item->is_checked,
+                    'checked_by' => $item->checker?->name,
+                ])->values(),
                 'lead_source_label' => $job->lead_source?->label(),
                 'brand' => $job->brand?->name,
                 'description' => $job->description,
@@ -265,9 +311,15 @@ class JobController extends Controller
                 'update' => $canUpdate,
                 'delete' => Gate::allows('delete', $job),
                 'work' => Gate::allows('work', $job),
+                'close' => Gate::allows('work', $job) && $job->status !== JobStatus::Cancelled && ! $job->trashed(),
                 'viewCustomer' => Gate::allows('view', $job->customer),
             ],
             'statusOptions' => $canUpdate && ! $job->status->isLocked() ? JobStatus::manualOptions() : [],
+            'closureReasons' => [
+                'customer_declined' => currentCompany()->closureReasons(JobOutcome::CustomerDeclined),
+                'unable_to_repair' => currentCompany()->closureReasons(JobOutcome::UnableToRepair),
+                'cancelled' => currentCompany()->closureReasons(JobOutcome::Cancelled),
+            ],
             'assignableUsers' => $canUpdate ? $this->assignableUsers() : [],
             'otherAppliances' => Appliance::query()
                 ->where('property_id', $property->id)
@@ -299,6 +351,12 @@ class JobController extends Controller
                 'description' => $job->description,
                 'notes' => $job->notes,
                 'appliance_ids' => $job->appliances->pluck('id')->values(),
+                'visit_type' => $job->visit_type->value,
+                'previous_job_id' => $job->previous_job_id,
+                'bring_items' => $job->bringItems()->get()->map(fn (JobBringItem $item) => [
+                    'description' => $item->description,
+                    'quantity' => rtrim(rtrim((string) $item->quantity, '0'), '.'),
+                ])->values(),
             ],
             'customer' => self::customerOption($job->customer),
             'today' => CarbonImmutable::now(currentCompany()->timezone)->format('Y-m-d'),
@@ -308,30 +366,79 @@ class JobController extends Controller
 
     public function update(JobRequest $request, ServiceJob $job, SaveJob $save): RedirectResponse
     {
-        $save->update($job, $request->jobAttributes(), $request->applianceIds(), $request->newAppliances());
+        $save->update($job, $request->jobAttributes(), $request->applianceIds(), $request->newAppliances(), $request->bringItems());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.updated')]);
 
         return to_route('jobs.show', $job);
     }
 
-    public function destroy(ServiceJob $job, AuditLogger $audit): RedirectResponse
+    public function destroy(Request $request, ServiceJob $job, AuditLogger $audit): RedirectResponse
     {
         Gate::authorize('delete', $job);
 
-        // Invoices are financial records; a job with invoices stays (void them, cancel the job instead).
-        if ($job->invoices()->exists()) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => __('jobs.has_invoices')]);
+        // Invoices and payments are financial records: such a job is cancelled or closed instead.
+        $blocker = $job->deleteBlocker();
+        if ($blocker !== null) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => $blocker]);
 
             return to_route('jobs.show', $job);
         }
 
-        $job->delete();
+        DB::transaction(function () use ($job, $request) {
+            $job->forceFill(['deleted_by' => $request->user()->id])->save();
+            $job->delete();
+        });
         $audit->record('job.deleted', $job, ['number' => $job->number]);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.deleted')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.deleted_restorable', ['days' => ServiceJob::RESTORE_DAYS])]);
 
-        return to_route('jobs.index');
+        return Gate::allows('viewAny', ServiceJob::class) ? to_route('jobs.index') : to_route('jobs.mine');
+    }
+
+    /**
+     * Jobs deleted in the last 30 days, which the office can restore.
+     */
+    public function trash(Request $request): Response
+    {
+        Gate::authorize('viewTrash', ServiceJob::class);
+
+        $jobs = ServiceJob::onlyTrashed()
+            ->visibleTo($request->user())
+            ->where('deleted_at', '>=', now()->subDays(ServiceJob::RESTORE_DAYS))
+            ->with(['customer', 'property', 'brand', 'deleter'])
+            ->orderByDesc('deleted_at')
+            ->limit(200)
+            ->get();
+
+        return Inertia::render('jobs/trash', [
+            'days' => ServiceJob::RESTORE_DAYS,
+            'jobs' => $jobs->map(fn (ServiceJob $job) => [
+                'id' => $job->id,
+                'number' => $job->number,
+                'customer' => $job->customer?->display_name,
+                'address' => $job->property?->fullAddress(),
+                'brand' => $job->brand?->name,
+                'deleted_at' => JobPresenter::iso($job->deleted_at),
+                'deleted_by' => $job->deleter?->name,
+                'restorable_until' => JobPresenter::iso($job->deleted_at?->copy()->addDays(ServiceJob::RESTORE_DAYS)),
+            ])->values(),
+        ]);
+    }
+
+    public function restore(ServiceJob $job, AuditLogger $audit): RedirectResponse
+    {
+        Gate::authorize('restore', $job);
+
+        DB::transaction(function () use ($job) {
+            $job->restore();
+            $job->forceFill(['deleted_by' => null])->save();
+        });
+        $audit->record('job.restored', $job, ['number' => $job->number]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.restored', ['number' => $job->number])]);
+
+        return to_route('jobs.show', $job);
     }
 
     /**
@@ -376,6 +483,22 @@ class JobController extends Controller
                 'is_primary' => $p->is_primary,
                 'appliances' => $p->appliances->map(fn (Appliance $a) => JobPresenter::appliance($a))->values(),
             ])->values(),
+            // Earlier jobs, for a return visit or warranty callback.
+            'jobs' => ServiceJob::query()
+                ->where('customer_id', $customer->id)
+                ->with('appliances')
+                ->orderByDesc('id')
+                ->limit(20)
+                ->get()
+                ->map(fn (ServiceJob $job) => [
+                    'id' => $job->id,
+                    'number' => $job->number,
+                    'property_id' => $job->property_id,
+                    'status_label' => $job->status->label(),
+                    'created_at' => JobPresenter::iso($job->created_at),
+                    'appliance_ids' => $job->appliances->pluck('id')->values(),
+                    'appliances' => $job->appliances->map(fn (Appliance $a) => $a->label())->implode(', '),
+                ])->values(),
         ];
     }
 
@@ -430,6 +553,7 @@ class JobController extends Controller
             'applianceTypes' => ApplianceType::options(),
             'manufacturers' => CustomerController::manufacturers(),
             'assignableUsers' => $this->assignableUsers(),
+            'visitTypes' => VisitType::options(),
         ];
     }
 

@@ -3,6 +3,7 @@ import {
     Ban,
     CalendarPlus,
     CheckCircle2,
+    FilePen,
     CreditCard,
     Pencil,
     Receipt,
@@ -41,6 +42,7 @@ import {
     decide,
     destroy as destroyEstimate,
     edit as editEstimate,
+    revise as reviseRoute,
     show as showEstimate,
 } from '@/routes/estimates';
 import {
@@ -54,6 +56,7 @@ import type { Option } from '@/types';
 
 type Can = {
     update: boolean;
+    revise?: boolean;
     delete?: boolean;
     convert?: boolean;
     recordPayment?: boolean;
@@ -106,6 +109,12 @@ export default function BillingShow({
             confirm(t('estimates.confirm_convert'))
         ) {
             router.post(convert(doc.id).url, {}, options);
+        }
+    };
+
+    const revise = () => {
+        if (confirm(t('estimates.confirm_revise'))) {
+            router.post(reviseRoute(doc.id).url, {}, options);
         }
     };
 
@@ -435,11 +444,87 @@ export default function BillingShow({
                             {doc.online_approval.ip &&
                                 ` · ${t('estimates.online.ip', { ip: doc.online_approval.ip })}`}
                         </p>
-                        {doc.status !== 'invoiced' && (
-                            <p className="text-xs text-muted-foreground">
-                                {t('estimates.locked_signed')}
-                            </p>
+                        {doc.status !== 'invoiced' &&
+                            doc.status !== 'revised' && (
+                                <p className="text-xs text-muted-foreground">
+                                    {t('estimates.locked_signed')}
+                                </p>
+                            )}
+                        {can.revise && (
+                            <Button
+                                variant="outline"
+                                className="h-11 w-full bg-background sm:w-auto"
+                                onClick={revise}
+                            >
+                                <FilePen /> {t('estimates.revise')}
+                            </Button>
                         )}
+                    </section>
+                )}
+                {doc.revised_from && !delivery?.sent_at && (
+                    <p className="rounded-lg border border-amber-500/40 bg-amber-50 p-3 text-sm dark:bg-amber-950">
+                        {t('estimates.send_revision', {
+                            number: doc.revised_from,
+                        })}
+                    </p>
+                )}
+                {(doc.versions ?? []).length > 1 && (
+                    <section className="space-y-2">
+                        <h2 className="text-base font-medium">
+                            {t('estimates.versions')}
+                        </h2>
+                        <ul className="divide-y rounded-lg border text-sm">
+                            {(doc.versions ?? []).map((v) => (
+                                <li key={v.id}>
+                                    <Link
+                                        href={showEstimate(v.id)}
+                                        className={
+                                            v.id === doc.id
+                                                ? 'flex items-center gap-2 bg-muted/50 p-3'
+                                                : 'flex items-center gap-2 p-3 hover:bg-muted/50'
+                                        }
+                                    >
+                                        <span className="font-medium">
+                                            {v.number}
+                                        </span>
+                                        <DocumentStatusBadge
+                                            status={v.status}
+                                            label={v.status_label}
+                                        />
+                                        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                                            {[
+                                                v.signer_name && v.approved_at
+                                                    ? t(
+                                                          'estimates.online.signed_online',
+                                                          {
+                                                              name: v.signer_name,
+                                                              date: time.dateTime(
+                                                                  v.approved_at,
+                                                              ),
+                                                          },
+                                                      )
+                                                    : null,
+                                                v.revised_at
+                                                    ? t(
+                                                          'estimates.revised_on',
+                                                          {
+                                                              date: time.date(
+                                                                  v.revised_at,
+                                                              ),
+                                                          },
+                                                      )
+                                                    : null,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                        </span>
+                                        <span className="tabular-nums">
+                                            {money(v.total)}
+                                        </span>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
                     </section>
                 )}
                 {doc.status === 'declined' && doc.decline_reason && (

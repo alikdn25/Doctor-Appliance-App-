@@ -3,6 +3,7 @@
 namespace App\Support\Billing;
 
 use App\Actions\Billing\SendDocument;
+use App\Enums\EstimateStatus;
 use App\Enums\InvoiceStatus;
 use App\Models\Estimate;
 use App\Models\Invoice;
@@ -120,6 +121,24 @@ class BillingPresenter
                 'ip' => $document->approved_ip,
             ] : null,
             'decline_reason' => $document->decline_reason,
+            'revision' => $document->revision,
+            'revised_at' => JobPresenter::iso($document->revised_at),
+            'revised_from' => $document->revised_from_id
+                ? Estimate::query()->withTrashed()->whereKey($document->revised_from_id)->value('number')
+                : null,
+            'versions' => $document->revision > 1 || $document->revised_at !== null
+                ? $document->versions()->map(fn (Estimate $v) => [
+                    'id' => $v->id,
+                    'number' => $v->number,
+                    'revision' => $v->revision,
+                    'status' => $v->status->value,
+                    'status_label' => $v->status->label(),
+                    'signer_name' => $v->signer_name,
+                    'approved_at' => JobPresenter::iso($v->approved_at),
+                    'revised_at' => JobPresenter::iso($v->revised_at),
+                    'total' => $v->total,
+                ])->values()->all()
+                : [],
         ];
     }
 
@@ -204,7 +223,7 @@ class BillingPresenter
             'pdf_url' => route($invoice ? 'invoices.pdf' : 'estimates.pdf', $document),
             'send_url' => route($invoice ? 'invoices.send' : 'estimates.send', $document),
             'public_url' => $document->public_token ? route('documents.public', $document->public_token) : null,
-            'can_send' => ! ($invoice && $document->isVoid()),
+            'can_send' => $invoice ? ! $document->isVoid() : $document->status !== EstimateStatus::Revised,
             'sent_at' => JobPresenter::iso($document->sent_at),
             'sent_to' => $document->sent_to,
             'viewed_at' => JobPresenter::iso($document->viewed_at),
