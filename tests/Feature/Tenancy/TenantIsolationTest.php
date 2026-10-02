@@ -1,6 +1,9 @@
 <?php
 
+use App\Actions\Billing\RecordPayment;
+use App\Actions\Billing\SaveBillingDocument;
 use App\Actions\Members\SyncMemberBrands;
+use App\Enums\PaymentMethod;
 use App\Enums\UserRole;
 use App\Models\Appliance;
 use App\Models\AuditLog;
@@ -12,6 +15,10 @@ use App\Models\Concerns\BelongsToCompany;
 use App\Models\Customer;
 use App\Models\CustomerEmail;
 use App\Models\CustomerPhone;
+use App\Models\Estimate;
+use App\Models\EstimateItem;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\JobAppliance;
 use App\Models\JobChecklistItem;
 use App\Models\JobPhoto;
@@ -19,6 +26,7 @@ use App\Models\JobStatusChange;
 use App\Models\JobVisit;
 use App\Models\JobVisitAssignee;
 use App\Models\Membership;
+use App\Models\Payment;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
@@ -75,6 +83,23 @@ beforeEach(function () {
             'created_at' => now(), 'updated_at' => now(),
         ]);
     }
+    foreach ([[$this->companyA, $this->jobA, $this->ownerA, $this->taxA], [$this->companyB, $this->jobB, $this->ownerB, $this->taxB]] as [$company, $job, $owner, $tax]) {
+        inCompany($company, function () use ($job, $owner, $tax) {
+            $document = [
+                'issued_on' => now()->toDateString(),
+                'tax_rate_ids' => [$tax->id],
+                'items' => [['description' => 'Secret repair', 'quantity' => '1', 'unit_price' => 20000, 'taxable' => true]],
+            ];
+            $save = app(SaveBillingDocument::class);
+            $save->createEstimate($job, $document, $owner);
+            $invoice = $save->createInvoice($job, $document, $owner);
+            app(RecordPayment::class)->manual($invoice, 5000, PaymentMethod::Cash, null, null, now(), $owner);
+        });
+    }
+    $this->estimateB = Estimate::withoutCompanyScope()->where('company_id', $this->companyB->id)->sole();
+    $this->invoiceB = Invoice::withoutCompanyScope()->where('company_id', $this->companyB->id)->sole();
+    $this->paymentB = Payment::withoutCompanyScope()->where('company_id', $this->companyB->id)->sole();
+
     $this->photoB = JobPhoto::withoutCompanyScope()->where('service_job_id', $this->jobB->id)->sole();
     $this->itemB = JobChecklistItem::withoutCompanyScope()->where('service_job_id', $this->jobB->id)->sole();
 });
@@ -101,6 +126,11 @@ dataset('tenant models', [
     'job photos' => [JobPhoto::class],
     'job checklist items' => [JobChecklistItem::class],
     'checklist templates' => [ChecklistTemplate::class],
+    'estimates' => [Estimate::class],
+    'estimate items' => [EstimateItem::class],
+    'invoices' => [Invoice::class],
+    'invoice items' => [InvoiceItem::class],
+    'payments' => [Payment::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -117,7 +147,8 @@ test('every tenant-owned model is covered by isolation tests', function () {
 
     expect($tenantModels)->toBe(collect([
         Appliance::class, Brand::class, BrandAddress::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class,
-        CustomerPhone::class, JobAppliance::class, JobChecklistItem::class, JobPhoto::class, JobStatusChange::class,
+        CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceItem::class, Payment::class,
+        JobAppliance::class, JobChecklistItem::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
         Membership::class, Property::class, ServiceJob::class, TaxRate::class,
     ])->sort()->values()->all());
@@ -464,8 +495,28 @@ test('another company\'s photos, checklist and signature cannot be seen or chang
         ->and(ServiceJob::withoutCompanyScope()->find($this->jobB->id)->signature_path)->toBeNull();
 });
 
+test('another company\'s rating plate photo cannot be opened', function () {
+    Storage::fake('local');
+    Storage::disk('local')->put('companies/b/plate.jpg', 'secret');
+    Appliance::withoutCompanyScope()->whereKey($this->applianceB->id)->update(['rating_plate_path' => 'companies/b/plate.jpg']);
+
+    // Owner and technician of company A: the appliance does not exist for them.
+    $this->actingAs($this->ownerA)->get(route('appliances.rating-plate', $this->applianceB))->assertNotFound();
+    $this->actingAs($this->techA)->get(route('appliances.rating-plate', $this->applianceB))->assertNotFound();
+
+    // A member of both companies, working in company A, cannot read it either.
+    $both = memberOf($this->companyA, UserRole::Owner);
+    inCompany($this->companyB, fn () => Membership::factory()->create(['company_id' => $this->companyB->id, 'user_id' => $both->id, 'role' => UserRole::Owner]));
+    $both->forceFill(['current_company_id' => $this->companyA->id])->save();
+    $this->actingAs($both)->get(route('appliances.rating-plate', $this->applianceB))->assertNotFound();
+
+    // The file is not on the public disk, so there is no direct URL to it.
+    $this->actingAs($this->ownerB)->get(route('appliances.rating-plate', $this->applianceB))->assertOk();
+    expect(Storage::disk('public')->exists('companies/b/plate.jpg'))->toBeFalse();
+});
+
 test('a photo uuid used by another company does not collide', function () {
-    Storage::fake('public');
+    Storage::fake('local');
 
     $this->actingAs($this->ownerA)
         ->post(route('jobs.photos.store', $this->jobA), [
@@ -480,4 +531,80 @@ test('the checklist settings only show the current company\'s checklists', funct
     $this->actingAs($this->ownerA)
         ->get(route('company.checklists.edit'))
         ->assertInertia(fn (Assert $page) => $page->where('templates.repair', ["Item {$this->companyA->id}"]));
+});
+
+test('another company\'s estimates cannot be seen or changed', function () {
+    $this->actingAs($this->ownerA);
+    $document = ['issued_on' => now()->toDateString(), 'items' => [['description' => 'X', 'quantity' => 1, 'unit_price' => '1.00']]];
+
+    $this->get(route('estimates.show', $this->estimateB))->assertNotFound();
+    $this->get(route('estimates.edit', $this->estimateB))->assertNotFound();
+    $this->put(route('estimates.update', $this->estimateB), $document)->assertNotFound();
+    $this->put(route('estimates.decide', $this->estimateB), ['approved' => true])->assertNotFound();
+    $this->post(route('estimates.convert', $this->estimateB))->assertNotFound();
+    $this->delete(route('estimates.destroy', $this->estimateB))->assertNotFound();
+    $this->get(route('estimates.create', $this->jobB))->assertNotFound();
+    $this->post(route('estimates.store', $this->jobB), $document)->assertNotFound();
+
+    $estimate = Estimate::withoutCompanyScope()->find($this->estimateB->id);
+    expect($estimate->status->value)->toBe('draft')
+        ->and($estimate->total)->toBe($this->estimateB->total)
+        ->and($estimate->trashed())->toBeFalse()
+        ->and(Estimate::withoutCompanyScope()->where('service_job_id', $this->jobB->id)->count())->toBe(1);
+});
+
+test('another company\'s invoices and payments cannot be seen or changed', function () {
+    $this->actingAs($this->ownerA);
+    $document = ['issued_on' => now()->toDateString(), 'items' => [['description' => 'X', 'quantity' => 1, 'unit_price' => '1.00']]];
+
+    $this->get(route('invoices.show', $this->invoiceB))->assertNotFound();
+    $this->get(route('invoices.edit', $this->invoiceB))->assertNotFound();
+    $this->put(route('invoices.update', $this->invoiceB), $document)->assertNotFound();
+    $this->post(route('invoices.void', $this->invoiceB))->assertNotFound();
+    $this->post(route('payments.store', $this->invoiceB), ['amount' => '10.00', 'method' => 'cash'])->assertNotFound();
+    $this->post(route('payments.void', $this->paymentB))->assertNotFound();
+    $this->get(route('invoices.create', $this->jobB))->assertNotFound();
+    $this->post(route('invoices.store', $this->jobB), $document)->assertNotFound();
+
+    $this->actingAs($this->techA)->get(route('invoices.show', $this->invoiceB))->assertNotFound();
+
+    $invoice = Invoice::withoutCompanyScope()->find($this->invoiceB->id);
+    expect($invoice->status->value)->toBe('partially_paid')
+        ->and($invoice->amount_paid)->toBe(5000)
+        ->and(Payment::withoutCompanyScope()->find($this->paymentB->id)->voided_at)->toBeNull()
+        ->and(Invoice::withoutCompanyScope()->where('service_job_id', $this->jobB->id)->count())->toBe(1);
+});
+
+test('lists of invoices and estimates only show the current company\'s', function () {
+    $this->actingAs($this->ownerA);
+
+    $this->get(route('invoices.index', ['status' => 'all']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('invoices.data', 1)
+            ->where('invoices.data.0.job_id', $this->jobA->id)
+            ->where('outstandingTotal', Invoice::withoutCompanyScope()->where('company_id', $this->companyA->id)->sole()->balance));
+
+    $this->get(route('invoices.index', ['status' => 'all', 'search' => 'Bella']))
+        ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 0));
+
+    $this->get(route('customers.show', $this->customerA))
+        ->assertInertia(fn (Assert $page) => $page->has('estimates', 1)->has('invoices', 1));
+
+    $this->get(route('jobs.show', $this->jobA))
+        ->assertInertia(fn (Assert $page) => $page->has('job.estimates', 1)->has('job.invoices', 1));
+});
+
+test('another company\'s tax rate cannot be put on an estimate', function () {
+    $this->actingAs($this->ownerA)
+        ->post(route('estimates.store', $this->jobA), [
+            'issued_on' => now()->toDateString(),
+            'tax_rate_ids' => [$this->taxB->id],
+            'items' => [['description' => 'X', 'quantity' => 1, 'unit_price' => '10.00']],
+        ])
+        ->assertSessionHasErrors('tax_rate_ids.0');
+});
+
+test('document numbers are counted per company', function () {
+    expect(Invoice::withoutCompanyScope()->pluck('number')->all())->toBe(['INV-1', 'INV-1'])
+        ->and(Company::find($this->companyA->id)->invoice_next_number)->toBe(2);
 });

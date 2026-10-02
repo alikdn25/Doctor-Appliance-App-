@@ -2,11 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Actions\Billing\RecordPayment;
+use App\Actions\Billing\SaveBillingDocument;
 use App\Actions\Customers\SaveAppliance;
 use App\Actions\Customers\SaveCustomer;
 use App\Actions\Jobs\SaveJob;
 use App\Actions\Jobs\VisitWorkflow;
 use App\Enums\JobStatus;
+use App\Enums\PaymentMethod;
 use App\Enums\UserRole;
 use App\Models\Brand;
 use App\Models\ChecklistTemplate;
@@ -60,7 +63,7 @@ class DemoSeeder extends Seeder
 
             ChecklistTemplate::createDefaults();
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true, 'sort_order' => 1]);
-            TaxRate::create(['name' => 'PST', 'rate' => 7, 'sort_order' => 2]);
+            TaxRate::create(['name' => 'PST', 'rate' => 7, 'is_default' => true, 'sort_order' => 2]);
 
             $this->jobs($this->customers(), $doctor, $owner, $tech);
         });
@@ -197,6 +200,28 @@ class DemoSeeder extends Seeder
         $workflow->start($first, $tech);
         $workflow->finish($first, $tech, JobStatus::WaitingForParts, 'Drain pump ordered.');
         $parts->update(['tech_notes' => 'Drain pump seized. Ordered replacement pump.']);
+
+        // Diagnosis paid on the first visit, the repair quoted for when the part arrives.
+        $billing = app(SaveBillingDocument::class);
+        $taxIds = TaxRate::query()->where('is_default', true)->pluck('id')->all();
+        $diagnosis = $billing->createInvoice($parts, [
+            'issued_on' => $today->subDays(2)->toDateString(),
+            'due_on' => $today->subDays(2)->toDateString(),
+            'tax_rate_ids' => $taxIds,
+            'items' => [['description' => 'Diagnostic service call', 'quantity' => '1', 'unit_price' => 9500, 'taxable' => true]],
+        ], $tech);
+        app(RecordPayment::class)->manual($diagnosis, $diagnosis->total, PaymentMethod::CardTerminal, 'TXN-104233', null, now()->subDays(2), $tech);
+        $billing->createEstimate($parts, [
+            'issued_on' => $today->subDays(2)->toDateString(),
+            'valid_until' => $today->addDays(28)->toDateString(),
+            'tax_rate_ids' => $taxIds,
+            'notes' => 'Diagnostic fee credited when the repair is done.',
+            'items' => [
+                ['description' => 'Drain pump (OEM)', 'quantity' => '1', 'unit_price' => 18950, 'taxable' => true],
+                ['description' => 'Labour: replace drain pump', 'quantity' => '1', 'unit_price' => 14000, 'taxable' => true],
+                ['description' => 'Diagnostic fee credit', 'quantity' => '1', 'unit_price' => -9500, 'taxable' => true],
+            ],
+        ], $tech);
 
         $job($robert, ['lead_source' => 'homestars', 'job_type' => 'installation', 'description' => 'Install new range.'], null);
 

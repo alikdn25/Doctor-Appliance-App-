@@ -10,13 +10,13 @@ use App\Models\JobChecklistItem;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
+use App\Support\PrivateMedia;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -61,7 +61,7 @@ class JobFieldController extends Controller
         $path = $file->storeAs(
             "companies/{$job->company_id}/jobs/{$job->id}/photos",
             "{$validated['client_uuid']}.{$extension}",
-            config('fieldservice.media_disk'),
+            PrivateMedia::diskName(),
         );
 
         $photo = new JobPhoto([
@@ -90,7 +90,7 @@ class JobFieldController extends Controller
         Gate::authorize('view', $job);
         abort_unless($photo->service_job_id === $job->id, 404);
 
-        return $this->file($photo->path);
+        return PrivateMedia::response($photo->path);
     }
 
     /**
@@ -152,13 +152,12 @@ class JobFieldController extends Controller
             'signer_name' => ['required', 'string', 'max:100'],
         ]);
 
-        $disk = Storage::disk(config('fieldservice.media_disk'));
         $old = $job->signature_path;
 
         $path = $request->file('signature')->storeAs(
             "companies/{$job->company_id}/jobs/{$job->id}",
             'signature-'.Str::uuid().'.png',
-            config('fieldservice.media_disk'),
+            PrivateMedia::diskName(),
         );
 
         DB::transaction(fn () => $job->forceFill([
@@ -169,7 +168,7 @@ class JobFieldController extends Controller
         ])->save());
 
         if ($old !== null) {
-            $disk->delete($old);
+            PrivateMedia::disk()->delete($old);
         }
 
         return response()->json(['signed_at' => $job->signed_at?->toIso8601String()], 201);
@@ -180,14 +179,6 @@ class JobFieldController extends Controller
         Gate::authorize('view', $job);
         abort_if($job->signature_path === null, 404);
 
-        return $this->file($job->signature_path);
-    }
-
-    private function file(string $path): StreamedResponse
-    {
-        $disk = Storage::disk(config('fieldservice.media_disk'));
-        abort_unless($disk->exists($path), 404);
-
-        return $disk->response($path, null, ['Cache-Control' => 'private, max-age=86400']);
+        return PrivateMedia::response($job->signature_path);
     }
 }

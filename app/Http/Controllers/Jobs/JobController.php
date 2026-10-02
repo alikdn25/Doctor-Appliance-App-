@@ -15,6 +15,8 @@ use App\Http\Requests\Jobs\JobRequest;
 use App\Models\Appliance;
 use App\Models\Brand;
 use App\Models\Customer;
+use App\Models\Estimate;
+use App\Models\Invoice;
 use App\Models\JobChecklistItem;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
@@ -23,6 +25,7 @@ use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Support\Billing\BillingPresenter;
 use App\Support\Jobs\JobPresenter;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -193,7 +196,7 @@ class JobController extends Controller
         $timezone = currentCompany()->timezone;
         $job->load([
             'brand', 'customer.phones', 'property', 'appliances', 'visits.assignees', 'statusChanges.user',
-            'photos.user', 'checklistItems.doneBy', 'signer',
+            'photos.user', 'checklistItems.doneBy', 'signer', 'estimates', 'invoices',
         ]);
         $canUpdate = Gate::allows('update', $job);
         $property = $job->property;
@@ -246,6 +249,8 @@ class JobController extends Controller
                     'done_by' => $item->doneBy?->name,
                     'done_at' => JobPresenter::iso($item->done_at),
                 ])->values(),
+                'estimates' => $job->estimates->map(fn (Estimate $e) => BillingPresenter::row($e))->values(),
+                'invoices' => $job->invoices->map(fn (Invoice $i) => BillingPresenter::row($i))->values(),
                 'signature' => $job->signature_path ? [
                     'url' => route('jobs.signature.show', $job).'?v='.$job->signed_at?->timestamp,
                     'name' => $job->signature_name,
@@ -311,6 +316,13 @@ class JobController extends Controller
     public function destroy(ServiceJob $job, AuditLogger $audit): RedirectResponse
     {
         Gate::authorize('delete', $job);
+
+        // Invoices are financial records; a job with invoices stays (void them, cancel the job instead).
+        if ($job->invoices()->exists()) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => __('jobs.has_invoices')]);
+
+            return to_route('jobs.show', $job);
+        }
 
         $job->delete();
         $audit->record('job.deleted', $job, ['number' => $job->number]);

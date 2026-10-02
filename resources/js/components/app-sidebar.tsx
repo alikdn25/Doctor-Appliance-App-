@@ -8,6 +8,7 @@ import {
     Contact,
     LayoutGrid,
     Percent,
+    Receipt,
     Tags,
     Users,
     Wrench,
@@ -31,6 +32,7 @@ import { index as brands } from '@/routes/brands';
 import { index as customers } from '@/routes/customers';
 import { edit as checklists } from '@/routes/company/checklists';
 import { edit as companySettings } from '@/routes/company/settings';
+import { index as invoices } from '@/routes/invoices';
 import { index as jobs, mine as myJobs } from '@/routes/jobs';
 import { index as taxes } from '@/routes/taxes';
 import { index as team } from '@/routes/team';
@@ -57,6 +59,11 @@ export function AppSidebar() {
                   title: 'nav.jobs',
                   href: jobs(),
                   icon: ClipboardList,
+              },
+              can.viewInvoices && {
+                  title: 'nav.invoices',
+                  href: invoices(),
+                  icon: Receipt,
               },
               can.viewCustomers && {
                   title: 'nav.customers',

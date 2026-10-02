@@ -12,6 +12,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     Storage::fake('public');
+    Storage::fake('local');
     $this->company = Company::factory()->create();
     $this->actingAs(memberOf($this->company, UserRole::Owner));
     $this->customer = Customer::factory()->for($this->company)->create();
@@ -49,7 +50,7 @@ test('an appliance can be added to a property with a rating plate photo', functi
         ->and($appliance->isUnderWarranty())->toBeTrue()
         ->and($appliance->rating_plate_path)->toStartWith("companies/{$this->company->id}/appliances/{$appliance->id}/");
 
-    Storage::disk('public')->assertExists($appliance->rating_plate_path);
+    Storage::disk('local')->assertExists($appliance->rating_plate_path);
 });
 
 test('the appliance card shows details, property and customer', function () {
@@ -86,7 +87,7 @@ test('an appliance can be updated and its photo replaced or removed', function (
     $appliance->refresh();
     expect($appliance->type)->toBe(ApplianceType::WasherDryerCombo)
         ->and($appliance->rating_plate_path)->not->toBe($oldPath);
-    Storage::disk('public')->assertMissing($oldPath);
+    Storage::disk('local')->assertMissing($oldPath);
 
     $this->put(route('appliances.update', $appliance), appliancePayload(['remove_rating_plate' => true]));
 

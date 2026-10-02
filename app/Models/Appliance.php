@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * @property int $id
@@ -92,12 +91,15 @@ class Appliance extends Model
     }
 
     /**
+     * The rating plate photo is private: served by an authorized route. The file name in the query
+     * changes with every new photo, so browsers don't keep showing the old one.
+     *
      * @return Attribute<string|null, never>
      */
     protected function ratingPlateUrl(): Attribute
     {
         return Attribute::get(fn () => $this->rating_plate_path
-            ? Storage::disk(config('fieldservice.media_disk'))->url($this->rating_plate_path)
+            ? route('appliances.rating-plate', [$this->id, 'v' => pathinfo($this->rating_plate_path, PATHINFO_FILENAME)])
             : null);
     }
 

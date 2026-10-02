@@ -1,0 +1,112 @@
+<?php
+
+namespace App\Actions\Billing;
+
+use App\Enums\PaymentMethod;
+use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\User;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * Records a payment towards an invoice: by hand (cash, cheque, e-Transfer, own terminal, other)
+ * or from a payment provider (webhook). Must run in a tenant context.
+ */
+class RecordPayment
+{
+    public function __construct(private readonly SyncInvoice $syncInvoice) {}
+
+    /**
+     * A payment entered by a person. Partial payments are fine; more than the balance is not.
+     */
+    public function manual(
+        Invoice $invoice,
+        int $amount,
+        PaymentMethod $method,
+        ?string $reference,
+        ?string $note,
+        CarbonInterface $receivedAt,
+        User $user,
+    ): Payment {
+        if (! in_array($method, PaymentMethod::manual(), true)) {
+            throw ValidationException::withMessages(['method' => __('payments.errors.invalid_method')]);
+        }
+
+        return DB::transaction(function () use ($invoice, $amount, $method, $reference, $note, $receivedAt, $user) {
+            $invoice = $this->lock($invoice);
+
+            if ($amount > $invoice->balance) {
+                throw ValidationException::withMessages(['amount' => __('payments.errors.more_than_balance')]);
+            }
+
+            return $this->create($invoice, [
+                'amount' => $amount,
+                'method' => $method,
+                'reference' => $reference,
+                'note' => $note,
+                'received_at' => $receivedAt,
+            ], $user);
+        });
+    }
+
+    /**
+     * A payment reported by a payment provider. Idempotent on the provider's payment ID,
+     * so a repeated webhook does not record it twice.
+     */
+    public function fromProvider(Invoice $invoice, string $provider, string $providerPaymentId, int $amount, CarbonInterface $receivedAt, ?string $reference = null): Payment
+    {
+        return DB::transaction(function () use ($invoice, $provider, $providerPaymentId, $amount, $receivedAt, $reference) {
+            $invoice = $this->lock($invoice);
+
+            $existing = Payment::query()
+                ->where('provider', $provider)
+                ->where('provider_payment_id', $providerPaymentId)
+                ->first();
+
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            return $this->create($invoice, [
+                'amount' => $amount,
+                'method' => PaymentMethod::Online,
+                'reference' => $reference,
+                'received_at' => $receivedAt,
+                'provider' => $provider,
+                'provider_payment_id' => $providerPaymentId,
+            ], null);
+        });
+    }
+
+    private function lock(Invoice $invoice): Invoice
+    {
+        $invoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+
+        if ($invoice->isVoid()) {
+            throw ValidationException::withMessages(['amount' => __('invoices.errors.void')]);
+        }
+
+        return $invoice;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function create(Invoice $invoice, array $attributes, ?User $user): Payment
+    {
+        if ($attributes['amount'] <= 0) {
+            throw ValidationException::withMessages(['amount' => __('payments.errors.amount_required')]);
+        }
+
+        $payment = new Payment($attributes);
+        $payment->invoice_id = $invoice->id;
+        $payment->user_id = $user?->id;
+        $payment->save();
+
+        $this->syncInvoice->handle($invoice, $user);
+
+        return $payment;
+    }
+}

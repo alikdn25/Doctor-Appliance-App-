@@ -15,7 +15,7 @@ return [
     'fields' => [
         'name' => 'Name',
         'rate' => 'Rate, %',
-        'is_default' => 'Apply by default',
+        'is_default' => 'Apply by default on new estimates and invoices',
         'is_active' => 'Active',
     ],
 ];

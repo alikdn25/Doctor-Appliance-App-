@@ -8,6 +8,7 @@ return [
     'customers' => 'Customers',
     'calendar' => 'Calendar',
     'jobs' => 'Jobs',
+    'invoices' => 'Invoices',
     'my_jobs' => 'My jobs',
     'brands' => 'Brands',
     'team' => 'Team',

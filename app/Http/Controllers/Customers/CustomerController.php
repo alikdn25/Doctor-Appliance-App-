@@ -14,9 +14,12 @@ use App\Models\Appliance;
 use App\Models\Customer;
 use App\Models\CustomerEmail;
 use App\Models\CustomerPhone;
+use App\Models\Estimate;
+use App\Models\Invoice;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Services\AuditLogger;
+use App\Support\Billing\BillingPresenter;
 use App\Support\Jobs\JobPresenter;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
@@ -130,6 +133,23 @@ class CustomerController extends Controller
                 ])->values(),
             ],
             'jobs' => $jobs->map(fn (ServiceJob $job) => JobPresenter::row($job))->values(),
+            // Estimates and invoices of the jobs the user can see.
+            'estimates' => Estimate::query()
+                ->where('customer_id', $customer->id)
+                ->whereIn('service_job_id', ServiceJob::query()->visibleTo($user)->select('id'))
+                ->orderByDesc('id')
+                ->limit(50)
+                ->get()
+                ->map(fn (Estimate $e) => BillingPresenter::row($e))
+                ->values(),
+            'invoices' => Invoice::query()
+                ->where('customer_id', $customer->id)
+                ->whereIn('service_job_id', ServiceJob::query()->visibleTo($user)->select('id'))
+                ->orderByDesc('id')
+                ->limit(50)
+                ->get()
+                ->map(fn (Invoice $i) => BillingPresenter::row($i))
+                ->values(),
             'canUpdate' => Gate::allows('update', $customer),
             'canDelete' => Gate::allows('delete', $customer),
             'canCreateJob' => Gate::allows('create', ServiceJob::class),

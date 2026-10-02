@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
+use App\Http\Controllers\Billing\EstimateController;
+use App\Http\Controllers\Billing\InvoiceController;
+use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Company\BrandController;
 use App\Http\Controllers\Company\ChecklistController;
 use App\Http\Controllers\Company\CompanySettingsController;
@@ -42,6 +45,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('properties/{property}', [PropertyController::class, 'destroy'])->name('properties.destroy');
         Route::post('properties/{property}/appliances', [ApplianceController::class, 'store'])->name('appliances.store');
         Route::get('appliances/{appliance}', [ApplianceController::class, 'show'])->name('appliances.show');
+        Route::get('appliances/{appliance}/rating-plate', [ApplianceController::class, 'ratingPlate'])->withTrashed()->name('appliances.rating-plate');
         Route::put('appliances/{appliance}', [ApplianceController::class, 'update'])->name('appliances.update');
         Route::delete('appliances/{appliance}', [ApplianceController::class, 'destroy'])->name('appliances.destroy');
 
@@ -67,6 +71,26 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('visits/{visit}/on-my-way', [VisitActionController::class, 'onMyWay'])->name('visits.on-my-way');
         Route::post('visits/{visit}/start', [VisitActionController::class, 'start'])->name('visits.start');
         Route::post('visits/{visit}/finish', [VisitActionController::class, 'finish'])->name('visits.finish');
+
+        // Estimates, invoices and payments (created from a job).
+        Route::get('jobs/{job}/estimates/create', [EstimateController::class, 'create'])->name('estimates.create');
+        Route::post('jobs/{job}/estimates', [EstimateController::class, 'store'])->name('estimates.store');
+        Route::get('estimates/{estimate}', [EstimateController::class, 'show'])->name('estimates.show');
+        Route::get('estimates/{estimate}/edit', [EstimateController::class, 'edit'])->name('estimates.edit');
+        Route::put('estimates/{estimate}', [EstimateController::class, 'update'])->name('estimates.update');
+        Route::delete('estimates/{estimate}', [EstimateController::class, 'destroy'])->name('estimates.destroy');
+        Route::put('estimates/{estimate}/decision', [EstimateController::class, 'decide'])->name('estimates.decide');
+        Route::post('estimates/{estimate}/invoice', [EstimateController::class, 'convert'])->name('estimates.convert');
+
+        Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('jobs/{job}/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
+        Route::post('jobs/{job}/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
+        Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
+        Route::get('invoices/{invoice}/edit', [InvoiceController::class, 'edit'])->name('invoices.edit');
+        Route::put('invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
+        Route::post('invoices/{invoice}/void', [InvoiceController::class, 'void'])->name('invoices.void');
+        Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('payments.store');
+        Route::post('payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
 
         Route::prefix('company')->group(function () {
             Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company.settings.edit');

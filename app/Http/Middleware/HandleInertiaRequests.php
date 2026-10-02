@@ -6,6 +6,7 @@ use App\Models\Brand;
 use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\Membership;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
@@ -84,6 +85,7 @@ class HandleInertiaRequests extends Middleware
             'can' => $company === null ? [] : [
                 'viewCustomers' => $user->can('viewAny', Customer::class),
                 'viewJobs' => $user->can('viewAny', ServiceJob::class),
+                'viewInvoices' => $user->can('viewAny', Invoice::class),
                 'viewMyJobs' => $user->can('viewMine', ServiceJob::class),
                 'viewCalendar' => $user->can('dispatch', ServiceJob::class),
                 'manageChecklists' => $user->can('manage', ChecklistTemplate::class),

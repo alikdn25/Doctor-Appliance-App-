@@ -13,6 +13,8 @@ import {
     User,
 } from 'lucide-react';
 import { useState } from 'react';
+import { DocumentList } from '@/components/billing/document-list';
+import type { DocumentRow } from '@/components/billing/types';
 import { ApplianceDialog } from '@/components/customers/appliance-dialog';
 import { PropertyDialog } from '@/components/customers/property-dialog';
 import { JobList } from '@/components/jobs/job-list';
@@ -74,6 +76,8 @@ type Customer = {
 type Props = {
     customer: Customer;
     jobs: JobRow[];
+    estimates: DocumentRow[];
+    invoices: DocumentRow[];
     canCreateJob: boolean;
     canUpdate: boolean;
     canDelete: boolean;
@@ -84,6 +88,8 @@ type Props = {
 export default function CustomerShow({
     customer,
     jobs,
+    estimates,
+    invoices,
     canCreateJob,
     canUpdate,
     canDelete,
@@ -121,12 +127,7 @@ export default function CustomerShow({
         }
     };
 
-    const placeholders = [
-        'estimates',
-        'invoices',
-        'payments',
-        'messages',
-    ] as const;
+    const placeholders = ['messages'] as const;
 
     return (
         <>
@@ -476,6 +477,19 @@ export default function CustomerShow({
                         empty={t('customers.no_jobs')}
                         showCustomer={false}
                     />
+                </section>
+
+                <section className="space-y-2">
+                    <h2 className="text-base font-medium">
+                        {t('billing.section')}
+                    </h2>
+                    {estimates.length + invoices.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            {t('billing.empty')}
+                        </p>
+                    ) : (
+                        <DocumentList documents={[...invoices, ...estimates]} />
+                    )}
                 </section>
 
                 <section className="grid gap-2 sm:grid-cols-2">

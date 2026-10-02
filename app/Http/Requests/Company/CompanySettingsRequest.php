@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Company;
 
 use App\Models\Company;
+use App\Payments\PaymentProviders;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,6 +30,7 @@ class CompanySettingsRequest extends FormRequest
             'estimate_next_number' => ['required', 'integer', 'min:1', 'max:999999999'],
             'business_hours' => ['required', 'array:'.implode(',', Company::WEEKDAYS)],
             'travel_buffer_minutes' => ['required', 'integer', 'min:0', 'max:240'],
+            'payment_provider' => ['nullable', Rule::in(array_keys(app(PaymentProviders::class)->all()))],
         ];
 
         foreach (Company::WEEKDAYS as $day) {
@@ -61,6 +63,7 @@ class CompanySettingsRequest extends FormRequest
         $data['timezone_pending'] = false;
         $data['invoice_prefix'] ??= '';
         $data['estimate_prefix'] ??= '';
+        $data['payment_provider'] ??= null;
 
         return $data;
     }

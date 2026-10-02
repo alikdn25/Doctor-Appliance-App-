@@ -159,6 +159,22 @@ class ServiceJob extends Model
     }
 
     /**
+     * @return HasMany<Estimate, $this>
+     */
+    public function estimates(): HasMany
+    {
+        return $this->hasMany(Estimate::class)->orderBy('id');
+    }
+
+    /**
+     * @return HasMany<Invoice, $this>
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class)->orderBy('id');
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function signer(): BelongsTo

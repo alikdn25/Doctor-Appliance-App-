@@ -2,6 +2,7 @@
 
 namespace App\Actions\Jobs;
 
+use App\Actions\Billing\SyncJobBillingStatus;
 use App\Enums\JobStatus;
 use App\Enums\VisitStatus;
 use App\Models\ServiceJob;
@@ -15,7 +16,10 @@ use Illuminate\Validation\ValidationException;
  */
 class SetJobStatus
 {
-    public function __construct(private readonly ChangeJobStatus $changeStatus) {}
+    public function __construct(
+        private readonly ChangeJobStatus $changeStatus,
+        private readonly SyncJobBillingStatus $syncBilling,
+    ) {}
 
     public function handle(ServiceJob $job, JobStatus $to, User $user, ?string $note = null): void
     {
@@ -36,6 +40,7 @@ class SetJobStatus
             }
 
             $this->changeStatus->handle($job, $to, $user, null, $note);
+            $this->syncBilling->handle($job, $user);
         });
     }
 }

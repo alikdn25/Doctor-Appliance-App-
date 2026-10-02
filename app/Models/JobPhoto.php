@@ -4,10 +4,10 @@ namespace App\Models;
 
 use App\Enums\PhotoKind;
 use App\Models\Concerns\BelongsToCompany;
+use App\Support\PrivateMedia;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * A before/after photo taken on a job. Files are served through an authorized route, never by a public URL.
@@ -46,7 +46,7 @@ class JobPhoto extends Model
     protected static function booted(): void
     {
         static::deleted(function (JobPhoto $photo) {
-            Storage::disk(config('fieldservice.media_disk'))->delete($photo->path);
+            PrivateMedia::disk()->delete($photo->path);
         });
     }
 

@@ -30,12 +30,22 @@ export function useCompanyTime() {
             day: 'numeric',
             year: 'numeric',
         });
+        // Plain dates (YYYY-MM-DD) have no time zone: format them as they are.
+        const plainDateFormat = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'UTC',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
 
         return {
             day: (iso: string) => dayFormat.format(new Date(iso)),
             time: (iso: string) => timeFormat.format(new Date(iso)),
             date: (iso: string) => dateFormat.format(new Date(iso)),
             dateTime: (iso: string) => dateTimeFormat.format(new Date(iso)),
+            /** "2026-10-06" → "Oct 6, 2026" */
+            dateOnly: (ymd: string) =>
+                plainDateFormat.format(new Date(`${ymd}T00:00:00Z`)),
             /** "Tue, Oct 6 · 9:00 a.m. – 11:00 a.m." */
             window: (start: string, end: string) =>
                 `${dayFormat.format(new Date(start))} · ${timeFormat.format(new Date(start))} – ${timeFormat.format(new Date(end))}`,
