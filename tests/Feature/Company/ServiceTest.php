@@ -4,6 +4,7 @@ use App\Enums\UserRole;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\Property;
 use App\Models\Service;
 use App\Models\ServiceJob;
@@ -65,6 +66,49 @@ test('category length is validated without changing the existing catalogue', fun
         ['name' => 'Pump', 'category' => str_repeat('x', 81)],
     ]])->assertSessionHasErrors('services.0.category');
     expect(inCompany($this->company, fn () => Service::query()->count()))->toBe($count);
+});
+
+test('brand availability limits choices and rejects restricted items on new documents', function () {
+    $brand = Brand::factory()->create(['company_id' => $this->company->id]);
+    $otherBrand = Brand::factory()->create(['company_id' => $this->company->id]);
+    $restricted = inCompany($this->company, fn () => Service::query()->create([
+        'name' => 'Brand-only repair', 'brand_ids' => [$otherBrand->id],
+    ]));
+    $job = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($this->company)))
+        ->create(['brand_id' => $brand->id]);
+    foreach (['invoices', 'estimates'] as $kind) {
+        $this->get(route($kind.'.create', $job))->assertInertia(fn (Assert $page) => $page
+            ->where('services', fn ($services) => ! collect($services)->contains('id', $restricted->id)));
+        $this->post(route($kind.'.store', $job), documentPayload([
+            'items' => [['description' => 'Brand-only repair', 'quantity' => 1, 'unit_price' => '1.00', 'service_id' => $restricted->id]],
+        ]))->assertSessionHasErrors('items.0.service_id');
+    }
+    inCompany($this->company, fn () => $restricted->update(['brand_ids' => [$brand->id]]));
+    $this->get(route('invoices.create', $job))->assertInertia(fn (Assert $page) => $page
+        ->where('services', fn ($services) => collect($services)->contains('id', $restricted->id)));
+});
+
+test('price book availability can only reference brands in the current company', function () {
+    $foreign = Brand::factory()->create();
+    $this->put(route('company.services.update'), ['services' => [
+        ['name' => 'Pump', 'brand_ids' => [$foreign->id]],
+    ]])->assertSessionHasErrors('services.0.brand_ids.0');
+});
+
+test('existing invoice lines keep their service reference after availability changes', function () {
+    $brand = Brand::factory()->create(['company_id' => $this->company->id]);
+    $otherBrand = Brand::factory()->create(['company_id' => $this->company->id]);
+    $service = inCompany($this->company, fn () => Service::query()->create(['name' => 'Repair']));
+    $job = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($this->company)))
+        ->create(['brand_id' => $brand->id]);
+    $payload = documentPayload([
+        'items' => [['description' => 'Repair', 'quantity' => 1, 'unit_price' => '95.00', 'service_id' => $service->id]],
+    ]);
+    $this->post(route('invoices.store', $job), $payload)->assertSessionHasNoErrors();
+    $invoice = inCompany($this->company, fn () => Invoice::query()->sole());
+    inCompany($this->company, fn () => $service->update(['brand_ids' => [$otherBrand->id]]));
+    $this->put(route('invoices.update', $invoice), $payload)->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => $invoice->items()->sole()->service_id))->toBe($service->id);
 });
 
 test('categories from another company do not appear in this company catalogue', function () {

@@ -44,12 +44,12 @@ test('revenue uses invoice dates, excludes tax and void invoices, and separates 
 test('conversion excludes unsent drafts and old revisions and counts approved or invoiced estimates', function () {
     inCompany($this->company, function () {
         foreach (['approved', 'invoiced', 'declined'] as $status) {
-            Estimate::factory()->create(['service_job_id' => $this->job->id, 'status' => $status, 'issued_on' => '2026-10-10']);
+            Estimate::factory()->create(['currency' => 'CAD', 'service_job_id' => $this->job->id, 'status' => $status, 'issued_on' => '2026-10-10']);
         }
-        Estimate::factory()->create(['service_job_id' => $this->job->id, 'issued_on' => '2026-10-10', 'sent_at' => '2026-10-10 12:00:00']);
-        Estimate::factory()->create(['service_job_id' => $this->job->id, 'issued_on' => '2026-10-10']);
-        Estimate::factory()->create(['service_job_id' => $this->job->id, 'issued_on' => '2026-10-10', 'status' => 'revised', 'revised_at' => now(), 'sent_at' => now()]);
-        Estimate::factory()->create(['service_job_id' => $this->job->id, 'issued_on' => '2026-09-30', 'status' => 'approved']);
+        Estimate::factory()->create(['currency' => 'CAD', 'service_job_id' => $this->job->id, 'issued_on' => '2026-10-10', 'sent_at' => '2026-10-10 12:00:00']);
+        Estimate::factory()->create(['currency' => 'CAD', 'service_job_id' => $this->job->id, 'issued_on' => '2026-10-10']);
+        Estimate::factory()->create(['currency' => 'CAD', 'service_job_id' => $this->job->id, 'issued_on' => '2026-10-10', 'status' => 'revised', 'revised_at' => now(), 'sent_at' => now()]);
+        Estimate::factory()->create(['currency' => 'CAD', 'service_job_id' => $this->job->id, 'issued_on' => '2026-09-30', 'status' => 'approved']);
     });
     $this->get(route('reports.index', ['from' => '2026-10-01', 'to' => '2026-10-31']))
         ->assertInertia(fn (Assert $page) => $page->where('business.conversion', ['estimates' => 4, 'approved' => 2, 'rate' => 50]));
@@ -60,8 +60,8 @@ test('reports stay tenant scoped and technicians cannot access them', function (
     inCompany($other, function () use ($other) {
         $job = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($other)))
             ->create(['brand_id' => Brand::factory()->create(['company_id' => $other->id])->id]);
-        Invoice::factory()->create(['service_job_id' => $job->id, 'issued_on' => '2026-10-10', 'total' => 99999]);
-        Estimate::factory()->create(['service_job_id' => $job->id, 'issued_on' => '2026-10-10', 'status' => 'approved']);
+        Invoice::factory()->create(['currency' => 'CAD', 'service_job_id' => $job->id, 'issued_on' => '2026-10-10', 'total' => 99999]);
+        Estimate::factory()->create(['currency' => 'CAD', 'service_job_id' => $job->id, 'issued_on' => '2026-10-10', 'status' => 'approved']);
     });
     $this->get(route('reports.index', ['from' => '2026-10-01', 'to' => '2026-10-31']))
         ->assertInertia(fn (Assert $page) => $page
@@ -73,10 +73,10 @@ test('reports stay tenant scoped and technicians cannot access them', function (
 test('reports respect office brand restrictions', function () {
     $restricted = memberOf($this->company, UserRole::Admin);
     $allowed = Brand::factory()->create(['company_id' => $this->company->id]);
-    $restricted->brands()->attach($allowed);
+    $restricted->brands()->attach($allowed, ['company_id' => $this->company->id]);
     inCompany($this->company, function () {
-        Invoice::factory()->create(['service_job_id' => $this->job->id, 'issued_on' => '2026-10-10', 'total' => 99999]);
-        Estimate::factory()->create(['service_job_id' => $this->job->id, 'issued_on' => '2026-10-10', 'status' => 'approved']);
+        Invoice::factory()->create(['currency' => 'CAD', 'service_job_id' => $this->job->id, 'issued_on' => '2026-10-10', 'total' => 99999]);
+        Estimate::factory()->create(['currency' => 'CAD', 'service_job_id' => $this->job->id, 'issued_on' => '2026-10-10', 'status' => 'approved']);
         $this->job->forceFill(['closed_at' => '2026-10-10 12:00:00'])->save();
     });
     $this->actingAs($restricted)->get(route('reports.index', ['from' => '2026-10-01', 'to' => '2026-10-31']))

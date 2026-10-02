@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\LineKind;
 use App\Models\Concerns\BelongsToCompany;
 use App\Support\Jobs\ServiceDefaults;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $name
  * @property string|null $description
  * @property string|null $category
+ * @property list<int> $brand_ids Empty means available to every brand in the company
  * @property int|null $unit_price Minor units of the company currency; null = not set yet
  * @property bool $taxable
  * @property bool $is_active
@@ -33,7 +35,7 @@ class Service extends Model
     use BelongsToCompany;
 
     protected $fillable = [
-        'name', 'description', 'category', 'unit_price', 'taxable', 'is_active', 'sort_order',
+        'name', 'description', 'category', 'brand_ids', 'unit_price', 'taxable', 'is_active', 'sort_order',
         'kind', 'part_number', 'supplier', 'unit', 'unit_cost', 'warranty_value', 'warranty_unit',
     ];
 
@@ -42,6 +44,7 @@ class Service extends Model
         'is_active' => true,
         'sort_order' => 0,
         'kind' => 'service',
+        'brand_ids' => '[]',
     ];
 
     /**
@@ -51,6 +54,7 @@ class Service extends Model
     {
         return [
             'unit_price' => 'integer',
+            'brand_ids' => 'array',
             'taxable' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
@@ -58,6 +62,12 @@ class Service extends Model
             'unit_cost' => 'integer',
             'warranty_value' => 'integer',
         ];
+    }
+
+    /** @param Builder<Service> $query */
+    public function scopeAvailableForBrand(Builder $query, int $brandId): void
+    {
+        $query->where(fn ($q) => $q->whereJsonLength('brand_ids', 0)->orWhereJsonContains('brand_ids', $brandId));
     }
 
     /**

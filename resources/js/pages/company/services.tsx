@@ -17,6 +17,7 @@ type Service = {
     name: string;
     description: string | null;
     category: string | null;
+    brand_ids: number[];
     unit_price: number | null;
     taxable: boolean;
     is_active: boolean;
@@ -35,6 +36,7 @@ type Row = {
     name: string;
     description: string;
     category: string;
+    brand_ids: number[];
     unit_price: string;
     taxable: boolean;
     is_active: boolean;
@@ -55,9 +57,11 @@ let rowKey = 0;
 export default function Services({
     services,
     warrantyUnits,
+    brands,
 }: {
     services: Service[];
     warrantyUnits: Option[];
+    brands: { id: number; name: string }[];
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -71,6 +75,7 @@ export default function Services({
             name: s.name,
             description: s.description ?? '',
             category: s.category ?? '',
+            brand_ids: s.brand_ids,
             unit_price:
                 s.unit_price === null ? '' : fromMinor(s.unit_price, currency),
             taxable: s.taxable,
@@ -103,6 +108,7 @@ export default function Services({
                 name: row.name,
                 description: row.description || null,
                 category: row.category.trim() || null,
+                brand_ids: row.brand_ids,
                 unit_price: row.unit_price.replace(/[^\d.]/g, '') || null,
                 taxable: row.taxable,
                 is_active: row.is_active,
@@ -225,6 +231,42 @@ export default function Services({
                             <InputError
                                 message={errors[`services.${i}.category`]}
                             />
+                            {brands.length > 0 && (
+                                <fieldset className="space-y-2 rounded-lg bg-muted/30 p-3">
+                                    <legend className="text-sm font-medium">
+                                        {t('services.brand_availability')}
+                                    </legend>
+                                    <p className="text-xs text-muted-foreground">
+                                        {t('services.all_brands_hint')}
+                                    </p>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setRow(i, { brand_ids: [] })}
+                                    >
+                                        {t('services.all_brands')}
+                                    </Button>
+                                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                        {brands.map((brand) => (
+                                            <label key={brand.id} className="flex min-h-10 items-center gap-2 text-sm">
+                                                <Checkbox
+                                                    checked={row.brand_ids.includes(brand.id)}
+                                                    onCheckedChange={(checked) =>
+                                                        setRow(i, {
+                                                            brand_ids: checked === true
+                                                                ? [...row.brand_ids, brand.id]
+                                                                : row.brand_ids.filter((id) => id !== brand.id),
+                                                        })
+                                                    }
+                                                />
+                                                {brand.name}
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <InputError message={errors[`services.${i}.brand_ids`]} />
+                                </fieldset>
+                            )}
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                 <NativeSelect
                                     aria-label={t('billing.kinds.service')}
@@ -345,6 +387,7 @@ export default function Services({
                                 name: '',
                                 description: '',
                                 category: '',
+                                brand_ids: [],
                                 unit_price: '',
                                 taxable: true,
                                 is_active: true,

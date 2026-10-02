@@ -48,7 +48,10 @@ export function BusinessReport({ data }: { data: BusinessReportData }) {
                     <tbody className="divide-y">
                         {rows.map((row) => (
                             <tr key={row.key}>
-                                <th className="p-3 text-left font-normal" scope="row">
+                                <th
+                                    className="p-3 text-left font-normal"
+                                    scope="row"
+                                >
                                     {row.name}
                                 </th>
                                 <td className="p-3 text-right tabular-nums">
@@ -90,9 +93,13 @@ export function BusinessReport({ data }: { data: BusinessReportData }) {
                     <>
                         <dl className="grid gap-3 sm:grid-cols-2">
                             {data.totals.map((total) => (
-                                <div key={total.currency} className="rounded-2xl border bg-card p-4">
+                                <div
+                                    key={total.currency}
+                                    className="rounded-2xl border bg-card p-4"
+                                >
                                     <dt className="text-sm text-muted-foreground">
-                                        {t('reports.revenue')} · {total.currency}
+                                        {t('reports.revenue')} ·{' '}
+                                        {total.currency}
                                     </dt>
                                     <dd className="text-xl font-semibold tabular-nums">
                                         {money(total.revenue, total.currency)}
@@ -103,8 +110,13 @@ export function BusinessReport({ data }: { data: BusinessReportData }) {
                                     <dd className="text-sm tabular-nums">
                                         {total.average === null
                                             ? '—'
-                                            : money(total.average, total.currency)}
-                                        {' · '}{total.invoices} {t('reports.invoice_count')}
+                                            : money(
+                                                  total.average,
+                                                  total.currency,
+                                              )}
+                                        {' · '}
+                                        {total.invoices}{' '}
+                                        {t('reports.invoice_count')}
                                     </dd>
                                 </div>
                             ))}
@@ -124,7 +136,9 @@ export function BusinessReport({ data }: { data: BusinessReportData }) {
                     {t('reports.conversion_hint')}
                 </p>
                 <p className="text-lg font-semibold tabular-nums">
-                    {data.conversion.rate === null ? '—' : `${data.conversion.rate}%`}
+                    {data.conversion.rate === null
+                        ? '—'
+                        : `${data.conversion.rate}%`}
                 </p>
                 <p className="text-sm text-muted-foreground">
                     {t('reports.conversion_count', {

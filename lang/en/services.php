@@ -12,6 +12,9 @@ return [
 
     'warranty_default' => 'Default',
     'uncategorized' => 'Uncategorized',
+    'brand_availability' => 'Available to brands',
+    'all_brands' => 'Use for all brands',
+    'all_brands_hint' => 'Leave all unchecked to offer this item to every brand. Check brands to limit availability.',
     'fields' => [
         'name' => 'Service',
         'description' => 'Description',

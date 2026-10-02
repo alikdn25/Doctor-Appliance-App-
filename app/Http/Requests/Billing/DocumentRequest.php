@@ -4,6 +4,8 @@ namespace App\Http\Requests\Billing;
 
 use App\Enums\LineKind;
 use App\Enums\WarrantyUnit;
+use App\Models\Estimate;
+use App\Models\Invoice;
 use App\Models\TaxRate;
 use App\Support\Billing\CostAccess;
 use App\Support\Locale\Currencies;
@@ -29,6 +31,13 @@ class DocumentRequest extends FormRequest
      */
     public function rules(): array
     {
+        $document = $this->route('invoice') ?? $this->route('estimate') ?? $this->route('job');
+        $brandId = $document instanceof Model ? (int) $document->brand_id : 0;
+        // Preserve references on existing documents even if catalogue availability changed later.
+        $existingServices = $document instanceof Invoice || $document instanceof Estimate
+            ? $document->items()->whereNotNull('service_id')->pluck('service_id')->all()
+            : [];
+
         return [
             'issued_on' => ['required', 'date_format:Y-m-d'],
             'valid_until' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:issued_on'],
@@ -51,7 +60,11 @@ class DocumentRequest extends FormRequest
             'items.*.taxable' => ['boolean'],
             'items.*.id' => ['nullable', 'integer'],
             'items.*.kind' => ['nullable', Rule::enum(LineKind::class)],
-            'items.*.service_id' => ['nullable', 'integer', Rule::exists('services', 'id')->where('company_id', currentCompany()->id)],
+            'items.*.service_id' => [
+                'nullable', 'integer',
+                Rule::exists('services', 'id')->where('company_id', currentCompany()->id)
+                    ->where(fn ($q) => $q->whereJsonLength('brand_ids', 0)->orWhereJsonContains('brand_ids', $brandId)->orWhereIn('id', $existingServices)),
+            ],
             'items.*.part_number' => ['nullable', 'string', 'max:100'],
             'items.*.supplier' => ['nullable', 'string', 'max:150'],
             'items.*.unit' => ['nullable', 'string', 'max:20'],

@@ -261,11 +261,12 @@ class BillingPresenter
      *
      * @return list<array{id: int, name: string, description: string|null, unit_price: int|null, currency: string, taxable: bool}>
      */
-    public static function serviceOptions(): array
+    public static function serviceOptions(int $brandId): array
     {
         $currency = currentCompany()->currency;
 
         return Service::query()
+            ->availableForBrand($brandId)
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('name')

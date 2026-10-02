@@ -34,26 +34,29 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 - Next functional work: finish price-book categories and basic revenue/conversion reports, then the remaining
   stages in SPEC.md. Stage 2, Stage 3 and platform subscription billing are not complete.
 
-| #   | Task                                                                         | Status    |
-| --- | ---------------------------------------------------------------------------- | --------- |
-| 1   | Customers, properties (manual address), appliances (§6, §7.1)                | ✅ Done   |
-| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)               | ✅ Done   |
-| 3   | Calendar & dispatch                                                          | ✅ Done   |
-| 4   | Technician PWA view, photos, signatures                                      | ✅ Done   |
-| 5   | Estimates, invoices, manual payments (§7.5, §7.6)                            | ✅ Done   |
-| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6)  | ✅ Done   |
-| 7   | PDF + email sending of documents, price book on lines, Square tips/refunds   | ✅ Done   |
-| 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done   |
-| 9   | Online estimate approval (signature, options, expiry, deposit) + Places      | ✅ Done   |
-| 10A | Estimate revisions, deleting jobs, outcomes, visit types, strict arrival     | ✅ Done   |
-| 10B | Warranty & callbacks, refunds, costs & profit, no charge, cash               | ✅ Done   |
+| #   | Task                                                                         | Status     |
+| --- | ---------------------------------------------------------------------------- | ---------- |
+| 1   | Customers, properties (manual address), appliances (§6, §7.1)                | ✅ Done    |
+| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)               | ✅ Done    |
+| 3   | Calendar & dispatch                                                          | ✅ Done    |
+| 4   | Technician PWA view, photos, signatures                                      | ✅ Done    |
+| 5   | Estimates, invoices, manual payments (§7.5, §7.6)                            | ✅ Done    |
+| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6)  | ✅ Done    |
+| 7   | PDF + email sending of documents, price book on lines, Square tips/refunds   | ✅ Done    |
+| 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done    |
+| 9   | Online estimate approval (signature, options, expiry, deposit) + Places      | ✅ Done    |
+| 10A | Estimate revisions, deleting jobs, outcomes, visit types, strict arrival     | ✅ Done    |
+| 10B | Warranty & callbacks, refunds, costs & profit, no charge, cash               | ✅ Done    |
 | —   | Price book: categories (parts/materials with cost and markup done in 10B)    | 🚧 Testing |
-| —   | Basic reports (profit, callbacks, no charge, revenue and conversion)        | 🚧 Testing |
+| —   | Basic reports (profit, callbacks, no charge, revenue and conversion)         | 🚧 Testing |
 
 ### Price book categories and business reports — implemented, CI pending
 
 - Price book: optional category on every service, part and material; suggestions from the company's current
   catalogue; grouped choices on estimate and invoice lines. Blank categories remain uncategorized.
+- Per-brand price-book availability: no selection means all brands. New document choices and submitted service
+  IDs enforce availability. Existing document references remain valid when availability changes later. Brand
+  IDs from another company are rejected. Existing price-book items remain available to all brands after migration.
 - Revenue: invoices issued in the selected period, excluding void invoices, taxes and tips; settled refunds
   reduce net revenue proportionally. Totals, average invoice, brand, technician, job type and source breakdowns
   keep each document currency separate. The first assignee on the last started visit identifies the technician
@@ -68,7 +71,7 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
   isolation. Build/test results and manual validation are still pending.
 - Manual check: set categories in Company → Services; select grouped items on an invoice; open Reports, choose a
   period and compare invoice totals and currencies, average invoices and estimate decisions with the documents.
-- Still left: per-brand price-book availability and the remaining Stage 2/3/billing specification tasks.
+- Still left: the remaining Stage 2/3/billing specification tasks and manual mobile/release validation.
 
 ### Task 1 — Customers, properties, appliances ✅
 

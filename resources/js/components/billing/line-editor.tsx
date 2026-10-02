@@ -362,9 +362,15 @@ export function LineEditor({
                                 label={category ?? t('services.uncategorized')}
                             >
                                 {services
-                                    .filter((service) => service.category === category)
+                                    .filter(
+                                        (service) =>
+                                            service.category === category,
+                                    )
                                     .map((service) => (
-                                        <option key={service.id} value={service.id}>
+                                        <option
+                                            key={service.id}
+                                            value={service.id}
+                                        >
                                             {service.unit_price !== null
                                                 ? `${service.name} · ${money(service.unit_price, service.currency)}`
                                                 : service.name}
