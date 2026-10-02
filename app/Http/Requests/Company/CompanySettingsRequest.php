@@ -45,7 +45,7 @@ class CompanySettingsRequest extends FormRequest
             'diagnostic_service_id' => ['nullable', 'integer', Rule::exists('services', 'id')->where('company_id', currentCompany()->id)],
             'closure_reasons' => ['sometimes', 'array'],
             'closure_reasons.*' => ['array', 'max:30'],
-            'closure_reasons.*.*' => ['string', 'max:100'],
+            'closure_reasons.*.*' => ['nullable', 'string', 'max:100'],
             // Only a provider the company has connected (and that serves its country) can be picked.
             'payment_provider' => ['nullable', Rule::in(array_column(app(PaymentProviders::class)->options(currentCompany()), 'value'))],
         ];

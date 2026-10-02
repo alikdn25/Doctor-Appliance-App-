@@ -31,6 +31,8 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 | 7   | PDF + email sending of documents, price book on lines, Square tips/refunds   | ✅ Done        |
 | 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done        |
 | 9   | Online estimate approval (signature, options, expiry, deposit) + Places      | ✅ Done        |
+| 10A | Estimate revisions, deleting jobs, outcomes, visit types, strict arrival     | ✅ Done        |
+| 10B | Warranty & callbacks, refunds, costs & profit, no charge, cash               | 🚧 Next PR     |
 | —   | Price book: parts with cost/margin, categories (services + picker done)      | 🚧 Partly      |
 | —   | Basic reports                                                                | ⏳ Not started |
 
@@ -517,6 +519,64 @@ Decisions made without asking (change if needed):
 
 Deferred on purpose: estimate follow-up reminders and "viewed" notifications, Good/Better/Best option groups, a map
 of the day from the stored coordinates, server-side geocoding of old addresses, Stripe.
+
+### Task 10A — Estimate revisions, deleting jobs, job outcomes, visit types, strict arrival ✅
+
+**Revise a signed estimate.** An estimate the customer signed online is locked; "Revise" makes a new version
+(`EST-1001-R2`, then `-R3` …) as a draft copy with its own number and online link. The signed version becomes
+**Revised** (read-only, kept in the history with its signature; cannot be sent or converted). The page lists all
+versions. A deposit already paid moves to the new version; open deposit links are cancelled. The new version shows "Send
+the new link to the customer"; once it is sent, the old link says "replaced by a newer version" with a link to it.
+
+**Deleting jobs** (soft delete): Owners/Admins always; technicians only on their own jobs and only with the company
+setting "Allow technicians to delete jobs" (off by default). An Owner going on calls deletes as the Owner. A job with an
+invoice (even void) or a payment (incl. an estimate deposit) cannot be deleted — cancel it or close it instead. Who and
+when is stored (`deleted_by`, `deleted_at`) and audited. Jobs → "Deleted jobs" lists the last 30 days with Restore
+(office); restore is audited.
+
+**Closing outcomes** (`service_jobs.outcome`, reason, comment, closed at/by): Repaired / Customer declined repair /
+Unable to repair (reason required, from a list) and Cancelled (reason required). On site: Finish → Completed, Waiting for
+parts, Customer declined repair, Unable to repair. From the job page: "Close job" (when no visit is under way). Declined /
+unable can go straight to "Invoice the diagnosis / service call only": the invoice form opens with one line from the
+price book service picked in Company settings ("Diagnostic fee"), or an empty-priced "Diagnostic / service call" line.
+**Cancel** only before any work: refused once a visit was started, needs a reason. Scheduling a new visit or reopening
+by hand clears the outcome. Reasons per outcome are editable in Company settings → Jobs (one per line; empty = defaults).
+
+**Visit types** on the job form: New diagnosis / Known problem / Return visit (parts) / Callback (warranty). Return visit
+and callback must link an earlier job of the same customer (its appliances are preselected). Return visits have a
+"Bring with you" list (part/material + qty), shown on the job page and in My jobs ("2 of 5 loaded"), ticked by the
+technician. The earlier job lists its follow-ups.
+
+**Strict arrival time** (per visit, in the job form and visit dialog): red "Strict time" mark on the calendar (day and
+week), job lists, My jobs and the job page (red banner for the technician). `visits:strict-arrival-reminders` (every 5
+min) reminds the assigned people once, N minutes before (company setting, default 60): email, plus SMS in Automatic mode.
+
+**Job list filters**: visit type, outcome (incl. "No outcome yet"), "Strict arrival only".
+
+How to test manually:
+
+1. Estimate → send → sign on the online page → back on the estimate press "Revise" → edit → send; open the old link.
+2. Delete a job without invoices → Jobs → Deleted jobs → Restore. Try deleting a job with an invoice (refused).
+   Company settings → Jobs → "Allow technicians to delete jobs" → log in as tech@example.com.
+3. As tech: start a visit → Finish → Customer declined repair → reason → keep "Invoice the diagnosis…" → the invoice form
+   opens with the diagnostic line. Set "Diagnostic fee" in Company settings first to get the price.
+4. Change status → Cancelled needs a reason; after a visit was started it is refused.
+5. New job → Return visit → pick the earlier job → add "Bring with you" items → schedule with "Strict arrival time" →
+   check calendar, My jobs, job page. `php artisan visits:strict-arrival-reminders` sends the reminder (window ≤ 60 min).
+6. Jobs list → filters by visit type, outcome, strict.
+
+Decisions made without asking (change if needed):
+
+- Revisions are separate estimate rows linked by `revision_root_id`; numbers get `-R2`, `-R3`. The new link goes to the
+  customer when the office sends the revised version (it is a draft first, so it is not sent automatically); the old link
+  points to the new one only after that.
+- Deleted jobs are kept after 30 days (no hard delete): they just cannot be restored any more. Financial records and,
+  from 10B, supplier receipts must stay anyway.
+- Only the office restores deleted jobs.
+- Outcome is stored on the job (not on the visit); "Repaired" is recorded when a visit is finished as completed.
+- "Cancelled" is an outcome with its own reasons; cancelling via the status dialog requires a reason.
+- Visit type is set on the job (first visit); later visits of the same job keep it.
+- Staff reminders ignore the customers' quiet hours (they are work alerts).
 
 ## Stage 2 — ⏳ Not started
 
