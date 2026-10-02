@@ -464,8 +464,28 @@ test('another company\'s photos, checklist and signature cannot be seen or chang
         ->and(ServiceJob::withoutCompanyScope()->find($this->jobB->id)->signature_path)->toBeNull();
 });
 
+test('another company\'s rating plate photo cannot be opened', function () {
+    Storage::fake('local');
+    Storage::disk('local')->put('companies/b/plate.jpg', 'secret');
+    Appliance::withoutCompanyScope()->whereKey($this->applianceB->id)->update(['rating_plate_path' => 'companies/b/plate.jpg']);
+
+    // Owner and technician of company A: the appliance does not exist for them.
+    $this->actingAs($this->ownerA)->get(route('appliances.rating-plate', $this->applianceB))->assertNotFound();
+    $this->actingAs($this->techA)->get(route('appliances.rating-plate', $this->applianceB))->assertNotFound();
+
+    // A member of both companies, working in company A, cannot read it either.
+    $both = memberOf($this->companyA, UserRole::Owner);
+    inCompany($this->companyB, fn () => Membership::factory()->create(['company_id' => $this->companyB->id, 'user_id' => $both->id, 'role' => UserRole::Owner]));
+    $both->forceFill(['current_company_id' => $this->companyA->id])->save();
+    $this->actingAs($both)->get(route('appliances.rating-plate', $this->applianceB))->assertNotFound();
+
+    // The file is not on the public disk, so there is no direct URL to it.
+    $this->actingAs($this->ownerB)->get(route('appliances.rating-plate', $this->applianceB))->assertOk();
+    expect(Storage::disk('public')->exists('companies/b/plate.jpg'))->toBeFalse();
+});
+
 test('a photo uuid used by another company does not collide', function () {
-    Storage::fake('public');
+    Storage::fake('local');
 
     $this->actingAs($this->ownerA)
         ->post(route('jobs.photos.store', $this->jobA), [

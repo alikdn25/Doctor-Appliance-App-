@@ -4,11 +4,11 @@ namespace App\Actions\Customers;
 
 use App\Models\Appliance;
 use App\Models\Property;
+use App\Support\PrivateMedia;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 
 /**
- * Creates or updates an appliance and its rating plate photo.
+ * Creates or updates an appliance and its rating plate photo (private media).
  * Must run in a tenant context.
  */
 class SaveAppliance
@@ -35,7 +35,7 @@ class SaveAppliance
         if ($ratingPlate !== null) {
             $appliance->rating_plate_path = $ratingPlate->store(
                 "companies/{$appliance->company_id}/appliances/{$appliance->id}",
-                config('fieldservice.media_disk'),
+                PrivateMedia::diskName(),
             );
             $appliance->save();
         }
@@ -49,7 +49,7 @@ class SaveAppliance
             return;
         }
 
-        Storage::disk(config('fieldservice.media_disk'))->delete($appliance->rating_plate_path);
+        PrivateMedia::disk()->delete($appliance->rating_plate_path);
         $appliance->rating_plate_path = null;
         $appliance->save();
     }

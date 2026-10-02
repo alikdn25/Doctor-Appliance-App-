@@ -28,6 +28,7 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="MEDIA_DISK" value="public"/>
+        <env name="PRIVATE_MEDIA_DISK" value="local"/>
         <env name="AUTH_REQUIRE_TWO_FACTOR" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

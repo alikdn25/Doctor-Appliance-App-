@@ -10,11 +10,13 @@ use App\Models\Appliance;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Support\Jobs\JobPresenter;
+use App\Support\PrivateMedia;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ApplianceController extends Controller
 {
@@ -84,6 +86,17 @@ class ApplianceController extends Controller
             'applianceTypes' => ApplianceType::options(),
             'manufacturers' => CustomerController::manufacturers(),
         ]);
+    }
+
+    /**
+     * Rating plate photo, for anyone who may see the appliance (office, or a technician through their jobs).
+     */
+    public function ratingPlate(Appliance $appliance): StreamedResponse
+    {
+        Gate::authorize('view', $appliance);
+        abort_if($appliance->rating_plate_path === null, 404);
+
+        return PrivateMedia::response($appliance->rating_plate_path);
     }
 
     public function update(ApplianceRequest $request, Appliance $appliance, SaveAppliance $save): RedirectResponse

@@ -42,6 +42,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('properties/{property}', [PropertyController::class, 'destroy'])->name('properties.destroy');
         Route::post('properties/{property}/appliances', [ApplianceController::class, 'store'])->name('appliances.store');
         Route::get('appliances/{appliance}', [ApplianceController::class, 'show'])->name('appliances.show');
+        Route::get('appliances/{appliance}/rating-plate', [ApplianceController::class, 'ratingPlate'])->withTrashed()->name('appliances.rating-plate');
         Route::put('appliances/{appliance}', [ApplianceController::class, 'update'])->name('appliances.update');
         Route::delete('appliances/{appliance}', [ApplianceController::class, 'destroy'])->name('appliances.destroy');
 

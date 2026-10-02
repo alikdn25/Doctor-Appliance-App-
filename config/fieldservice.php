@@ -3,10 +3,17 @@
 return [
 
     /*
-    | Disk used for uploaded media (brand logos now; photos and PDFs later).
+    | Disk for media that may be public (brand logos shown on customer documents).
     | "public" (local) for now; switch to "s3" via .env once object storage is chosen.
     */
     'media_disk' => env('MEDIA_DISK', 'public'),
+
+    /*
+    | Disk for private media: job photos, signatures, rating plate photos.
+    | Never served by URL; files go out only through routes that check access.
+    | "local" (storage/app/private) for now; a private S3 bucket later.
+    */
+    'private_media_disk' => env('PRIVATE_MEDIA_DISK', 'local'),
 
     /*
     | Owners, Admins and super-admins must enable two-factor authentication

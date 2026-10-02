@@ -21,6 +21,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     Storage::fake('public');
+    Storage::fake('local');
 
     $this->company = Company::factory()->create();
     $this->owner = memberOf($this->company, UserRole::Owner);
@@ -64,7 +65,7 @@ test('a technician uploads a before photo for their visit', function () {
         ->path->toBe("companies/{$this->company->id}/jobs/{$this->job->id}/photos/{$uuid}.jpg")
         ->and($photo->taken_at->utc()->toDateTimeString())->toBe('2030-06-12 10:15:00');
 
-    Storage::disk('public')->assertExists($photo->path);
+    Storage::disk('local')->assertExists($photo->path);
 });
 
 test('a retried upload does not create a second photo', function () {
@@ -75,7 +76,7 @@ test('a retried upload does not create a second photo', function () {
 
     expect($second)->toBe($first)
         ->and(JobPhoto::withoutCompanyScope()->count())->toBe(1)
-        ->and(Storage::disk('public')->allFiles())->toHaveCount(1);
+        ->and(Storage::disk('local')->allFiles())->toHaveCount(1);
 });
 
 test('a client uuid already used on another job is refused', function () {
@@ -126,7 +127,7 @@ test('the photographer or the office can delete a photo, other technicians canno
     $this->actingAs($this->tech)->delete(route('jobs.photos.destroy', [$this->job, $photo]))->assertRedirect();
 
     expect(JobPhoto::withoutCompanyScope()->count())->toBe(0);
-    Storage::disk('public')->assertMissing($photo->path);
+    Storage::disk('local')->assertMissing($photo->path);
 
     uploadPhoto();
     $this->actingAs($this->owner)
@@ -142,14 +143,14 @@ test('a technician photographs the rating plate of an appliance on their job', f
     ], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('appliance.id', $this->appliance->id);
 
     $first = $this->appliance->fresh()->rating_plate_path;
-    Storage::disk('public')->assertExists($first);
+    Storage::disk('local')->assertExists($first);
 
     $this->post(route('jobs.appliances.rating-plate', [$this->job, $this->appliance]), [
         'rating_plate' => UploadedFile::fake()->image('plate2.jpg'),
     ], ['Accept' => 'application/json'])->assertOk();
 
-    Storage::disk('public')->assertMissing($first);
-    Storage::disk('public')->assertExists($this->appliance->fresh()->rating_plate_path);
+    Storage::disk('local')->assertMissing($first);
+    Storage::disk('local')->assertExists($this->appliance->fresh()->rating_plate_path);
 });
 
 test('rating plates can only be added to appliances on the technician\'s own job', function () {
@@ -163,6 +164,31 @@ test('rating plates can only be added to appliances on the technician\'s own job
 
     expect($spare->fresh()->rating_plate_path)->toBeNull()
         ->and($this->appliance->fresh()->rating_plate_path)->toBeNull();
+});
+
+test('rating plate photos are private and served only to people with access to the job', function () {
+    $this->post(route('jobs.appliances.rating-plate', [$this->job, $this->appliance]), [
+        'rating_plate' => UploadedFile::fake()->image('plate.jpg'),
+    ], ['Accept' => 'application/json'])->assertOk();
+
+    $appliance = $this->appliance->fresh();
+    Storage::disk('public')->assertMissing($appliance->rating_plate_path);
+    expect($appliance->rating_plate_url)->toStartWith(route('appliances.rating-plate', $appliance));
+
+    // Assigned technician and the office can see it.
+    $this->get($appliance->rating_plate_url)->assertOk()->assertHeader('Cache-Control', 'max-age=86400, private');
+    $this->actingAs($this->owner)->get($appliance->rating_plate_url)->assertOk();
+
+    // A technician of the same company without a job at this property cannot.
+    $this->actingAs($this->otherTech)->get($appliance->rating_plate_url)->assertForbidden();
+
+    // Nor can a guest.
+    auth()->logout();
+    $this->get($appliance->rating_plate_url)->assertRedirect(route('login'));
+});
+
+test('an appliance without a rating plate photo has no plate to show', function () {
+    $this->actingAs($this->owner)->get(route('appliances.rating-plate', $this->appliance))->assertNotFound();
 });
 
 test('a new job gets a copy of the checklist for its type', function () {
@@ -238,7 +264,7 @@ test('the customer signs on the technician\'s phone', function () {
         ->signature_name->toBe('Jane Cooper')
         ->signed_by->toBe($this->tech->id)
         ->signed_at->not->toBeNull();
-    Storage::disk('public')->assertExists($first);
+    Storage::disk('local')->assertExists($first);
 
     $this->get(route('jobs.signature.show', $this->job))->assertOk();
 
@@ -248,7 +274,7 @@ test('the customer signs on the technician\'s phone', function () {
         'signer_name' => 'Jane C.',
     ], ['Accept' => 'application/json'])->assertCreated();
 
-    Storage::disk('public')->assertMissing($first);
+    Storage::disk('local')->assertMissing($first);
     expect($this->job->fresh()->signature_name)->toBe('Jane C.');
 });
 
