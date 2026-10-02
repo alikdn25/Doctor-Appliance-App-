@@ -29,8 +29,7 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 | 5   | Estimates, invoices, manual payments (§7.5, §7.6)                           | ✅ Done        |
 | 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6) | ✅ Done        |
 | 7   | PDF + email sending of documents, price book on lines, Square tips/refunds  | ✅ Done        |
-| —   | Twilio SMS (automated messages + inbox)                                     | ⏳ Not started |
-| —   | Review request toggle                                                       | ⏳ Not started |
+| 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done        |
 | —   | Price book: parts with cost/margin, categories (services + picker done)     | 🚧 Partly      |
 | —   | Basic reports                                                               | ⏳ Not started |
 | —   | Google Places autocomplete + geocoding for properties                       | ⏳ Not started |
@@ -373,12 +372,89 @@ Decisions made without asking (change if needed):
 Deferred on purpose: SMS sending and Google review request (next task), online estimate approval/signature, payment
 reminders (Stage 2), Stripe.
 
+### Task 8 — SMS and Google review requests ✅
+
+**SMS mode** (Company → Messaging, Owner): *Automatic* / *From technician's phone* (default for new and existing
+companies) / *Off*.
+
+- **Automatic**: `App\Sms\SmsProvider` interface, Twilio first (`config/sms.php`, keys `TWILIO_*` in `.env`).
+  "Get an SMS number" creates the company's **Twilio subaccount** under the platform account and buys a **local number**
+  in the company's country (incoming webhook set on the number). Subaccount token encrypted.
+  Texts: day-before **visit reminder** (hourly command at 17:00 company time, `SMS_REMINDER_HOUR`), **On my way** with
+  the arrival window when the technician taps the button, **estimate/invoice link** ("Send by SMS" next to "Send by
+  email"), **review request**, free text from the job ("Send SMS" dialog).
+- **US A2P 10DLC**: US companies get a business-details form (legal name, type, EIN, address, contact, use case,
+  sample message) with Save / Submit and the status (Not submitted → Submitted → Approved / Rejected + reason). Until
+  approved, texts to US numbers are not sent: the message is recorded as "Not sent" with the reason, the job page says
+  why, and automated messages go by email instead when there is an address. Canadian and other numbers: no restriction.
+- **STOP/START/HELP**: incoming STOP (and STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT…) marks the number opted out — no
+  more texts, red "Unsubscribed from texts" badge on the customer card; START/UNSTOP/YES opts back in; Twilio answers
+  STOP/HELP itself (Advanced Opt-Out). The opt-out is checked again right before sending.
+- **Quiet hours** (company setting, default 21:00–08:00, company time zone): a text due at night is scheduled for the
+  morning (`messages:deliver-due` every minute also picks up anything delayed).
+- **History**: every SMS, email, text opened on a phone and every customer reply is a `messages` row on the customer
+  card and the job page (kind, channel, status: scheduled / sent / delivered / failed / not sent + reason / received /
+  opened). Delivery status comes back from Twilio (`/webhooks/sms/twilio/status`); incoming texts via
+  `/webhooks/sms/twilio`, both checked with the Twilio signature (subaccount token). Replies are linked to the
+  customer's latest job.
+- **From technician's phone**: "Send SMS", "On my way", "Send by SMS" (documents) and "Send review request" open the
+  phone's messages app with the number and text ready (`sms:+1…?body=` on Android, `sms:+1…&body=` on iOS) and record
+  "SMS opened from technician's phone" on the job. Reminders and review requests go by email.
+- **Off**: everything that would be a text goes by email ("Send by SMS" is hidden).
+- **Templates** per company (Messaging page) for every message, with placeholders; empty = English default.
+
+**Google review requests**: Company → Google reviews (office) — profiles with label, review link (https), optional
+brand; each brand picks its default profile on the brand form. Every job has "Ask for a review" (default from the
+company setting, switch on the job page). When the job becomes **paid in full**, a request is scheduled after the
+delay (default 2 h) and sent by SMS (Automatic) or email; in technician's phone mode the job also has "Send review
+request". At most one request per customer in the cooldown (default 180 days); skipped requests show why on the job.
+Same text for everyone; no incentives, no "happy?" gating — written in SPEC §8 and shown next to the settings.
+
+Super-admin: company page shows SMS mode/number and the A2P details; the platform registers the brand and campaign in
+the Twilio console and records the IDs and status there; `sms:sync-registrations` (daily) then follows the campaign /
+brand status at Twilio (VERIFIED → approved, FAILED → rejected).
+
+How to test with Twilio (no Twilio keys were available in this environment; automated tests use a faked Twilio API
+with Twilio's request/response and webhook shapes, including the X-Twilio-Signature check):
+
+1. Twilio test credentials (Console → Account → API keys & tokens → Test credentials) work for sending to the magic
+   test numbers but cannot create subaccounts or buy numbers — use the live account in a trial/sandbox setup for a full
+   test: put the master `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` in `.env`.
+2. Log in as the Owner of a Canadian company → Messaging → mode Automatic → Get an SMS number. The app must be reachable
+   from the internet (ngrok locally) so Twilio can call `/webhooks/sms/twilio`.
+3. On a job: Send SMS, On my way; reply from your phone — the reply appears on the job/customer; reply STOP — the badge
+   appears and further texts show "Not sent".
+4. `php artisan messages:send-visit-reminders --force` sends tomorrow's reminders immediately.
+
+Decisions made without asking (change if needed):
+
+- **One SMS number per company** (not per brand as SPEC §7.7 said before); texts are signed with the job's brand name.
+- **A2P registration is done by the platform**: the company submits its details in the app; the platform registers
+  brand + campaign in Twilio (Trust Hub) and records the IDs; the app then tracks the status automatically. Fully
+  automated Trust Hub submission through the API can come later.
+- The US rule is applied by the **destination** number (US numbers need the approved registration), whatever the
+  company's country.
+- When an automatic text cannot go (no number, STOP, registration, no SMS number) and the customer has an email, the
+  message goes by email instead and both records are kept. A text typed by staff ("Send SMS", "Send by SMS") is not
+  turned into an email: staff see the reason.
+- Quiet hours apply to texts only (emails go any time) and to every text, including ones staff send at night.
+- Texts use plain spaces and "-" in times so they stay in the GSM-7 alphabet (cheaper, fewer segments).
+- The review request is triggered when the **job** becomes paid (all its invoices paid), not when a single
+  deposit/diagnosis invoice is paid while the job is still open.
+- "On my way" in Off mode is emailed (the rule "everything that would be an SMS goes by email").
+- The `sms:` link is opened right after the tap; the server record is posted in the background.
+- No shared SMS inbox page yet (replies are on the customer and job timelines); no notifications to staff on replies.
+
+Deferred on purpose: shared inbox and reply notifications, "parts arrived" / "payment received" texts and payment
+reminders (Stage 2), click-to-call (Twilio voice), per-brand numbers, automated Trust Hub submission, link-click
+tracking for review requests.
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started
 
 ## Next
 
-Stage 1 — Twilio SMS (automated messages + inbox per brand; A2P 10DLC for US numbers; send estimates/invoices by SMS
-with the online link) and the Google review request toggle on invoice sending. Then online approval of estimates,
-basic reports, Google Places, price book parts/costs. Stripe as the second payment provider.
+Stage 1 — basic reports (revenue by brand/technician/job type/lead source, average ticket, conversion), Google Places
+address autocomplete + geocoding, online approval of estimates, price book parts/costs. Stripe as the second payment
+provider. Then Stage 2 (parts orders, warranty claims, online booking, payment reminders, shared SMS inbox).

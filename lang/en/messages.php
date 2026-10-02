@@ -33,8 +33,8 @@ return [
 
     // Default texts (English). Companies edit their own in Messaging settings. Placeholders in {braces}.
     'templates' => [
-        'visit_reminder' => 'Hi {customer_first_name}, this is a reminder of your {brand} appointment {visit_date}, arrival between {arrival_window}. Reply to this message if you need to change it.',
-        'on_my_way' => 'Hi {customer_first_name}, {tech_name} from {brand} is on the way. Expected arrival: {arrival_window}.',
+        'visit_reminder' => "Hi {customer_first_name}, this is a reminder of your {brand} appointment {visit_date}.\nArrival window: {arrival_window}\nReply to this message if you need to change it.",
+        'on_my_way' => 'Hi {customer_first_name}, {tech_name} from {brand} is on the way. Expected arrival: {arrival_window}',
         'estimate_link' => 'Hi {customer_first_name}, here is your estimate {number} from {brand} for {amount}: {link}',
         'invoice_link' => 'Hi {customer_first_name}, here is your invoice {number} from {brand}. Balance due: {amount}. View and pay online: {link}',
         'review_request' => 'Hi {customer_first_name}, thank you for choosing {brand}! Would you take a moment to review us on Google? {review_link}',

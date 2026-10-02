@@ -43,7 +43,7 @@ class MessageContext
         $company = currentCompany();
         $formatter = new IntlDateFormatter(str_replace('-', '_', $company->locale), IntlDateFormatter::FULL, IntlDateFormatter::NONE, $company->timezone, null, 'EEEE, MMM d');
 
-        return (string) $formatter->format($at);
+        return self::plain((string) $formatter->format($at));
     }
 
     public static function time(?CarbonInterface $at): ?string
@@ -55,11 +55,20 @@ class MessageContext
         $company = currentCompany();
         $formatter = new IntlDateFormatter(str_replace('-', '_', $company->locale), IntlDateFormatter::NONE, IntlDateFormatter::SHORT, $company->timezone);
 
-        return (string) $formatter->format($at);
+        return self::plain((string) $formatter->format($at));
     }
 
     public static function window(JobVisit $visit): string
     {
-        return trim(self::time($visit->scheduled_start).' – '.self::time($visit->scheduled_end), ' –');
+        return trim(self::time($visit->scheduled_start).' - '.self::time($visit->scheduled_end), ' -');
+    }
+
+    /**
+     * ICU puts narrow/no-break spaces in times ("1:00 p.m."); texts use plain spaces so they stay in the
+     * GSM-7 alphabet (a single non-GSM character makes every SMS segment shorter and dearer).
+     */
+    private static function plain(string $text): string
+    {
+        return str_replace(["\u{202F}", "\u{00A0}", "\u{2009}"], ' ', $text);
     }
 }

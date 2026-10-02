@@ -15,6 +15,7 @@ use App\Models\Brand;
 use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\GoogleProfile;
 use App\Models\Membership;
 use App\Models\Service;
 use App\Models\TaxRate;
@@ -77,6 +78,9 @@ class DemoSeeder extends Seeder
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true, 'sort_order' => 1]);
             TaxRate::create(['name' => 'PST', 'rate' => 7, 'is_default' => true, 'sort_order' => 2]);
 
+            $profile = GoogleProfile::create(['brand_id' => $doctor->id, 'label' => 'Surrey', 'review_url' => 'https://g.page/r/doctor-appliance-surrey/review']);
+            $doctor->update(['google_profile_id' => $profile->id]);
+
             $this->jobs($this->bcCustomers(), $doctor, $owner, $tech);
         });
 
@@ -104,6 +108,9 @@ class DemoSeeder extends Seeder
             Service::createDefaults();
             // Austin: Texas 6.25% + local 2% = 8.25%, entered as one combined rate.
             TaxRate::create(['name' => 'Sales tax', 'rate' => 8.25, 'is_default' => true]);
+
+            $profile = GoogleProfile::create(['label' => 'Austin', 'review_url' => 'https://g.page/r/lone-star-austin/review']);
+            $brand->update(['google_profile_id' => $profile->id]);
 
             $this->jobs($this->usCustomers(), $brand, $us, $us);
         });

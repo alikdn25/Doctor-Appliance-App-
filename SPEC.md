@@ -177,13 +177,37 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 
 ### 7.7 Customer communication
 
-- Two-way SMS inbox per brand (Twilio, a local number per brand in the company's country).
-- **USA:** sending SMS to US customers from a 10-digit long code requires **A2P 10DLC registration** in Twilio (brand +
-  campaign) for each company/brand before messages are delivered. Onboarding must guide companies through it; other
-  countries have their own sender rules (e.g. Canada has none of this today).
-- Automated messages (each can be turned on/off and edited per brand): booking confirmation, reminder the day before, on my way + ETA, parts arrived, invoice sent, payment received, payment reminder.
-- Click-to-call from the app using the brand number (Twilio voice) — so remote staff call from a local number.
-- All messages stored on the customer and job timeline.
+**SMS mode** (company setting; new companies start on *From technician's phone*):
+
+- **Automatic** — the app sends texts itself. The platform holds one Twilio account; every company gets its own
+  **subaccount and local number** in its country (one per company for now), so companies never sign up with Twilio.
+  The SMS provider is pluggable (`SmsProvider` interface, Twilio first), like payment providers. Keys only in `.env`.
+- **From technician's phone** — buttons ("Send SMS", "On my way", "Send by SMS" on documents, "Send review request")
+  open the phone's messages app (`sms:` link, iOS and Android formats) with the number and the text ready; the job
+  history records "SMS opened from technician's phone". No automatic texts: day-before reminders and review requests
+  go by email.
+- **Off** — everything that would be a text goes by email.
+
+Messages: reminder the day before the visit, "On my way" with the arrival window (when the technician taps the
+button), estimate/invoice link ("Send by SMS" next to "Send by email"), Google review request (§8), a free text from
+the job. Templates per company with placeholders (`{customer_first_name}`, `{customer_name}`, `{brand}`, `{company}`,
+`{tech_name}`, `{visit_date}`, `{arrival_window}`, `{number}`, `{amount}`, `{link}`, `{review_link}`); English defaults;
+used in every mode.
+
+Rules:
+
+- **USA:** texts to US numbers only after the company's **A2P 10DLC registration** (brand + campaign) is approved.
+  The company fills in its business details in settings and sees the status; until approval texts to US numbers are
+  not sent and the UI says why (the message goes by email when there is an address). Canada and other countries:
+  no such restriction today (other countries have their own sender rules).
+- **STOP / START / HELP**: a customer who replies STOP gets no more texts to that number (shown on the customer card);
+  START turns texts back on; Twilio answers STOP/HELP itself.
+- **Quiet hours** in the company time zone (default 21:00–08:00): texts due at night go out in the morning.
+- All texts, emails and the customer's replies are kept on the customer and job timelines with their status
+  (scheduled, sent, delivered, failed, not sent + reason).
+
+Later: automated "parts arrived", "payment received", payment reminders (Stage 2), a shared SMS inbox, click-to-call
+from the company number (Twilio voice).
 
 ### 7.8 Appliance-specific features (appliance repair vertical; not in Housecall Pro)
 
@@ -234,12 +258,19 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 
 ## 8. Google review requests
 
-- A company can have **several Google profiles** (e.g. one brand with 4 locations). Each profile: label (e.g. "Surrey"), direct review link, brand, optional address.
-- When sending an invoice there is a checkbox **"Request a Google review"** — **off by default**, the user decides per job.
-- When checked: dropdown to pick which Google profile; default = the brand's main profile. Optional setting: auto-select the profile nearest to the job address.
-- Each company writes its own review request text (editable template per brand, with placeholders like `{customer_first_name}`, `{tech_name}`, `{review_link}`). The text can be edited per send.
-- Track: requested at, which profile, link clicked.
-- No discounts or rewards are tied to reviews.
+- A company can have **several Google profiles** (e.g. per brand or city). Each profile: label, direct review link,
+  optional brand. Each brand picks its **default profile**.
+- Every job has **"Ask for a review"**; its default comes from the company setting.
+- The request goes out **after the job is paid in full**, after a configurable delay (default 2 hours), by SMS in
+  Automatic mode, otherwise by email. In *From technician's phone* mode the job also has a **"Send review request"**
+  button that opens the text on the technician's phone.
+- Each company writes its own request text (template with `{customer_first_name}`, `{brand}`, `{review_link}`, …).
+- **At most one request per customer** within a configurable period (default 180 days); later jobs are skipped with
+  the reason shown on the job.
+- Track: scheduled / sent (when, channel, profile) / skipped (why).
+- **Forbidden by Google's and the FTC's rules, and not supported by the app:** no discounts, gifts or any reward for a
+  review; no review gating — never ask "were you happy?" first and send only happy customers to Google. The same
+  request goes to every customer.
 
 ## 9. Non-functional requirements
 
