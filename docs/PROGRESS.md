@@ -27,30 +27,30 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 - Job Detail: centered mobile layout, larger customer summary, rounded action buttons, and safe-area spacing
   for the fixed visit action bar.
 - These changes are in the `chatgpt/bolt-ui` draft branch. They are not released or marked complete.
-- Validation blocked locally: PHP is unavailable and the sandbox cannot connect to the configured proxy
-  to install npm dependencies. Build, formatting, TypeScript and backend tests must pass in GitHub Actions.
+- Local runtime checks remain unavailable (PHP missing; sandbox network access blocks dependency installation).
+  Build, formatting, lint, TypeScript and backend tests passed in GitHub Actions on commit `0f538d1`.
 - Manual validation still required: narrow mobile screens, long names/addresses, every visit state,
   iPhone home-indicator spacing, navigation/call links, dark mode and keyboard focus.
 - Categories and business reports are implemented below. Stage 2, Stage 3 and platform subscription billing
   are not complete.
 
-| #   | Task                                                                         | Status     |
-| --- | ---------------------------------------------------------------------------- | ---------- |
-| 1   | Customers, properties (manual address), appliances (§6, §7.1)                | ✅ Done    |
-| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)               | ✅ Done    |
-| 3   | Calendar & dispatch                                                          | ✅ Done    |
-| 4   | Technician PWA view, photos, signatures                                      | ✅ Done    |
-| 5   | Estimates, invoices, manual payments (§7.5, §7.6)                            | ✅ Done    |
-| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6)  | ✅ Done    |
-| 7   | PDF + email sending of documents, price book on lines, Square tips/refunds   | ✅ Done    |
-| 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done    |
-| 9   | Online estimate approval (signature, options, expiry, deposit) + Places      | ✅ Done    |
-| 10A | Estimate revisions, deleting jobs, outcomes, visit types, strict arrival     | ✅ Done    |
-| 10B | Warranty & callbacks, refunds, costs & profit, no charge, cash               | ✅ Done    |
-| —   | Price book: categories (parts/materials with cost and markup done in 10B)    | 🚧 Testing |
-| —   | Basic reports (profit, callbacks, no charge, revenue and conversion)         | 🚧 Testing |
+| #   | Task                                                                         | Status |
+| --- | ---------------------------------------------------------------------------- | ------ |
+| 1   | Customers, properties (manual address), appliances (§6, §7.1)                | ✅ Done |
+| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)               | ✅ Done |
+| 3   | Calendar & dispatch                                                          | ✅ Done |
+| 4   | Technician PWA view, photos, signatures                                      | ✅ Done |
+| 5   | Estimates, invoices, manual payments (§7.5, §7.6)                            | ✅ Done |
+| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6)  | ✅ Done |
+| 7   | PDF + email sending of documents, price book on lines, Square tips/refunds   | ✅ Done |
+| 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done |
+| 9   | Online estimate approval (signature, options, expiry, deposit) + Places      | ✅ Done |
+| 10A | Estimate revisions, deleting jobs, outcomes, visit types, strict arrival     | ✅ Done |
+| 10B | Warranty & callbacks, refunds, costs & profit, no charge, cash               | ✅ Done |
+| —   | Price book: categories (parts/materials with cost and markup done in 10B)    | ✅ Done |
+| —   | Basic reports (profit, callbacks, no charge, revenue and conversion)         | ✅ Done |
 
-### Price book categories and business reports — implemented, CI pending
+### Price book categories and business reports — CI passed
 
 - Price book: optional category on every service, part and material; suggestions from the company's current
   catalogue; grouped choices on estimate and invoice lines. Blank categories remain uncategorized.
@@ -70,7 +70,7 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 - CI runs frontend checks, TypeScript and backend tests independently, keeping failed checks visible. Suggested
   formatting diffs are printed after tests on failures; CI never writes fixes back to the repository.
 - Tests added for categories, currency separation, refunds, periods, conversion, role/brand access and tenant
-  isolation. Build/test results and manual validation are still pending.
+  isolation. Build, PHP style, frontend lint/format, TypeScript and 581 backend tests (4,180 assertions) passed on commit `0f538d1`. Manual validation is still pending.
 - Manual check: set categories in Company → Services; select grouped items on an invoice; open Reports, choose a
   period and compare invoice totals and currencies, average invoices and estimate decisions with the documents.
 - Still left: the remaining Stage 2/3/billing specification tasks and manual mobile/release validation.
