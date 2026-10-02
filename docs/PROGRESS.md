@@ -20,19 +20,19 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
-| #   | Task                                                          | Status         |
-| --- | ------------------------------------------------------------- | -------------- |
-| 1   | Customers, properties (manual address), appliances (§6, §7.1) | ✅ Done        |
-| —   | Jobs & statuses                                               | ⏳ Not started |
-| —   | Calendar & dispatch                                           | ⏳ Not started |
-| —   | Technician PWA view, photos, signatures                       | ⏳ Not started |
-| —   | Estimates, invoices                                           | ⏳ Not started |
-| —   | Square payments                                               | ⏳ Not started |
-| —   | Twilio SMS (automated messages + inbox)                       | ⏳ Not started |
-| —   | Review request toggle                                         | ⏳ Not started |
-| —   | Price book                                                    | ⏳ Not started |
-| —   | Basic reports                                                 | ⏳ Not started |
-| —   | Google Places autocomplete + geocoding for properties         | ⏳ Not started |
+| #   | Task                                                           | Status         |
+| --- | -------------------------------------------------------------- | -------------- |
+| 1   | Customers, properties (manual address), appliances (§6, §7.1)  | ✅ Done        |
+| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4) | ✅ Done        |
+| —   | Calendar & dispatch                                            | ⏳ Not started |
+| —   | Technician PWA view, photos, signatures                        | ⏳ Not started |
+| —   | Estimates, invoices                                            | ⏳ Not started |
+| —   | Square payments                                                | ⏳ Not started |
+| —   | Twilio SMS (automated messages + inbox)                        | ⏳ Not started |
+| —   | Review request toggle                                          | ⏳ Not started |
+| —   | Price book                                                     | ⏳ Not started |
+| —   | Basic reports                                                  | ⏳ Not started |
+| —   | Google Places autocomplete + geocoding for properties          | ⏳ Not started |
 
 ### Task 1 — Customers, properties, appliances ✅
 
@@ -52,11 +52,40 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 Deferred on purpose: strata `units` table (Stage 3), Google Places autocomplete + geocoding,
 repair history and jobs/estimates/invoices/messages on the customer card (placeholders until those tasks).
 
+### Task 2 — Jobs, statuses and visits ✅
+
+- Tables: `service_jobs` (named so because `jobs` is Laravel's queue table), `job_appliance`, `job_visits`,
+  `job_visit_user`, `job_status_changes`; `companies.job_next_number` (per-company numbering from #1001).
+  All tenant-scoped and covered by isolation tests.
+- Job: brand, customer, property, appliances, job type, source, problem description, team notes, "work done" notes.
+- Visits: arrival window (entered in the company timezone, stored UTC), estimated duration, several assignees.
+  Owners and Admins can be assigned too.
+- Statuses per SPEC §6. Every change is logged with user, time, visit and optional note.
+  Automatic: scheduling a visit → `scheduled`; On my way → `on_the_way`; Start → `in_progress`;
+  Finish → `completed` or `waiting_for_parts`. Time on job = Start → Finish of each visit.
+  Office can set any status by hand except `invoiced`/`paid` (reserved for invoices/payments); cancelling a job
+  cancels its scheduled visits. Deleting the only scheduled visit returns the job to `new`.
+- Office (Owner/Admin): job list with search (number, customer, phone, address, model/serial) and filters
+  (status, open, type, brand, technician, date range); new job form with customer lookup or inline new customer
+  (name, phone, email, address) with duplicate-phone warning, appliances (existing or new), optional first visit;
+  job page with visits, manual status change, history. Brand-limited users see/create only their brands' jobs.
+- "My jobs" for everyone who goes on calls: Today / Upcoming / Recent, Navigate and Call buttons; job page with a
+  sticky action bar (On my way → Start → Finish) and a running timer.
+- Technicians see only jobs they are assigned to, plus the customers, addresses and appliances of those jobs
+  (read-only). On their jobs they can edit appliance manufacturer/model/serial, add or link an appliance, and write
+  "work done". Appliance page shows repair history across all jobs (date, type, problem, work done, no prices).
+- Customer card lists jobs and has "New job". Customers and properties with jobs cannot be deleted.
+- Demo seeder creates three jobs (today's visit for tech@example.com, one waiting for parts, one unscheduled).
+
+Deferred on purpose: calendar/dispatch, map, travel buffer (Calendar task); SMS on "On my way" (Twilio task);
+photos, signatures, checklists, rating plate photo by tech, offline/PWA install (Technician PWA task);
+subcontractors (Stage 2); estimates/invoices on the job (placeholders).
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started
 
 ## Next
 
-Stage 1 — Jobs & statuses (job → customer, property, appliances; status log; technician access to customers of
-their own jobs; appliance repair history from jobs).
+Stage 1 — Calendar & dispatch (day/week views with per-technician lanes built on `job_visits`, drag-and-drop,
+travel buffer, map of the day's jobs).

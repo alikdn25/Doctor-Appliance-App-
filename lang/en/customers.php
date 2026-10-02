@@ -31,6 +31,8 @@ return [
     'duplicate_text' => 'A customer with the same contact already exists. You can still save.',
     'open' => 'Open',
     'coming_soon' => 'Coming in a later update.',
+    'has_jobs' => 'This customer has jobs and cannot be deleted.',
+    'no_jobs' => 'No jobs yet.',
 
     'sections' => [
         'details' => 'Customer',

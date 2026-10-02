@@ -11,6 +11,11 @@ use App\Http\Controllers\Customers\ApplianceController;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Customers\PropertyController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Jobs\JobController;
+use App\Http\Controllers\Jobs\JobStatusController;
+use App\Http\Controllers\Jobs\JobWorkController;
+use App\Http\Controllers\Jobs\VisitActionController;
+use App\Http\Controllers\Jobs\VisitController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'login'))->name('home');
@@ -32,6 +37,20 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('appliances/{appliance}', [ApplianceController::class, 'show'])->name('appliances.show');
         Route::put('appliances/{appliance}', [ApplianceController::class, 'update'])->name('appliances.update');
         Route::delete('appliances/{appliance}', [ApplianceController::class, 'destroy'])->name('appliances.destroy');
+
+        Route::get('my-jobs', [JobController::class, 'mine'])->name('jobs.mine');
+        Route::get('jobs/customers', [JobController::class, 'lookup'])->name('jobs.lookup');
+        Route::resource('jobs', JobController::class);
+        Route::put('jobs/{job}/status', JobStatusController::class)->name('jobs.status');
+        Route::put('jobs/{job}/tech-notes', [JobWorkController::class, 'notes'])->name('jobs.tech-notes');
+        Route::post('jobs/{job}/appliances', [JobWorkController::class, 'storeAppliance'])->name('jobs.appliances.store');
+        Route::put('jobs/{job}/appliances/{appliance}', [JobWorkController::class, 'updateAppliance'])->name('jobs.appliances.update');
+        Route::post('jobs/{job}/visits', [VisitController::class, 'store'])->name('visits.store');
+        Route::put('visits/{visit}', [VisitController::class, 'update'])->name('visits.update');
+        Route::delete('visits/{visit}', [VisitController::class, 'destroy'])->name('visits.destroy');
+        Route::post('visits/{visit}/on-my-way', [VisitActionController::class, 'onMyWay'])->name('visits.on-my-way');
+        Route::post('visits/{visit}/start', [VisitActionController::class, 'start'])->name('visits.start');
+        Route::post('visits/{visit}/finish', [VisitActionController::class, 'finish'])->name('visits.finish');
 
         Route::prefix('company')->group(function () {
             Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company.settings.edit');

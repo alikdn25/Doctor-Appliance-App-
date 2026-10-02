@@ -9,6 +9,7 @@ return [
     'deleted' => 'Property deleted.',
     'delete' => 'Delete property',
     'confirm_delete' => 'Delete this property with all its appliances?',
+    'has_jobs' => 'This property has jobs and cannot be deleted.',
     'primary' => 'Primary',
     'is_primary' => 'Primary property',
     'open_in_maps' => 'Open in Maps',

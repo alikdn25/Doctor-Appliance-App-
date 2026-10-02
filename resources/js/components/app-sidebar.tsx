@@ -2,11 +2,13 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Building,
     Building2,
+    ClipboardList,
     Contact,
     LayoutGrid,
     Percent,
     Tags,
     Users,
+    Wrench,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { CompanySwitcher } from '@/components/company-switcher';
@@ -26,6 +28,7 @@ import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as brands } from '@/routes/brands';
 import { index as customers } from '@/routes/customers';
 import { edit as companySettings } from '@/routes/company/settings';
+import { index as jobs, mine as myJobs } from '@/routes/jobs';
 import { index as taxes } from '@/routes/taxes';
 import { index as team } from '@/routes/team';
 import type { NavItem } from '@/types';
@@ -37,6 +40,16 @@ export function AppSidebar() {
     const mainItems: NavItem[] = auth.company
         ? ([
               { title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid },
+              can.viewMyJobs && {
+                  title: 'nav.my_jobs',
+                  href: myJobs(),
+                  icon: Wrench,
+              },
+              can.viewJobs && {
+                  title: 'nav.jobs',
+                  href: jobs(),
+                  icon: ClipboardList,
+              },
               can.viewCustomers && {
                   title: 'nav.customers',
                   href: customers(),

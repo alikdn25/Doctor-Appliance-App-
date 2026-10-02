@@ -15,6 +15,10 @@ test('the demo seeder builds two isolated companies', function () {
     $this->actingAs(User::where('email', 'owner@example.com')->sole())
         ->get(route('brands.index'))
         ->assertInertia(fn ($page) => $page->has('brands', 2));
+
+    $this->actingAs(User::where('email', 'tech@example.com')->sole())
+        ->get(route('jobs.mine'))
+        ->assertInertia(fn ($page) => $page->has('visits', 1));
 });
 
 test('a super-admin can be created from the command line', function () {

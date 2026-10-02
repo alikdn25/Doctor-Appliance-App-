@@ -6,6 +6,8 @@ return [
     'group_platform' => 'Platform',
     'dashboard' => 'Dashboard',
     'customers' => 'Customers',
+    'jobs' => 'Jobs',
+    'my_jobs' => 'My jobs',
     'brands' => 'Brands',
     'team' => 'Team',
     'taxes' => 'Taxes',

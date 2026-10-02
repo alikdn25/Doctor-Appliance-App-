@@ -17,7 +17,8 @@ class AppliancePolicy
 
     public function view(User $user, Appliance $appliance): bool
     {
-        return $this->inCurrentCompany($appliance) && $this->managesCustomers($user);
+        return $this->inCurrentCompany($appliance)
+            && ($this->managesCustomers($user) || $this->seesThroughJobs($user, fn ($q) => $q->where('property_id', $appliance->property_id)));
     }
 
     public function create(User $user): bool
@@ -27,11 +28,11 @@ class AppliancePolicy
 
     public function update(User $user, Appliance $appliance): bool
     {
-        return $this->view($user, $appliance);
+        return $this->inCurrentCompany($appliance) && $this->managesCustomers($user);
     }
 
     public function delete(User $user, Appliance $appliance): bool
     {
-        return $this->view($user, $appliance);
+        return $this->update($user, $appliance);
     }
 }

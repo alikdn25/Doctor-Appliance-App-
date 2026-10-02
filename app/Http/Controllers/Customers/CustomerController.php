@@ -15,7 +15,9 @@ use App\Models\Customer;
 use App\Models\CustomerEmail;
 use App\Models\CustomerPhone;
 use App\Models\Property;
+use App\Models\ServiceJob;
 use App\Services\AuditLogger;
+use App\Support\Jobs\JobPresenter;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -86,11 +88,26 @@ class CustomerController extends Controller
         return to_route('customers.show', $customer);
     }
 
-    public function show(Customer $customer): Response
+    public function show(Request $request, Customer $customer): Response
     {
         Gate::authorize('view', $customer);
 
+        $user = $request->user();
+        $jobs = ServiceJob::query()
+            ->visibleTo($user)
+            ->where('customer_id', $customer->id)
+            ->with(['customer', 'property', 'brand', 'appliances', 'visits.assignees'])
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get();
+
         $customer->load(['phones', 'emails', 'properties.appliances']);
+
+        // Technicians only see the properties of their own jobs.
+        if (Gate::denies('update', $customer)) {
+            $propertyIds = $jobs->pluck('property_id')->unique();
+            $customer->setRelation('properties', $customer->properties->whereIn('id', $propertyIds)->values());
+        }
 
         return Inertia::render('customers/show', [
             'customer' => [
@@ -112,8 +129,10 @@ class CustomerController extends Controller
                     ])->values(),
                 ])->values(),
             ],
+            'jobs' => $jobs->map(fn (ServiceJob $job) => JobPresenter::row($job))->values(),
             'canUpdate' => Gate::allows('update', $customer),
             'canDelete' => Gate::allows('delete', $customer),
+            'canCreateJob' => Gate::allows('create', ServiceJob::class),
             'applianceTypes' => ApplianceType::options(),
             'manufacturers' => self::manufacturers(),
         ]);
@@ -148,6 +167,12 @@ class CustomerController extends Controller
     public function destroy(Customer $customer, AuditLogger $audit): RedirectResponse
     {
         Gate::authorize('delete', $customer);
+
+        if (ServiceJob::query()->where('customer_id', $customer->id)->exists()) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => __('customers.has_jobs')]);
+
+            return to_route('customers.show', $customer);
+        }
 
         $customer->delete();
         $audit->record('customer.deleted', $customer, ['name' => $customer->display_name]);

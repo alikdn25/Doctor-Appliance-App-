@@ -17,6 +17,8 @@ return [
     'no_rating_plate' => 'No rating plate photo yet.',
     'repair_history' => 'Repair history',
     'no_repairs' => 'No repairs yet. Jobs for this appliance will appear here.',
+    'work_done' => 'Work done',
+    'problem' => 'Problem',
     'model' => 'Model :model',
     'serial' => 'S/N :serial',
     'at_property' => 'At :address',

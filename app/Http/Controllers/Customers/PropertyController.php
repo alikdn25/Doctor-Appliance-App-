@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Customers\PropertyRequest;
 use App\Models\Customer;
 use App\Models\Property;
+use App\Models\ServiceJob;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -37,6 +38,13 @@ class PropertyController extends Controller
         Gate::authorize('delete', $property);
 
         $customer = $property->customer()->firstOrFail();
+
+        if (ServiceJob::query()->where('property_id', $property->id)->exists()) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => __('properties.has_jobs')]);
+
+            return to_route('customers.show', $customer);
+        }
+
         $property->delete();
         SaveProperty::ensurePrimary($customer);
 

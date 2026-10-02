@@ -11,8 +11,13 @@ use App\Models\Concerns\BelongsToCompany;
 use App\Models\Customer;
 use App\Models\CustomerEmail;
 use App\Models\CustomerPhone;
+use App\Models\JobAppliance;
+use App\Models\JobStatusChange;
+use App\Models\JobVisit;
+use App\Models\JobVisitAssignee;
 use App\Models\Membership;
 use App\Models\Property;
+use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Tenancy\MissingTenantException;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +42,20 @@ beforeEach(function () {
     $this->propertyB = Property::factory()->for($this->customerB)->create(['line1' => '1 Secret St']);
     $this->applianceA = Appliance::factory()->for($this->propertyA)->create();
     $this->applianceB = Appliance::factory()->for($this->propertyB)->create(['type' => 'washer', 'model_number' => 'SECRETMODEL']);
+
+    $this->techA = memberOf($this->companyA, UserRole::Technician);
+    $this->techB = memberOf($this->companyB, UserRole::Technician);
+    $this->jobA = ServiceJob::factory()->for($this->propertyA)->withAppliances([$this->applianceA])->withVisit($this->techA)
+        ->create(['brand_id' => $this->brandA->id]);
+    $this->jobB = ServiceJob::factory()->for($this->propertyB)->withAppliances([$this->applianceB])->withVisit($this->techB)
+        ->create(['brand_id' => $this->brandB->id, 'description' => 'Secret job']);
+    $this->visitB = JobVisit::withoutCompanyScope()->where('service_job_id', $this->jobB->id)->sole();
+
+    foreach ([$this->jobA, $this->jobB] as $job) {
+        JobStatusChange::withoutCompanyScope()->insert([
+            'company_id' => $job->company_id, 'service_job_id' => $job->id, 'to_status' => 'new', 'created_at' => now(),
+        ]);
+    }
 });
 
 /**
@@ -53,6 +72,11 @@ dataset('tenant models', [
     'customer emails' => [CustomerEmail::class],
     'properties' => [Property::class],
     'appliances' => [Appliance::class],
+    'jobs' => [ServiceJob::class],
+    'job appliances' => [JobAppliance::class],
+    'job visits' => [JobVisit::class],
+    'job visit assignees' => [JobVisitAssignee::class],
+    'job status changes' => [JobStatusChange::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -69,7 +93,8 @@ test('every tenant-owned model is covered by isolation tests', function () {
 
     expect($tenantModels)->toBe(collect([
         Appliance::class, Brand::class, BrandAddress::class, Customer::class, CustomerEmail::class,
-        CustomerPhone::class, Membership::class, Property::class, TaxRate::class,
+        CustomerPhone::class, JobAppliance::class, JobStatusChange::class, JobVisit::class, JobVisitAssignee::class,
+        Membership::class, Property::class, ServiceJob::class, TaxRate::class,
     ])->sort()->values()->all());
 });
 
@@ -149,8 +174,8 @@ test('the team page lists only members of the current company', function () {
     $this->actingAs($this->ownerA)
         ->get(route('team.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->has('members', 1)
-            ->where('members.0.email', $this->ownerA->email)
+            ->where('members', fn ($members) => collect($members)->pluck('email')->sort()->values()->all()
+                === collect([$this->ownerA->email, $this->techA->email])->sort()->values()->all())
             ->has('brands', 1));
 });
 
@@ -275,4 +300,94 @@ test('manufacturer and tag suggestions only come from the current company', func
 
     $this->get(route('customers.index'))
         ->assertInertia(fn (Assert $page) => $page->where('tags', []));
+});
+
+test('the job list, search and my jobs only show jobs of the current company', function () {
+    $this->actingAs($this->ownerA);
+
+    $this->get(route('jobs.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('jobs.total', 1)
+            ->where('jobs.data.0.id', $this->jobA->id)
+            ->where('brands', fn ($brands) => collect($brands)->pluck('label')->all() === ['Brand A'])
+            ->where('technicians', fn ($people) => ! collect($people)->pluck('id')->contains($this->techB->id)));
+
+    foreach ([(string) $this->jobB->number, 'Bella', '604-555-0202', 'Secret St', 'SECRETMODEL'] as $term) {
+        $this->get(route('jobs.index', ['search' => $term]))
+            ->assertInertia(fn (Assert $page) => $page->where('jobs.data', fn ($rows) => collect($rows)->pluck('id')->doesntContain($this->jobB->id)));
+    }
+
+    $this->actingAs($this->techA)
+        ->get(route('jobs.mine', ['tab' => 'upcoming']))
+        ->assertInertia(fn (Assert $page) => $page->has('visits', 1)->where('visits.0.job.id', $this->jobA->id));
+});
+
+test('another company\'s jobs and visits cannot be opened or changed', function () {
+    $this->actingAs($this->ownerA);
+
+    $this->get(route('jobs.show', $this->jobB))->assertNotFound();
+    $this->get(route('jobs.edit', $this->jobB))->assertNotFound();
+    $this->put(route('jobs.update', $this->jobB), ['brand_id' => $this->brandA->id])->assertNotFound();
+    $this->put(route('jobs.status', $this->jobB), ['status' => 'cancelled'])->assertNotFound();
+    $this->put(route('jobs.tech-notes', $this->jobB), ['tech_notes' => 'X'])->assertNotFound();
+    $this->post(route('jobs.appliances.store', $this->jobB), ['type' => 'dryer'])->assertNotFound();
+    $this->put(route('jobs.appliances.update', [$this->jobB, $this->applianceB]), ['model_number' => 'X'])->assertNotFound();
+    $this->post(route('visits.store', $this->jobB), ['date' => '2030-01-01', 'start_time' => '09:00', 'end_time' => '10:00'])->assertNotFound();
+    $this->put(route('visits.update', $this->visitB), ['date' => '2030-01-01', 'start_time' => '09:00', 'end_time' => '10:00'])->assertNotFound();
+    $this->post(route('visits.on-my-way', $this->visitB))->assertNotFound();
+    $this->post(route('visits.start', $this->visitB))->assertNotFound();
+    $this->post(route('visits.finish', $this->visitB), ['outcome' => 'completed'])->assertNotFound();
+    $this->delete(route('visits.destroy', $this->visitB))->assertNotFound();
+    $this->delete(route('jobs.destroy', $this->jobB))->assertNotFound();
+
+    $jobB = ServiceJob::withoutCompanyScope()->find($this->jobB->id);
+    expect($jobB->status->value)->toBe('scheduled')
+        ->and($jobB->trashed())->toBeFalse()
+        ->and($jobB->tech_notes)->toBeNull()
+        ->and(JobVisit::withoutCompanyScope()->find($this->visitB->id)->status->value)->toBe('scheduled')
+        ->and(Appliance::withoutCompanyScope()->where('property_id', $this->propertyB->id)->count())->toBe(1);
+});
+
+test('a job cannot use another company\'s customer, property, appliance, brand or team member', function () {
+    $this->actingAs($this->ownerA);
+    $visit = ['add_visit' => true, 'visit' => ['date' => '2030-01-01', 'start_time' => '09:00', 'end_time' => '10:00']];
+    $base = [
+        'brand_id' => $this->brandA->id, 'job_type' => 'repair',
+        'customer_id' => $this->customerA->id, 'property_id' => $this->propertyA->id,
+    ];
+
+    $this->post(route('jobs.store'), [...$base, 'customer_id' => $this->customerB->id, 'property_id' => $this->propertyB->id])
+        ->assertSessionHasErrors('customer_id');
+    $this->post(route('jobs.store'), [...$base, 'property_id' => $this->propertyB->id])
+        ->assertSessionHasErrors('property_id');
+    $this->post(route('jobs.store'), [...$base, 'appliance_ids' => [$this->applianceB->id]])
+        ->assertSessionHasErrors('appliance_ids');
+    $this->post(route('jobs.store'), [...$base, 'brand_id' => $this->brandB->id])
+        ->assertSessionHasErrors('brand_id');
+    $this->post(route('jobs.store'), [...$base, ...$visit, 'visit' => [...$visit['visit'], 'assignee_ids' => [$this->techB->id]]])
+        ->assertSessionHasErrors('visit.assignee_ids.0');
+    $this->post(route('visits.store', $this->jobA), [...$visit['visit'], 'assignee_ids' => [$this->techB->id]])
+        ->assertSessionHasErrors('assignee_ids.0');
+    $this->post(route('jobs.appliances.store', $this->jobA), ['appliance_id' => $this->applianceB->id])
+        ->assertNotFound();
+
+    expect(ServiceJob::withoutCompanyScope()->where('company_id', $this->companyA->id)->count())->toBe(1);
+});
+
+test('the job customer lookup never returns another company\'s customers', function () {
+    $this->actingAs($this->ownerA)
+        ->getJson(route('jobs.lookup', ['search' => 'Bella']))
+        ->assertOk()
+        ->assertJsonCount(0, 'customers');
+});
+
+test('job numbers are counted per company', function () {
+    $this->actingAs($this->ownerB)->post(route('jobs.store'), [
+        'brand_id' => $this->brandB->id, 'job_type' => 'repair',
+        'customer_id' => $this->customerB->id, 'property_id' => $this->propertyB->id,
+    ])->assertRedirect();
+
+    expect(ServiceJob::withoutCompanyScope()->where('company_id', $this->companyB->id)->orderBy('number')->pluck('number')->all())
+        ->toBe([1001, 1002])
+        ->and(Company::find($this->companyA->id)->job_next_number)->toBe(1002);
 });

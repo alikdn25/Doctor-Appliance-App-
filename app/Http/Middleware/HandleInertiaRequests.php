@@ -6,6 +6,7 @@ use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Membership;
+use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Models\User;
 use App\Services\Impersonation;
@@ -77,6 +78,8 @@ class HandleInertiaRequests extends Middleware
                 : $user->accessibleCompanies()->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name])->values(),
             'can' => $company === null ? [] : [
                 'viewCustomers' => $user->can('viewAny', Customer::class),
+                'viewJobs' => $user->can('viewAny', ServiceJob::class),
+                'viewMyJobs' => $user->can('viewMine', ServiceJob::class),
                 'manageCompany' => $user->can('update', $company),
                 'viewBrands' => $user->can('viewAny', Brand::class),
                 'manageTeam' => $user->can('viewAny', Membership::class),
