@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CompanyStatus;
 use App\Enums\PaymentTerms;
+use App\Enums\SmsMode;
 use App\Enums\SubscriptionStatus;
 use App\Enums\Vertical;
 use App\Models\Scopes\CompanyScope;
@@ -34,6 +35,13 @@ use Illuminate\Support\Carbon;
  * @property string $locale Regional format (BCP 47), e.g. en-US
  * @property bool $prices_include_tax
  * @property bool $online_tips Customers may add a tip when paying online
+ * @property SmsMode $sms_mode
+ * @property string $quiet_hours_start HH:MM, company time
+ * @property string $quiet_hours_end HH:MM, company time
+ * @property array<string, string> $message_templates Overrides of the default texts by MessageKind value
+ * @property bool $review_requests_default
+ * @property int $review_request_delay_hours
+ * @property int $review_request_cooldown_days
  * @property PaymentTerms $default_payment_terms
  * @property string $invoice_prefix
  * @property int $invoice_next_number
@@ -76,6 +84,13 @@ class Company extends Model
         'timezone_pending',
         'payment_provider',
         'online_tips',
+        'sms_mode',
+        'quiet_hours_start',
+        'quiet_hours_end',
+        'message_templates',
+        'review_requests_default',
+        'review_request_delay_hours',
+        'review_request_cooldown_days',
     ];
 
     protected $attributes = [
@@ -83,6 +98,13 @@ class Company extends Model
         'vertical' => 'appliance_repair',
         'prices_include_tax' => false,
         'default_payment_terms' => 'due_on_receipt',
+        'sms_mode' => 'technician_phone',
+        'quiet_hours_start' => '21:00',
+        'quiet_hours_end' => '08:00',
+        'message_templates' => '{}',
+        'review_requests_default' => true,
+        'review_request_delay_hours' => 2,
+        'review_request_cooldown_days' => 180,
     ];
 
     protected static function booted(): void
@@ -108,6 +130,11 @@ class Company extends Model
             'default_payment_terms' => PaymentTerms::class,
             'prices_include_tax' => 'boolean',
             'online_tips' => 'boolean',
+            'sms_mode' => SmsMode::class,
+            'message_templates' => 'array',
+            'review_requests_default' => 'boolean',
+            'review_request_delay_hours' => 'integer',
+            'review_request_cooldown_days' => 'integer',
             'business_hours' => 'array',
             'invoice_next_number' => 'integer',
             'estimate_next_number' => 'integer',
@@ -141,6 +168,7 @@ class Company extends Model
             'vertical' => $this->vertical->value,
             'tracks_appliances' => $this->vertical->tracksAppliances(),
             'prices_include_tax' => $this->prices_include_tax,
+            'sms_mode' => $this->sms_mode->value,
             'address' => Countries::addressLabels($this->country),
         ];
     }

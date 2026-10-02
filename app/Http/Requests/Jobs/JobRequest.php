@@ -77,6 +77,7 @@ class JobRequest extends FormRequest
             'job_type' => ['required', Rule::in($this->allowedJobTypes())],
             'lead_source' => ['nullable', Rule::enum(LeadSource::class)],
             'description' => ['nullable', 'string', 'max:5000'],
+            'ask_for_review' => ['sometimes', 'boolean'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'appliance_ids' => ['array', 'max:20'],
             'appliance_ids.*' => ['integer', 'distinct'],
@@ -170,7 +171,7 @@ class JobRequest extends FormRequest
     public function jobAttributes(): array
     {
         return collect($this->validated())
-            ->only(['brand_id', 'property_id', 'job_type', 'lead_source', 'description', 'notes'])
+            ->only(['brand_id', 'property_id', 'job_type', 'lead_source', 'description', 'notes', 'ask_for_review'])
             ->all();
     }
 

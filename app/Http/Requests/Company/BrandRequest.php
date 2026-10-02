@@ -6,6 +6,7 @@ use App\Models\Brand;
 use App\Rules\PostalCode;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class BrandRequest extends FormRequest
 {
@@ -51,6 +52,7 @@ class BrandRequest extends FormRequest
             'business_number' => ['nullable', 'string', 'max:50'],
             'invoice_footer' => ['nullable', 'string', 'max:5000'],
             'invoice_terms' => ['nullable', 'string', 'max:10000'],
+            'google_profile_id' => ['nullable', 'integer', Rule::exists('google_profiles', 'id')->where('company_id', currentCompany()->id)],
             'is_active' => ['boolean'],
             'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
             'remove_logo' => ['boolean'],

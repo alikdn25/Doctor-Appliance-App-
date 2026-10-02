@@ -11,6 +11,7 @@ use App\Enums\PaymentTerms;
 use App\Enums\PhoneLabel;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Customers\CustomerRequest;
+use App\Messaging\MessagingPresenter;
 use App\Models\Appliance;
 use App\Models\Customer;
 use App\Models\CustomerEmail;
@@ -114,6 +115,7 @@ class CustomerController extends Controller
         }
 
         return Inertia::render('customers/show', [
+            'messaging' => app(MessagingPresenter::class)->forCustomer($customer),
             'customer' => [
                 ...$this->customerData($customer),
                 'type_label' => $customer->type->label(),
@@ -288,6 +290,7 @@ class CustomerController extends Controller
                 'label_text' => $p->label->label(),
                 'number' => $p->number,
                 'is_primary' => $p->is_primary,
+                'sms_opted_out_at' => $p->sms_opted_out_at?->toIso8601String(),
             ])->values(),
             'emails' => $customer->emails->map(fn (CustomerEmail $e) => [
                 'id' => $e->id,

@@ -44,6 +44,18 @@ return [
         'api_version' => env('SQUARE_API_VERSION', '2025-10-16'),
     ],
 
+    /*
+    | Twilio (SPEC §7.7): the platform's master account. Companies get subaccounts and numbers under it.
+    | Use Twilio test credentials (TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN of the test account) for tests.
+    | Webhook URLs set on each number: {APP_URL}/webhooks/sms/twilio (incoming) and …/status (delivery).
+    */
+    'twilio' => [
+        'account_sid' => env('TWILIO_ACCOUNT_SID'),
+        'auth_token' => env('TWILIO_AUTH_TOKEN'),
+        'base_url' => env('TWILIO_BASE_URL', 'https://api.twilio.com'),
+        'messaging_url' => env('TWILIO_MESSAGING_URL', 'https://messaging.twilio.com'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

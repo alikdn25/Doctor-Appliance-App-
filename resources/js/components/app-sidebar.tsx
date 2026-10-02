@@ -4,12 +4,14 @@ import {
     Building,
     Building2,
     ListChecks,
+    MessageSquare,
     CalendarDays,
     ClipboardList,
     Contact,
     LayoutGrid,
     Percent,
     Receipt,
+    Star,
     Tags,
     Users,
     Wrench,
@@ -32,6 +34,8 @@ import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as brands } from '@/routes/brands';
 import { index as customers } from '@/routes/customers';
 import { edit as checklists } from '@/routes/company/checklists';
+import { edit as googleProfiles } from '@/routes/company/google-profiles';
+import { edit as messaging } from '@/routes/company/messaging';
 import { edit as services } from '@/routes/company/services';
 import { edit as companySettings } from '@/routes/company/settings';
 import { index as invoices } from '@/routes/invoices';
@@ -88,6 +92,16 @@ export function AppSidebar() {
             title: 'nav.services',
             href: services(),
             icon: BookOpen,
+        },
+        can.manageChecklists && {
+            title: 'nav.google_reviews',
+            href: googleProfiles(),
+            icon: Star,
+        },
+        can.manageCompany && {
+            title: 'nav.messaging',
+            href: messaging(),
+            icon: MessageSquare,
         },
         can.manageCompany && {
             title: 'nav.company_settings',

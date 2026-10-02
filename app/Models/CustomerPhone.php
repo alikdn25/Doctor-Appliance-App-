@@ -7,6 +7,7 @@ use App\Models\Concerns\BelongsToCompany;
 use App\Support\PhoneNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $number
  * @property string $number_normalized
  * @property bool $is_primary
+ * @property Carbon|null $sms_opted_out_at Replied STOP to our SMS
  */
 class CustomerPhone extends Model
 {
@@ -36,6 +38,7 @@ class CustomerPhone extends Model
         return [
             'label' => PhoneLabel::class,
             'is_primary' => 'boolean',
+            'sms_opted_out_at' => 'datetime',
         ];
     }
 

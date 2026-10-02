@@ -38,6 +38,11 @@ import type { ApplianceItem, Assignable, Visit } from '@/components/jobs/types';
 import { applianceTitle } from '@/components/jobs/types';
 import { VisitDialog } from '@/components/jobs/visit-dialog';
 import { PageHeader } from '@/components/page-header';
+import {
+    JobMessagingSection,
+    openOnPhone,
+} from '@/components/messaging/job-messaging';
+import type { JobMessaging } from '@/components/messaging/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatMinutes, useCompanyTime } from '@/lib/datetime';
@@ -106,6 +111,7 @@ type Props = {
     manufacturers: string[];
     today: string;
     photoKinds: Option[];
+    messaging: JobMessaging;
 };
 
 /** Minutes since an ISO time, refreshed every 30 seconds. */
@@ -138,6 +144,7 @@ export default function JobShow({
     manufacturers,
     today,
     photoKinds,
+    messaging,
 }: Props) {
     const t = useTrans();
     const phoneText = usePhone();
@@ -275,9 +282,24 @@ export default function JobShow({
                                     <Button
                                         size="lg"
                                         className="h-12"
-                                        onClick={() =>
-                                            act(onMyWay(myVisit.id).url)
-                                        }
+                                        onClick={() => {
+                                            act(onMyWay(myVisit.id).url);
+
+                                            // From technician's phone: the messages app opens with the text ready.
+                                            if (
+                                                messaging.mode ===
+                                                    'technician_phone' &&
+                                                messaging.phone &&
+                                                !messaging.opted_out
+                                            ) {
+                                                openOnPhone(
+                                                    job.id,
+                                                    'on_my_way',
+                                                    messaging.phone,
+                                                    messaging.texts.on_my_way,
+                                                );
+                                            }
+                                        }}
                                     >
                                         <Car /> {t('jobs.actions.on_my_way')}
                                     </Button>
@@ -357,13 +379,35 @@ export default function JobShow({
                                 </a>
                             </Button>
                         )}
-                        {phone && (
-                            <Button asChild size="lg" variant="outline">
-                                <a href={`sms:${phone.replace(/[^\d+]/g, '')}`}>
-                                    <MessageSquare /> {t('jobs.text')}
-                                </a>
-                            </Button>
-                        )}
+                        {phone &&
+                            (messaging.mode === 'technician_phone' &&
+                            messaging.phone &&
+                            !messaging.opted_out ? (
+                                <Button
+                                    size="lg"
+                                    variant="outline"
+                                    onClick={() =>
+                                        openOnPhone(
+                                            job.id,
+                                            'general',
+                                            messaging.phone!,
+                                            messaging.texts.general,
+                                        )
+                                    }
+                                >
+                                    <MessageSquare /> {t('messages.send_sms')}
+                                </Button>
+                            ) : (
+                                messaging.mode !== 'automatic' && (
+                                    <Button asChild size="lg" variant="outline">
+                                        <a
+                                            href={`sms:${phone.replace(/[^\d+]/g, '')}`}
+                                        >
+                                            <MessageSquare /> {t('jobs.text')}
+                                        </a>
+                                    </Button>
+                                )
+                            ))}
                         {property.site_contact_phone && (
                             <Button asChild size="lg" variant="outline">
                                 <a
@@ -564,6 +608,12 @@ export default function JobShow({
                         </section>
                     </>
                 )}
+
+                <JobMessagingSection
+                    jobId={job.id}
+                    messaging={messaging}
+                    canWork={can.work}
+                />
 
                 <ChecklistSection
                     jobId={job.id}

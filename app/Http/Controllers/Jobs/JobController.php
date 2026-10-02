@@ -12,6 +12,7 @@ use App\Enums\VisitStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Requests\Jobs\JobRequest;
+use App\Messaging\MessagingPresenter;
 use App\Models\Appliance;
 use App\Models\Brand;
 use App\Models\Customer;
@@ -259,6 +260,7 @@ class JobController extends Controller
                 ] : null,
             ],
             'myVisitId' => $myVisit?->id,
+            'messaging' => app(MessagingPresenter::class)->forJob($job, $user, $myVisit),
             'can' => [
                 'update' => $canUpdate,
                 'delete' => Gate::allows('delete', $job),

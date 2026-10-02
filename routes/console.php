@@ -10,3 +10,8 @@ Artisan::command('inspire', function () {
 
 // Square access tokens last 30 days; keep every connected company's token fresh.
 Schedule::command('payments:refresh-square-tokens')->dailyAt('03:17')->withoutOverlapping();
+
+// Customer messages (SPEC §7.7, §8).
+Schedule::command('messages:deliver-due')->everyMinute()->withoutOverlapping();
+Schedule::command('messages:send-visit-reminders')->hourlyAt(2)->withoutOverlapping();
+Schedule::command('sms:sync-registrations')->dailyAt('06:23');

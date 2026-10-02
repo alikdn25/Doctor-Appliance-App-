@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $business_number
  * @property string|null $invoice_footer
  * @property string|null $invoice_terms
+ * @property int|null $google_profile_id Default Google profile for review requests
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -57,6 +58,7 @@ class Brand extends Model
         'business_number',
         'invoice_footer',
         'invoice_terms',
+        'google_profile_id',
         'is_active',
     ];
 

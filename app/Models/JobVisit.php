@@ -54,6 +54,7 @@ class JobVisit extends Model
             'scheduled_end' => 'datetime',
             'estimated_duration_minutes' => 'integer',
             'on_the_way_at' => 'datetime',
+            'reminder_sent_at' => 'datetime',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
         ];
