@@ -19,8 +19,8 @@ export function NavMain({ items, label }: { items: NavItem[]; label: string }) {
     }
 
     return (
-        <SidebarGroup className="px-2 py-0">
-            <SidebarGroupLabel>{t(label)}</SidebarGroupLabel>
+        <SidebarGroup className="px-3 py-1">
+            <SidebarGroupLabel className="px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/45">{t(label)}</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => (
                     <SidebarMenuItem key={item.title}>
@@ -29,7 +29,7 @@ export function NavMain({ items, label }: { items: NavItem[]; label: string }) {
                             isActive={isCurrentOrParentUrl(item.href)}
                             tooltip={{ children: t(item.title) }}
                             size="lg"
-                            className="md:h-8"
+                            className="h-11 rounded-xl px-3 text-[14px] font-medium data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-sm md:h-11 [&>svg]:size-[18px]"
                         >
                             <Link href={item.href} prefetch>
                                 {item.icon && <item.icon />}
