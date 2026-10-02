@@ -20,19 +20,19 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
-| #   | Task                                                                        | Status         |
-| --- | --------------------------------------------------------------------------- | -------------- |
-| 1   | Customers, properties (manual address), appliances (§6, §7.1)               | ✅ Done        |
-| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)              | ✅ Done        |
-| 3   | Calendar & dispatch                                                         | ✅ Done        |
-| 4   | Technician PWA view, photos, signatures                                     | ✅ Done        |
-| 5   | Estimates, invoices, manual payments (§7.5, §7.6)                           | ✅ Done        |
-| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6) | ✅ Done        |
-| 7   | PDF + email sending of documents, price book on lines, Square tips/refunds  | ✅ Done        |
+| #   | Task                                                                         | Status         |
+| --- | ---------------------------------------------------------------------------- | -------------- |
+| 1   | Customers, properties (manual address), appliances (§6, §7.1)                | ✅ Done        |
+| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)               | ✅ Done        |
+| 3   | Calendar & dispatch                                                          | ✅ Done        |
+| 4   | Technician PWA view, photos, signatures                                      | ✅ Done        |
+| 5   | Estimates, invoices, manual payments (§7.5, §7.6)                            | ✅ Done        |
+| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6)  | ✅ Done        |
+| 7   | PDF + email sending of documents, price book on lines, Square tips/refunds   | ✅ Done        |
 | 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done        |
-| —   | Price book: parts with cost/margin, categories (services + picker done)     | 🚧 Partly      |
-| —   | Basic reports                                                               | ⏳ Not started |
-| —   | Google Places autocomplete + geocoding for properties                       | ⏳ Not started |
+| —   | Price book: parts with cost/margin, categories (services + picker done)      | 🚧 Partly      |
+| —   | Basic reports                                                                | ⏳ Not started |
+| —   | Google Places autocomplete + geocoding for properties                        | ⏳ Not started |
 
 ### Task 1 — Customers, properties, appliances ✅
 
@@ -374,8 +374,8 @@ reminders (Stage 2), Stripe.
 
 ### Task 8 — SMS and Google review requests ✅
 
-**SMS mode** (Company → Messaging, Owner): *Automatic* / *From technician's phone* (default for new and existing
-companies) / *Off*.
+**SMS mode** (Company → Messaging, Owner): _Automatic_ / _From technician's phone_ (default for new and existing
+companies) / _Off_.
 
 - **Automatic**: `App\Sms\SmsProvider` interface, Twilio first (`config/sms.php`, keys `TWILIO_*` in `.env`).
   "Get an SMS number" creates the company's **Twilio subaccount** under the platform account and buys a **local number**
