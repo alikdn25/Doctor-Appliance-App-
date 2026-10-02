@@ -20,7 +20,7 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
-### Business expenses — implemented, CI pending
+### Business expenses — CI passed
 
 - Separate Business expenses navigation for Owners/Admins and technicians. Custom shared categories can be
   created from the ledger or inline while adding an expense; creators/the office can rename or archive them.
@@ -28,6 +28,7 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
   on the form; price/tax/total columns beside each category for the selected period, with no global counter.
 - Dates and search filters, a paginated ledger and CSV export. Category sums cover all pages and keep currencies
   separate. New entries use the company currency; edits preserve their original currency and decimal precision.
+- Saving an expense opens the month of its date, so backdated receipts are immediately visible.
 - Office sees company expenses; technicians see/manage/export only their own records. Uploads and receipt routes
   are private, tenant-scoped and permission-checked. No job/invoice relationship or effect on job profit.
 - Edits/removal/category changes are audited. Removal is a soft delete; receipt originals remain on private
@@ -35,6 +36,8 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 - Tests cover amounts/taxes, zero/three-decimal currencies, category creation/archival, history, uploads, retention,
   tenant/role access, pagination, dates/search and CSV. Migration adds business_expenses and
   business_expense_categories; no environment settings required.
+- Build, PHP style, frontend lint/format, TypeScript and all 623 tests (4,697 assertions) passed on commit
+  `0ef332a`: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37069134254.
 - Manual check: create Fuel/Lunches/Tools, enter a price and tax with a receipt, compare category columns, change
   the period, export CSV and check as a technician. Narrow-screen and camera/file-picker validation is pending.
 
