@@ -13,6 +13,10 @@ return [
     'pay_full' => 'Full balance',
     'by' => 'by :name',
     'online' => 'Online (:provider)',
+    'refund_of' => 'Refund of :reference',
+    'refund' => 'Refund',
+    'tip' => 'Tip :amount',
+    'tips_total' => 'Tips (not part of the invoice): :amount',
 
     'methods' => [
         'cash' => 'Cash',

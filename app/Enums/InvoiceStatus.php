@@ -5,7 +5,8 @@ namespace App\Enums;
 use App\Enums\Concerns\HasOptions;
 
 /**
- * Follows from the payments: unpaid → partially paid → paid. Void cancels the invoice.
+ * Follows from the payments: unpaid → partially paid → paid; refunded when online payments were all refunded.
+ * Void cancels the invoice.
  */
 enum InvoiceStatus: string
 {
@@ -14,6 +15,7 @@ enum InvoiceStatus: string
     case Unpaid = 'unpaid';
     case PartiallyPaid = 'partially_paid';
     case Paid = 'paid';
+    case Refunded = 'refunded';
     case Void = 'void';
 
     public function label(): string

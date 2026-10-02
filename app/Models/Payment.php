@@ -18,6 +18,8 @@ use Illuminate\Support\Carbon;
  * @property int $invoice_id
  * @property int $amount Minor units of $currency
  * @property string $currency ISO 4217 (the invoice's currency)
+ * @property int $tip_amount Tip taken by the provider, not applied to the invoice (negative on a refund)
+ * @property int|null $refunded_payment_id Set on a refund row (negative amount)
  * @property PaymentMethod $method
  * @property string|null $reference
  * @property string|null $note
@@ -35,7 +37,7 @@ class Payment extends Model
 {
     use BelongsToCompany;
 
-    protected $fillable = ['amount', 'method', 'reference', 'note', 'received_at', 'provider', 'provider_payment_id'];
+    protected $fillable = ['amount', 'tip_amount', 'method', 'reference', 'note', 'received_at', 'provider', 'provider_payment_id'];
 
     /**
      * @return array<string, string>
@@ -44,10 +46,16 @@ class Payment extends Model
     {
         return [
             'amount' => 'integer',
+            'tip_amount' => 'integer',
             'method' => PaymentMethod::class,
             'received_at' => 'datetime',
             'voided_at' => 'datetime',
         ];
+    }
+
+    public function isRefund(): bool
+    {
+        return $this->refunded_payment_id !== null;
     }
 
     public function isVoid(): bool

@@ -15,7 +15,9 @@ class SyncInvoice
 
     public function handle(Invoice $invoice, ?User $user): void
     {
+        // Refunds are payment rows with a negative amount: amount_paid is net of them.
         $paid = (int) $invoice->payments()->valid()->sum('amount');
+        $refunded = $invoice->payments()->valid()->whereNotNull('refunded_payment_id')->exists();
 
         $invoice->amount_paid = $paid;
 
@@ -25,8 +27,9 @@ class SyncInvoice
         } else {
             $invoice->balance = $invoice->total - $paid;
             $invoice->status = match (true) {
-                $invoice->balance <= 0 => InvoiceStatus::Paid,
+                $invoice->balance <= 0 && ($paid > 0 || ! $refunded) => InvoiceStatus::Paid,
                 $paid > 0 => InvoiceStatus::PartiallyPaid,
+                $refunded => InvoiceStatus::Refunded,
                 default => InvoiceStatus::Unpaid,
             };
             $invoice->paid_at = $invoice->status === InvoiceStatus::Paid ? ($invoice->paid_at ?? now()) : null;

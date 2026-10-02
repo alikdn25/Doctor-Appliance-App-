@@ -115,6 +115,8 @@ class BillingPresenter
         return [
             'id' => $payment->id,
             'amount' => $payment->amount,
+            'tip_amount' => $payment->tip_amount,
+            'is_refund' => $payment->isRefund(),
             'currency' => $payment->currency,
             'method' => $payment->method->value,
             'method_label' => $payment->method->label(),

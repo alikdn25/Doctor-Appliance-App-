@@ -426,12 +426,17 @@ export default function BillingShow({
                                                             : undefined
                                                     }
                                                 >
-                                                    {p.provider
-                                                        ? t('payments.online', {
-                                                              provider:
-                                                                  p.provider,
-                                                          })
-                                                        : p.method_label}
+                                                    {p.is_refund
+                                                        ? t('payments.refund')
+                                                        : p.provider
+                                                          ? t(
+                                                                'payments.online',
+                                                                {
+                                                                    provider:
+                                                                        p.provider,
+                                                                },
+                                                            )
+                                                          : p.method_label}
                                                 </span>
                                                 {p.voided_at && (
                                                     <span className="text-xs">
@@ -449,6 +454,13 @@ export default function BillingShow({
                                                           )
                                                         : null,
                                                     p.reference,
+                                                    p.tip_amount !== 0
+                                                        ? t('payments.tip', {
+                                                              amount: money(
+                                                                  p.tip_amount,
+                                                              ),
+                                                          })
+                                                        : null,
                                                     p.user
                                                         ? t('payments.by', {
                                                               name: p.user,

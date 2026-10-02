@@ -34,6 +34,9 @@ export type DocumentTax = {
 export type PaymentData = {
     id: number;
     amount: number;
+    /** Tip taken by the provider, not part of the invoice (negative on a refund). */
+    tip_amount: number;
+    is_refund: boolean;
     currency: string;
     method: string;
     method_label: string;

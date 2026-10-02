@@ -6,6 +6,7 @@ use App\Actions\Billing\RecordPayment;
 use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\InvoicePaymentLink;
+use App\Models\Payment;
 use App\Models\PaymentProviderConnection;
 use App\Models\User;
 use App\Payments\InvalidWebhookSignature;
@@ -28,7 +29,9 @@ use Throwable;
  * - Each company connects its own Square account by OAuth; payments go to its main location.
  * - The customer pays the invoice balance through a Square payment link (also shown as a QR code).
  * - payment.created / payment.updated webhooks record completed payments on the invoice, once per Square
- *   payment ID; oauth.authorization.revoked forgets a connection revoked from the Square dashboard.
+ *   payment ID; a tip is kept on the payment apart from the amount applied to the invoice.
+ * - refund.created / refund.updated webhooks record completed refunds of those payments (balance and status follow).
+ * - oauth.authorization.revoked forgets a connection revoked from the Square dashboard.
  */
 class SquareProvider implements PaymentProvider
 {
@@ -168,6 +171,8 @@ class SquareProvider implements PaymentProvider
             ],
             'payment_note' => Str::limit(__('payments.square.payment_note', ['number' => $invoice->number]), 500, ''),
             'pre_populated_data' => $email ? ['buyer_email' => $email] : null,
+            // Tips go to the company on top of the invoice (company setting).
+            'checkout_options' => currentCompany()->online_tips ? ['allow_tipping' => true] : null,
         ]));
 
         if (! is_string($link['url'] ?? null) || ! is_string($link['id'] ?? null)) {
@@ -218,6 +223,7 @@ class SquareProvider implements PaymentProvider
         $this->currentCompany->runAs($company, function () use ($company, $connection, $type, $request) {
             match ($type) {
                 'payment.created', 'payment.updated' => $this->recordPayment((array) $request->input('data.object.payment')),
+                'refund.created', 'refund.updated' => $this->recordRefund((array) $request->input('data.object.refund')),
                 'oauth.authorization.revoked' => $this->forget($company, $connection),
                 default => null,
             };
@@ -259,6 +265,7 @@ class SquareProvider implements PaymentProvider
                 CarbonImmutable::parse($payment['updated_at'] ?? $payment['created_at'] ?? 'now'),
                 $reference,
                 $payment['amount_money']['currency'] ?? null,
+                (int) ($payment['tip_money']['amount'] ?? 0),
             );
         } catch (ValidationException $e) {
             // E.g. the invoice was voided meanwhile: keep the money visible in Square, log it here.
@@ -268,6 +275,35 @@ class SquareProvider implements PaymentProvider
         }
 
         $link->update(['status' => InvoicePaymentLink::PAID]);
+    }
+
+    /**
+     * A completed Square refund of a payment recorded here becomes a refund row on its invoice (once).
+     *
+     * @param  array<string, mixed>  $refund
+     */
+    private function recordRefund(array $refund): void
+    {
+        if (($refund['status'] ?? null) !== 'COMPLETED' || ! is_string($refund['id'] ?? null) || ! is_string($refund['payment_id'] ?? null)) {
+            return;
+        }
+
+        $payment = Payment::query()
+            ->where('provider', $this->key())
+            ->where('provider_payment_id', $refund['payment_id'])
+            ->whereNull('refunded_payment_id')
+            ->first();
+
+        if ($payment === null) {
+            return;
+        }
+
+        $this->recordPayment->refundFromProvider(
+            $payment,
+            $refund['id'],
+            (int) ($refund['amount_money']['amount'] ?? 0),
+            CarbonImmutable::parse($refund['updated_at'] ?? $refund['created_at'] ?? 'now'),
+        );
     }
 
     private function verifySignature(Request $request): void

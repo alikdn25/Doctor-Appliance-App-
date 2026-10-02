@@ -27,6 +27,7 @@ type CompanySettings = {
     currency: string;
     locale: string;
     prices_include_tax: boolean;
+    online_tips: boolean;
     default_payment_terms: string;
     invoice_prefix: string;
     invoice_next_number: number;
@@ -76,6 +77,7 @@ export default function CompanySettingsPage({
         currency: company.currency,
         locale: company.locale,
         prices_include_tax: company.prices_include_tax,
+        online_tips: company.online_tips,
         default_payment_terms: company.default_payment_terms,
         invoice_prefix: company.invoice_prefix ?? '',
         invoice_next_number: company.invoice_next_number,
@@ -524,6 +526,20 @@ export default function CompanySettingsPage({
                             ))}
                         </NativeSelect>
                     </FormField>
+                    <label className="flex min-h-10 items-start gap-2 text-sm">
+                        <Checkbox
+                            checked={form.data.online_tips}
+                            onCheckedChange={(c) =>
+                                form.setData('online_tips', c === true)
+                            }
+                        />
+                        <span>
+                            {t('company.fields.online_tips')}
+                            <span className="block text-xs text-muted-foreground">
+                                {t('company.online_tips_hint')}
+                            </span>
+                        </span>
+                    </label>
                 </section>
 
                 <Button

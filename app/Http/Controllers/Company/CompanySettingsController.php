@@ -27,7 +27,7 @@ class CompanySettingsController extends Controller
         return Inertia::render('company/settings', [
             'company' => $company->only([
                 'id', 'name', 'country', 'timezone', 'currency', 'locale', 'prices_include_tax',
-                'invoice_prefix', 'invoice_next_number',
+                'invoice_prefix', 'invoice_next_number', 'online_tips',
                 'estimate_prefix', 'estimate_next_number', 'travel_buffer_minutes', 'payment_provider',
             ]) + [
                 'business_hours' => $company->business_hours ?? $company::defaultBusinessHours(),
