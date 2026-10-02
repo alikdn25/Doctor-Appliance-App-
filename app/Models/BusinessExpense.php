@@ -17,11 +17,11 @@ class BusinessExpense extends Model
 {
     use BelongsToCompany, SoftDeletes;
 
-    protected $fillable = ['category_id', 'spent_on', 'description', 'merchant', 'amount', 'tax_amount', 'notes'];
+    protected $fillable = ['category_id', 'spent_on', 'description', 'merchant', 'amount', 'tax_amount', 'taxes', 'notes'];
 
     protected function casts(): array
     {
-        return ['spent_on' => 'date:Y-m-d', 'amount' => 'integer', 'tax_amount' => 'integer'];
+        return ['spent_on' => 'date:Y-m-d', 'amount' => 'integer', 'tax_amount' => 'integer', 'taxes' => 'array'];
     }
 
     public function total(): int

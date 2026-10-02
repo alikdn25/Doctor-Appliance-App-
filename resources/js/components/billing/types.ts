@@ -20,6 +20,8 @@ export type DocumentItem = {
     quantity: string;
     unit_price: number;
     taxable: boolean;
+    tax_rate_ids: number[] | null;
+    tax_names: string[];
     total: number;
     /** Estimates: the customer may add it; counted only when selected. */
     optional: boolean;

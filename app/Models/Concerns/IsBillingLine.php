@@ -29,7 +29,7 @@ trait IsBillingLine
 {
     /** Fields of a line besides description/quantity/price/taxable. */
     public const LINE_FIELDS = [
-        'kind', 'service_id', 'part_number', 'supplier', 'unit', 'unit_cost', 'supplier_taxes', 'bill_to_customer',
+        'tax_rate_ids', 'kind', 'service_id', 'part_number', 'supplier', 'unit', 'unit_cost', 'supplier_taxes', 'bill_to_customer',
         'warranty_value', 'warranty_unit',
     ];
 
@@ -40,6 +40,7 @@ trait IsBillingLine
     {
         $this->mergeFillable([...self::LINE_FIELDS, 'warranty_ends_on']);
         $this->mergeCasts([
+            'tax_rate_ids' => 'array',
             'kind' => LineKind::class,
             'unit_cost' => 'integer',
             'supplier_taxes' => 'array',
@@ -72,3 +73,4 @@ trait IsBillingLine
         return Warranty::label($this->warranty_value, $this->warranty_unit);
     }
 }
+

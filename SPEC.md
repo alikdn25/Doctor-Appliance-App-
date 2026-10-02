@@ -21,7 +21,7 @@ assumes a particular country.
 - **Currency** per company (ISO 4217 code). Every amount is stored together with its currency (documents and payments
   keep the currency they were created in). Amounts are stored in the currency's minor units. The currency symbol and
   number format follow the company's currency and regional format; no "$" is hard-coded anywhere (discounts included).
-- **Taxes** are configured by each company: several named rates (e.g. GST + PST, state + county sales tax, VAT),
+- **Taxes** are configured by each company, with no fixed count limit: several named rates (e.g. GST + PST, state + county sales tax, VAT),
   **compound** taxes (charged on top of the previous taxes), and prices entered **with or without tax** (tax-inclusive
   pricing, as common in the UK/EU/Australia). Nothing like GST/PST is hard-coded.
 - **Time zone**, **regional format** (date, time and number format, e.g. en-US, en-CA, en-GB) and **address format**
@@ -252,14 +252,18 @@ from the company number (Twilio voice).
 - Jobs waiting for parts.
 - Warranty claims outstanding.
 
+- Each estimate/invoice item can inherit enabled document taxes or select its own subset, including no taxes.
+  Named rates can be activated/deactivated. Existing documents retain their tax names, rates and selections.
+
 #### Business expenses (bookkeeping)
 
 - Expenses independent of jobs and customer invoices: fuel, meals, tools and other overhead.
 - Company members create shared custom categories. Each record has a date, description, merchant, price before
-  tax, actual tax paid, original currency, notes and an optional private receipt photo/PDF.
+  tax, actual tax paid, original currency, notes and an optional private receipt photo/PDF. Select any number of
+  company taxes per receipt and adjust their actual amounts. Historical undivided tax entries remain editable.
 - Show price, tax and total beside each category for the chosen period, with separate rows for currencies.
   No combined expense counter or overall amount. Filter/search/pagination and CSV export for bookkeeping.
-- Owners/Admins see company expenses; technicians see and manage their own entries. Members manage categories
+- Owners/Admins can filter company expenses by employee and see price/tax/total per employee and currency; technicians see and manage their own entries. Members manage categories
   they created; the office manages all categories. Archive categories without losing historical records.
 - Expenses do not change a job's margin or appear on customer documents. Receipts and removed records are
   retained privately; changes are audited.

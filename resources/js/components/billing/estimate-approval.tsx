@@ -37,12 +37,13 @@ export type EstimateActions = {
         discount_type: '' | 'amount' | 'percent' | null;
         discount_value: string;
         prices_include_tax: boolean;
-        taxes: { name: string; rate: string; compound: boolean }[];
+        taxes: { tax_rate_id: number | null; name: string; rate: string; compound: boolean }[];
         items: {
             id: number;
             quantity: string;
             unit_price: number;
             taxable: boolean;
+            tax_rate_ids: number[] | null;
             optional: boolean;
             selected: boolean;
         }[];
@@ -83,6 +84,7 @@ export function estimateTotals(
             quantity: item.quantity,
             unit_price: fromMinor(item.unit_price, calc.currency),
             taxable: item.taxable,
+            tax_rate_ids: item.tax_rate_ids,
             included: !item.optional || selected.includes(item.id),
         })),
         discount_type: calc.discount_type ?? '',
@@ -336,3 +338,4 @@ export function DeclineDialog({
         </Dialog>
     );
 }
+

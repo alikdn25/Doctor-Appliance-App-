@@ -42,7 +42,7 @@ class DocumentTotals
         $itemTotals = array_map(fn (array $item) => self::lineTotal($item['quantity'], $item['unit_price']), $items);
 
         $subtotal = 0;
-        $taxableSubtotal = 0;
+        $groups = [];
         foreach ($items as $i => $item) {
             if (! ($item['included'] ?? true)) {
                 continue;
@@ -51,15 +51,29 @@ class DocumentTotals
             $subtotal += $itemTotals[$i];
 
             if ($item['taxable']) {
-                $taxableSubtotal += $itemTotals[$i];
+                $ids = $item['tax_rate_ids'] ?? null;
+                $indices = array_keys(array_filter($taxes, fn (array $tax) => $ids === null || in_array((int) ($tax['tax_rate_id'] ?? 0), $ids, true)));
+                if ($indices !== []) {
+                    $key = implode(',', $indices);
+                    $groups[$key] ??= ['indices' => $indices, 'subtotal' => 0];
+                    $groups[$key]['subtotal'] += $itemTotals[$i];
+                }
             }
         }
 
         $discount = self::discount($subtotal, $discountType, (float) ($discountValue ?? 0), $minorFactor);
-        $taxableDiscount = $subtotal > 0 ? (int) round($discount * $taxableSubtotal / $subtotal) : 0;
-        $taxable = max(0, $taxableSubtotal - $taxableDiscount);
-
-        $amounts = $pricesIncludeTax ? self::includedTaxes($taxable, $taxes) : self::addedTaxes($taxable, $taxes);
+        $amounts = array_fill(0, count($taxes), 0);
+        // Aggregate matching combinations before rounding, preserving legacy whole-document calculations.
+        // Compound and inclusive taxes are calculated only with the other taxes selected on that group.
+        foreach ($groups as $group) {
+            $share = $subtotal > 0 ? (int) round($discount * $group['subtotal'] / $subtotal) : 0;
+            $base = max(0, $group['subtotal'] - $share);
+            $selected = array_map(fn (int $index) => $taxes[$index], $group['indices']);
+            $groupAmounts = $pricesIncludeTax ? self::includedTaxes($base, $selected) : self::addedTaxes($base, $selected);
+            foreach ($group['indices'] as $position => $index) {
+                $amounts[$index] += $groupAmounts[$position];
+            }
+        }
 
         $taxLines = array_map(fn (array $tax, int $amount) => [
             'tax_rate_id' => $tax['tax_rate_id'] ?? null,
@@ -159,3 +173,4 @@ class DocumentTotals
         return $formatted === '' ? '0' : $formatted;
     }
 }
+

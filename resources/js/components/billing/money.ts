@@ -75,11 +75,12 @@ export type TotalsInput = {
         quantity: string;
         unit_price: string;
         taxable: boolean;
+        tax_rate_ids?: number[] | null;
         included?: boolean;
     }[];
     discount_type: '' | 'amount' | 'percent';
     discount_value: string;
-    taxes: { name: string; rate: string; compound?: boolean }[];
+    taxes: { tax_rate_id?: number | null; name: string; rate: string; compound?: boolean }[];
     currency: string;
     prices_include_tax: boolean;
 };
@@ -142,11 +143,18 @@ export function computeTotals(input: TotalsInput): Totals {
         (sum, value, i) => sum + (counted[i] ? value : 0),
         0,
     );
-    const taxableSubtotal = input.items.reduce(
-        (sum, item, i) =>
-            sum + (item.taxable && counted[i] ? itemTotals[i] : 0),
-        0,
-    );
+    const groups = new Map<string, { indices: number[]; subtotal: number }>();
+    input.items.forEach((item, i) => {
+        if (!item.taxable || !counted[i]) return;
+        const indices = input.taxes.flatMap((tax, index) =>
+            item.tax_rate_ids == null || item.tax_rate_ids.includes(tax.tax_rate_id ?? 0) ? [index] : [],
+        );
+        if (indices.length === 0) return;
+        const key = indices.join(',');
+        const group = groups.get(key) ?? { indices, subtotal: 0 };
+        group.subtotal += itemTotals[i];
+        groups.set(key, group);
+    });
 
     const value = Number.parseFloat(input.discount_value) || 0;
     let discount = 0;
@@ -161,12 +169,14 @@ export function computeTotals(input: TotalsInput): Totals {
         discount = Math.min(discount, subtotal);
     }
 
-    const taxableDiscount =
-        subtotal > 0 ? Math.round((discount * taxableSubtotal) / subtotal) : 0;
-    const base = Math.max(0, taxableSubtotal - taxableDiscount);
-    const amounts = input.prices_include_tax
-        ? includedTaxes(base, input.taxes)
-        : addedTaxes(base, input.taxes);
+    const amounts = input.taxes.map(() => 0);
+    for (const group of groups.values()) {
+        const share = subtotal > 0 ? Math.round(discount * group.subtotal / subtotal) : 0;
+        const base = Math.max(0, group.subtotal - share);
+        const taxes = group.indices.map((index) => input.taxes[index]);
+        const selected = input.prices_include_tax ? includedTaxes(base, taxes) : addedTaxes(base, taxes);
+        group.indices.forEach((index, position) => { amounts[index] += selected[position]; });
+    }
     const taxTotal = amounts.reduce((sum, amount) => sum + amount, 0);
 
     return {
@@ -181,3 +191,4 @@ export function computeTotals(input: TotalsInput): Totals {
         total: subtotal - discount + (input.prices_include_tax ? 0 : taxTotal),
     };
 }
+

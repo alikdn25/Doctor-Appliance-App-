@@ -34,18 +34,24 @@ import {
 import { create, destroy, edit, download, index } from '@/routes/expenses';
 import type { ExpenseCategory, ExpenseRow } from './types';
 
-type Filters = { from: string; to: string; category: string; search: string };
+type Filters = { from: string; to: string; category: string; search: string; employee: string };
 
 export default function BusinessExpenses({
     expenses,
     categories,
     filters,
     currency,
+    employees,
+    employeeTotals,
+    companyView,
 }: {
     expenses: Paginated<ExpenseRow>;
     categories: ExpenseCategory[];
     filters: Filters;
     currency: string;
+    employees: { id: number; name: string }[];
+    employeeTotals: { id: number | null; name: string; currency: string; price: number; tax: number; total: number }[];
+    companyView: boolean;
 }) {
     const t = useTrans();
     const money = useMoney(currency);
@@ -134,7 +140,7 @@ export default function BusinessExpenses({
                 </p>
                 <form
                     onSubmit={apply}
-                    className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_2fr_auto]"
+                    className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_2fr_auto]"
                 >
                     <FormField
                         id="from"
@@ -191,6 +197,12 @@ export default function BusinessExpenses({
                             ))}
                         </NativeSelect>
                     </FormField>
+                    {companyView && <FormField id="employee" label={t('expenses.fields.employee')} error={errors.employee}>
+                        <NativeSelect id="employee" value={query.employee} onChange={(event) => setQuery({ ...query, employee: event.target.value })}>
+                            <option value="">{t('expenses.all_employees')}</option>
+                            {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
+                        </NativeSelect>
+                    </FormField>}
                     <FormField id="search" label={t('common.search')}>
                         <Input
                             id="search"
@@ -219,6 +231,24 @@ export default function BusinessExpenses({
                         </Button>
                     </div>
                 </form>
+                {companyView && <section className="space-y-3">
+                    <h2 className="font-semibold">{t('expenses.by_employee')}</h2>
+                    <p className="text-sm text-muted-foreground">{t('expenses.employee_hint')}</p>
+                    {employeeTotals.length === 0 ? <p className="text-sm text-muted-foreground">{t('expenses.empty')}</p> :
+                        <div className="overflow-x-auto rounded-lg border">
+                            <table className="w-full min-w-[500px] text-sm">
+                                <thead className="bg-muted/50"><tr>
+                                    <th className="px-3 py-3 text-left">{t('expenses.fields.employee')}</th>
+                                    {(['price', 'tax', 'total'] as const).map((field) => <th key={field} className="px-3 py-3 text-right">{t(`expenses.fields.${field}`)}</th>)}
+                                </tr></thead>
+                                <tbody className="divide-y">{employeeTotals.map((employee) => <tr key={`${employee.id}-${employee.currency}`}>
+                                    <td className="px-3 py-3">{employee.id ? <Link className="font-medium underline" href={index({ query: filterParams({ ...filters, employee: String(employee.id) }) })}>{employee.name}</Link> : employee.name}<span className="ml-2 text-xs text-muted-foreground">{employee.currency}</span></td>
+                                    {(['price', 'tax', 'total'] as const).map((field) => <td key={field} className="px-3 py-3 text-right whitespace-nowrap tabular-nums">{money(employee[field], employee.currency)}</td>)}
+                                </tr>)}</tbody>
+                            </table>
+                        </div>
+                    }
+                </section>}
                 <section className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
                         <h2 className="font-semibold">

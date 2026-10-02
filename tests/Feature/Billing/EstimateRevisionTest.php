@@ -10,6 +10,7 @@ use App\Models\Estimate;
 use App\Models\Payment;
 use App\Models\Property;
 use App\Models\ServiceJob;
+use App\Models\TaxRate;
 use App\Notifications\EstimateDecided;
 use App\Support\Billing\PublicDocument;
 use App\Support\PrivateMedia;
@@ -135,4 +136,22 @@ test('a technician who is not on the job cannot revise', function () {
     $this->actingAs(memberOf($this->company, UserRole::Technician));
 
     $this->post(route('estimates.revise', $this->estimate))->assertForbidden();
+});
+
+
+test('revising a signed estimate keeps the individual tax selections', function () {
+    $tax = TaxRate::factory()->create(['company_id' => $this->company->id]);
+    $this->put(route('estimates.update', $this->estimate), documentPayload([
+        'tax_rate_ids' => [$tax->id], 'items' => [
+            ['description' => 'Labor', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => [$tax->id]],
+            ['description' => 'Exempt', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => []],
+        ],
+    ]))->assertSessionHasNoErrors();
+    $old = inCompany($this->company, fn () => $this->estimate->fresh('items'));
+    signOnline($this->token);
+    $this->actingAs($this->owner);
+    $this->post(route('estimates.revise', $old))->assertRedirect();
+    $new = inCompany($this->company, fn () => Estimate::query()->where('revised_from_id', $old->id)->with('items')->sole());
+    expect($new->items->pluck('tax_rate_ids')->all())->toBe([[$tax->id], []])
+        ->and($new->taxes)->toBe($old->taxes);
 });

@@ -25,6 +25,7 @@ export type Line = {
     quantity: string;
     unit_price: string;
     taxable: boolean;
+    tax_rate_ids: number[] | null;
     optional: boolean;
     selected: boolean;
     kind: LineKind;
@@ -75,6 +76,7 @@ export const newLine = (patch: Partial<Line> = {}): Line => ({
     quantity: '1',
     unit_price: '',
     taxable: true,
+    tax_rate_ids: null,
     optional: false,
     selected: false,
     kind: 'service',
@@ -140,6 +142,7 @@ export function LineEditor({
     total,
     setup,
     services,
+    taxRates,
     estimate,
     canRemove,
     errors,
@@ -154,6 +157,7 @@ export function LineEditor({
     total: number;
     setup: LineSetup;
     services: ServiceOption[];
+    taxRates: { tax_rate_id: number | null; name: string; rate: string }[];
     estimate: boolean;
     canRemove: boolean;
     errors: Record<string, string | undefined>;
@@ -547,6 +551,30 @@ export function LineEditor({
                     </span>
                 </div>
             </div>
+            {line.taxable && (
+                <fieldset className="space-y-2 rounded-md border p-3">
+                    <legend className="px-1 text-sm">{t('billing.line.taxes')}</legend>
+                    <label className="flex min-h-10 items-center gap-2 text-sm">
+                        <Checkbox checked={line.tax_rate_ids === null}
+                            onCheckedChange={(checked) => onChange({ tax_rate_ids: checked === true ? null : [] })} />
+                        {t('billing.line.document_taxes')}
+                    </label>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        {taxRates.map((tax) => tax.tax_rate_id !== null && (
+                            <label key={tax.tax_rate_id} className="flex min-h-10 items-center gap-2 text-sm">
+                                <Checkbox checked={line.tax_rate_ids === null || line.tax_rate_ids.includes(tax.tax_rate_id)}
+                                    onCheckedChange={(checked) => {
+                                        const ids = line.tax_rate_ids ?? taxRates.flatMap((rate) => rate.tax_rate_id === null ? [] : [rate.tax_rate_id]);
+                                        onChange({ tax_rate_ids: checked === true ? [...ids, tax.tax_rate_id!] : ids.filter((id) => id !== tax.tax_rate_id) });
+                                    }} />
+                                {tax.name} ({tax.rate}%)
+                            </label>
+                        ))}
+                    </div>
+                    {taxRates.length === 0 && <p className="text-xs text-muted-foreground">{t('billing.line.enable_taxes')}</p>}
+                    <InputError message={err('tax_rate_ids')} />
+                </fieldset>
+            )}
             {line.kind === 'material' &&
                 line.unit !== '' &&
                 !setup.units.some((u) => u.value === line.unit) && (

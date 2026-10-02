@@ -201,15 +201,17 @@ class PublicDocumentController extends Controller
                 'discount_value' => (string) $estimate->discount_value,
                 'prices_include_tax' => $estimate->prices_include_tax,
                 'taxes' => collect($estimate->taxes)->map(fn (array $tax) => [
+                    'tax_rate_id' => $tax['tax_rate_id'],
                     'name' => $tax['name'],
                     'rate' => (string) $tax['rate'],
                     'compound' => (bool) ($tax['compound'] ?? false),
                 ])->values()->all(),
-                'items' => $estimate->items->map(fn ($item) => [
+                'items' => $estimate->items->filter(fn ($item) => $item->bill_to_customer)->map(fn ($item) => [
                     'id' => $item->id,
                     'quantity' => (string) $item->quantity,
                     'unit_price' => $item->unit_price,
                     'taxable' => $item->taxable,
+                'tax_rate_ids' => $item->tax_rate_ids,
                     'optional' => $item->optional,
                     'selected' => $item->selected,
                 ])->values()->all(),
@@ -233,3 +235,4 @@ class PublicDocumentController extends Controller
         return [$document, $company];
     }
 }
+

@@ -526,3 +526,26 @@ describe('tenant isolation', function () {
         approveOnline('e'.Str::random(47))->assertNotFound();
     });
 });
+
+
+test('online optional selection recalculates the taxes selected on each item and exposes matching preview inputs', function () {
+    $regional = inCompany($this->company, fn () => $this->company->taxRates()->create(['name' => 'Regional', 'rate' => 5]));
+    $estimate = approvalEstimate($this->company, $this->job, [
+        'tax_rate_ids' => [$this->tax->id, $regional->id],
+        'items' => [
+            ['description' => 'Labor', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => [$this->tax->id]],
+            ['description' => 'Optional part', 'quantity' => '1', 'unit_price' => '50', 'taxable' => true, 'tax_rate_ids' => [$this->tax->id, $regional->id], 'optional' => true],
+            ['description' => 'Internal', 'quantity' => '1', 'unit_price' => '999', 'taxable' => true, 'bill_to_customer' => false],
+        ],
+    ]);
+    $token = estimateToken($this->company, $estimate);
+    $this->get(route('documents.public', $token))->assertInertia(fn (Assert $page) => $page
+        ->has('estimate.calc.items', 2)->has('estimate.calc.taxes', 2)
+        ->where('estimate.calc.items.0.tax_rate_ids', [$this->tax->id])
+        ->where('document.items.0.tax_names', ['Tax'])
+        ->where('estimate.calc.taxes.0.tax_rate_id', $regional->id));
+    $optional = inCompany($this->company, fn () => $estimate->items()->where('optional', true)->value('id'));
+    approveOnline($token, ['selected_items' => [$optional]])->assertRedirect();
+    $estimate = inCompany($this->company, fn () => $estimate->fresh());
+    expect($estimate->total)->toBe(16750)->and($estimate->tax_total)->toBe(1750);
+});

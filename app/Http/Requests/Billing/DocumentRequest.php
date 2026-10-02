@@ -38,6 +38,8 @@ class DocumentRequest extends FormRequest
             ? $document->items()->whereNotNull('service_id')->pluck('service_id')->all()
             : [];
 
+        $existingTaxes = $document instanceof Invoice || $document instanceof Estimate ? array_column($document->taxes, 'tax_rate_id') : [];
+
         return [
             'issued_on' => ['required', 'date_format:Y-m-d'],
             'valid_until' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:issued_on'],
@@ -50,14 +52,17 @@ class DocumentRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:5000'],
             'tax_rate_ids' => ['array'],
             'tax_rate_ids.*' => [
-                'integer',
-                Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id),
+                'integer', 'distinct',
+                Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)
+                    ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', $existingTaxes)),
             ],
             'items' => ['required', 'array', 'min:1', 'max:100'],
             'items.*.description' => ['required', 'string', 'max:500'],
             'items.*.quantity' => ['required', 'numeric', 'gt:0', 'max:99999', 'regex:/^\d+(\.\d{1,2})?$/'],
             'items.*.unit_price' => ['required', 'numeric', self::moneyRule($this->currency(), negative: true)],
             'items.*.taxable' => ['boolean'],
+            'items.*.tax_rate_ids' => ['nullable', 'array'],
+            'items.*.tax_rate_ids.*' => ['integer', Rule::in(is_array($this->input('tax_rate_ids')) ? $this->input('tax_rate_ids') : [])],
             'items.*.id' => ['nullable', 'integer'],
             'items.*.kind' => ['nullable', Rule::enum(LineKind::class)],
             'items.*.service_id' => [
@@ -69,7 +74,7 @@ class DocumentRequest extends FormRequest
             'items.*.supplier' => ['nullable', 'string', 'max:150'],
             'items.*.unit' => ['nullable', 'string', 'max:20'],
             'items.*.unit_cost' => ['nullable', 'numeric', self::moneyRule($this->currency())],
-            'items.*.supplier_taxes' => ['nullable', 'array', 'max:5'],
+            'items.*.supplier_taxes' => ['nullable', 'array'],
             'items.*.supplier_taxes.*.tax_rate_id' => ['required', 'integer', Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)],
             'items.*.supplier_taxes.*.amount' => ['required', 'numeric', self::moneyRule($this->currency())],
             'items.*.bill_to_customer' => ['boolean'],
@@ -128,6 +133,7 @@ class DocumentRequest extends FormRequest
             'quantity' => (string) $item['quantity'],
             'unit_price' => Currencies::toMinor($item['unit_price'], $currency),
             'taxable' => (bool) ($item['taxable'] ?? true),
+            ...(array_key_exists('tax_rate_ids', $item) ? ['tax_rate_ids' => $item['tax_rate_ids'] === null ? null : array_map('intval', $item['tax_rate_ids'])] : []),
             'kind' => $item['kind'] ?? LineKind::Service->value,
             'service_id' => $item['service_id'] ?? null,
             'part_number' => $item['part_number'] ?? null,

@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Accounting;
 
 use App\Actions\Accounting\SaveBusinessExpense;
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Accounting\BusinessExpenseRequest;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseCategory;
+use App\Models\Membership;
 use App\Services\AuditLogger;
 use App\Support\Locale\Currencies;
+use App\Support\Billing\BillingPresenter;
 use App\Support\PrivateMedia;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -37,6 +40,18 @@ class BusinessExpenseController extends Controller
                 'tax' => (int) $total->tax, 'total' => (int) $total->total,
             ])->sortBy('currency')->values(),
         ]);
+        $companyView = $request->user()->hasRole(UserRole::Owner, UserRole::Admin);
+        $employees = $companyView ? Membership::query()->with('user')->get()
+            ->filter(fn (Membership $member) => $member->user !== null)
+            ->map(fn (Membership $member) => ['id' => $member->user_id, 'name' => $member->user->name])
+            ->sortBy('name')->values() : collect();
+        $employeeTotals = $companyView ? $this->query($request, $filters)->with('creator')
+            ->select('created_by', 'currency')
+            ->selectRaw('sum(amount) as price, sum(tax_amount) as tax, sum(amount + tax_amount) as total')
+            ->groupBy('created_by', 'currency')->get()->map(fn ($total) => [
+                'id' => $total->created_by, 'name' => $total->creator?->name ?? __('expenses.former_employee'),
+                'currency' => $total->currency, 'price' => (int) $total->price, 'tax' => (int) $total->tax, 'total' => (int) $total->total,
+            ])->sortBy(fn ($total) => $total['name'].' '.$total['currency'])->values() : collect();
         $expenses = $this->query($request, $filters)->with(['category', 'creator'])
             ->orderByDesc('spent_on')->orderByDesc('id')->paginate(25)->withQueryString()
             ->through(fn (BusinessExpense $expense) => $this->row($expense));
@@ -44,6 +59,7 @@ class BusinessExpenseController extends Controller
         return Inertia::render('expenses/index', [
             'expenses' => $expenses, 'categories' => $categories, 'filters' => $filters,
             'currency' => currentCompany()->currency,
+            'employees' => $employees, 'employeeTotals' => $employeeTotals, 'companyView' => $companyView,
         ]);
     }
 
@@ -112,7 +128,7 @@ class BusinessExpenseController extends Controller
 
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Date', 'Category', 'Description', 'Merchant', 'Price', 'Tax', 'Total', 'Currency', 'Entered by', 'Notes', 'Receipt']);
+            fputcsv($out, ['Date', 'Category', 'Description', 'Merchant', 'Price', 'Tax', 'Total', 'Currency', 'Entered by', 'Notes', 'Receipt', 'Tax breakdown']);
             foreach ($query->lazy(500) as $expense) {
                 $currency = $expense->currency;
                 $minor = fn (int $amount) => number_format($amount / Currencies::factor($currency), Currencies::decimals($currency), '.', '');
@@ -123,6 +139,7 @@ class BusinessExpenseController extends Controller
                     $text($expense->merchant), $minor($expense->amount), $minor($expense->tax_amount), $minor($expense->total()),
                     $currency, $text($expense->creator?->name), $text($expense->notes),
                     $expense->receipt_path ? route('expenses.receipt', $expense) : '',
+                    $text(implode('; ', array_map(fn ($tax) => $tax['name'].' ('.$tax['rate'].'%): '.$minor($tax['amount']), $expense->taxes ?? []))),
                 ]);
             }
             fclose($out);
@@ -138,6 +155,7 @@ class BusinessExpenseController extends Controller
 
         return Inertia::render('expenses/form', [
             'expense' => $data, 'categories' => $categories,
+            'taxRates' => BillingPresenter::taxOptions($expense?->taxes ?? []),
             'currency' => $expense?->currency ?? currentCompany()->currency,
             'today' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
         ]);
@@ -146,7 +164,7 @@ class BusinessExpenseController extends Controller
     private function row(BusinessExpense $expense): array
     {
         return [
-            ...$expense->only(['id', 'category_id', 'description', 'merchant', 'amount', 'tax_amount', 'currency']),
+            ...$expense->only(['id', 'category_id', 'description', 'merchant', 'amount', 'tax_amount', 'taxes', 'currency']),
             'spent_on' => $expense->spent_on->toDateString(), 'category' => $expense->category->name,
             'creator' => $expense->creator?->name, 'total' => $expense->total(),
             'receipt_url' => $expense->receipt_path ? route('expenses.receipt', $expense) : null,
@@ -167,13 +185,16 @@ class BusinessExpenseController extends Controller
             'to' => ['nullable', 'date_format:Y-m-d'],
             'category' => ['nullable', 'integer', Rule::exists('business_expense_categories', 'id')->where('company_id', currentCompany()->id)],
             'search' => ['nullable', 'string', 'max:255'],
+            'employee' => ['nullable', 'integer', Rule::exists('company_user', 'user_id')->where('company_id', currentCompany()->id)],
         ]);
         $now = CarbonImmutable::now(currentCompany()->timezone);
         $from = $data['from'] ?? $now->startOfMonth()->toDateString();
         $to = $data['to'] ?? $now->toDateString();
         validator(['from' => $from, 'to' => $to], ['to' => ['after_or_equal:from']])->validate();
 
-        return ['from' => $from, 'to' => $to, 'category' => (string) ($data['category'] ?? ''), 'search' => trim($data['search'] ?? '')];
+        return ['from' => $from, 'to' => $to, 'category' => (string) ($data['category'] ?? ''), 'search' => trim($data['search'] ?? ''),
+            'employee' => $request->user()->hasRole(UserRole::Owner, UserRole::Admin) ? (string) ($data['employee'] ?? '') : '',
+        ];
     }
 
     /** @return Builder<BusinessExpense> */
@@ -182,6 +203,7 @@ class BusinessExpenseController extends Controller
         $like = '%'.addcslashes($filters['search'], '%_\\').'%';
 
         return BusinessExpense::query()->visibleTo($request->user())
+            ->when($filters['employee'] !== '', fn ($query) => $query->where('created_by', (int) $filters['employee']))
             ->whereBetween('spent_on', [$filters['from'], $filters['to']])
             ->when($withCategory && $filters['category'] !== '', fn ($query) => $query->where('category_id', (int) $filters['category']))
             ->when($filters['search'] !== '', fn ($query) => $query->where(fn ($match) => $match

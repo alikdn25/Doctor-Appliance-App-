@@ -72,6 +72,8 @@ class BillingPresenter
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'taxable' => $item->taxable,
+                'tax_rate_ids' => $item->tax_rate_ids,
+                'tax_names' => collect($document->taxes)->filter(fn ($tax) => $item->taxable && ($item->tax_rate_ids === null || in_array((int) $tax['tax_rate_id'], $item->tax_rate_ids, true)))->pluck('name')->values()->all(),
                 'total' => $item->total,
                 'optional' => $invoice ? false : $item->optional,
                 'selected' => $invoice ? true : $item->selected,

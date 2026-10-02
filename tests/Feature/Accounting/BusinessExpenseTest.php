@@ -6,6 +6,7 @@ use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseCategory;
 use App\Models\Company;
 use App\Models\User;
+use App\Models\TaxRate;
 use App\Support\PrivateMedia;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -229,4 +230,64 @@ test('guest access redirects to login', function () {
     auth()->logout();
     $this->get(route('expenses.index'))->assertRedirect(route('login'));
     $this->post(route('expenses.store'), overheadPayload())->assertRedirect(route('login'));
+});
+
+test('named receipt taxes have no count limit and the server sums actual amounts', function () {
+    $rates = TaxRate::factory()->count(7)->create(['company_id' => $this->company->id, 'rate' => 1]);
+    $this->post(route('expenses.store'), overheadPayload([
+        'use_named_taxes' => true, 'tax_rate_ids' => $rates->modelKeys(), 'tax_amount' => '999',
+        'tax_amounts' => $rates->mapWithKeys(fn ($rate) => [$rate->id => '0.81'])->all(),
+    ]))->assertSessionHasNoErrors();
+    $expense = inCompany($this->company, fn () => BusinessExpense::query()->sole());
+    expect($expense->taxes)->toHaveCount(7)->and($expense->tax_amount)->toBe(567)->and($expense->total())->toBe(8592);
+    $rate = $rates->first();
+    $saved = collect($expense->taxes)->firstWhere('tax_rate_id', $rate->id);
+    $rate->update(['name' => 'New name', 'rate' => 25, 'is_active' => false]);
+    $this->put(route('expenses.update', $expense), overheadPayload([
+        'use_named_taxes' => true, 'tax_rate_ids' => [$rate->id], 'tax_amounts' => [$rate->id => '2.50'],
+    ]))->assertSessionHasNoErrors();
+    expect($expense->fresh()->tax_amount)->toBe(250)->and($expense->fresh()->taxes[0]['name'])->toBe($saved['name'])
+        ->and($expense->fresh()->taxes[0]['rate'])->toBe($saved['rate']);
+    $csv = $this->get(route('expenses.download'))->assertOk()->streamedContent();
+    expect($csv)->toContain('Tax breakdown')->toContain($saved['name'].' ('.$saved['rate'].'%): 2.50');
+    // Empty arrays are omitted by multipart forms. The explicit mode still clears all taxes.
+    $this->put(route('expenses.update', $expense), overheadPayload(['use_named_taxes' => true]))->assertSessionHasNoErrors();
+    expect($expense->fresh()->taxes)->toBe([])->and($expense->fresh()->tax_amount)->toBe(0);
+});
+
+test('receipt tax choices reject foreign disabled and invalid money values', function () {
+    $foreign = TaxRate::factory()->create();
+    $disabled = TaxRate::factory()->create(['company_id' => $this->company->id, 'is_active' => false]);
+    foreach ([$foreign->id, $disabled->id] as $id) {
+        $this->post(route('expenses.store'), overheadPayload(['use_named_taxes' => true, 'tax_rate_ids' => [$id], 'tax_amounts' => [$id => '1']]))
+            ->assertSessionHasErrors('tax_rate_ids.0');
+    }
+    $rate = TaxRate::factory()->create(['company_id' => $this->company->id]);
+    foreach (['-1', '1.123'] as $amount) {
+        $this->post(route('expenses.store'), overheadPayload(['use_named_taxes' => true, 'tax_rate_ids' => [$rate->id], 'tax_amounts' => [$rate->id => $amount]]))
+            ->assertSessionHasErrors('tax_amounts.'.$rate->id);
+    }
+});
+
+test('company employee filters and summaries cover the whole period and export without mixing currencies', function () {
+    for ($i = 0; $i < 26; $i++) {
+        overheadRecord($this->company, $this->tech, $this->category, ['description' => 'Employee fuel', 'amount' => 100, 'tax_amount' => 5]);
+    }
+    overheadRecord($this->company, $this->tech, $this->category, ['amount' => 300, 'tax_amount' => 30, 'currency' => 'USD']);
+    overheadRecord($this->company, $this->owner, $this->category, ['description' => 'Office fuel']);
+    $this->get(route('expenses.index', ['employee' => $this->tech->id]))->assertInertia(fn (Assert $page) => $page
+        ->where('companyView', true)->has('employees', 2)->where('filters.employee', (string) $this->tech->id)
+        ->where('expenses.total', 27)->has('expenses.data', 25)->has('employeeTotals', 2)
+        ->where('employeeTotals.0.id', $this->tech->id)->where('employeeTotals.0.currency', 'CAD')
+        ->where('employeeTotals.0.price', 2600)->where('employeeTotals.0.tax', 130)->where('employeeTotals.0.total', 2730)
+        ->where('employeeTotals.1.currency', 'USD')->where('employeeTotals.1.total', 330)
+        ->where('categories.0.totals.0.total', 2730));
+    $csv = $this->get(route('expenses.download', ['employee' => $this->tech->id]))->assertOk()->streamedContent();
+    expect($csv)->toContain('Employee fuel')->not->toContain('Office fuel');
+    $this->actingAs($this->tech)->get(route('expenses.index', ['employee' => $this->owner->id]))->assertInertia(fn (Assert $page) => $page
+        ->where('companyView', false)->where('employees', [])->where('employeeTotals', [])
+        ->where('filters.employee', '')->where('expenses.total', 27));
+    $foreign = memberOf();
+    $this->actingAs($this->owner)->get(route('expenses.index', ['employee' => $foreign->id]))->assertSessionHasErrors('employee');
+    $this->get(route('expenses.download', ['employee' => $foreign->id]))->assertSessionHasErrors('employee');
 });
