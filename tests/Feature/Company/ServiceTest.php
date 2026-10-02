@@ -1,8 +1,12 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Models\Brand;
 use App\Models\Company;
+use App\Models\Customer;
+use App\Models\Property;
 use App\Models\Service;
+use App\Models\ServiceJob;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -60,8 +64,8 @@ test('active services are offered on estimate and invoice lines', function () {
 
         return Service::query()->orderBy('sort_order')->first();
     });
-    $job = App\Models\ServiceJob::factory()->for(App\Models\Property::factory()->for(App\Models\Customer::factory()->for($this->company)))
-        ->create(['brand_id' => App\Models\Brand::factory()->create(['company_id' => $this->company->id])->id]);
+    $job = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($this->company)))
+        ->create(['brand_id' => Brand::factory()->create(['company_id' => $this->company->id])->id]);
     $count = inCompany($this->company, fn () => Service::where('is_active', true)->count());
 
     foreach (['invoices.create', 'estimates.create'] as $route) {

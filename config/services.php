@@ -31,7 +31,8 @@ return [
     /*
     | Square (SPEC §7.6): one Square application for the platform; each company authorizes it for its own
     | Square account by OAuth. Use SQUARE_ENVIRONMENT=sandbox with sandbox credentials for testing.
-    | Webhook: subscribe the application to payment.created, payment.updated and oauth.authorization.revoked
+    | Webhook: subscribe the application to payment.created, payment.updated, refund.created, refund.updated
+    | and oauth.authorization.revoked
     | with the URL in SQUARE_WEBHOOK_URL (exactly as entered in the Square dashboard; it is part of the signature).
     */
     'square' => [

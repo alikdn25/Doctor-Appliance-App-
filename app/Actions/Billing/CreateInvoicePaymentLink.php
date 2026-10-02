@@ -18,7 +18,10 @@ class CreateInvoicePaymentLink
 {
     public function __construct(private readonly PaymentProviders $providers) {}
 
-    public function handle(Invoice $invoice, User $user): InvoicePaymentLink
+    /**
+     * $user is null when the customer starts the payment from the online invoice page.
+     */
+    public function handle(Invoice $invoice, ?User $user): InvoicePaymentLink
     {
         $company = currentCompany();
         $provider = $this->providers->readyFor($company);
@@ -52,7 +55,7 @@ class CreateInvoicePaymentLink
                 'url' => $link->url,
                 'amount' => $invoice->balance,
                 'currency' => $invoice->currency,
-                'created_by' => $user->id,
+                'created_by' => $user?->id,
             ]);
             $record->invoice_id = $invoice->id;
             $record->save();

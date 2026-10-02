@@ -28,9 +28,10 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 | 4   | Technician PWA view, photos, signatures                                     | ✅ Done        |
 | 5   | Estimates, invoices, manual payments (§7.5, §7.6)                           | ✅ Done        |
 | 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6) | ✅ Done        |
+| 7   | PDF + email sending of documents, price book on lines, Square tips/refunds  | ✅ Done        |
 | —   | Twilio SMS (automated messages + inbox)                                     | ⏳ Not started |
 | —   | Review request toggle                                                       | ⏳ Not started |
-| —   | Price book (starting services and Services page done in task 6)             | 🚧 Partly      |
+| —   | Price book: parts with cost/margin, categories (services + picker done)     | 🚧 Partly      |
 | —   | Basic reports                                                               | ⏳ Not started |
 | —   | Google Places autocomplete + geocoding for properties                       | ⏳ Not started |
 
@@ -285,7 +286,8 @@ faked Square API with Square's request/response and webhook shapes):
 1. Square Developer Dashboard → your app → Sandbox: copy Application ID and secret to `SQUARE_APPLICATION_ID` /
    `SQUARE_APPLICATION_SECRET`, `SQUARE_ENVIRONMENT=sandbox`.
 2. OAuth → Sandbox redirect URL: `{APP_URL}/payment-providers/square/callback`.
-3. Webhooks → add subscription (sandbox) for `payment.created`, `payment.updated`, `oauth.authorization.revoked` with
+3. Webhooks → add subscription (sandbox) for `payment.created`, `payment.updated`, `refund.created`, `refund.updated`,
+   `oauth.authorization.revoked` with
    URL `{APP_URL}/webhooks/payments/square` (must be public: use a tunnel such as ngrok locally); put the signature key
    in `SQUARE_WEBHOOK_SIGNATURE_KEY` and the same URL in `SQUARE_WEBHOOK_URL`.
 4. Open the sandbox test seller account from the dashboard (keep it open in the same browser), then log in as
@@ -315,13 +317,68 @@ Decisions made without asking (change if needed):
 Deferred on purpose: Stripe (next provider for non-Square countries), Square Point of Sale hand-off for card-present
 payments, refund webhooks, sending invoices/estimates by SMS/email with the link, self-signup with country/vertical.
 
+### Task 7 — Sending documents, phones on screen, Square tips and refunds, price book on lines ✅
+
+**PDF of estimates and invoices** (dompdf, `resources/views/pdf/document.blade.php`), branded with the document's
+brand: logo (embedded), color, name, address, phone, email, website, tax/business numbers, customer and service
+address, lines, discount, taxes (or "includes tax"), total, paid and balance, notes, the brand's **terms** and **footer**,
+and for an unpaid invoice the pay-online link. Money, dates and phones in the company's currency and regional format;
+Letter paper in North America, A4 elsewhere. Staff: "PDF" button on the document page (`/invoices/{id}/pdf`,
+`/estimates/{id}/pdf`, same access as viewing the document).
+
+**Sending by email**: "Send by email" on the document page opens a dialog with the customer's primary email and an
+editable message (different text for estimates, unpaid and paid invoices). The email (queued, `DocumentMail`) has the
+message, a button to the **online page** and the PDF attached; it goes out from `MAIL_FROM_ADDRESS` with the brand's
+sender name, replies go to the brand's sender email (or brand email). The document shows when and to whom it was sent
+and when the customer first opened it. Sending is audited. A void invoice cannot be sent.
+
+**Online page** `/d/{token}` (no login): the branded document, Download PDF and, for an invoice with a balance and a
+connected provider, **"Pay $X online"** — creates (or reuses) the Square link for the balance and sends the customer
+to Square checkout. The token is 48 random characters (first letter says estimate or invoice), created on first send
+or PDF; routes are rate-limited; documents of suspended companies or deleted documents are not shown.
+
+**Phones on screen** in the national format of the company's country (libphonenumber-js; `+1…` → `(604) 555-0142`,
+other countries in international format); edit forms start with the national format too. Stored as E.164, `tel:` and
+`sms:` links use E.164. PDFs and emails use the same rule on the server (`PhoneNumber::display`).
+
+**Square tips**: the tip is stored on the payment (`payments.tip_amount`), the amount applied to the invoice is the
+payment without the tip, so invoice revenue stays the invoice total while amount + tip per payment equals what Square
+pays out. Company setting "Let customers add a tip when paying online" turns on tipping in the Square checkout
+(off by default). Tips are shown on the payment line.
+
+**Square refunds**: `refund.created` / `refund.updated` webhooks with status COMPLETED add a refund row (negative
+amount, linked to the refunded payment, idempotent on the Square refund ID). The invoice's paid amount, balance and
+status follow: a partial refund → partially paid with the refunded amount due again; everything refunded → new status
+**Refunded**. The refund is applied to the invoice up to the payment's amount; anything beyond refunds the tip. A fully
+refunded invoice can be voided (manual payments must still be voided first, as before).
+
+**Price book on lines**: every estimate/invoice line has "Pick from price book…" — fills the description (name — description),
+price and taxable flag from Company → Services. Only active services; a service without a price fills the text only;
+a price is not copied onto a document in another currency than the company's.
+
+Decisions made without asking (change if needed):
+
+- Emails are sent from the platform address (`MAIL_FROM_ADDRESS`) with the brand's name and the brand's reply-to,
+  not from the brand's own address: sending as the brand's domain needs SPF/DKIM set up per brand (later, with the
+  email provider choice).
+- The online page is "view + pay + PDF". Online approval and signature of estimates is not built yet (SPEC §7.5),
+  nor reminders or "viewed" notifications; estimate status does not change when it is sent.
+- A refunded invoice is not counted as outstanding (it is not money owed until the office decides); a partially
+  refunded one is (its balance is due again). Square processing fees are not recorded.
+- The PDF is rendered on demand (not stored). The email attaches a fresh PDF when the queue sends it.
+- Numbers with the company's calling code are shown in national format (a US number in a Canadian company:
+  "(512) 555-0142"); other countries in international format.
+- The online page uses the company's regional format; its UI text is English like the rest of the app.
+
+Deferred on purpose: SMS sending and Google review request (next task), online estimate approval/signature, payment
+reminders (Stage 2), Stripe.
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started
 
 ## Next
 
-Stage 1 — Twilio SMS (automated messages + inbox per brand; A2P 10DLC registration for US numbers) and sending
-estimates/invoices by SMS/email with a link and PDF (online approval of estimates, Square link in the invoice message).
-Then price book picker on lines, review request toggle, basic reports, Google Places. Stripe as the second payment
-provider for countries without Square.
+Stage 1 — Twilio SMS (automated messages + inbox per brand; A2P 10DLC for US numbers; send estimates/invoices by SMS
+with the online link) and the Google review request toggle on invoice sending. Then online approval of estimates,
+basic reports, Google Places, price book parts/costs. Stripe as the second payment provider.

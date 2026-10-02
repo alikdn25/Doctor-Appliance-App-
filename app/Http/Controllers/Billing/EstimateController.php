@@ -55,6 +55,7 @@ class EstimateController extends Controller
                 'convert' => Gate::allows('update', $estimate) && Gate::allows('work', $estimate->job),
             ],
             'today' => $this->today(),
+            'delivery' => BillingPresenter::delivery($estimate),
         ]);
     }
 

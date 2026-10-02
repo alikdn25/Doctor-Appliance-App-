@@ -119,6 +119,7 @@ class InvoiceController extends Controller
             'paymentMethods' => PaymentMethod::manualOptions(),
             'today' => $this->today(),
             'online' => $this->online($invoice, $providers, $links),
+            'delivery' => BillingPresenter::delivery($invoice),
         ]);
     }
 

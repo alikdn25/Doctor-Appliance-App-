@@ -2,6 +2,7 @@
 
 namespace App\Support\Billing;
 
+use App\Actions\Billing\SendDocument;
 use App\Enums\InvoiceStatus;
 use App\Models\Estimate;
 use App\Models\Invoice;
@@ -173,6 +174,29 @@ class BillingPresenter
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * PDF, sending by email and the customer's online page.
+     *
+     * @return array<string, mixed>
+     */
+    public static function delivery(Estimate|Invoice $document): array
+    {
+        $document->loadMissing('customer.primaryEmail');
+        $invoice = $document instanceof Invoice;
+
+        return [
+            'pdf_url' => route($invoice ? 'invoices.pdf' : 'estimates.pdf', $document),
+            'send_url' => route($invoice ? 'invoices.send' : 'estimates.send', $document),
+            'public_url' => $document->public_token ? route('documents.public', $document->public_token) : null,
+            'can_send' => ! ($invoice && $document->isVoid()),
+            'sent_at' => JobPresenter::iso($document->sent_at),
+            'sent_to' => $document->sent_to,
+            'viewed_at' => JobPresenter::iso($document->viewed_at),
+            'email' => $document->customer?->primaryEmail?->email ?? '',
+            'message' => SendDocument::defaultMessage($document),
+        ];
     }
 
     /**
