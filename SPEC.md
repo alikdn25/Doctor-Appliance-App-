@@ -152,6 +152,8 @@ return. Each job counts once; access follows company, brand and technician assig
 ### 7.6 Invoices and payments
 
 - Invoice from job in one tap; line items, taxes, discounts, deposits, partial payments.
+- Each estimate/invoice item can inherit enabled document taxes or select its own subset, including no taxes.
+  Named rates can be activated/deactivated. Existing documents retain their tax names, rates and selections.
 - Configurable taxes per company (§1.1): several named rates, compound taxes, prices with or without tax. Examples:
   BC — GST 5% + PST 7%; a US city — one combined sales tax rate; UK — VAT 20% with tax-inclusive prices.
 - **Payment terms:** company default (Due on receipt, Net 7, Net 15, Net 30), changeable per customer (stratas and
@@ -251,9 +253,6 @@ from the company number (Twilio voice).
 - Accounts receivable aging.
 - Jobs waiting for parts.
 - Warranty claims outstanding.
-
-- Each estimate/invoice item can inherit enabled document taxes or select its own subset, including no taxes.
-  Named rates can be activated/deactivated. Existing documents retain their tax names, rates and selections.
 
 #### Business expenses (bookkeeping)
 

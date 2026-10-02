@@ -20,7 +20,7 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
-### Item taxes and employee expense view — implementation complete, CI pending
+### Item taxes and employee expense view — CI passed
 
 - Unlimited named company taxes, active/default switches and independent subsets per estimate/invoice item.
   Null inherits document taxes, an empty list is exempt. Existing documents retain their calculations and snapshots.
@@ -29,12 +29,16 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 - Expenses select named receipt taxes with calculated suggestions and editable actual amounts. The server sums
   selected amounts and retains historical names/rates; old undivided taxes remain editable. CSV includes a breakdown.
 - Office employee filter and price/tax/total rows cover all matching expenses across pages, split by currency.
+  Former employees remain available in the ledger filter and CSV after their team membership is removed.
   Technician lists, receipts, exports and category totals remain limited to their own entries; no global counter.
 - Migration adds nullable item tax selections and receipt tax snapshots. No new environment variables.
 - Manual check: create six named rates; invoice labor with one and a part with two; disable one; compare saved totals,
   PDF, online optional approval, conversion and revision. Add an expense with multiple taxes and override one amount;
   filter and export by employee; check technician access and narrow-screen layout.
-- Automated validation pending in GitHub Actions; PHP/dependencies are unavailable locally.
+- Build, PHP style, frontend lint/format, TypeScript and all 637 tests (4,882 assertions) passed on commit
+  `aa0d364`: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37072738948.
+- Manual narrow-screen, receipt picker and end-to-end visual validation remains pending. PHP/dependencies are
+  unavailable locally; server verification ran in GitHub Actions.
 
 ### Business expenses — CI passed
 
