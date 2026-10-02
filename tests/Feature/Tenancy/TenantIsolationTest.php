@@ -19,6 +19,7 @@ use App\Models\Estimate;
 use App\Models\EstimateItem;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\InvoicePaymentLink;
 use App\Models\JobAppliance;
 use App\Models\JobChecklistItem;
 use App\Models\JobPhoto;
@@ -27,6 +28,7 @@ use App\Models\JobVisit;
 use App\Models\JobVisitAssignee;
 use App\Models\Membership;
 use App\Models\Payment;
+use App\Models\PaymentProviderConnection;
 use App\Models\Property;
 use App\Models\Service;
 use App\Models\ServiceJob;
@@ -96,6 +98,15 @@ beforeEach(function () {
             $save->createEstimate($job, $document, $owner);
             $invoice = $save->createInvoice($job, $document, $owner);
             app(RecordPayment::class)->manual($invoice, 5000, PaymentMethod::Cash, null, null, now(), $owner);
+            PaymentProviderConnection::create([
+                'provider' => 'square', 'account_id' => 'MERCHANT_'.currentCompany()->id, 'access_token' => 'secret-'.currentCompany()->id,
+            ]);
+            $link = new InvoicePaymentLink([
+                'provider' => 'square', 'provider_link_id' => 'LINK_'.$invoice->id, 'provider_order_id' => 'ORDER_'.$invoice->id,
+                'url' => 'https://square.link/u/'.$invoice->id, 'amount' => $invoice->balance, 'currency' => $invoice->currency,
+            ]);
+            $link->invoice_id = $invoice->id;
+            $link->save();
         });
     }
     $this->estimateB = Estimate::withoutCompanyScope()->where('company_id', $this->companyB->id)->sole();
@@ -134,6 +145,8 @@ dataset('tenant models', [
     'invoice items' => [InvoiceItem::class],
     'payments' => [Payment::class],
     'services' => [Service::class],
+    'payment provider connections' => [PaymentProviderConnection::class],
+    'invoice payment links' => [InvoicePaymentLink::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -150,7 +163,8 @@ test('every tenant-owned model is covered by isolation tests', function () {
 
     expect($tenantModels)->toBe(collect([
         Appliance::class, Brand::class, BrandAddress::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class,
-        CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceItem::class, Payment::class,
+        CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceItem::class, InvoicePaymentLink::class, Payment::class,
+        PaymentProviderConnection::class,
         JobAppliance::class, JobChecklistItem::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
         Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class,

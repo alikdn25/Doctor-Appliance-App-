@@ -14,7 +14,7 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
   addresses; per-brand user access.
 - Team: memberships with fixed roles (Owner, Admin, Technician; Subcontractor/Collector reserved for Stage 2),
   invitations, company switcher.
-- Tax rates per company (GST/PST as settings).
+- Tax rates per company (named rates as settings; compound and tax-inclusive since task 6).
 - Super-admin panel: companies list, status, plan, impersonation with audit log.
 - CI (GitHub Actions tests) and manual deploy pipeline to the VPS (`docs/DEPLOYMENT.md`).
 
@@ -27,10 +27,10 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 | 3   | Calendar & dispatch                                            | ✅ Done        |
 | 4   | Technician PWA view, photos, signatures                        | ✅ Done        |
 | 5   | Estimates, invoices, manual payments (§7.5, §7.6)              | ✅ Done        |
-| —   | Square payments                                                | ⏳ Not started |
+| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6) | ✅ Done |
 | —   | Twilio SMS (automated messages + inbox)                        | ⏳ Not started |
 | —   | Review request toggle                                          | ⏳ Not started |
-| —   | Price book                                                     | ⏳ Not started |
+| —   | Price book (starting services and Services page done in task 6) | 🚧 Partly   |
 | —   | Basic reports                                                  | ⏳ Not started |
 | —   | Google Places autocomplete + geocoding for properties          | ⏳ Not started |
 
@@ -221,11 +221,107 @@ Deferred on purpose: Square (next task), sending estimates/invoices by SMS/email
 price book picker on lines, review request toggle, payment reminders and aging report (Stage 2), deposits as a
 separate concept (a partial payment covers it for now), platform subscription billing (SPEC §11, before launch).
 
+### Task 6 — International product, handyman vertical, payment terms, Square ✅
+
+**Product is international** (SPEC §1.1, CLAUDE.md updated). The code was checked for Canadian assumptions and fixed:
+
+- Company: `country` (picked when the super-admin creates the company), `locale` (regional format: dates, times,
+  numbers; e.g. en-US / en-CA / en-GB), `currency` (any ISO 4217 currency in use), `timezone`. The country fills in
+  currency, regional format and default time zone; all can be changed in Company settings. No more CAD /
+  America/Vancouver defaults in the schema or models; `DEFAULT_COMPANY_COUNTRY` (US) only preselects the admin form.
+- **Money stored with its currency**: `currency` on estimates, invoices and payments (existing rows got their
+  company's currency). Amounts are in the currency's **minor units** (JPY 0 decimals, KWD 3) — columns keep their
+  old names. Formatting everywhere goes through `Intl` / PHP `NumberFormatter` with the company's regional format;
+  no hard-coded "$" (price inputs, payment dialog, discount "Amount (symbol)"). A later currency change never changes
+  existing documents; the invoice list sums outstanding money per currency.
+- **Taxes**: named rates, **compound** taxes (charged on the amount plus the other taxes, applied last) and **prices
+  with tax included** (company setting, copied onto each document). `DocumentTotals` and the React preview do both.
+- **Addresses**: `province` → `region`; labels and postal-code validation per country (`config/countries.php`:
+  State/ZIP for US, Province/Postal code for CA, County/Postcode for UK …); one-line address in the country's order.
+  The country of a new address is the company's.
+- **Phones in E.164** (libphonenumber): numbers typed without a country code are read as the company's country;
+  existing customer, brand and on-site contact phones were converted. Search finds national formats too.
+- Generic payment methods: Check, Bank transfer (e-Transfer, Zelle, ACH …) instead of Cheque / e-Transfer.
+  Brand `gst_number` → `tax_number`. Lead source HomeStars → "Online directory" (Yelp, Angi, HomeStars …).
+- Calendar and dates use the regional format (12/24 h, day/month order).
+- Demo: the BC companies stay (GST + PST); new US company **Lone Star Appliance Repair** (Austin TX, USD, one
+  "Sales tax 8.25%", en-US, ZIP codes, an HOA customer on Net 30) — log in as `us@example.com`.
+- SPEC: §1.1 markets and localization, §1.2 verticals and out-of-scope construction projects, A2P 10DLC for US SMS,
+  Square countries / Stripe next, §11 answers (Solo = exactly 1 user, webhooks change status only, Owner only,
+  prices in USD set in config incl. the founding Pro price).
+
+**Verticals** (SPEC §1.2): `companies.vertical` — appliance repair (main) or handyman, chosen when the company is
+created. Each vertical has its job types (handyman: repair, installation, assembly, mounting, maintenance, inspection),
+default checklists and **starting services**. Services live in a new `services` table (start of the price book) with a
+Company → Services page (name, description, price in the company currency, taxable, active). Handyman companies don't
+see the appliance sections on jobs (unless a job has appliances).
+
+**Payment terms**: company default (Due on receipt / Net 7 / Net 15 / Net 30) in Company settings; a customer can have
+its own terms (customer form; empty = company default). A new invoice's due date = invoice date + the customer's terms
+(prefilled on the form with a hint, editable; also used when an estimate becomes an invoice).
+
+**Square** (first provider behind `PaymentProvider`):
+
+- Each company connects **its own Square account by OAuth** (Company settings → Payments → Connect Square; Owner only).
+  `state` is checked; tokens are stored **encrypted** (`payment_provider_connections`), never sent to the browser;
+  payments go to the account's main location. **Disconnect** revokes the token at Square and forgets it; a revoke made
+  in the Square dashboard (`oauth.authorization.revoked`) does the same. Tokens are refreshed when close to expiry and
+  by a daily command (`payments:refresh-square-tokens`, scheduled).
+- Square is offered only in countries where it works (`config/payments.php`: US, CA, GB, IE, AU, JP, FR, ES) and only
+  when the app keys are set. The company's provider select lists only connected providers.
+- Invoice page → **Pay online**: one tap makes a Square payment link for the **balance** (QR code for the customer on
+  site, Copy / Open). The link is reused while the balance is unchanged; after a partial/manual payment a new link for
+  the rest replaces it (old one deleted at Square). Technicians on the job can do it too.
+- **Webhook** `POST /webhooks/payments/square` (signature HMAC-SHA256 checked, no CSRF): a COMPLETED payment for one of
+  our links is recorded on the invoice as an online payment through Square (card brand and last 4 as reference), via
+  `RecordPayment::fromProvider()` — **idempotent on the Square payment ID**, so repeated webhooks create no duplicate.
+  Partial online payments and manual payments work side by side. Other merchants, other orders (in-store sales) and
+  non-completed payments are ignored.
+- Keys only from `.env` (`SQUARE_*`, see `.env.example`).
+
+How to test on the Square Sandbox (no sandbox keys were available in this environment, so the automated tests use a
+faked Square API with Square's request/response and webhook shapes):
+
+1. Square Developer Dashboard → your app → Sandbox: copy Application ID and secret to `SQUARE_APPLICATION_ID` /
+   `SQUARE_APPLICATION_SECRET`, `SQUARE_ENVIRONMENT=sandbox`.
+2. OAuth → Sandbox redirect URL: `{APP_URL}/payment-providers/square/callback`.
+3. Webhooks → add subscription (sandbox) for `payment.created`, `payment.updated`, `oauth.authorization.revoked` with
+   URL `{APP_URL}/webhooks/payments/square` (must be public: use a tunnel such as ngrok locally); put the signature key
+   in `SQUARE_WEBHOOK_SIGNATURE_KEY` and the same URL in `SQUARE_WEBHOOK_URL`.
+4. Open the sandbox test seller account from the dashboard (keep it open in the same browser), then log in as
+   `us@example.com` → Company settings → Connect Square → Allow.
+5. Open an invoice → Pay online → Get payment link → open the link and pay with Square's sandbox test card
+   (e.g. 4111 1111 1111 1111, any future date, any CVV). The payment appears on the invoice within seconds.
+
+Decisions made without asking (change if needed):
+
+- One "regional format" setting (BCP 47 locale) covers date, time and number format instead of separate date/number
+  settings. The UI stays English; the locale only changes formats.
+- The country of a property/brand address is a 2-letter code field; labels follow the company's country.
+- Postal codes are validated only for countries with a known pattern (US, CA, UK, AU, NZ, DE, FR, ES, IT, MX); others
+  accept anything. Phones must be a plausible length for the country (lenient check, no real-range check).
+- Phones are shown as stored (E.164) for now; pretty national formatting on screen can come later.
+- Test data (factories) stays Canadian by default; `->inUnitedStates()` exists for US tests.
+- Compound taxes always apply after normal taxes (ordering by type, then sort order).
+- Starting services have no prices (each company sets its own in its currency); picking services on estimate/invoice
+  lines comes with the price book task.
+- The vertical is chosen at creation (super-admin form; there is no self-signup yet) and is not editable in settings.
+- Square: payments go to the main location of the Square account; the link amount is the balance at that moment; tips
+  added in Square checkout are not added to the invoice (the invoice records the base amount); refunds are done in
+  Square (refund webhooks are not handled yet). A Square account in another currency than the invoice cannot make links.
+- Webhook payment for a voided invoice is not recorded (logged), the money stays visible in Square.
+- Platform subscription billing (§11) is still not built; only SPEC was updated.
+
+Deferred on purpose: Stripe (next provider for non-Square countries), Square Point of Sale hand-off for card-present
+payments, refund webhooks, sending invoices/estimates by SMS/email with the link, self-signup with country/vertical.
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started
 
 ## Next
 
-Stage 1 — Square payments behind the `PaymentProvider` interface (OAuth per company, payment link / QR on the
-invoice, webhooks into `RecordPayment::fromProvider()`). Then Twilio SMS and sending estimates/invoices.
+Stage 1 — Twilio SMS (automated messages + inbox per brand; A2P 10DLC registration for US numbers) and sending
+estimates/invoices by SMS/email with a link and PDF (online approval of estimates, Square link in the invoice message).
+Then price book picker on lines, review request toggle, basic reports, Google Places. Stripe as the second payment
+provider for countries without Square.

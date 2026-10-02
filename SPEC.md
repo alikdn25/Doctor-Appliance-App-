@@ -290,8 +290,9 @@ How companies (tenants) pay **us** for the app. Not to be confused with §7.6, w
 
 ### 11.2 Plans and prices (USD per month)
 
-All subscription prices are in **USD** and are **set in config** (`config/subscriptions.php`, amounts from env), not
-in code. The amounts below are placeholders until the owner sets them.
+All subscription prices are in **USD** and are **set in config** (`config/subscriptions.php`, amounts from env, created
+when this module is built), not in code. The owner sets the amounts later; the founding price of Pro is configurable
+too (it may equal the regular price).
 
 | Plan | Users          | Regular price | Founding member price           |
 | ---- | -------------- | ------------- | ------------------------------- |

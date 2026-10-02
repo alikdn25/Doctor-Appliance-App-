@@ -40,6 +40,46 @@ return [
         'other' => 'How was it paid?',
     ],
 
+    'links' => [
+        'title' => 'Pay online',
+        'hint' => 'The customer pays the balance by card through :provider. Show the QR code or send the link.',
+        'create' => 'Get payment link',
+        'renew' => 'New link for the current balance',
+        'created' => 'Payment link ready.',
+        'copy' => 'Copy link',
+        'copied' => 'Link copied.',
+        'open' => 'Open',
+        'amount' => 'Link for :amount',
+        'paid_automatically' => 'The payment is recorded here automatically when the customer pays.',
+        'no_provider' => 'Connect an online payment provider in Company settings first.',
+        'nothing_due' => 'Nothing is due on this invoice.',
+    ],
+
+    'connect' => [
+        'title' => 'Online payments',
+        'hint' => 'Connect your own account. Money goes straight to it; card details never touch this app.',
+        'connect' => 'Connect :provider',
+        'disconnect' => 'Disconnect',
+        'confirm_disconnect' => 'Disconnect :provider? Customers can no longer pay by link until you connect it again.',
+        'connected' => ':provider connected.',
+        'disconnected' => ':provider disconnected.',
+        'connected_as' => 'Connected: :account',
+        'location' => 'Payments go to :location (:currency).',
+        'invalid_state' => 'The connection could not be confirmed. Please try again.',
+        'none_available' => 'No online payment provider is available in your country yet. Stripe is coming next.',
+    ],
+
+    'square' => [
+        'link_name' => 'Invoice :number — :brand',
+        'payment_note' => 'Invoice :number',
+        'errors' => [
+            'api' => 'Square did not respond as expected. Please try again.',
+            'denied' => 'Square was not connected (access was not granted).',
+            'not_connected' => 'Square is not connected.',
+            'currency' => 'Your Square account takes :square but this invoice is in :invoice.',
+        ],
+    ],
+
     'errors' => [
         'invalid_method' => 'Choose a payment method.',
         'more_than_balance' => 'The amount is more than the balance due.',

@@ -1,4 +1,5 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
+import { CheckCircle2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
@@ -9,6 +10,10 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
 import { edit, update } from '@/routes/company/settings';
+import {
+    connect as connectProvider,
+    disconnect as disconnectProvider,
+} from '@/routes/payment-providers';
 import type { Option } from '@/types';
 
 const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
@@ -40,6 +45,17 @@ type Props = {
     locales: Option[];
     paymentTerms: Option[];
     paymentProviders: Option[];
+    providerConnections: ProviderConnection[];
+};
+
+type ProviderConnection = {
+    key: string;
+    label: string;
+    connected: {
+        account: string | null;
+        location: string | null;
+        currency: string | null;
+    } | null;
 };
 
 export default function CompanySettingsPage({
@@ -50,6 +66,7 @@ export default function CompanySettingsPage({
     locales,
     paymentTerms,
     paymentProviders,
+    providerConnections,
 }: Props) {
     const t = useTrans();
     const form = useForm<CompanySettings>({
@@ -405,6 +422,84 @@ export default function CompanySettingsPage({
                     <h2 className="text-base font-medium">
                         {t('company.payments')}
                     </h2>
+                    <p className="text-sm text-muted-foreground">
+                        {t('payments.connect.hint')}
+                    </p>
+                    {providerConnections.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                            {t('payments.connect.none_available')}
+                        </p>
+                    )}
+                    {providerConnections.map((provider) => (
+                        <div
+                            key={provider.key}
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+                        >
+                            <div className="text-sm">
+                                <p className="font-medium">{provider.label}</p>
+                                {provider.connected ? (
+                                    <>
+                                        <p className="flex items-center gap-1 text-green-700 dark:text-green-400">
+                                            <CheckCircle2 className="size-4" />
+                                            {t(
+                                                'payments.connect.connected_as',
+                                                {
+                                                    account:
+                                                        provider.connected
+                                                            .account ??
+                                                        provider.label,
+                                                },
+                                            )}
+                                        </p>
+                                        {provider.connected.location && (
+                                            <p className="text-muted-foreground">
+                                                {t(
+                                                    'payments.connect.location',
+                                                    {
+                                                        location:
+                                                            provider.connected
+                                                                .location,
+                                                        currency:
+                                                            provider.connected
+                                                                .currency ?? '',
+                                                    },
+                                                )}
+                                            </p>
+                                        )}
+                                    </>
+                                ) : null}
+                            </div>
+                            {provider.connected ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() =>
+                                        confirm(
+                                            t(
+                                                'payments.connect.confirm_disconnect',
+                                                { provider: provider.label },
+                                            ),
+                                        ) &&
+                                        router.delete(
+                                            disconnectProvider(provider.key)
+                                                .url,
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    {t('payments.connect.disconnect')}
+                                </Button>
+                            ) : (
+                                <Button type="button" asChild>
+                                    <a href={connectProvider(provider.key).url}>
+                                        {t('payments.connect.connect', {
+                                            provider: provider.label,
+                                        })}
+                                    </a>
+                                </Button>
+                            )}
+                        </div>
+                    ))}
                     <FormField
                         id="payment_provider"
                         label={t('company.fields.payment_provider')}

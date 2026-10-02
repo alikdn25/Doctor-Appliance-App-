@@ -12,6 +12,8 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { DocumentStatusBadge } from '@/components/billing/document-status-badge';
 import { useMoney } from '@/components/billing/money';
+import type { OnlinePayment } from '@/components/billing/online-payment';
+import { OnlinePaymentSection } from '@/components/billing/online-payment';
 import { PaymentDialog } from '@/components/billing/payment-dialog';
 import type { BillingDocument, PaymentData } from '@/components/billing/types';
 import { FormField } from '@/components/form-field';
@@ -59,11 +61,13 @@ export default function BillingShow({
     can,
     paymentMethods = [],
     today,
+    online = null,
 }: {
     document: BillingDocument;
     can: Can;
     paymentMethods?: Option[];
     today: string;
+    online?: OnlinePayment;
 }) {
     const t = useTrans();
     const money = useMoney(doc.currency);
@@ -341,6 +345,15 @@ export default function BillingShow({
                         </p>
                     )}
                 </section>
+
+                {isInvoice && online && balance > 0 && (
+                    <OnlinePaymentSection
+                        invoiceId={doc.id}
+                        online={online}
+                        balance={balance}
+                        currency={doc.currency}
+                    />
+                )}
 
                 {/* Estimate actions */}
                 {!isInvoice && can.update && (

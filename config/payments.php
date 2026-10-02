@@ -1,5 +1,7 @@
 <?php
 
+use App\Payments\Square\SquareProvider;
+
 return [
 
     /*
@@ -8,7 +10,7 @@ return [
     | manual payment methods are always available. Provider credentials come from .env (config/services.php).
     */
     'providers' => [
-        App\Payments\Square\SquareProvider::class,
+        SquareProvider::class,
     ],
 
     'square' => [

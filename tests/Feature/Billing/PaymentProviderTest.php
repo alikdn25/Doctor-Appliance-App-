@@ -11,13 +11,15 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Property;
 use App\Models\ServiceJob;
+use App\Models\User;
 use App\Payments\PaymentLink;
 use App\Payments\PaymentProvider;
 use App\Payments\PaymentProviders;
+use Illuminate\Http\Request;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
- * Stands in for Square (next task) to prove invoices work through the provider interface only.
+ * A second provider, to prove invoices work through the provider interface only (as Stripe will).
  */
 class FakePaymentProvider implements PaymentProvider
 {
@@ -31,15 +33,38 @@ class FakePaymentProvider implements PaymentProvider
         return 'FakePay';
     }
 
+    public function isAvailableFor(Company $company): bool
+    {
+        return true;
+    }
+
     public function isConnected(Company $company): bool
     {
         return true;
     }
 
+    public function connectionSummary(Company $company): ?array
+    {
+        return ['account' => 'Fake account', 'location' => null, 'currency' => $company->currency, 'connected_at' => null];
+    }
+
+    public function authorizationUrl(Company $company, string $state): string
+    {
+        return "https://pay.example.test/oauth?state={$state}";
+    }
+
+    public function connect(Company $company, array $query, User $user): void {}
+
+    public function disconnect(Company $company): void {}
+
     public function createPaymentLink(Invoice $invoice, int $amount): PaymentLink
     {
-        return new PaymentLink("https://pay.example.test/{$invoice->number}/{$amount}", "link-{$invoice->id}");
+        return new PaymentLink("https://pay.example.test/{$invoice->number}/{$amount}", "link-{$invoice->id}-{$amount}", "order-{$invoice->id}-{$amount}");
     }
+
+    public function cancelPaymentLink(Company $company, string $providerReference): void {}
+
+    public function handleWebhook(Request $request): void {}
 }
 
 beforeEach(function () {
@@ -57,7 +82,7 @@ beforeEach(function () {
 test('no provider is installed yet: companies record payments by hand', function () {
     config(['payments.providers' => []]);
 
-    expect(app(PaymentProviders::class)->options())->toBe([])
+    expect(app(PaymentProviders::class)->options($this->company))->toBe([])
         ->and(app(PaymentProviders::class)->forCompany($this->company))->toBeNull();
 });
 
