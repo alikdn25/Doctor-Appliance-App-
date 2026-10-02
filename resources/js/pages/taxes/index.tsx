@@ -23,6 +23,7 @@ type TaxRate = {
     name: string;
     rate: string;
     is_compound: boolean;
+    is_recoverable: boolean;
     is_default: boolean;
     is_active: boolean;
     sort_order: number;
@@ -32,6 +33,7 @@ type TaxForm = {
     name: string;
     rate: string;
     is_compound: boolean;
+    is_recoverable: boolean;
     is_default: boolean;
     is_active: boolean;
     sort_order: number;
@@ -56,6 +58,7 @@ export default function TaxesIndex({
         is_compound: false,
         is_default: false,
         is_active: true,
+        is_recoverable: true,
         sort_order: 0,
     });
 
@@ -68,6 +71,7 @@ export default function TaxesIndex({
                       name: taxRate.name,
                       rate: String(Number(taxRate.rate)),
                       is_compound: taxRate.is_compound,
+                      is_recoverable: taxRate.is_recoverable,
                       is_default: taxRate.is_default,
                       is_active: taxRate.is_active,
                       sort_order: taxRate.sort_order,
@@ -76,6 +80,7 @@ export default function TaxesIndex({
                       name: '',
                       rate: '',
                       is_compound: false,
+                      is_recoverable: true,
                       is_default: taxRates.length === 0,
                       is_active: true,
                       sort_order: taxRates.length,
@@ -237,6 +242,20 @@ export default function TaxesIndex({
                                 {t('taxes.fields.is_compound')}
                                 <span className="block text-xs text-muted-foreground">
                                     {t('taxes.compound_hint')}
+                                </span>
+                            </span>
+                        </label>
+                        <label className="flex min-h-9 items-start gap-2 text-sm">
+                            <Checkbox
+                                checked={form.data.is_recoverable}
+                                onCheckedChange={(c) =>
+                                    form.setData('is_recoverable', c === true)
+                                }
+                            />
+                            <span>
+                                {t('taxes.fields.is_recoverable')}
+                                <span className="block text-xs text-muted-foreground">
+                                    {t('taxes.recoverable_hint')}
                                 </span>
                             </span>
                         </label>

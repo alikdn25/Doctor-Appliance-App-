@@ -24,6 +24,7 @@ class TaxRateRequest extends FormRequest
             'is_compound' => $this->boolean('is_compound'),
             'is_default' => $this->boolean('is_default'),
             'is_active' => $this->boolean('is_active'),
+            'is_recoverable' => $this->boolean('is_recoverable', true),
         ]);
     }
 
@@ -38,6 +39,7 @@ class TaxRateRequest extends FormRequest
             'is_compound' => ['boolean'],
             'is_default' => ['boolean'],
             'is_active' => ['boolean'],
+            'is_recoverable' => ['boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:1000'],
         ];
     }

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Concerns\IsBillingLine;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * A line of an invoice. Prices in cents; total = quantity × unit price, rounded to the cent.
@@ -37,5 +38,13 @@ class InvoiceItem extends Model
             'taxable' => 'boolean',
             'total' => 'integer',
         ];
+    }
+
+    /**
+     * @return BelongsTo<Invoice, $this>
+     */
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class)->withTrashed();
     }
 }

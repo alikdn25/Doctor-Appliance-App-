@@ -34,7 +34,7 @@ enum PaymentMethod: string
     {
         $methods = [self::Cash, self::Check, self::BankTransfer, self::CardTerminal, self::Other];
 
-        return $company !== null && ! $company->accepts_cash
+        return $company !== null && $company->accepts_cash === false
             ? array_values(array_filter($methods, fn (self $m) => $m !== self::Cash))
             : $methods;
     }

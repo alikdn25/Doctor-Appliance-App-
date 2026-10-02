@@ -9,6 +9,7 @@ use App\Models\Appliance;
 use App\Models\AuditLog;
 use App\Models\Brand;
 use App\Models\BrandAddress;
+use App\Models\CashMovement;
 use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Concerns\BelongsToCompany;
@@ -24,6 +25,7 @@ use App\Models\InvoicePaymentLink;
 use App\Models\JobAppliance;
 use App\Models\JobBringItem;
 use App\Models\JobChecklistItem;
+use App\Models\JobCostItem;
 use App\Models\JobPhoto;
 use App\Models\JobStatusChange;
 use App\Models\JobVisit;
@@ -38,6 +40,8 @@ use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\SmsAccount;
 use App\Models\SmsRegistration;
+use App\Models\SupplierReceipt;
+use App\Models\SupplierReceiptLink;
 use App\Models\TaxRate;
 use App\Support\Tenancy\MissingTenantException;
 use Illuminate\Http\UploadedFile;
@@ -117,6 +121,13 @@ beforeEach(function () {
             ]);
             $link->invoice_id = $invoice->id;
             $link->save();
+            $cost = new JobCostItem(['description' => 'Secret part', 'quantity' => 1, 'unit_cost' => 1234]);
+            $cost->service_job_id = $job->id;
+            $cost->currency = $invoice->currency;
+            $cost->save();
+            $receipt = SupplierReceipt::create(['path' => 'x/receipt-'.$job->id.'.pdf', 'original_name' => 'r.pdf', 'mime' => 'application/pdf', 'size' => 10]);
+            SupplierReceiptLink::create(['supplier_receipt_id' => $receipt->id, 'service_job_id' => $job->id]);
+            CashMovement::create(['user_id' => $owner->id, 'type' => 'collected', 'amount' => 5000, 'currency' => $invoice->currency, 'occurred_on' => now()->toDateString()]);
             $company = currentCompany();
             SmsAccount::create(['provider' => 'twilio', 'account_sid' => 'AC'.$company->id, 'auth_token' => 'token-'.$company->id, 'phone_number' => '+1604555'.str_pad((string) $company->id, 4, '0', STR_PAD_LEFT)]);
             SmsRegistration::create(['business' => ['legal_name' => $company->name]]);
@@ -161,6 +172,10 @@ dataset('tenant models', [
     'job photos' => [JobPhoto::class],
     'job checklist items' => [JobChecklistItem::class],
     'job bring items' => [JobBringItem::class],
+    'job cost items' => [JobCostItem::class],
+    'supplier receipts' => [SupplierReceipt::class],
+    'supplier receipt links' => [SupplierReceiptLink::class],
+    'cash movements' => [CashMovement::class],
     'checklist templates' => [ChecklistTemplate::class],
     'estimates' => [Estimate::class],
     'estimate items' => [EstimateItem::class],
@@ -193,7 +208,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         Appliance::class, Brand::class, BrandAddress::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class,
         CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceItem::class, InvoicePaymentLink::class, Payment::class,
         PaymentProviderConnection::class,
-        JobAppliance::class, JobBringItem::class, JobChecklistItem::class, JobPhoto::class, JobStatusChange::class,
+        JobAppliance::class, JobBringItem::class, JobChecklistItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
         Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class,
     ])->sort()->values()->all());

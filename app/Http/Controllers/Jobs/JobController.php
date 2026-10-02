@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Jobs;
 
+use App\Actions\Billing\CashLedger;
 use App\Actions\Jobs\RefundOriginalJob;
 use App\Actions\Jobs\SaveJob;
 use App\Enums\ApplianceType;
@@ -159,6 +160,8 @@ class JobController extends Controller
 
         return Inertia::render('jobs/mine', [
             'tab' => $tab,
+            // Cash this person collected and has not handed in yet.
+            'cashOnHand' => CashLedger::balances()[$user->id] ?? [],
             'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone) {
                 $job = $visit->job;
 

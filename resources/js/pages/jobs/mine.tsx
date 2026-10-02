@@ -1,5 +1,12 @@
-import { Head, Link } from '@inertiajs/react';
-import { Download, Navigation, PackageCheck, Phone } from 'lucide-react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import {
+    Banknote,
+    Download,
+    Navigation,
+    PackageCheck,
+    Phone,
+} from 'lucide-react';
+import { formatMoney } from '@/components/billing/money';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import { StrictBadge } from '@/components/jobs/job-outcome';
 import { StatusBadge } from '@/components/jobs/status-badge';
@@ -34,13 +41,16 @@ const tabs = ['today', 'upcoming', 'recent'] as const;
 export default function MyJobs({
     tab,
     visits,
+    cashOnHand = {},
 }: {
     tab: (typeof tabs)[number];
     visits: MyVisit[];
+    cashOnHand?: Record<string, number>;
 }) {
     const t = useTrans();
     const time = useCompanyTime();
     const install = useInstallPrompt();
+    const { auth } = usePage().props;
 
     return (
         <>
@@ -60,6 +70,24 @@ export default function MyJobs({
                         )
                     }
                 />
+
+                {Object.entries(cashOnHand)
+                    .filter(([, amount]) => amount !== 0)
+                    .map(([currency, amount]) => (
+                        <p
+                            key={currency}
+                            className="mb-3 flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+                        >
+                            <Banknote className="size-4" />
+                            {t('cash.my_cash', {
+                                amount: formatMoney(
+                                    amount,
+                                    currency,
+                                    auth.company?.locale,
+                                ),
+                            })}
+                        </p>
+                    ))}
 
                 <nav className="mb-4 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
                     {tabs.map((name) => (

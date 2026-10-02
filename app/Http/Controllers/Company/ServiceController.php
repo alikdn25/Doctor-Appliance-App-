@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Company;
 
+use App\Enums\LineKind;
+use App\Enums\WarrantyUnit;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Models\ChecklistTemplate;
@@ -12,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -34,8 +37,16 @@ class ServiceController extends Controller
                     'unit_price' => $service->unit_price,
                     'taxable' => $service->taxable,
                     'is_active' => $service->is_active,
+                    'kind' => $service->kind->value,
+                    'part_number' => $service->part_number,
+                    'supplier' => $service->supplier,
+                    'unit' => $service->unit,
+                    'unit_cost' => $service->unit_cost,
+                    'warranty_value' => $service->warranty_value,
+                    'warranty_unit' => $service->warranty_unit,
                 ])
                 ->values(),
+            'warrantyUnits' => WarrantyUnit::options(),
         ]);
     }
 
@@ -52,6 +63,13 @@ class ServiceController extends Controller
             'services.*.unit_price' => ['nullable', 'numeric', 'min:0', DocumentRequest::moneyRule($currency)],
             'services.*.taxable' => ['boolean'],
             'services.*.is_active' => ['boolean'],
+            'services.*.kind' => ['nullable', Rule::enum(LineKind::class)],
+            'services.*.part_number' => ['nullable', 'string', 'max:100'],
+            'services.*.supplier' => ['nullable', 'string', 'max:150'],
+            'services.*.unit' => ['nullable', 'string', 'max:20'],
+            'services.*.unit_cost' => ['nullable', 'numeric', 'min:0', DocumentRequest::moneyRule($currency)],
+            'services.*.warranty_value' => ['nullable', 'integer', 'min:0', 'max:999'],
+            'services.*.warranty_unit' => ['nullable', Rule::enum(WarrantyUnit::class)],
         ], [], [
             'services.*.name' => __('services.fields.name'),
             'services.*.unit_price' => __('services.fields.unit_price'),
@@ -71,6 +89,14 @@ class ServiceController extends Controller
                     'taxable' => (bool) ($row['taxable'] ?? true),
                     'is_active' => (bool) ($row['is_active'] ?? true),
                     'sort_order' => $position + 1,
+                    'kind' => $row['kind'] ?? 'service',
+                    'part_number' => $row['part_number'] ?? null,
+                    'supplier' => $row['supplier'] ?? null,
+                    'unit' => $row['unit'] ?? null,
+                    'unit_cost' => filled($row['unit_cost'] ?? null) ? Currencies::toMinor($row['unit_cost'], $currency) : null,
+                    // Empty = the company's default warranty.
+                    'warranty_value' => $row['warranty_value'] ?? null,
+                    'warranty_unit' => isset($row['warranty_value']) ? ($row['warranty_unit'] ?? 'days') : null,
                 ])->save();
                 $keep[] = $service->id;
             }

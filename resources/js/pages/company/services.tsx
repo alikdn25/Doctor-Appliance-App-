@@ -7,8 +7,10 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
 import { edit, update } from '@/routes/company/services';
+import type { Option } from '@/types';
 
 type Service = {
     id: number | null;
@@ -17,6 +19,13 @@ type Service = {
     unit_price: number | null;
     taxable: boolean;
     is_active: boolean;
+    kind: string;
+    part_number: string | null;
+    supplier: string | null;
+    unit: string | null;
+    unit_cost: number | null;
+    warranty_value: number | null;
+    warranty_unit: string | null;
 };
 
 type Row = {
@@ -27,6 +36,13 @@ type Row = {
     unit_price: string;
     taxable: boolean;
     is_active: boolean;
+    kind: string;
+    part_number: string;
+    supplier: string | null;
+    unit: string | null;
+    unit_cost: string;
+    warranty_value: string;
+    warranty_unit: string;
 };
 
 let rowKey = 0;
@@ -34,7 +50,13 @@ let rowKey = 0;
 /**
  * The company's services and prices, edited as one list (one card per service on a phone).
  */
-export default function Services({ services }: { services: Service[] }) {
+export default function Services({
+    services,
+    warrantyUnits,
+}: {
+    services: Service[];
+    warrantyUnits: Option[];
+}) {
     const t = useTrans();
     const { auth } = usePage().props;
     const currency = auth.company?.currency ?? 'USD';
@@ -50,6 +72,15 @@ export default function Services({ services }: { services: Service[] }) {
                 s.unit_price === null ? '' : fromMinor(s.unit_price, currency),
             taxable: s.taxable,
             is_active: s.is_active,
+            kind: s.kind,
+            part_number: s.part_number ?? '',
+            supplier: s.supplier,
+            unit: s.unit,
+            unit_cost:
+                s.unit_cost === null ? '' : fromMinor(s.unit_cost, currency),
+            warranty_value:
+                s.warranty_value === null ? '' : String(s.warranty_value),
+            warranty_unit: s.warranty_unit ?? 'days',
         })),
     });
     const errors = form.errors as Record<string, string | undefined>;
@@ -71,6 +102,16 @@ export default function Services({ services }: { services: Service[] }) {
                 unit_price: row.unit_price.replace(/[^\d.]/g, '') || null,
                 taxable: row.taxable,
                 is_active: row.is_active,
+                kind: row.kind,
+                part_number: row.part_number || null,
+                supplier: row.supplier,
+                unit: row.unit,
+                unit_cost: row.unit_cost.replace(/[^\d.]/g, '') || null,
+                warranty_value:
+                    row.warranty_value === ''
+                        ? null
+                        : Number(row.warranty_value),
+                warranty_unit: row.warranty_unit,
             })),
         }));
         form.put(update().url, { preserveScroll: true });
@@ -167,6 +208,89 @@ export default function Services({ services }: { services: Service[] }) {
                                     setRow(i, { description: e.target.value })
                                 }
                             />
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                <NativeSelect
+                                    aria-label={t('billing.kinds.service')}
+                                    value={row.kind}
+                                    onChange={(e) =>
+                                        setRow(i, { kind: e.target.value })
+                                    }
+                                >
+                                    {(
+                                        ['service', 'part', 'material'] as const
+                                    ).map((k) => (
+                                        <option key={k} value={k}>
+                                            {t(`billing.kinds.${k}`)}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                                {row.kind !== 'service' && (
+                                    <Input
+                                        aria-label={t(
+                                            'billing.line.part_number',
+                                        )}
+                                        placeholder={t(
+                                            'billing.line.part_number',
+                                        )}
+                                        value={row.part_number}
+                                        onChange={(e) =>
+                                            setRow(i, {
+                                                part_number: e.target.value,
+                                            })
+                                        }
+                                    />
+                                )}
+                                {row.kind !== 'service' && (
+                                    <Input
+                                        aria-label={t('billing.line.cost')}
+                                        placeholder={t('billing.line.cost')}
+                                        inputMode="decimal"
+                                        value={row.unit_cost}
+                                        onChange={(e) =>
+                                            setRow(i, {
+                                                unit_cost: e.target.value,
+                                            })
+                                        }
+                                    />
+                                )}
+                                <div className="col-span-2 grid grid-cols-[4rem_1fr] gap-2 sm:col-span-1">
+                                    <Input
+                                        aria-label={t('billing.warranty')}
+                                        placeholder={t(
+                                            'services.warranty_default',
+                                        )}
+                                        inputMode="numeric"
+                                        value={row.warranty_value}
+                                        onChange={(e) =>
+                                            setRow(i, {
+                                                warranty_value:
+                                                    e.target.value.replace(
+                                                        /\D/g,
+                                                        '',
+                                                    ),
+                                            })
+                                        }
+                                    />
+                                    <NativeSelect
+                                        aria-label={t('billing.warranty')}
+                                        value={row.warranty_unit}
+                                        onChange={(e) =>
+                                            setRow(i, {
+                                                warranty_unit: e.target.value,
+                                            })
+                                        }
+                                    >
+                                        {warrantyUnits.map((u) => (
+                                            <option
+                                                key={u.value}
+                                                value={u.value}
+                                            >
+                                                {u.label}
+                                            </option>
+                                        ))}
+                                    </NativeSelect>
+                                </div>
+                            </div>
                             <div className="flex gap-4">
                                 <label className="flex min-h-9 items-center gap-2 text-sm">
                                     <Checkbox
@@ -206,6 +330,13 @@ export default function Services({ services }: { services: Service[] }) {
                                 unit_price: '',
                                 taxable: true,
                                 is_active: true,
+                                kind: 'service',
+                                part_number: '',
+                                supplier: null,
+                                unit: null,
+                                unit_cost: '',
+                                warranty_value: '',
+                                warranty_unit: 'days',
                             },
                         ])
                     }

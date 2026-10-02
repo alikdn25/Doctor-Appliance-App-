@@ -130,6 +130,14 @@ class Company extends Model
 
     protected $attributes = [
         'status' => 'active',
+        'warranty_labor_value' => 30,
+        'warranty_labor_unit' => 'days',
+        'warranty_parts_value' => 90,
+        'warranty_parts_unit' => 'days',
+        'technicians_see_costs' => false,
+        'technicians_can_delete_jobs' => false,
+        'accepts_cash' => true,
+        'strict_arrival_reminder_minutes' => 60,
         'vertical' => 'appliance_repair',
         'prices_include_tax' => false,
         'default_payment_terms' => 'due_on_receipt',
