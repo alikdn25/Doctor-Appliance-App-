@@ -29,6 +29,7 @@ class CompanySettingsController extends Controller
                 'id', 'name', 'country', 'timezone', 'currency', 'locale', 'prices_include_tax',
                 'invoice_prefix', 'invoice_next_number', 'online_tips',
                 'estimate_prefix', 'estimate_next_number', 'travel_buffer_minutes', 'payment_provider',
+                'estimate_valid_days',
             ]) + [
                 'business_hours' => $company->business_hours ?? $company::defaultBusinessHours(),
                 'default_payment_terms' => $company->default_payment_terms->value,

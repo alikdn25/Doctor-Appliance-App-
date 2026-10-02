@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     Ban,
+    CalendarPlus,
     CheckCircle2,
     CreditCard,
     Pencil,
@@ -98,8 +99,12 @@ export default function BillingShow({
     const setDecision = (approved: boolean) =>
         router.put(decide(doc.id).url, { approved }, options);
 
+    // One tap once the customer approved; otherwise ask first.
     const toInvoice = () => {
-        if (confirm(t('estimates.confirm_convert'))) {
+        if (
+            doc.status === 'approved' ||
+            confirm(t('estimates.confirm_convert'))
+        ) {
             router.post(convert(doc.id).url, {}, options);
         }
     };
@@ -169,13 +174,20 @@ export default function BillingShow({
                         status={doc.status}
                         label={doc.status_label}
                     />
-                    {doc.valid_until && (
-                        <span className="text-muted-foreground">
-                            {t('estimates.valid_until_date', {
-                                date: time.dateOnly(doc.valid_until),
-                            })}
-                        </span>
-                    )}
+                    {doc.valid_until &&
+                        (doc.expired ? (
+                            <span className="font-medium text-amber-700 dark:text-amber-400">
+                                {t('estimates.expired_on', {
+                                    date: time.dateOnly(doc.valid_until),
+                                })}
+                            </span>
+                        ) : (
+                            <span className="text-muted-foreground">
+                                {t('estimates.valid_until_date', {
+                                    date: time.dateOnly(doc.valid_until),
+                                })}
+                            </span>
+                        ))}
                     {doc.due_on && doc.status !== 'paid' && (
                         <span className="text-muted-foreground">
                             {t('invoices.due_date', {
@@ -265,9 +277,24 @@ export default function BillingShow({
                         {doc.items.map((item) => (
                             <li
                                 key={item.id}
-                                className="flex items-start gap-3 p-3 text-sm"
+                                className={
+                                    item.optional && !item.selected
+                                        ? 'flex items-start gap-3 p-3 text-sm text-muted-foreground'
+                                        : 'flex items-start gap-3 p-3 text-sm'
+                                }
                             >
                                 <div className="min-w-0 flex-1">
+                                    {item.optional && (
+                                        <p className="text-xs font-medium uppercase">
+                                            {item.selected
+                                                ? t(
+                                                      'estimates.optional_included',
+                                                  )
+                                                : t(
+                                                      'estimates.optional_not_included',
+                                                  )}
+                                        </p>
+                                    )}
                                     <p className="whitespace-pre-line">
                                         {item.description}
                                     </p>
@@ -280,7 +307,13 @@ export default function BillingShow({
                                             ` · ${t('billing.not_taxable')}`}
                                     </p>
                                 </div>
-                                <span className="font-medium tabular-nums">
+                                <span
+                                    className={
+                                        item.optional && !item.selected
+                                            ? 'tabular-nums line-through'
+                                            : 'font-medium tabular-nums'
+                                    }
+                                >
                                     {money(item.total)}
                                 </span>
                             </li>
@@ -346,6 +379,30 @@ export default function BillingShow({
                                 </div>
                             </>
                         )}
+                        {!isInvoice && (doc.deposit_amount ?? 0) > 0 && (
+                            <div className="flex justify-between">
+                                <dt>
+                                    {doc.deposit_type === 'percent'
+                                        ? t('estimates.deposit_percent', {
+                                              percent: Number(
+                                                  doc.deposit_value,
+                                              ),
+                                          })
+                                        : t('estimates.deposit')}
+                                </dt>
+                                <dd className="tabular-nums">
+                                    {money(doc.deposit_amount ?? 0)}
+                                </dd>
+                            </div>
+                        )}
+                        {!isInvoice && (doc.deposit_paid ?? 0) !== 0 && (
+                            <div className="flex justify-between">
+                                <dt>{t('estimates.deposit_paid')}</dt>
+                                <dd className="tabular-nums">
+                                    {money(doc.deposit_paid ?? 0)}
+                                </dd>
+                            </div>
+                        )}
                     </dl>
 
                     {doc.notes && (
@@ -354,6 +411,44 @@ export default function BillingShow({
                         </p>
                     )}
                 </section>
+
+                {doc.online_approval && (
+                    <section className="space-y-2 rounded-lg border border-green-600/40 bg-green-50 p-3 text-sm dark:bg-green-950">
+                        {doc.online_approval.signature ? (
+                            <img
+                                src={doc.online_approval.signature}
+                                alt={t('estimates.online.signature')}
+                                className="h-20 max-w-64 rounded border bg-white object-contain"
+                            />
+                        ) : (
+                            <p className="font-serif text-2xl italic">
+                                {doc.online_approval.signer_name}
+                            </p>
+                        )}
+                        <p>
+                            {t('estimates.online.signed_online', {
+                                name: doc.online_approval.signer_name,
+                                date: doc.approved_at
+                                    ? time.dateTime(doc.approved_at)
+                                    : '',
+                            })}
+                            {doc.online_approval.ip &&
+                                ` · ${t('estimates.online.ip', { ip: doc.online_approval.ip })}`}
+                        </p>
+                        {doc.status !== 'invoiced' && (
+                            <p className="text-xs text-muted-foreground">
+                                {t('estimates.locked_signed')}
+                            </p>
+                        )}
+                    </section>
+                )}
+                {doc.status === 'declined' && doc.decline_reason && (
+                    <p className="rounded-lg bg-muted p-3 text-sm whitespace-pre-line">
+                        {t('estimates.online.decline_reason_label', {
+                            reason: doc.decline_reason,
+                        })}
+                    </p>
+                )}
 
                 {delivery && (
                     <DocumentDelivery
@@ -378,6 +473,18 @@ export default function BillingShow({
                 )}
 
                 {/* Estimate actions */}
+                {!isInvoice && doc.status === 'approved' && can.convert && (
+                    <section className="grid gap-2 sm:grid-cols-2">
+                        <Button className="h-12 text-base" onClick={toInvoice}>
+                            <Receipt /> {t('estimates.convert_approved')}
+                        </Button>
+                        <Button variant="outline" className="h-12" asChild>
+                            <Link href={showJob(doc.job.id)}>
+                                <CalendarPlus /> {t('estimates.schedule_visit')}
+                            </Link>
+                        </Button>
+                    </section>
+                )}
                 {!isInvoice && can.update && (
                     <section className="grid gap-2 sm:grid-cols-2">
                         {doc.status !== 'approved' && (
@@ -398,7 +505,7 @@ export default function BillingShow({
                                 <XCircle /> {t('estimates.decline')}
                             </Button>
                         )}
-                        {can.convert && (
+                        {can.convert && doc.status !== 'approved' && (
                             <Button
                                 className="h-11 sm:col-span-2"
                                 onClick={toInvoice}

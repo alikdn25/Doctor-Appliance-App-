@@ -18,6 +18,28 @@ return [
     'declined_at' => 'Declined :date',
     'invoiced_as' => 'Invoiced as :number',
     'valid_until_date' => 'Valid until :date',
+    'expired_on' => 'Expired :date',
+    'convert_approved' => 'Convert to invoice',
+    'schedule_visit' => 'Schedule visit',
+    'locked_signed' => 'Signed by the customer online: lines and prices can no longer be changed. Create a new estimate for changes.',
+
+    'optional' => 'Optional',
+    'optional_hint' => 'The customer can add it',
+    'included' => 'Included',
+    'optional_included' => 'Optional · included',
+    'optional_not_included' => 'Optional · not included',
+
+    'deposit' => 'Deposit',
+    'deposit_percent' => 'Deposit (:percent%)',
+    'deposit_paid' => 'Deposit paid',
+    'deposit_due' => 'Deposit due',
+    'deposit_hint' => 'Asked when the customer approves online, paid through your online payment provider.',
+    'deposit_no_provider' => 'Connect an online payment provider in Company settings so customers can pay the deposit online.',
+    'deposit_types' => [
+        'none' => 'No deposit',
+        'percent' => '% of total',
+        'amount' => 'Amount (:symbol)',
+    ],
 
     'statuses' => [
         'draft' => 'Draft',
@@ -28,9 +50,52 @@ return [
 
     'fields' => [
         'valid_until' => 'Valid until',
+        'deposit' => 'Deposit',
     ],
 
     'errors' => [
         'already_invoiced' => 'This estimate has already been invoiced.',
+    ],
+
+    // The customer's online page.
+    'online' => [
+        'approve' => 'Approve',
+        'decline' => 'Decline',
+        'approve_title' => 'Approve estimate',
+        'approve_intro' => 'Sign below to approve this estimate for :total.',
+        'sign_draw' => 'Draw',
+        'sign_type' => 'Type name',
+        'signer_name' => 'Your full name',
+        'signature' => 'Signature',
+        'draw_hint' => 'Sign with your finger or mouse in the box.',
+        'clear' => 'Clear',
+        'agree' => 'By signing, you approve this estimate, including the options you selected.',
+        'confirm_approve' => 'Approve and sign',
+        'approve_and_pay' => 'Approve and pay deposit :amount',
+        'decline_title' => 'Decline estimate',
+        'decline_reason' => 'Reason (optional)',
+        'decline_reason_hint' => 'Let us know why, so we can help.',
+        'confirm_decline' => 'Decline estimate',
+        'choose_options' => 'Optional items',
+        'choose_hint' => 'Tick the options you want. The total updates.',
+        'expired' => 'This estimate expired on :date. Please contact us for an updated estimate.',
+        'approved_title' => 'Approved by the customer',
+        'signed_by' => 'Signed by :name on :date',
+        'ip' => 'IP address: :ip',
+        'approved_notice' => 'Approved on :date. Thank you!',
+        'declined_notice' => 'You declined this estimate on :date.',
+        'reconsider' => 'Changed your mind? You can still approve it.',
+        'deposit_asked' => 'A deposit of :amount is due on approval.',
+        'pay_deposit' => 'Pay deposit :amount',
+        'deposit_received' => 'Deposit of :amount received. Thank you!',
+        'deposit_contact' => 'A deposit of :amount is due. We will contact you about payment.',
+        'invoiced' => 'This estimate has been turned into an invoice.',
+        'signed_online' => 'Signed online by :name · :date',
+        'decline_reason_label' => 'Reason: :reason',
+        'errors' => [
+            'signature' => 'Please sign in the box, or type your name instead.',
+            'expired' => 'This estimate has expired and can no longer be approved.',
+            'decided' => 'This estimate has already been answered.',
+        ],
     ],
 ];

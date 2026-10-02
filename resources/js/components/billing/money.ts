@@ -70,7 +70,13 @@ export function fromMinor(minor: number, currency: string): string {
 }
 
 export type TotalsInput = {
-    items: { quantity: string; unit_price: string; taxable: boolean }[];
+    /** `included: false` = an optional line that is not picked: shown, but not counted. */
+    items: {
+        quantity: string;
+        unit_price: string;
+        taxable: boolean;
+        included?: boolean;
+    }[];
     discount_type: '' | 'amount' | 'percent';
     discount_value: string;
     taxes: { name: string; rate: string; compound?: boolean }[];
@@ -131,9 +137,14 @@ export function computeTotals(input: TotalsInput): Totals {
                 toMinor(item.unit_price, input.currency),
         ),
     );
-    const subtotal = itemTotals.reduce((sum, value) => sum + value, 0);
+    const counted = input.items.map((item) => item.included !== false);
+    const subtotal = itemTotals.reduce(
+        (sum, value, i) => sum + (counted[i] ? value : 0),
+        0,
+    );
     const taxableSubtotal = input.items.reduce(
-        (sum, item, i) => sum + (item.taxable ? itemTotals[i] : 0),
+        (sum, item, i) =>
+            sum + (item.taxable && counted[i] ? itemTotals[i] : 0),
         0,
     );
 

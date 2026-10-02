@@ -38,6 +38,7 @@ class CompanySettingsRequest extends FormRequest
             'estimate_next_number' => ['required', 'integer', 'min:1', 'max:999999999'],
             'business_hours' => ['required', 'array:'.implode(',', Company::WEEKDAYS)],
             'travel_buffer_minutes' => ['required', 'integer', 'min:0', 'max:240'],
+            'estimate_valid_days' => ['nullable', 'integer', 'min:1', 'max:365'],
             // Only a provider the company has connected (and that serves its country) can be picked.
             'payment_provider' => ['nullable', Rule::in(array_column(app(PaymentProviders::class)->options(currentCompany()), 'value'))],
         ];

@@ -1,3 +1,8 @@
+import {
+    AddressAutocomplete,
+    clearedPlace,
+    GEOCODED_FIELDS,
+} from '@/components/customers/address-autocomplete';
 import { FormField } from '@/components/form-field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -5,7 +10,10 @@ import { usePage } from '@inertiajs/react';
 import { useTrans } from '@/lib/i18n';
 import type { PropertyFormData } from './types';
 
-type TextField = Exclude<keyof PropertyFormData, 'is_primary'>;
+type TextField = Exclude<
+    keyof PropertyFormData,
+    'is_primary' | 'google_place_id' | 'latitude' | 'longitude'
+>;
 
 const layout: [TextField, string, string?][] = [
     ['line1', 'sm:col-span-2', 'address-line1'],
@@ -48,6 +56,16 @@ export function PropertyFields({
         (field === 'postal_code' && labels?.postal_label) ||
         t(`properties.fields.${field}`);
 
+    // Typing over a picked address: its place ID and coordinates no longer apply.
+    const edit = (field: TextField, value: string) =>
+        onChange({
+            [field]: value,
+            ...((GEOCODED_FIELDS as readonly string[]).includes(field) &&
+            data.google_place_id
+                ? clearedPlace
+                : {}),
+        });
+
     const input = (
         field: TextField,
         className = '',
@@ -61,21 +79,37 @@ export function PropertyFields({
             error={errors[`${errorPrefix}${field}`]}
             className={className}
         >
-            <Input
-                id={`${idPrefix}-${field}`}
-                type={type}
-                value={data[field]}
-                autoComplete={autoComplete}
-                maxLength={field === 'country' ? 2 : undefined}
-                onChange={(e) =>
-                    onChange({
-                        [field]:
+            {field === 'line1' ? (
+                <AddressAutocomplete
+                    id={`${idPrefix}-${field}`}
+                    value={data.line1}
+                    autoComplete={autoComplete}
+                    country={data.country || auth.company?.country || 'US'}
+                    onChange={(value) => edit('line1', value)}
+                    onPick={(address) =>
+                        onChange({
+                            ...address,
+                            unit: address.unit ?? data.unit,
+                        })
+                    }
+                />
+            ) : (
+                <Input
+                    id={`${idPrefix}-${field}`}
+                    type={type}
+                    value={data[field]}
+                    autoComplete={autoComplete}
+                    maxLength={field === 'country' ? 2 : undefined}
+                    onChange={(e) =>
+                        edit(
+                            field,
                             field === 'country' || field === 'postal_code'
                                 ? e.target.value.toUpperCase()
                                 : e.target.value,
-                    })
-                }
-            />
+                        )
+                    }
+                />
+            )}
         </FormField>
     );
 

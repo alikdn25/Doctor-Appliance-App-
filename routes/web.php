@@ -44,6 +44,9 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('d/{token}', [PublicDocumentController::class, 'show'])->name('documents.public');
     Route::get('d/{token}/pdf', [PublicDocumentController::class, 'pdf'])->name('documents.public.pdf');
     Route::post('d/{token}/pay', [PublicDocumentController::class, 'pay'])->middleware('throttle:10,1')->name('documents.public.pay');
+    Route::post('d/{token}/approve', [PublicDocumentController::class, 'approve'])->middleware('throttle:10,1')->name('documents.public.approve');
+    Route::post('d/{token}/decline', [PublicDocumentController::class, 'decline'])->middleware('throttle:10,1')->name('documents.public.decline');
+    Route::post('d/{token}/deposit', [PublicDocumentController::class, 'deposit'])->middleware('throttle:10,1')->name('documents.public.deposit');
 });
 
 // SMS provider webhooks: incoming texts and delivery status (signature checked; no session, no CSRF).

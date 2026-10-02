@@ -17,12 +17,14 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $unit_price
  * @property bool $taxable
  * @property int $total
+ * @property bool $optional The customer may choose to include it
+ * @property bool $selected Whether an optional line is included
  */
 class EstimateItem extends Model
 {
     use BelongsToCompany;
 
-    protected $fillable = ['position', 'description', 'quantity', 'unit_price', 'taxable', 'total'];
+    protected $fillable = ['position', 'description', 'quantity', 'unit_price', 'taxable', 'total', 'optional', 'selected'];
 
     /**
      * @return array<string, string>
@@ -35,6 +37,16 @@ class EstimateItem extends Model
             'unit_price' => 'integer',
             'taxable' => 'boolean',
             'total' => 'integer',
+            'optional' => 'boolean',
+            'selected' => 'boolean',
         ];
+    }
+
+    /**
+     * Counted in the totals: every required line, and optional lines that are selected.
+     */
+    public function isIncluded(): bool
+    {
+        return ! $this->optional || $this->selected;
     }
 }

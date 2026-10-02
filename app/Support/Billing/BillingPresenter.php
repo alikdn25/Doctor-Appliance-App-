@@ -68,6 +68,8 @@ class BillingPresenter
                 'unit_price' => $item->unit_price,
                 'taxable' => $item->taxable,
                 'total' => $item->total,
+                'optional' => $invoice ? false : $item->optional,
+                'selected' => $invoice ? true : $item->selected,
             ])->values(),
             'job' => self::job($document->job),
             'customer' => [
@@ -103,9 +105,21 @@ class BillingPresenter
         return [
             ...$data,
             'valid_until' => $document->valid_until?->toDateString(),
+            'expired' => $document->status->isOpen() && $document->isExpired(),
             'approved_at' => JobPresenter::iso($document->approved_at),
             'declined_at' => JobPresenter::iso($document->declined_at),
             'invoice' => $document->invoice ? ['id' => $document->invoice->id, 'number' => $document->invoice->number] : null,
+            'deposit_type' => $document->deposit_type,
+            'deposit_value' => $document->deposit_value,
+            'deposit_amount' => $document->deposit_amount,
+            'deposit_paid' => $document->depositPaid(),
+            'online_approval' => $document->approvedOnline() ? [
+                'signer_name' => $document->signer_name,
+                'signature_type' => $document->signature_type,
+                'signature' => DocumentPrint::signatureDataUri($document),
+                'ip' => $document->approved_ip,
+            ] : null,
+            'decline_reason' => $document->decline_reason,
         ];
     }
 

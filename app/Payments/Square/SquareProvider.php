@@ -4,6 +4,7 @@ namespace App\Payments\Square;
 
 use App\Actions\Billing\RecordPayment;
 use App\Models\Company;
+use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\InvoicePaymentLink;
 use App\Models\Payment;
@@ -143,7 +144,7 @@ class SquareProvider implements PaymentProvider
         });
     }
 
-    public function createPaymentLink(Invoice $invoice, int $amount): PaymentLink
+    public function createPaymentLink(Estimate|Invoice $document, int $amount): PaymentLink
     {
         $connection = $this->connection(currentCompany());
 
@@ -151,28 +152,29 @@ class SquareProvider implements PaymentProvider
             throw new PaymentProviderException(__('payments.square.errors.not_connected'));
         }
 
-        if ($connection->currency !== null && $connection->currency !== $invoice->currency) {
+        if ($connection->currency !== null && $connection->currency !== $document->currency) {
             throw new PaymentProviderException(__('payments.square.errors.currency', [
-                'square' => $connection->currency, 'invoice' => $invoice->currency,
+                'square' => $connection->currency, 'invoice' => $document->currency,
             ]));
         }
 
-        $invoice->loadMissing(['brand', 'customer.primaryEmail']);
-        $email = $invoice->customer?->primaryEmail?->email;
+        $document->loadMissing(['brand', 'customer.primaryEmail']);
+        $email = $document->customer?->primaryEmail?->email;
+        $deposit = $document instanceof Estimate;
 
         $link = $this->client->createPaymentLink($this->accessToken($connection), array_filter([
             'idempotency_key' => (string) Str::uuid(),
             'quick_pay' => [
-                'name' => Str::limit(__('payments.square.link_name', [
-                    'number' => $invoice->number, 'brand' => $invoice->brand?->name ?? currentCompany()->name,
+                'name' => Str::limit(__($deposit ? 'payments.square.deposit_link_name' : 'payments.square.link_name', [
+                    'number' => $document->number, 'brand' => $document->brand?->name ?? currentCompany()->name,
                 ]), 255, ''),
-                'price_money' => ['amount' => $amount, 'currency' => $invoice->currency],
+                'price_money' => ['amount' => $amount, 'currency' => $document->currency],
                 'location_id' => $connection->location_id,
             ],
-            'payment_note' => Str::limit(__('payments.square.payment_note', ['number' => $invoice->number]), 500, ''),
+            'payment_note' => Str::limit(__($deposit ? 'payments.square.deposit_payment_note' : 'payments.square.payment_note', ['number' => $document->number]), 500, ''),
             'pre_populated_data' => $email ? ['buyer_email' => $email] : null,
-            // Tips go to the company on top of the invoice (company setting).
-            'checkout_options' => currentCompany()->online_tips ? ['allow_tipping' => true] : null,
+            // Tips go to the company on top of the invoice (company setting); not on deposits.
+            'checkout_options' => currentCompany()->online_tips && ! $deposit ? ['allow_tipping' => true] : null,
         ]));
 
         if (! is_string($link['url'] ?? null) || ! is_string($link['id'] ?? null)) {
@@ -258,7 +260,7 @@ class SquareProvider implements PaymentProvider
 
         try {
             $this->recordPayment->fromProvider(
-                $link->invoice,
+                $link->estimate ?? $link->invoice,
                 $this->key(),
                 $payment['id'],
                 (int) ($payment['amount_money']['amount'] ?? 0),
@@ -269,7 +271,7 @@ class SquareProvider implements PaymentProvider
             );
         } catch (ValidationException $e) {
             // E.g. the invoice was voided meanwhile: keep the money visible in Square, log it here.
-            Log::warning('Square payment not recorded', ['payment' => $payment['id'], 'invoice' => $link->invoice_id, 'errors' => $e->errors()]);
+            Log::warning('Square payment not recorded', ['payment' => $payment['id'], 'invoice' => $link->invoice_id, 'estimate' => $link->estimate_id, 'errors' => $e->errors()]);
 
             return;
         }

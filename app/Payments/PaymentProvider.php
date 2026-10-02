@@ -3,6 +3,7 @@
 namespace App\Payments;
 
 use App\Models\Company;
+use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -64,12 +65,12 @@ interface PaymentProvider
     public function disconnect(Company $company): void;
 
     /**
-     * A link where the customer pays the given amount (minor units, in the invoice currency) of the invoice
-     * online or on the technician's screen (QR code).
+     * A link where the customer pays the given amount (minor units, in the document currency) of an invoice
+     * online or on the technician's screen (QR code), or the deposit of an estimate they approved online.
      *
      * @throws PaymentProviderException
      */
-    public function createPaymentLink(Invoice $invoice, int $amount): PaymentLink;
+    public function createPaymentLink(Estimate|Invoice $document, int $amount): PaymentLink;
 
     /**
      * Retires a link that is no longer wanted (best effort).

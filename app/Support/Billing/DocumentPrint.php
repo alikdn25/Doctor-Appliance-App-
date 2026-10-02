@@ -7,6 +7,7 @@ use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Support\Locale\AddressFormatter;
 use App\Support\PhoneNumber;
+use App\Support\PrivateMedia;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Storage;
 use IntlDateFormatter;
@@ -23,6 +24,8 @@ class DocumentPrint
      */
     public static function data(Estimate|Invoice $document, bool $embedLogo = false): array
     {
+        $estimate = $document instanceof Estimate;
+
         $document->loadMissing(['items', 'customer.primaryPhone', 'customer.primaryEmail', 'property', 'brand.addresses', 'job']);
         $company = currentCompany();
         $invoice = $document instanceof Invoice;
@@ -48,11 +51,14 @@ class DocumentPrint
                 'address' => $document->property?->fullAddress(),
             ],
             'items' => $document->items->map(fn ($item) => [
+                'id' => $item->id,
                 'description' => $item->description,
                 'quantity' => rtrim(rtrim(number_format((float) $item->quantity, 2, '.', ''), '0'), '.'),
                 'unit_price' => $money($item->unit_price),
                 'total' => $money($item->total),
                 'taxable' => $item->taxable,
+                'optional' => $estimate && $item->optional,
+                'included' => ! $estimate || $item->isIncluded(),
             ])->values()->all(),
             'subtotal' => $money($document->subtotal),
             'discount' => $document->discount_total > 0 ? $money(-$document->discount_total) : null,
@@ -68,7 +74,68 @@ class DocumentPrint
             'notes' => $document->notes,
             'terms' => $brand?->invoice_terms,
             'footer' => $brand?->invoice_footer,
+            'approval' => $estimate ? self::approval($document, $money) : null,
         ];
+    }
+
+    /**
+     * Online approval of an estimate: who signed and when, the signature, the deposit, or why it was declined.
+     *
+     * The drawn signature is embedded (small PNG), so the PDF and the online page need no extra request.
+     *
+     * @param  callable(int): string  $money
+     * @return array<string, mixed>
+     */
+    private static function approval(Estimate $estimate, callable $money): array
+    {
+        $paid = $estimate->deposit_amount > 0 ? $estimate->depositPaid() : 0;
+
+        return [
+            'approved_at' => self::dateTime($estimate->approved_at),
+            'declined_at' => self::dateTime($estimate->declined_at),
+            'online' => $estimate->approvedOnline(),
+            'signer_name' => $estimate->signer_name,
+            'signature_type' => $estimate->signature_type,
+            'signature' => self::signatureDataUri($estimate),
+            'approved_ip' => $estimate->approved_ip,
+            'decline_reason' => $estimate->decline_reason,
+            'expired' => $estimate->isExpired(),
+            'deposit' => $estimate->deposit_amount > 0 ? $money($estimate->deposit_amount) : null,
+            'deposit_percent' => $estimate->deposit_type === 'percent' ? rtrim(rtrim((string) $estimate->deposit_value, '0'), '.') : null,
+            'deposit_paid' => $paid > 0 ? $money($paid) : null,
+            'deposit_due' => $estimate->deposit_amount > 0 ? $money(max(0, $estimate->deposit_amount - $paid)) : null,
+            'deposit_due_minor' => $estimate->deposit_amount > 0 ? max(0, $estimate->deposit_amount - $paid) : 0,
+        ];
+    }
+
+    /**
+     * Date and time in the company's time zone and regional format, e.g. "Oct 6, 2026, 3:15 PM".
+     */
+    public static function dateTime(?CarbonInterface $at): ?string
+    {
+        if ($at === null) {
+            return null;
+        }
+
+        $company = currentCompany();
+        $formatter = new IntlDateFormatter(str_replace('-', '_', $company->locale), IntlDateFormatter::MEDIUM, IntlDateFormatter::SHORT, $company->timezone);
+
+        return (string) $formatter->format($at);
+    }
+
+    public static function signatureDataUri(Estimate $estimate): ?string
+    {
+        if ($estimate->signature_path === null) {
+            return null;
+        }
+
+        try {
+            $contents = PrivateMedia::disk()->get($estimate->signature_path);
+
+            return $contents === null ? null : 'data:image/png;base64,'.base64_encode($contents);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**

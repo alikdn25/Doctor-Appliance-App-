@@ -7,6 +7,7 @@ import {
     fromMinor,
     useMoney,
 } from '@/components/billing/money';
+import { depositFor } from '@/components/billing/estimate-approval';
 import type {
     BillingDocument,
     DocumentKind,
@@ -41,6 +42,8 @@ type Line = {
     quantity: string;
     unit_price: string;
     taxable: boolean;
+    optional: boolean;
+    selected: boolean;
 };
 
 // Keys for React lists only; never sent to the server.
@@ -52,6 +55,8 @@ const newLine = (): Line => ({
     quantity: '1',
     unit_price: '',
     taxable: true,
+    optional: false,
+    selected: false,
 });
 
 type FormData = {
@@ -63,6 +68,8 @@ type FormData = {
     notes: string;
     tax_rate_ids: number[];
     items: Line[];
+    deposit_type: '' | 'amount' | 'percent';
+    deposit_value: string;
 };
 
 /**
@@ -78,6 +85,8 @@ export default function BillingForm({
     defaultDueOn,
     services = [],
     paymentTerms,
+    defaultValidUntil = null,
+    canTakeDeposit = false,
 }: {
     kind: DocumentKind;
     document: BillingDocument | null;
@@ -87,6 +96,8 @@ export default function BillingForm({
     defaultDueOn?: string;
     paymentTerms?: string;
     services?: ServiceOption[];
+    defaultValidUntil?: string | null;
+    canTakeDeposit?: boolean;
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -102,7 +113,9 @@ export default function BillingForm({
 
     const form = useForm<FormData>({
         issued_on: document?.issued_on ?? today,
-        valid_until: document?.valid_until ?? '',
+        valid_until: document
+            ? (document.valid_until ?? '')
+            : (defaultValidUntil ?? ''),
         due_on: document?.due_on ?? (document ? '' : (defaultDueOn ?? today)),
         discount_type: document?.discount_type ?? '',
         discount_value:
@@ -122,8 +135,15 @@ export default function BillingForm({
                   quantity: String(Number(item.quantity)),
                   unit_price: fromMinor(item.unit_price, currency),
                   taxable: item.taxable,
+                  optional: item.optional,
+                  selected: item.selected,
               }))
             : [newLine()],
+        deposit_type: document?.deposit_type ?? '',
+        deposit_value:
+            document?.deposit_type && document.deposit_value
+                ? String(Number(document.deposit_value))
+                : '',
     });
     const { data, errors } = form;
     const fieldErrors = errors as Record<string, string | undefined>;
@@ -135,7 +155,10 @@ export default function BillingForm({
             (r) => document?.taxes.find((tax) => tax.tax_rate_id === r.id) ?? r,
         );
     const totals = computeTotals({
-        items: data.items,
+        items: data.items.map((line) => ({
+            ...line,
+            included: !line.optional || line.selected,
+        })),
         discount_type: data.discount_type,
         discount_value: data.discount_value,
         taxes: selectedTaxes,
@@ -193,7 +216,16 @@ export default function BillingForm({
                 quantity: line.quantity,
                 unit_price: line.unit_price.replace(/[^\d.-]/g, ''),
                 taxable: line.taxable,
+                ...(kind === 'estimate'
+                    ? { optional: line.optional, selected: line.selected }
+                    : {}),
             })),
+            deposit_type:
+                kind === 'estimate' ? d.deposit_type || null : undefined,
+            deposit_value:
+                kind === 'estimate' && d.deposit_type
+                    ? d.deposit_value || 0
+                    : undefined,
         }));
 
         if (document) {
@@ -442,11 +474,50 @@ export default function BillingForm({
                                             />
                                             {t('billing.taxable')}
                                         </label>
-                                        <span className="font-medium tabular-nums">
+                                        <span
+                                            className={
+                                                line.optional && !line.selected
+                                                    ? 'text-muted-foreground tabular-nums line-through'
+                                                    : 'font-medium tabular-nums'
+                                            }
+                                        >
                                             {money(totals.itemTotals[i] ?? 0)}
                                         </span>
                                     </div>
                                 </div>
+                                {kind === 'estimate' && (
+                                    <div className="flex flex-wrap gap-x-4">
+                                        <label className="flex min-h-10 items-center gap-2 text-sm">
+                                            <Checkbox
+                                                checked={line.optional}
+                                                onCheckedChange={(c) =>
+                                                    setLine(i, {
+                                                        optional: c === true,
+                                                        selected: false,
+                                                    })
+                                                }
+                                            />
+                                            {t('estimates.optional')}
+                                            <span className="text-xs text-muted-foreground">
+                                                {t('estimates.optional_hint')}
+                                            </span>
+                                        </label>
+                                        {line.optional && (
+                                            <label className="flex min-h-10 items-center gap-2 text-sm">
+                                                <Checkbox
+                                                    checked={line.selected}
+                                                    onCheckedChange={(c) =>
+                                                        setLine(i, {
+                                                            selected:
+                                                                c === true,
+                                                        })
+                                                    }
+                                                />
+                                                {t('estimates.included')}
+                                            </label>
+                                        )}
+                                    </div>
+                                )}
                             </li>
                         ))}
                     </ul>
@@ -559,6 +630,59 @@ export default function BillingForm({
                     />
                 </FormField>
 
+                {kind === 'estimate' && (
+                    <FormField
+                        id="deposit_type"
+                        label={t('estimates.fields.deposit')}
+                        hint={
+                            canTakeDeposit
+                                ? t('estimates.deposit_hint')
+                                : t('estimates.deposit_no_provider')
+                        }
+                        error={errors.deposit_value ?? errors.deposit_type}
+                    >
+                        <div className="flex gap-2">
+                            <NativeSelect
+                                id="deposit_type"
+                                value={data.deposit_type}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'deposit_type',
+                                        e.target
+                                            .value as FormData['deposit_type'],
+                                    )
+                                }
+                            >
+                                <option value="">
+                                    {t('estimates.deposit_types.none')}
+                                </option>
+                                <option value="percent">
+                                    {t('estimates.deposit_types.percent')}
+                                </option>
+                                <option value="amount">
+                                    {t('estimates.deposit_types.amount', {
+                                        symbol,
+                                    })}
+                                </option>
+                            </NativeSelect>
+                            {data.deposit_type && (
+                                <Input
+                                    aria-label={t('estimates.fields.deposit')}
+                                    inputMode="decimal"
+                                    className="w-28"
+                                    value={data.deposit_value}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'deposit_value',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                            )}
+                        </div>
+                    </FormField>
+                )}
+
                 <dl className="ml-auto max-w-xs space-y-1 text-sm">
                     <div className="flex justify-between">
                         <dt>{t('billing.subtotal')}</dt>
@@ -595,6 +719,20 @@ export default function BillingForm({
                         <p className="text-right text-xs text-muted-foreground">
                             {t('billing.prices_include_tax')}
                         </p>
+                    )}
+                    {kind === 'estimate' && data.deposit_type && (
+                        <div className="flex justify-between">
+                            <dt>{t('estimates.deposit')}</dt>
+                            <dd className="tabular-nums">
+                                {money(
+                                    depositFor(totals.total, {
+                                        currency,
+                                        deposit_type: data.deposit_type,
+                                        deposit_value: data.deposit_value,
+                                    }),
+                                )}
+                            </dd>
+                        </div>
                     )}
                 </dl>
 
