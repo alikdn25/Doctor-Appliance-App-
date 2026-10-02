@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
+import { usePhone } from '@/lib/phone';
 import { create, index, show } from '@/routes/customers';
 import type { Option } from '@/types';
 
@@ -37,6 +38,7 @@ export default function CustomersIndex({
     tags: string[];
 }) {
     const t = useTrans();
+    const phoneText = usePhone();
     const [search, setSearch] = useState(filters.search);
 
     const apply = (next: Partial<Filters>) =>
@@ -149,7 +151,7 @@ export default function CustomersIndex({
                                         {customer.phone && (
                                             <span className="flex items-center gap-1">
                                                 <Phone className="size-3" />
-                                                {customer.phone}
+                                                {phoneText(customer.phone)}
                                             </span>
                                         )}
                                         {customer.address && (

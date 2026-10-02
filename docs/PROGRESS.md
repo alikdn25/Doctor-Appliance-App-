@@ -20,19 +20,19 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
-| #   | Task                                                           | Status         |
-| --- | -------------------------------------------------------------- | -------------- |
-| 1   | Customers, properties (manual address), appliances (§6, §7.1)  | ✅ Done        |
-| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4) | ✅ Done        |
-| 3   | Calendar & dispatch                                            | ✅ Done        |
-| 4   | Technician PWA view, photos, signatures                        | ✅ Done        |
-| 5   | Estimates, invoices, manual payments (§7.5, §7.6)              | ✅ Done        |
-| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6) | ✅ Done |
-| —   | Twilio SMS (automated messages + inbox)                        | ⏳ Not started |
-| —   | Review request toggle                                          | ⏳ Not started |
-| —   | Price book (starting services and Services page done in task 6) | 🚧 Partly   |
-| —   | Basic reports                                                  | ⏳ Not started |
-| —   | Google Places autocomplete + geocoding for properties          | ⏳ Not started |
+| #   | Task                                                                        | Status         |
+| --- | --------------------------------------------------------------------------- | -------------- |
+| 1   | Customers, properties (manual address), appliances (§6, §7.1)               | ✅ Done        |
+| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)              | ✅ Done        |
+| 3   | Calendar & dispatch                                                         | ✅ Done        |
+| 4   | Technician PWA view, photos, signatures                                     | ✅ Done        |
+| 5   | Estimates, invoices, manual payments (§7.5, §7.6)                           | ✅ Done        |
+| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6) | ✅ Done        |
+| —   | Twilio SMS (automated messages + inbox)                                     | ⏳ Not started |
+| —   | Review request toggle                                                       | ⏳ Not started |
+| —   | Price book (starting services and Services page done in task 6)             | 🚧 Partly      |
+| —   | Basic reports                                                               | ⏳ Not started |
+| —   | Google Places autocomplete + geocoding for properties                       | ⏳ Not started |
 
 ### Task 1 — Customers, properties, appliances ✅
 

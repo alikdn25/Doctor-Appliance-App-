@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
+import { usePhone } from '@/lib/phone';
 import { duplicates } from '@/routes/customers';
 import { index, lookup, show, store, update } from '@/routes/jobs';
 import type { Option } from '@/types';
@@ -116,6 +117,7 @@ export default function JobForm({
     assignableUsers,
 }: Props) {
     const t = useTrans();
+    const phoneText = usePhone();
     const { auth } = usePage().props;
     const tracksAppliances = auth.company?.tracks_appliances ?? true;
     const editing = job !== null;
@@ -335,7 +337,7 @@ export default function JobForm({
                                 </div>
                                 {customer.phone && (
                                     <div className="text-sm text-muted-foreground">
-                                        {customer.phone}
+                                        {phoneText(customer.phone)}
                                     </div>
                                 )}
                             </div>

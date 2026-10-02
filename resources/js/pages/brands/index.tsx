@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTrans } from '@/lib/i18n';
+import { usePhone } from '@/lib/phone';
 import { create, edit, index } from '@/routes/brands';
 
 type BrandRow = {
@@ -25,6 +26,7 @@ export default function BrandsIndex({
     canCreate: boolean;
 }) {
     const t = useTrans();
+    const phoneText = usePhone();
 
     return (
         <>
@@ -89,7 +91,7 @@ export default function BrandsIndex({
                                         <div className="truncate text-xs text-muted-foreground">
                                             {[
                                                 brand.city,
-                                                brand.phone,
+                                                phoneText(brand.phone),
                                                 brand.email,
                                             ]
                                                 .filter(Boolean)

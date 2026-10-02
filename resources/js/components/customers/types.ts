@@ -39,7 +39,11 @@ export const emptyProperty = (country: string): PropertyFormData => ({
     is_primary: false,
 });
 
-export const propertyToForm = (p: PropertyData): PropertyFormData => ({
+/** Edit form values; the stored E.164 phone is shown in the company's national format. */
+export const propertyToForm = (
+    p: PropertyData,
+    phoneText: (value: string | null) => string = (v) => v ?? '',
+): PropertyFormData => ({
     label: p.label ?? '',
     line1: p.line1,
     line2: p.line2 ?? '',
@@ -51,7 +55,7 @@ export const propertyToForm = (p: PropertyData): PropertyFormData => ({
     access_notes: p.access_notes ?? '',
     gate_code: p.gate_code ?? '',
     site_contact_name: p.site_contact_name ?? '',
-    site_contact_phone: p.site_contact_phone ?? '',
+    site_contact_phone: phoneText(p.site_contact_phone),
     is_primary: p.is_primary,
 });
 

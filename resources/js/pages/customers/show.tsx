@@ -25,6 +25,7 @@ import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTrans } from '@/lib/i18n';
+import { usePhone } from '@/lib/phone';
 import { show as showAppliance } from '@/routes/appliances';
 import { destroy, edit, index } from '@/routes/customers';
 import { create as createJob } from '@/routes/jobs';
@@ -98,6 +99,7 @@ export default function CustomerShow({
     manufacturers,
 }: Props) {
     const t = useTrans();
+    const phoneText = usePhone();
     const [propertyDialog, setPropertyDialog] = useState<{
         open: boolean;
         property: PropertyData | null;
@@ -187,7 +189,7 @@ export default function CustomerShow({
                                     href={telUrl(p.number)}
                                     className="underline-offset-4 hover:underline"
                                 >
-                                    {p.number}
+                                    {phoneText(p.number)}
                                 </a>
                                 <span className="text-xs text-muted-foreground">
                                     {p.label_text}
@@ -344,7 +346,9 @@ export default function CustomerShow({
                                         >
                                             <Phone /> {t('customers.call')}{' '}
                                             {property.site_contact_name ??
-                                                property.site_contact_phone}
+                                                phoneText(
+                                                    property.site_contact_phone,
+                                                )}
                                         </a>
                                     </Button>
                                 )}
@@ -368,7 +372,7 @@ export default function CustomerShow({
                                             {t('properties.site_contact')}:{' '}
                                             {property.site_contact_name}
                                             {property.site_contact_phone &&
-                                                ` · ${property.site_contact_phone}`}
+                                                ` · ${phoneText(property.site_contact_phone)}`}
                                         </div>
                                     )}
                                     {property.access_notes && (

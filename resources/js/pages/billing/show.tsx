@@ -30,6 +30,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
+import { usePhone } from '@/lib/phone';
 import { show as showCustomer } from '@/routes/customers';
 import {
     convert,
@@ -70,6 +71,7 @@ export default function BillingShow({
     online?: OnlinePayment;
 }) {
     const t = useTrans();
+    const phoneText = usePhone();
     const money = useMoney(doc.currency);
     const time = useCompanyTime();
     const [paymentOpen, setPaymentOpen] = useState(false);
@@ -237,7 +239,7 @@ export default function BillingShow({
                     )}
                     {(doc.customer.phone || doc.customer.email) && (
                         <span className="text-muted-foreground">
-                            {[doc.customer.phone, doc.customer.email]
+                            {[phoneText(doc.customer.phone), doc.customer.email]
                                 .filter(Boolean)
                                 .join(' · ')}
                         </span>
