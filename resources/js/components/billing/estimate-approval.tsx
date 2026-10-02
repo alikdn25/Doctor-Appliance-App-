@@ -24,6 +24,8 @@ import {
 
 /** What the customer can do with an estimate, and the numbers to recalculate it live (from the server). */
 export type EstimateActions = {
+    /** A replaced version: the newest one's page, once it was sent. */
+    latest_url: string | null;
     online_payments: boolean;
     can_approve: boolean;
     can_decline: boolean;

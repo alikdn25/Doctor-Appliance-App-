@@ -24,6 +24,7 @@ use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Customers\PropertyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Jobs\CalendarController;
+use App\Http\Controllers\Jobs\JobCloseController;
 use App\Http\Controllers\Jobs\JobController;
 use App\Http\Controllers\Jobs\JobFieldController;
 use App\Http\Controllers\Jobs\JobMessageController;
@@ -83,8 +84,11 @@ Route::middleware(['auth', 'active'])->group(function () {
 
         Route::get('my-jobs', [JobController::class, 'mine'])->name('jobs.mine');
         Route::get('jobs/customers', [JobController::class, 'lookup'])->name('jobs.lookup');
+        Route::get('jobs/deleted', [JobController::class, 'trash'])->name('jobs.trash');
+        Route::post('jobs/{job}/restore', [JobController::class, 'restore'])->withTrashed()->name('jobs.restore');
         Route::resource('jobs', JobController::class);
         Route::put('jobs/{job}/status', JobStatusController::class)->name('jobs.status');
+        Route::post('jobs/{job}/close', JobCloseController::class)->name('jobs.close');
         Route::put('jobs/{job}/tech-notes', [JobWorkController::class, 'notes'])->name('jobs.tech-notes');
         Route::post('jobs/{job}/appliances', [JobWorkController::class, 'storeAppliance'])->name('jobs.appliances.store');
         Route::put('jobs/{job}/appliances/{appliance}', [JobWorkController::class, 'updateAppliance'])->name('jobs.appliances.update');
@@ -93,6 +97,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('jobs/{job}/photos/{photo}', [JobFieldController::class, 'destroyPhoto'])->name('jobs.photos.destroy');
         Route::post('jobs/{job}/appliances/{appliance}/rating-plate', [JobFieldController::class, 'ratingPlate'])->name('jobs.appliances.rating-plate');
         Route::put('jobs/{job}/checklist/{item}', [JobFieldController::class, 'toggleChecklistItem'])->name('jobs.checklist.toggle');
+        Route::put('jobs/{job}/bring/{item}', [JobFieldController::class, 'toggleBringItem'])->name('jobs.bring.toggle');
         Route::post('jobs/{job}/signature', [JobFieldController::class, 'storeSignature'])->name('jobs.signature.store');
         Route::get('jobs/{job}/signature', [JobFieldController::class, 'showSignature'])->name('jobs.signature.show');
         Route::post('jobs/{job}/visits', [VisitController::class, 'store'])->name('visits.store');
@@ -113,6 +118,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('estimates/{estimate}', [EstimateController::class, 'destroy'])->name('estimates.destroy');
         Route::put('estimates/{estimate}/decision', [EstimateController::class, 'decide'])->name('estimates.decide');
         Route::post('estimates/{estimate}/invoice', [EstimateController::class, 'convert'])->name('estimates.convert');
+        Route::post('estimates/{estimate}/revise', [EstimateController::class, 'revise'])->name('estimates.revise');
 
         Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
         Route::get('jobs/{job}/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');

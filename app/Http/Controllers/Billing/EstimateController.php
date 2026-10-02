@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Billing;
 
+use App\Actions\Billing\ReviseEstimate;
 use App\Actions\Billing\SaveBillingDocument;
 use App\Enums\EstimateStatus;
 use App\Http\Controllers\Controller;
@@ -59,6 +60,7 @@ class EstimateController extends Controller
                 'update' => Gate::allows('update', $estimate),
                 'delete' => Gate::allows('delete', $estimate),
                 'convert' => Gate::allows('convert', $estimate),
+                'revise' => Gate::allows('revise', $estimate),
             ],
             'today' => $this->today(),
             'delivery' => BillingPresenter::delivery($estimate),
@@ -119,6 +121,17 @@ class EstimateController extends Controller
         ])->save();
 
         return back();
+    }
+
+    public function revise(Request $request, Estimate $estimate, ReviseEstimate $revise): RedirectResponse
+    {
+        Gate::authorize('revise', $estimate);
+
+        $revision = $revise->handle($estimate, $request->user());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('estimates.revised', ['number' => $revision->number])]);
+
+        return to_route('estimates.edit', $revision);
     }
 
     public function convert(Request $request, Estimate $estimate, SaveBillingDocument $save): RedirectResponse

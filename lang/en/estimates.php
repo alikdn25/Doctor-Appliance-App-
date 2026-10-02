@@ -21,6 +21,14 @@ return [
     'expired_on' => 'Expired :date',
     'convert_approved' => 'Convert to invoice',
     'schedule_visit' => 'Schedule visit',
+    'revise' => 'Revise',
+    'confirm_revise' => 'Make a new version of this signed estimate? The approval is reset; the signed version stays in the history and the customer gets a new link.',
+    'revised' => 'New version :number created. Change it and send it to the customer.',
+    'versions' => 'Versions',
+    'version' => 'Version :revision',
+    'revised_on' => 'Replaced :date',
+    'send_revision' => 'This is a revised version of :number. Send the new link to the customer.',
+    'errors_revise' => 'Only an estimate signed by the customer and not invoiced yet can be revised.',
     'locked_signed' => 'Signed by the customer online: lines and prices can no longer be changed. Create a new estimate for changes.',
 
     'optional' => 'Optional',
@@ -46,6 +54,7 @@ return [
         'approved' => 'Approved',
         'declined' => 'Declined',
         'invoiced' => 'Invoiced',
+        'revised' => 'Revised',
     ],
 
     'fields' => [
@@ -90,6 +99,8 @@ return [
         'deposit_received' => 'Deposit of :amount received. Thank you!',
         'deposit_contact' => 'A deposit of :amount is due. We will contact you about payment.',
         'invoiced' => 'This estimate has been turned into an invoice.',
+        'revised' => 'This estimate was replaced by a newer version.',
+        'view_latest' => 'View the latest version',
         'signed_online' => 'Signed online by :name · :date',
         'decline_reason_label' => 'Reason: :reason',
         'errors' => [

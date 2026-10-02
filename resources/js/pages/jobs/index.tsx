@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { JobList } from '@/components/jobs/job-list';
@@ -8,10 +8,11 @@ import { PageHeader } from '@/components/page-header';
 import { PaginationLinks } from '@/components/pagination-links';
 import type { Paginated } from '@/components/pagination-links';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
-import { create, index } from '@/routes/jobs';
+import { create, index, trash } from '@/routes/jobs';
 import type { Option } from '@/types';
 
 type Filters = {
@@ -20,6 +21,9 @@ type Filters = {
     brand: string;
     technician: string;
     type: string;
+    visit_type: string;
+    outcome: string;
+    strict: string;
     from: string;
     to: string;
 };
@@ -32,11 +36,17 @@ export default function JobsIndex({
     brands,
     technicians,
     canCreate,
+    visitTypes,
+    outcomes,
+    canViewTrash,
 }: {
     jobs: Paginated<JobRow>;
     filters: Filters;
     statuses: Option[];
     types: Option[];
+    visitTypes: Option[];
+    outcomes: Option[];
+    canViewTrash: boolean;
     brands: Option[];
     technicians: Assignable[];
     canCreate: boolean;
@@ -71,13 +81,22 @@ export default function JobsIndex({
                     title={t('jobs.title')}
                     description={t('jobs.count', { count: jobs.total })}
                     actions={
-                        canCreate && (
-                            <Button asChild>
-                                <Link href={create()}>
-                                    <Plus /> {t('jobs.add')}
-                                </Link>
-                            </Button>
-                        )
+                        <div className="flex gap-2">
+                            {canViewTrash && (
+                                <Button variant="ghost" asChild>
+                                    <Link href={trash()}>
+                                        <Trash2 /> {t('jobs.trash.title')}
+                                    </Link>
+                                </Button>
+                            )}
+                            {canCreate && (
+                                <Button asChild>
+                                    <Link href={create()}>
+                                        <Plus /> {t('jobs.add')}
+                                    </Link>
+                                </Button>
+                            )}
+                        </div>
                     }
                 />
 
@@ -120,6 +139,42 @@ export default function JobsIndex({
                             </option>
                         ))}
                     </NativeSelect>
+                    <NativeSelect
+                        aria-label={t('jobs.fields.visit_type')}
+                        value={filters.visit_type}
+                        onChange={(e) => apply({ visit_type: e.target.value })}
+                    >
+                        <option value="">{t('jobs.all_visit_types')}</option>
+                        {visitTypes.map((o) => (
+                            <option key={o.value} value={o.value}>
+                                {o.label}
+                            </option>
+                        ))}
+                    </NativeSelect>
+                    <NativeSelect
+                        aria-label={t('jobs.close.outcome')}
+                        value={filters.outcome}
+                        onChange={(e) => apply({ outcome: e.target.value })}
+                    >
+                        <option value="">{t('jobs.all_outcomes')}</option>
+                        <option value="none">
+                            {t('jobs.open_no_outcome')}
+                        </option>
+                        {outcomes.map((o) => (
+                            <option key={o.value} value={o.value}>
+                                {o.label}
+                            </option>
+                        ))}
+                    </NativeSelect>
+                    <label className="flex min-h-9 items-center gap-2 rounded-md border px-3 text-sm">
+                        <Checkbox
+                            checked={filters.strict === '1'}
+                            onCheckedChange={(c) =>
+                                apply({ strict: c === true ? '1' : '' })
+                            }
+                        />
+                        {t('jobs.strict.filter')}
+                    </label>
                     {brands.length > 1 && (
                         <NativeSelect
                             aria-label={t('jobs.fields.brand')}

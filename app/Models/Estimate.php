@@ -7,6 +7,7 @@ use App\Models\Concerns\BelongsToCompany;
 use App\Models\Concerns\IsBillingDocument;
 use Carbon\CarbonImmutable;
 use Database\Factories\EstimateFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -51,6 +52,11 @@ use Illuminate\Support\Carbon;
  * @property string|null $approved_user_agent
  * @property string|null $decline_reason
  * @property string|null $declined_ip
+ * @property int $revision Version number (1 = original)
+ * @property int|null $revision_root_id The first version; null on the first version itself
+ * @property int|null $revised_from_id The version this one replaced
+ * @property Carbon|null $revised_at Set when a newer version replaced this one
+ * @property int|null $revised_by
  * @property int|null $created_by
  * @property Carbon|null $created_at
  * @property-read ServiceJob $job
@@ -89,6 +95,8 @@ class Estimate extends Model
             'declined_at' => 'datetime',
             'deposit_value' => 'decimal:2',
             'deposit_amount' => 'integer',
+            'revision' => 'integer',
+            'revised_at' => 'datetime',
         ];
     }
 
@@ -106,6 +114,29 @@ class Estimate extends Model
     public function invoice(): HasOne
     {
         return $this->hasOne(Invoice::class);
+    }
+
+    /**
+     * All versions of this estimate, oldest first.
+     *
+     * @return Collection<int, Estimate>
+     */
+    public function versions(): Collection
+    {
+        $root = $this->revision_root_id ?? $this->id;
+
+        return self::query()->withTrashed()
+            ->where(fn ($q) => $q->whereKey($root)->orWhere('revision_root_id', $root))
+            ->orderBy('revision')
+            ->get();
+    }
+
+    /**
+     * The newest version (itself when it was not revised).
+     */
+    public function latestVersion(): Estimate
+    {
+        return $this->revised_at === null ? $this : ($this->versions()->last() ?? $this);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\UserRole;
 use App\Models\ServiceJob;
 use App\Models\User;
 use App\Policies\Concerns\AccessesJobs;
@@ -49,9 +50,33 @@ class ServiceJobPolicy
         return $this->managesJob($user, $job);
     }
 
+    /**
+     * Owners and Admins always (an Owner going on calls deletes as the Owner); technicians only on their own jobs
+     * and only when the company allows it. Jobs with invoices or payments are never deleted (checked on delete).
+     */
     public function delete(User $user, ServiceJob $job): bool
     {
-        return $this->managesJob($user, $job);
+        if ($this->managesJob($user, $job)) {
+            return true;
+        }
+
+        return currentCompany()->technicians_can_delete_jobs
+            && $user->hasRole(UserRole::Technician)
+            && $this->inCurrentCompany($job)
+            && $job->isAssigned($user);
+    }
+
+    /**
+     * Deleted jobs (last 30 days) and restoring them: the office.
+     */
+    public function restore(User $user, ServiceJob $job): bool
+    {
+        return $this->managesJob($user, $job) && $job->trashed() && $job->isRestorable();
+    }
+
+    public function viewTrash(User $user): bool
+    {
+        return $this->isOffice($user);
     }
 
     /**

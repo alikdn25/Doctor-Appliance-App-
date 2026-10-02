@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Company;
 
+use App\Enums\JobOutcome;
 use App\Enums\PaymentTerms;
 use App\Models\Company;
 use App\Payments\PaymentProviders;
@@ -39,6 +40,12 @@ class CompanySettingsRequest extends FormRequest
             'business_hours' => ['required', 'array:'.implode(',', Company::WEEKDAYS)],
             'travel_buffer_minutes' => ['required', 'integer', 'min:0', 'max:240'],
             'estimate_valid_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'technicians_can_delete_jobs' => ['boolean'],
+            'strict_arrival_reminder_minutes' => ['sometimes', 'integer', 'min:5', 'max:480'],
+            'diagnostic_service_id' => ['nullable', 'integer', Rule::exists('services', 'id')->where('company_id', currentCompany()->id)],
+            'closure_reasons' => ['sometimes', 'array'],
+            'closure_reasons.*' => ['array', 'max:30'],
+            'closure_reasons.*.*' => ['string', 'max:100'],
             // Only a provider the company has connected (and that serves its country) can be picked.
             'payment_provider' => ['nullable', Rule::in(array_column(app(PaymentProviders::class)->options(currentCompany()), 'value'))],
         ];
@@ -76,6 +83,17 @@ class CompanySettingsRequest extends FormRequest
         $data['payment_provider'] ??= null;
         $data['prices_include_tax'] = (bool) ($data['prices_include_tax'] ?? false);
         $data['online_tips'] = (bool) ($data['online_tips'] ?? false);
+        $data['technicians_can_delete_jobs'] = (bool) ($data['technicians_can_delete_jobs'] ?? false);
+
+        // One list per outcome; empty lines dropped; an empty list falls back to the defaults.
+        if (array_key_exists('closure_reasons', $data)) {
+            $data['closure_reasons'] = collect(JobOutcome::cases())
+                ->filter(fn (JobOutcome $o) => $o->needsReason())
+                ->mapWithKeys(fn (JobOutcome $o) => [$o->value => collect($data['closure_reasons'][$o->value] ?? [])
+                    ->map(fn ($r) => trim((string) $r))->filter()->unique()->values()->all()])
+                ->filter()
+                ->all() ?: null;
+        }
 
         return $data;
     }

@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\JobType;
 use App\Enums\LeadSource;
 use App\Enums\UserRole;
+use App\Enums\VisitType;
 use App\Models\Concerns\BelongsToCompany;
 use App\Support\PhoneNumber;
 use Database\Factories\ServiceJobFactory;
@@ -40,6 +42,15 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $completed_at
  * @property Carbon|null $cancelled_at
  * @property int|null $created_by
+ * @property int|null $deleted_by
+ * @property VisitType $visit_type
+ * @property int|null $previous_job_id Return visit / callback: the job it follows up
+ * @property JobOutcome|null $outcome
+ * @property string|null $outcome_reason
+ * @property string|null $outcome_note
+ * @property Carbon|null $closed_at
+ * @property int|null $closed_by
+ * @property Carbon|null $deleted_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Brand $brand
@@ -62,11 +73,14 @@ class ServiceJob extends Model
         'notes',
         'tech_notes',
         'ask_for_review',
+        'visit_type',
+        'previous_job_id',
     ];
 
     protected $attributes = [
         'status' => 'new',
         'job_type' => 'repair',
+        'visit_type' => 'new_diagnosis',
     ];
 
     /**
@@ -83,7 +97,36 @@ class ServiceJob extends Model
             'cancelled_at' => 'datetime',
             'signed_at' => 'datetime',
             'ask_for_review' => 'boolean',
+            'outcome' => JobOutcome::class,
+            'visit_type' => VisitType::class,
+            'closed_at' => 'datetime',
         ];
+    }
+
+    /** Days a deleted job can still be restored. */
+    public const RESTORE_DAYS = 30;
+
+    public function isRestorable(): bool
+    {
+        return $this->deleted_at !== null && $this->deleted_at->isAfter(now()->subDays(self::RESTORE_DAYS));
+    }
+
+    /**
+     * Why the job cannot be deleted (invoices and payments are financial records), or null.
+     */
+    public function deleteBlocker(): ?string
+    {
+        if ($this->invoices()->withTrashed()->exists()) {
+            return __('jobs.has_invoices');
+        }
+
+        $estimateIds = $this->estimates()->withTrashed()->pluck('id');
+
+        if ($estimateIds->isNotEmpty() && Payment::query()->whereIn('estimate_id', $estimateIds)->exists()) {
+            return __('jobs.has_payments');
+        }
+
+        return null;
     }
 
     public function displayNumber(): string
@@ -174,6 +217,50 @@ class ServiceJob extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class)->orderBy('id');
+    }
+
+    /**
+     * @return HasMany<JobBringItem, $this>
+     */
+    public function bringItems(): HasMany
+    {
+        return $this->hasMany(JobBringItem::class)->orderBy('position')->orderBy('id');
+    }
+
+    /**
+     * The earlier job this return visit / callback follows up.
+     *
+     * @return BelongsTo<ServiceJob, $this>
+     */
+    public function previousJob(): BelongsTo
+    {
+        return $this->belongsTo(ServiceJob::class, 'previous_job_id')->withTrashed();
+    }
+
+    /**
+     * Return visits and callbacks made for this job.
+     *
+     * @return HasMany<ServiceJob, $this>
+     */
+    public function followUps(): HasMany
+    {
+        return $this->hasMany(ServiceJob::class, 'previous_job_id')->orderBy('id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function closer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'closed_by');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function deleter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     /**

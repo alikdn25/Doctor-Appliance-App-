@@ -6,6 +6,7 @@ use App\Actions\Customers\SaveAppliance;
 use App\Enums\PhotoKind;
 use App\Http\Controllers\Controller;
 use App\Models\Appliance;
+use App\Models\JobBringItem;
 use App\Models\JobChecklistItem;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
@@ -136,6 +137,25 @@ class JobFieldController extends Controller
             'done_by' => $done ? $request->user()->id : null,
             'done_at' => $done ? now() : null,
         ]);
+
+        return back();
+    }
+
+    /**
+     * "Bring with you": the technician ticks a part or material as loaded.
+     */
+    public function toggleBringItem(Request $request, ServiceJob $job, JobBringItem $item): RedirectResponse
+    {
+        Gate::authorize('work', $job);
+        abort_unless($item->service_job_id === $job->id, 404);
+
+        $checked = $request->validate(['is_checked' => ['required', 'boolean']])['is_checked'];
+
+        $item->forceFill([
+            'is_checked' => $checked,
+            'checked_by' => $checked ? $request->user()->id : null,
+            'checked_at' => $checked ? now() : null,
+        ])->save();
 
         return back();
     }

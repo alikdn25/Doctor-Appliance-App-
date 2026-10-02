@@ -12,6 +12,8 @@ enum EstimateStatus: string
     case Approved = 'approved';
     case Declined = 'declined';
     case Invoiced = 'invoiced';
+    // Replaced by a newer version (kept read-only in the history).
+    case Revised = 'revised';
 
     public function label(): string
     {
@@ -19,10 +21,10 @@ enum EstimateStatus: string
     }
 
     /**
-     * An estimate can be edited and turned into an invoice until it has been invoiced.
+     * An estimate can be edited and turned into an invoice until it has been invoiced or replaced by a revision.
      */
     public function isOpen(): bool
     {
-        return $this !== self::Invoiced;
+        return ! in_array($this, [self::Invoiced, self::Revised], true);
     }
 }

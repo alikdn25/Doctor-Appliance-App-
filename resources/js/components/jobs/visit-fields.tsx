@@ -11,6 +11,7 @@ export type VisitFormValue = {
     end_time: string;
     estimated_duration_minutes: string;
     assignee_ids: number[];
+    strict_arrival: boolean;
 };
 
 /**
@@ -97,6 +98,23 @@ export function VisitFields({
                     }
                 />
             </FormField>
+            <label className="col-span-2 flex min-h-11 items-start gap-3 rounded-md border px-3 py-2 text-sm sm:col-span-4">
+                <Checkbox
+                    className="mt-0.5"
+                    checked={value.strict_arrival}
+                    onCheckedChange={(c) =>
+                        onChange({ strict_arrival: c === true })
+                    }
+                />
+                <span>
+                    <span className="font-medium">
+                        {t('jobs.strict.label')}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                        {t('jobs.strict.hint')}
+                    </span>
+                </span>
+            </label>
             <fieldset className="col-span-2 space-y-2 sm:col-span-4">
                 <legend className="mb-2 text-sm font-medium">
                     {t('jobs.visit_fields.assignee_ids')}

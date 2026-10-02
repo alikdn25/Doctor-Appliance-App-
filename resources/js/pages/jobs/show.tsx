@@ -1,8 +1,10 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
+    AlarmClock,
     CalendarPlus,
     Car,
     CheckCircle2,
+    Flag,
     History,
     KeyRound,
     MessageSquare,
@@ -26,6 +28,14 @@ import InputError from '@/components/input-error';
 import { ChecklistSection } from '@/components/jobs/checklist-section';
 import type { ChecklistItemData } from '@/components/jobs/checklist-section';
 import { FinishDialog } from '@/components/jobs/finish-dialog';
+import type { ClosureReasons } from '@/components/jobs/finish-dialog';
+import {
+    BringList,
+    FollowUpLinks,
+    OutcomeCard,
+    StrictBadge,
+} from '@/components/jobs/job-outcome';
+import type { BringItemData } from '@/components/jobs/job-outcome';
 import { JobApplianceDialog } from '@/components/jobs/job-appliance-dialog';
 import { PhotoSection } from '@/components/jobs/photo-section';
 import type { JobPhotoData } from '@/components/jobs/photo-section';
@@ -62,6 +72,22 @@ type Job = {
     status: string;
     status_label: string;
     job_type_label: string;
+    visit_type: string;
+    visit_type_label: string;
+    previous_job: { id: number; number: number } | null;
+    follow_ups: {
+        id: number;
+        number: number;
+        visit_type_label: string;
+        status_label: string;
+    }[];
+    outcome: string | null;
+    outcome_label: string | null;
+    outcome_reason: string | null;
+    outcome_note: string | null;
+    closed_at: string | null;
+    closed_by: string | null;
+    bring_items: BringItemData[];
     lead_source_label: string | null;
     brand: string | null;
     description: string | null;
@@ -102,9 +128,11 @@ type Props = {
         update: boolean;
         delete: boolean;
         work: boolean;
+        close: boolean;
         viewCustomer: boolean;
     };
     statusOptions: Option[];
+    closureReasons: ClosureReasons;
     assignableUsers: Assignable[];
     otherAppliances: ApplianceItem[];
     applianceTypes: Option[];
@@ -145,6 +173,7 @@ export default function JobShow({
     today,
     photoKinds,
     messaging,
+    closureReasons,
 }: Props) {
     const t = useTrans();
     const phoneText = usePhone();
@@ -155,6 +184,10 @@ export default function JobShow({
     const time = useCompanyTime();
     const [statusOpen, setStatusOpen] = useState(false);
     const [finishOpen, setFinishOpen] = useState(false);
+    const [closeOpen, setCloseOpen] = useState(false);
+    const visitUnderWay = job.visits.some((v) =>
+        ['on_the_way', 'in_progress'].includes(v.status),
+    );
     const [visitDialog, setVisitDialog] = useState<{
         open: boolean;
         visit: Visit | null;
@@ -192,7 +225,9 @@ export default function JobShow({
         );
 
     const remove = () => {
-        if (confirm(t('jobs.confirm_delete', { number: job.number }))) {
+        if (
+            confirm(t('jobs.confirm_delete_restorable', { number: job.number }))
+        ) {
             router.delete(destroy(job.id).url);
         }
     };
@@ -220,6 +255,7 @@ export default function JobShow({
                     title={t('jobs.job_number', { number: job.number })}
                     description={[
                         job.job_type_label,
+                        job.visit_type_label,
                         job.brand,
                         job.lead_source_label,
                     ]
@@ -258,7 +294,51 @@ export default function JobShow({
                             {t('jobs.change_status')}
                         </Button>
                     )}
+                    {can.close && !job.outcome && !visitUnderWay && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCloseOpen(true)}
+                        >
+                            <Flag /> {t('jobs.close.action')}
+                        </Button>
+                    )}
                 </div>
+
+                {job.outcome && job.outcome_label && (
+                    <OutcomeCard
+                        outcome={job.outcome}
+                        label={job.outcome_label}
+                        reason={job.outcome_reason}
+                        note={job.outcome_note}
+                        closedAt={job.closed_at}
+                        closedBy={job.closed_by}
+                    />
+                )}
+
+                <FollowUpLinks
+                    visitTypeLabel={job.visit_type_label}
+                    previous={job.previous_job}
+                    followUps={job.follow_ups}
+                />
+
+                {myVisit?.strict_arrival && myVisit.status === 'scheduled' && (
+                    <p className="flex items-center gap-2 rounded-lg bg-red-600 p-3 text-sm font-semibold text-white">
+                        <AlarmClock className="size-5 shrink-0" />
+                        {t('jobs.strict.banner', {
+                            window: time.window(
+                                myVisit.scheduled_start,
+                                myVisit.scheduled_end,
+                            ),
+                        })}
+                    </p>
+                )}
+
+                <BringList
+                    jobId={job.id}
+                    items={job.bring_items}
+                    canTick={can.work}
+                />
 
                 {/* Field actions for the current user's visit */}
                 {myVisit && job.allows_visit_work && (
@@ -712,6 +792,9 @@ export default function JobShow({
                                                     status={v.status}
                                                     label={v.status_label}
                                                 />
+                                                {v.strict_arrival && (
+                                                    <StrictBadge />
+                                                )}
                                             </div>
                                             <div className="text-xs text-muted-foreground">
                                                 {v.assignees.length > 0
@@ -891,6 +974,7 @@ export default function JobShow({
                     jobId={job.id}
                     current={job.status}
                     options={statusOptions}
+                    cancelReasons={closureReasons.cancelled}
                 />
             )}
 
@@ -899,6 +983,16 @@ export default function JobShow({
                     open={finishOpen}
                     onOpenChange={setFinishOpen}
                     visitId={myVisit.id}
+                    jobId={job.id}
+                    reasons={closureReasons}
+                />
+            )}
+            {can.close && (
+                <FinishDialog
+                    open={closeOpen}
+                    onOpenChange={setCloseOpen}
+                    jobId={job.id}
+                    reasons={closureReasons}
                 />
             )}
 

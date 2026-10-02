@@ -37,7 +37,19 @@ type CustomerOption = {
         is_primary: boolean;
         appliances: ApplianceItem[];
     }[];
+    /** Earlier jobs, for a return visit or warranty callback. */
+    jobs?: {
+        id: number;
+        number: number;
+        property_id: number;
+        status_label: string;
+        created_at: string | null;
+        appliance_ids: number[];
+        appliances: string;
+    }[];
 };
+
+type BringItem = { description: string; quantity: string };
 
 type JobData = {
     id: number;
@@ -49,6 +61,9 @@ type JobData = {
     description: string | null;
     notes: string | null;
     appliance_ids: number[];
+    visit_type: string;
+    previous_job_id: number | null;
+    bring_items: BringItem[];
 };
 
 type NewAppliance = {
@@ -61,6 +76,9 @@ type NewAppliance = {
 type FormData = {
     brand_id: string;
     job_type: string;
+    visit_type: string;
+    previous_job_id: number | null;
+    bring_items: BringItem[];
     lead_source: string;
     description: string;
     notes: string;
@@ -95,6 +113,7 @@ type FormData = {
         end_time: string;
         estimated_duration_minutes: string;
         assignee_ids: number[];
+        strict_arrival: boolean;
     };
 };
 
@@ -108,6 +127,7 @@ type Props = {
     applianceTypes: Option[];
     manufacturers: string[];
     assignableUsers: Assignable[];
+    visitTypes: Option[];
 };
 
 const primaryPropertyId = (c: CustomerOption | null) =>
@@ -123,6 +143,7 @@ export default function JobForm({
     applianceTypes,
     manufacturers,
     assignableUsers,
+    visitTypes,
 }: Props) {
     const t = useTrans();
     const phoneText = usePhone();
@@ -142,6 +163,9 @@ export default function JobForm({
     const form = useForm<FormData>({
         brand_id: String(job?.brand_id ?? brands[0]?.value ?? ''),
         job_type: job?.job_type ?? 'repair',
+        visit_type: job?.visit_type ?? 'new_diagnosis',
+        previous_job_id: job?.previous_job_id ?? null,
+        bring_items: job?.bring_items ?? [],
         lead_source: job?.lead_source ?? initialCustomer?.lead_source ?? '',
         description: job?.description ?? '',
         notes: job?.notes ?? '',
@@ -176,8 +200,34 @@ export default function JobForm({
             end_time: '11:00',
             estimated_duration_minutes: '60',
             assignee_ids: [],
+            strict_arrival: false,
         },
     });
+    const followsUp = ['return_visit', 'callback'].includes(
+        form.data.visit_type,
+    );
+    const earlierJobs = (customer?.jobs ?? []).filter((j) => j.id !== job?.id);
+
+    // Picking the earlier job brings its appliances along (same address).
+    const choosePreviousJob = (id: string) => {
+        const previous = earlierJobs.find((j) => String(j.id) === id);
+        form.setData((d) => ({
+            ...d,
+            previous_job_id: previous?.id ?? null,
+            appliance_ids:
+                previous && previous.property_id === d.property_id
+                    ? previous.appliance_ids
+                    : d.appliance_ids,
+        }));
+    };
+
+    const setBring = (index: number, patch: Partial<BringItem>) =>
+        form.setData(
+            'bring_items',
+            form.data.bring_items.map((item, i) =>
+                i === index ? { ...item, ...patch } : item,
+            ),
+        );
     const errors = form.errors as Record<string, string | undefined>;
     const { data } = form;
 
@@ -812,6 +862,138 @@ export default function JobForm({
                     <h2 className="text-base font-medium sm:col-span-2">
                         {t('jobs.sections.job')}
                     </h2>
+                    <fieldset className="space-y-2 sm:col-span-2">
+                        <legend className="mb-2 text-sm font-medium">
+                            {t('jobs.fields.visit_type')}
+                        </legend>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {visitTypes.map((o) => (
+                                <Button
+                                    key={o.value}
+                                    type="button"
+                                    variant={
+                                        data.visit_type === o.value
+                                            ? 'default'
+                                            : 'outline'
+                                    }
+                                    className="h-auto min-h-11 whitespace-normal"
+                                    onClick={() =>
+                                        form.setData('visit_type', o.value)
+                                    }
+                                >
+                                    {o.label}
+                                </Button>
+                            ))}
+                        </div>
+                        <InputError message={errors.visit_type} />
+                    </fieldset>
+                    {followsUp && (
+                        <FormField
+                            id="previous_job_id"
+                            label={t('jobs.previous_job')}
+                            error={errors.previous_job_id}
+                            className="sm:col-span-2"
+                        >
+                            <NativeSelect
+                                id="previous_job_id"
+                                value={data.previous_job_id ?? ''}
+                                onChange={(e) =>
+                                    choosePreviousJob(e.target.value)
+                                }
+                            >
+                                <option value="">
+                                    {t('jobs.pick_previous_job')}
+                                </option>
+                                {earlierJobs.map((j) => (
+                                    <option key={j.id} value={j.id}>
+                                        {[
+                                            `#${j.number}`,
+                                            j.status_label,
+                                            j.appliances,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' · ')}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FormField>
+                    )}
+                    {data.visit_type === 'return_visit' && (
+                        <fieldset className="space-y-2 sm:col-span-2">
+                            <legend className="text-sm font-medium">
+                                {t('jobs.bring.title')}
+                            </legend>
+                            <p className="text-xs text-muted-foreground">
+                                {t('jobs.bring.hint')}
+                            </p>
+                            {data.bring_items.map((item, i) => (
+                                <div
+                                    key={i}
+                                    className="grid grid-cols-[1fr_5rem_auto] gap-2"
+                                >
+                                    <Input
+                                        aria-label={t('jobs.bring.item')}
+                                        placeholder={t('jobs.bring.item')}
+                                        value={item.description}
+                                        maxLength={255}
+                                        onChange={(e) =>
+                                            setBring(i, {
+                                                description: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    <Input
+                                        aria-label={t('jobs.bring.qty')}
+                                        inputMode="decimal"
+                                        value={item.quantity}
+                                        onChange={(e) =>
+                                            setBring(i, {
+                                                quantity: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-10"
+                                        aria-label={t('jobs.bring.remove')}
+                                        onClick={() =>
+                                            form.setData(
+                                                'bring_items',
+                                                data.bring_items.filter(
+                                                    (_, j) => j !== i,
+                                                ),
+                                            )
+                                        }
+                                    >
+                                        <Trash2 />
+                                    </Button>
+                                    <InputError
+                                        className="col-span-3"
+                                        message={
+                                            errors[
+                                                `bring_items.${i}.description`
+                                            ]
+                                        }
+                                    />
+                                </div>
+                            ))}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                    form.setData('bring_items', [
+                                        ...data.bring_items,
+                                        { description: '', quantity: '1' },
+                                    ])
+                                }
+                            >
+                                <Plus /> {t('jobs.bring.add')}
+                            </Button>
+                        </fieldset>
+                    )}
                     {brands.length > 1 || errors.brand_id ? (
                         <FormField
                             id="brand_id"

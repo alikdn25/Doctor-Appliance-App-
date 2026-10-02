@@ -2,6 +2,8 @@ import { cn } from '@/lib/utils';
 
 const tones: Record<string, string> = {
     draft: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
+    revised:
+        'bg-zinc-100 text-zinc-500 line-through dark:bg-zinc-800 dark:text-zinc-400',
     approved:
         'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
     declined: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',

@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { CalendarClock, ChevronRight, MapPin, User } from 'lucide-react';
+import { StrictBadge } from '@/components/jobs/job-outcome';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import type { JobRow } from '@/components/jobs/types';
 import { useCompanyTime } from '@/lib/datetime';
@@ -43,10 +44,20 @@ export function JobList({
                                     status={job.status}
                                     label={job.status_label}
                                 />
+                                {job.visit?.strict_arrival && <StrictBadge />}
+                                {job.outcome_label &&
+                                    job.outcome !== 'repaired' && (
+                                        <span className="text-xs text-amber-700 dark:text-amber-400">
+                                            {job.outcome_label}
+                                        </span>
+                                    )}
                             </div>
                             <div className="text-xs text-muted-foreground">
                                 {[
                                     job.job_type_label,
+                                    job.visit_type !== 'new_diagnosis'
+                                        ? job.visit_type_label
+                                        : null,
                                     job.appliances.join(', '),
                                     job.brand,
                                 ]

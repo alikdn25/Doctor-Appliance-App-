@@ -25,20 +25,24 @@ export function StatusDialog({
     jobId,
     current,
     options,
+    cancelReasons,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     jobId: number;
     current: string;
     options: Option[];
+    /** Reasons to cancel (required for "Cancelled"). */
+    cancelReasons: string[];
 }) {
     const t = useTrans();
-    const form = useForm({ status: current, note: '' });
+    const form = useForm({ status: current, note: '', reason: '' });
+    const cancelling = form.data.status === 'cancelled';
 
     useEffect(() => {
         if (open) {
             form.clearErrors();
-            form.setData({ status: current, note: '' });
+            form.setData({ status: current, note: '', reason: '' });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, current]);
@@ -80,6 +84,33 @@ export function StatusDialog({
                             ))}
                         </NativeSelect>
                     </FormField>
+                    {cancelling && (
+                        <FormField
+                            id="job-status-reason"
+                            label={t('jobs.cancel_reason')}
+                            hint={t('jobs.cancel_hint')}
+                            error={
+                                (form.errors as Record<string, string>).reason
+                            }
+                        >
+                            <NativeSelect
+                                id="job-status-reason"
+                                value={form.data.reason}
+                                onChange={(e) =>
+                                    form.setData('reason', e.target.value)
+                                }
+                            >
+                                <option value="">
+                                    {t('jobs.close.pick_reason')}
+                                </option>
+                                {cancelReasons.map((r) => (
+                                    <option key={r} value={r}>
+                                        {r}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FormField>
+                    )}
                     <FormField
                         id="job-status-note"
                         label={t('jobs.status_note')}
@@ -99,7 +130,9 @@ export function StatusDialog({
                         type="submit"
                         className="w-full"
                         disabled={
-                            form.processing || form.data.status === current
+                            form.processing ||
+                            form.data.status === current ||
+                            (cancelling && form.data.reason === '')
                         }
                     >
                         {t('common.save')}

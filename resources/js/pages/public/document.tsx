@@ -516,6 +516,22 @@ function EstimateStatus({
 }) {
     const t = useTrans();
 
+    if (status === 'revised') {
+        return (
+            <div className="space-y-2 rounded-md bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                <p>{t('estimates.online.revised')}</p>
+                {actions.latest_url && (
+                    <a
+                        href={actions.latest_url}
+                        className="font-medium underline"
+                    >
+                        {t('estimates.online.view_latest')}
+                    </a>
+                )}
+            </div>
+        );
+    }
+
     if (status === 'invoiced') {
         return (
             <p className="rounded-md bg-muted p-3 text-sm">

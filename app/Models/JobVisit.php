@@ -24,6 +24,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $on_the_way_at
  * @property Carbon|null $started_at
  * @property Carbon|null $finished_at
+ * @property bool $strict_arrival The customer must be seen in the window
+ * @property Carbon|null $strict_reminder_sent_at
  * @property-read ServiceJob $job
  */
 class JobVisit extends Model
@@ -37,10 +39,12 @@ class JobVisit extends Model
         'scheduled_start',
         'scheduled_end',
         'estimated_duration_minutes',
+        'strict_arrival',
     ];
 
     protected $attributes = [
         'status' => 'scheduled',
+        'strict_arrival' => false,
     ];
 
     /**
@@ -57,6 +61,8 @@ class JobVisit extends Model
             'reminder_sent_at' => 'datetime',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
+            'strict_arrival' => 'boolean',
+            'strict_reminder_sent_at' => 'datetime',
         ];
     }
 

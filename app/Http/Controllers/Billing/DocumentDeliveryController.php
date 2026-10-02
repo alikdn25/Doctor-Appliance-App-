@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Billing;
 
 use App\Actions\Billing\SendDocument;
+use App\Enums\EstimateStatus;
 use App\Enums\MessageKind;
 use App\Enums\SmsMode;
 use App\Http\Controllers\Controller;
@@ -36,6 +37,9 @@ class DocumentDeliveryController extends Controller
 
     public function sendEstimate(Request $request, Estimate $estimate, SendDocument $send): RedirectResponse
     {
+        // A replaced version is history; the newest version is the one to send.
+        abort_if($estimate->status === EstimateStatus::Revised, 422);
+
         return $this->send($request, $estimate, $send);
     }
 
@@ -48,6 +52,8 @@ class DocumentDeliveryController extends Controller
 
     public function smsEstimate(Request $request, Estimate $estimate, Messenger $messenger): RedirectResponse
     {
+        abort_if($estimate->status === EstimateStatus::Revised, 422);
+
         return $this->sms($request, $estimate, $messenger);
     }
 

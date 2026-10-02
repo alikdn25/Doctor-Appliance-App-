@@ -126,7 +126,7 @@ test('status buttons only work in order', function () {
 });
 
 test('nobody can work on a job that is on hold or cancelled', function (string $status) {
-    $this->actingAs($this->owner)->put(route('jobs.status', $this->job), ['status' => $status])->assertRedirect();
+    $this->actingAs($this->owner)->put(route('jobs.status', $this->job), ['status' => $status, 'reason' => 'Customer changed their mind'])->assertRedirect();
 
     $this->actingAs($this->tech)
         ->post(route('visits.on-my-way', $this->visit))
@@ -151,7 +151,7 @@ test('the office changes the status by hand with a note', function () {
 });
 
 test('cancelling a job cancels its scheduled visits and blocks new ones', function () {
-    $this->actingAs($this->owner)->put(route('jobs.status', $this->job), ['status' => 'cancelled']);
+    $this->actingAs($this->owner)->put(route('jobs.status', $this->job), ['status' => 'cancelled', 'reason' => 'Nobody home / door not opened']);
 
     expect($this->job->fresh())->status->toBe(JobStatus::Cancelled)->cancelled_at->not->toBeNull()
         ->and($this->visit->fresh()->status)->toBe(VisitStatus::Cancelled);

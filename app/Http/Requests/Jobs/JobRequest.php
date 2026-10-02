@@ -5,6 +5,7 @@ namespace App\Http\Requests\Jobs;
 use App\Enums\ApplianceType;
 use App\Enums\JobType;
 use App\Enums\LeadSource;
+use App\Enums\VisitType;
 use App\Http\Requests\Customers\PropertyRequest;
 use App\Models\Appliance;
 use App\Models\Brand;
@@ -86,6 +87,11 @@ class JobRequest extends FormRequest
             'new_appliances.*.manufacturer' => ['nullable', 'string', 'max:100'],
             'new_appliances.*.model_number' => ['nullable', 'string', 'max:100'],
             'new_appliances.*.serial_number' => ['nullable', 'string', 'max:100'],
+            'visit_type' => ['sometimes', Rule::enum(VisitType::class)],
+            'previous_job_id' => ['nullable', 'integer'],
+            'bring_items' => ['array', 'max:50'],
+            'bring_items.*.description' => ['required', 'string', 'max:255'],
+            'bring_items.*.quantity' => ['nullable', 'numeric', 'gt:0', 'max:99999'],
         ];
 
         if (! $this->creating()) {
@@ -124,6 +130,7 @@ class JobRequest extends FormRequest
 
             $this->validateBrand($validator);
             $this->validateCustomerAndProperty($validator);
+            $this->validatePreviousJob($validator);
 
             if ($this->boolean('new_customer_mode')
                 && ! PhoneNumber::isPossible((string) $this->input('new_customer.phone'))) {
@@ -146,6 +153,9 @@ class JobRequest extends FormRequest
             'customer_id' => __('jobs.fields.customer'),
             'property_id' => __('jobs.fields.property'),
             'job_type' => __('jobs.fields.job_type'),
+            'visit_type' => __('jobs.fields.visit_type'),
+            'previous_job_id' => __('jobs.fields.previous_job_id'),
+            'bring_items.*.description' => __('jobs.bring.item'),
             'new_customer.first_name' => __('customers.fields.first_name'),
             'new_customer.phone' => __('customers.fields.phone'),
             'new_customer.email' => __('customers.fields.email'),
@@ -171,8 +181,29 @@ class JobRequest extends FormRequest
     public function jobAttributes(): array
     {
         return collect($this->validated())
-            ->only(['brand_id', 'property_id', 'job_type', 'lead_source', 'description', 'notes', 'ask_for_review'])
+            ->only(['brand_id', 'property_id', 'job_type', 'lead_source', 'description', 'notes', 'ask_for_review', 'visit_type', 'previous_job_id'])
+            ->when(
+                fn ($attributes) => isset($attributes['visit_type']) && ! VisitType::from($attributes['visit_type'])->needsPreviousJob(),
+                fn ($attributes) => $attributes->put('previous_job_id', null),
+            )
             ->all();
+    }
+
+    /**
+     * Parts and materials to bring (return visits); null when the form did not send the list.
+     *
+     * @return list<array{description: string, quantity: string}>|null
+     */
+    public function bringItems(): ?array
+    {
+        if (! $this->has('bring_items')) {
+            return null;
+        }
+
+        return array_values(array_map(fn (array $item) => [
+            'description' => trim($item['description']),
+            'quantity' => (string) ($item['quantity'] ?? 1),
+        ], $this->validated('bring_items', [])));
     }
 
     /**
@@ -226,6 +257,36 @@ class JobRequest extends FormRequest
     public function visit(): ?array
     {
         return $this->boolean('add_visit') ? VisitRequest::toVisit($this->validated('visit')) : null;
+    }
+
+    /**
+     * A return visit or callback follows up an earlier job of the same customer.
+     */
+    private function validatePreviousJob(Validator $validator): void
+    {
+        $type = VisitType::tryFrom((string) $this->input('visit_type', VisitType::NewDiagnosis->value));
+
+        if ($type === null || ! $type->needsPreviousJob()) {
+            return;
+        }
+
+        if (! $this->filled('previous_job_id')) {
+            $validator->errors()->add('previous_job_id', __('jobs.errors.previous_job_required'));
+
+            return;
+        }
+
+        /** @var ServiceJob|null $job */
+        $job = $this->route('job');
+        $customerId = $job?->customer_id ?? $this->resolvedCustomer?->id;
+        $previous = $customerId === null ? null : ServiceJob::query()
+            ->where('customer_id', $customerId)
+            ->whereKeyNot($job?->id ?? 0)
+            ->find((int) $this->input('previous_job_id'));
+
+        if ($previous === null) {
+            $validator->errors()->add('previous_job_id', __('jobs.errors.invalid_previous_job'));
+        }
     }
 
     private function validateBrand(Validator $validator): void

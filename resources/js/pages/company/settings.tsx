@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
 import { edit, update } from '@/routes/company/settings';
 import {
@@ -36,8 +37,18 @@ type CompanySettings = {
     business_hours: Record<string, Day>;
     travel_buffer_minutes: number;
     estimate_valid_days: number | null;
+    technicians_can_delete_jobs: boolean;
+    diagnostic_service_id: number | null;
+    strict_arrival_reminder_minutes: number;
+    closure_reasons: Record<string, string[]>;
     payment_provider: string;
 };
+
+const REASON_OUTCOMES = [
+    'customer_declined',
+    'unable_to_repair',
+    'cancelled',
+] as const;
 
 type Props = {
     company: CompanySettings & { id: number; vertical: string };
@@ -46,6 +57,7 @@ type Props = {
     countries: Option[];
     locales: Option[];
     paymentTerms: Option[];
+    services: Option[];
     paymentProviders: Option[];
     providerConnections: ProviderConnection[];
 };
@@ -67,11 +79,16 @@ export default function CompanySettingsPage({
     countries,
     locales,
     paymentTerms,
+    services,
     paymentProviders,
     providerConnections,
 }: Props) {
     const t = useTrans();
-    const form = useForm<CompanySettings>({
+    const form = useForm<
+        Omit<CompanySettings, 'closure_reasons'> & {
+            closure_reasons_text: Record<string, string>;
+        }
+    >({
         name: company.name,
         country: company.country,
         timezone: company.timezone,
@@ -87,6 +104,17 @@ export default function CompanySettingsPage({
         business_hours: company.business_hours,
         travel_buffer_minutes: company.travel_buffer_minutes,
         estimate_valid_days: company.estimate_valid_days,
+        technicians_can_delete_jobs: company.technicians_can_delete_jobs,
+        diagnostic_service_id: company.diagnostic_service_id,
+        strict_arrival_reminder_minutes:
+            company.strict_arrival_reminder_minutes,
+        // Edited as text, one reason per line; sent as lists.
+        closure_reasons_text: Object.fromEntries(
+            REASON_OUTCOMES.map((o) => [
+                o,
+                (company.closure_reasons[o] ?? []).join('\n'),
+            ]),
+        ) as Record<string, string>,
         payment_provider: company.payment_provider ?? '',
     });
     const errors = form.errors as Record<string, string | undefined>;
@@ -145,9 +173,20 @@ export default function CompanySettingsPage({
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
-        form.transform((data) => ({
+        form.transform(({ closure_reasons_text, ...data }) => ({
             ...data,
             payment_provider: data.payment_provider || null,
+            closure_reasons: Object.fromEntries(
+                Object.entries(closure_reasons_text).map(
+                    ([o, text]: [string, string]) => [
+                        o,
+                        text
+                            .split('\n')
+                            .map((r: string) => r.trim())
+                            .filter(Boolean),
+                    ],
+                ),
+            ),
         }));
         form.put(update().url, { preserveScroll: true });
     };
@@ -444,6 +483,110 @@ export default function CompanySettingsPage({
                             }
                         />
                     </FormField>
+                </section>
+
+                <section className="grid gap-3">
+                    <h2 className="text-base font-medium">
+                        {t('company.jobs_section')}
+                    </h2>
+                    <label className="flex min-h-10 items-center gap-2 text-sm">
+                        <Checkbox
+                            checked={form.data.technicians_can_delete_jobs}
+                            onCheckedChange={(c) =>
+                                form.setData(
+                                    'technicians_can_delete_jobs',
+                                    c === true,
+                                )
+                            }
+                        />
+                        {t('company.fields.technicians_can_delete_jobs')}
+                    </label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <FormField
+                            id="diagnostic_service_id"
+                            label={t('company.fields.diagnostic_service_id')}
+                            hint={t('company.diagnostic_service_hint')}
+                            error={errors.diagnostic_service_id}
+                        >
+                            <NativeSelect
+                                id="diagnostic_service_id"
+                                value={
+                                    form.data.diagnostic_service_id === null
+                                        ? ''
+                                        : String(
+                                              form.data.diagnostic_service_id,
+                                          )
+                                }
+                                onChange={(e) =>
+                                    form.setData(
+                                        'diagnostic_service_id',
+                                        e.target.value === ''
+                                            ? null
+                                            : Number(e.target.value),
+                                    )
+                                }
+                            >
+                                <option value="">{t('company.none')}</option>
+                                {services.map((o) => (
+                                    <option key={o.value} value={o.value}>
+                                        {o.label}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FormField>
+                        <FormField
+                            id="strict_arrival_reminder_minutes"
+                            label={t(
+                                'company.fields.strict_arrival_reminder_minutes',
+                            )}
+                            error={errors.strict_arrival_reminder_minutes}
+                        >
+                            <Input
+                                id="strict_arrival_reminder_minutes"
+                                type="number"
+                                inputMode="numeric"
+                                min={5}
+                                max={480}
+                                step={5}
+                                value={
+                                    form.data.strict_arrival_reminder_minutes
+                                }
+                                onChange={(e) =>
+                                    form.setData(
+                                        'strict_arrival_reminder_minutes',
+                                        Number(e.target.value),
+                                    )
+                                }
+                            />
+                        </FormField>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        {t('company.closure_reasons_hint')}
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        {REASON_OUTCOMES.map((outcome) => (
+                            <FormField
+                                key={outcome}
+                                id={`reasons-${outcome}`}
+                                label={t(`jobs.outcomes.${outcome}`)}
+                                error={errors[`closure_reasons.${outcome}`]}
+                            >
+                                <Textarea
+                                    id={`reasons-${outcome}`}
+                                    rows={6}
+                                    value={
+                                        form.data.closure_reasons_text[outcome]
+                                    }
+                                    onChange={(e) =>
+                                        form.setData('closure_reasons_text', {
+                                            ...form.data.closure_reasons_text,
+                                            [outcome]: e.target.value,
+                                        })
+                                    }
+                                />
+                            </FormField>
+                        ))}
+                    </div>
                 </section>
 
                 <section className="grid gap-3">
