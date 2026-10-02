@@ -28,6 +28,7 @@ class CompanySettingsRequest extends FormRequest
             'estimate_prefix' => ['nullable', 'string', 'max:20'],
             'estimate_next_number' => ['required', 'integer', 'min:1', 'max:999999999'],
             'business_hours' => ['required', 'array:'.implode(',', Company::WEEKDAYS)],
+            'travel_buffer_minutes' => ['required', 'integer', 'min:0', 'max:240'],
         ];
 
         foreach (Company::WEEKDAYS as $day) {
@@ -56,6 +57,8 @@ class CompanySettingsRequest extends FormRequest
             ];
         }
 
+        // A time zone saved by the Owner is final; browser detection no longer applies.
+        $data['timezone_pending'] = false;
         $data['invoice_prefix'] ??= '';
         $data['estimate_prefix'] ??= '';
 

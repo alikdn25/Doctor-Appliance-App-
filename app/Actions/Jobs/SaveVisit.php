@@ -7,6 +7,7 @@ use App\Enums\VisitStatus;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -44,6 +45,35 @@ class SaveVisit
 
             return $visit;
         });
+    }
+
+    /**
+     * Drag and drop on the calendar: a new start (the window keeps its length) and, when dropped
+     * on another person's lane, that person instead of the one it was dragged from.
+     * $from / $to null means the "unassigned" lane.
+     */
+    public function move(JobVisit $visit, CarbonImmutable $start, ?int $from, ?int $to, ?User $user): JobVisit
+    {
+        if ($visit->status !== VisitStatus::Scheduled || ! $visit->job->status->allowsVisitWork()) {
+            throw ValidationException::withMessages(['visit' => __('calendar.errors.not_movable')]);
+        }
+
+        $length = (int) $visit->scheduled_start->diffInMinutes($visit->scheduled_end);
+        $ids = $visit->assignees()->pluck('users.id')->map(fn ($id) => (int) $id)->all();
+
+        if ($from !== $to) {
+            $ids = array_values(array_filter($ids, fn (int $id) => $id !== $from));
+
+            if ($to !== null && ! in_array($to, $ids, true)) {
+                $ids[] = $to;
+            }
+        }
+
+        return $this->handle($visit->job, $visit, [
+            'scheduled_start' => $start->utc(),
+            'scheduled_end' => $start->addMinutes($length)->utc(),
+            'estimated_duration_minutes' => $visit->estimated_duration_minutes,
+        ], $ids, $user);
     }
 
     /**

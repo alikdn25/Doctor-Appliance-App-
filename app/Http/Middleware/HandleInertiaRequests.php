@@ -71,7 +71,11 @@ class HandleInertiaRequests extends Middleware
                 'is_super_admin' => $user->is_super_admin,
                 'two_factor_enabled' => $user->hasEnabledTwoFactorAuthentication(),
             ],
-            'company' => $company?->only(['id', 'name', 'currency', 'timezone']),
+            'company' => $company ? [
+                ...$company->only(['id', 'name', 'currency', 'timezone']),
+                // The Owner's browser fills in the time zone of a new company.
+                'timezone_pending' => $company->timezone_pending && $user->can('update', $company),
+            ] : null,
             'role' => $role ? ['value' => $role->value, 'label' => $role->label()] : null,
             'companies' => $user->is_super_admin
                 ? []
@@ -80,6 +84,7 @@ class HandleInertiaRequests extends Middleware
                 'viewCustomers' => $user->can('viewAny', Customer::class),
                 'viewJobs' => $user->can('viewAny', ServiceJob::class),
                 'viewMyJobs' => $user->can('viewMine', ServiceJob::class),
+                'viewCalendar' => $user->can('dispatch', ServiceJob::class),
                 'manageCompany' => $user->can('update', $company),
                 'viewBrands' => $user->can('viewAny', Brand::class),
                 'manageTeam' => $user->can('viewAny', Membership::class),

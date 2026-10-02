@@ -22,14 +22,19 @@ class CreateCompany
     ) {}
 
     /**
-     * @param  array{name: string, timezone?: string, currency?: string, plan?: string|null, subscription_status?: string|null}  $data
+     * @param  array{name: string, timezone?: string|null, currency?: string, plan?: string|null, subscription_status?: string|null}  $data
      * @param  array{name: string, email: string}  $owner
      */
     public function handle(array $data, array $owner): Company
     {
         return DB::transaction(function () use ($data, $owner) {
+            // Without a time zone the company starts on the default one until the Owner's browser reports theirs.
+            $pending = blank($data['timezone'] ?? null);
+
             $company = Company::create([
                 ...$data,
+                'timezone' => $pending ? config('fieldservice.default_timezone') : $data['timezone'],
+                'timezone_pending' => $pending,
                 'slug' => $this->uniqueSlug($data['name']),
                 'business_hours' => Company::defaultBusinessHours(),
             ]);

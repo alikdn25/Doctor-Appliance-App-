@@ -19,6 +19,16 @@ return [
     'default_timezone' => 'America/Vancouver',
 
     /*
+    | Time zone database check in the super-admin panel. PHP built with the
+    | system tzdata reports version "0.system"; the version is then read from
+    | the zoneinfo file below.
+    */
+    'tzdata' => [
+        'max_age_months' => 6,
+        'zoneinfo_file' => env('TZDATA_ZONEINFO_FILE', '/usr/share/zoneinfo/tzdata.zi'),
+    ],
+
+    /*
     | Common appliance manufacturers suggested when entering an appliance
     | (merged with the ones a company has already used).
     */

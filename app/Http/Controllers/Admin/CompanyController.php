@@ -13,6 +13,7 @@ use App\Models\Company;
 use App\Models\ImpersonationLog;
 use App\Models\Membership;
 use App\Services\AuditLogger;
+use App\Support\TimezoneDatabase;
 use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ use Inertia\Response;
  */
 class CompanyController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, TimezoneDatabase $tzdata): Response
     {
         $search = trim((string) $request->query('search', ''));
 
@@ -53,6 +54,11 @@ class CompanyController extends Controller
         return Inertia::render('admin/companies/index', [
             'companies' => $companies,
             'filters' => ['search' => $search],
+            'tzdata' => [
+                'version' => $tzdata->version(),
+                'released' => $tzdata->estimatedReleaseDate()?->format('M Y'),
+                'outdated' => $tzdata->isOutdated(),
+            ],
         ]);
     }
 
@@ -63,7 +69,7 @@ class CompanyController extends Controller
             'currencies' => config('fieldservice.currencies'),
             'subscriptionStatuses' => $this->subscriptionOptions(),
             'defaults' => [
-                'timezone' => config('fieldservice.default_timezone'),
+                'timezone' => '',
                 'currency' => 'CAD',
             ],
         ]);

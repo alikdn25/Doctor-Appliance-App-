@@ -77,6 +77,9 @@ export default function AdminCompanyCreate({
                                 form.setData('timezone', e.target.value)
                             }
                         >
+                            <option value="">
+                                {t('admin.timezone_from_owner')}
+                            </option>
                             {timezones.map((tz) => (
                                 <option key={tz}>{tz}</option>
                             ))}

@@ -391,3 +391,29 @@ test('job numbers are counted per company', function () {
         ->toBe([1001, 1002])
         ->and(Company::find($this->companyA->id)->job_next_number)->toBe(1002);
 });
+
+test('the calendar only shows the current company\'s visits, people and jobs to schedule', function () {
+    ServiceJob::factory()->for($this->propertyB)->create(['brand_id' => $this->brandB->id]);
+    $visitA = JobVisit::withoutCompanyScope()->where('service_job_id', $this->jobA->id)->sole();
+    $date = $visitA->scheduled_start->setTimezone($this->companyA->timezone)->format('Y-m-d');
+
+    $props = $this->actingAs($this->ownerA)->get(route('calendar', ['date' => $date]))->viewData('page')['props'];
+
+    expect(collect($props['visits'])->pluck('id')->all())->toBe([$visitA->id])
+        ->and(collect($props['lanes'])->pluck('id')->filter()->sort()->values()->all())
+        ->toBe(collect([$this->ownerA->id, $this->techA->id])->sort()->values()->all())
+        ->and($props['unscheduled'])->toBe([]);
+});
+
+test('another company\'s visit cannot be moved or assigned through the calendar', function () {
+    $this->actingAs($this->ownerA);
+
+    $this->put(route('visits.move', $this->visitB), ['date' => '2030-01-01', 'start_time' => '09:00'])->assertNotFound();
+
+    $visitA = JobVisit::withoutCompanyScope()->where('service_job_id', $this->jobA->id)->sole();
+    $this->put(route('visits.move', $visitA), ['date' => '2030-01-01', 'start_time' => '09:00', 'to_user_id' => $this->techB->id])
+        ->assertSessionHasErrors('to_user_id');
+
+    expect(JobVisit::withoutCompanyScope()->find($this->visitB->id)->scheduled_start->toDateTimeString())
+        ->toBe($this->visitB->scheduled_start->toDateTimeString());
+});

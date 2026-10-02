@@ -14,12 +14,14 @@ export type CurrentCompany = {
     name: string;
     currency: string;
     timezone: string;
+    timezone_pending?: boolean;
 };
 
 export type Permissions = {
     viewCustomers?: boolean;
     viewJobs?: boolean;
     viewMyJobs?: boolean;
+    viewCalendar?: boolean;
     manageCompany?: boolean;
     viewBrands?: boolean;
     manageTeam?: boolean;

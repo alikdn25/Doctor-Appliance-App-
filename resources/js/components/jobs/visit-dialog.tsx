@@ -32,6 +32,8 @@ export function VisitDialog({
     visit,
     today,
     assignableUsers,
+    initial,
+    stayOnPage = false,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -39,6 +41,10 @@ export function VisitDialog({
     visit: Visit | null;
     today: string;
     assignableUsers: Assignable[];
+    /** Prefilled values for a new visit (e.g. the slot picked on the calendar). */
+    initial?: Partial<VisitFormValue>;
+    /** Stay on the current page after saving (the calendar). */
+    stayOnPage?: boolean;
 }) {
     const t = useTrans();
     const form = useForm<VisitFormValue>(toForm(visit, today));
@@ -46,7 +52,10 @@ export function VisitDialog({
     useEffect(() => {
         if (open) {
             form.clearErrors();
-            form.setData(toForm(visit, today));
+            form.setData({
+                ...toForm(visit, today),
+                ...(visit ? {} : initial),
+            });
         }
         // Reset only when the dialog opens.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,6 +67,7 @@ export function VisitDialog({
             preserveScroll: true,
             onSuccess: () => onOpenChange(false),
         };
+        form.transform((data) => (stayOnPage ? { ...data, back: true } : data));
 
         if (visit) {
             form.put(update(visit.id).url, options);

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Company\BrandController;
 use App\Http\Controllers\Company\CompanySettingsController;
+use App\Http\Controllers\Company\DetectTimezoneController;
 use App\Http\Controllers\Company\SwitchCompanyController;
 use App\Http\Controllers\Company\TaxRateController;
 use App\Http\Controllers\Company\TeamController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Customers\ApplianceController;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Customers\PropertyController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Jobs\CalendarController;
 use App\Http\Controllers\Jobs\JobController;
 use App\Http\Controllers\Jobs\JobStatusController;
 use App\Http\Controllers\Jobs\JobWorkController;
@@ -48,6 +50,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('jobs/{job}/visits', [VisitController::class, 'store'])->name('visits.store');
         Route::put('visits/{visit}', [VisitController::class, 'update'])->name('visits.update');
         Route::delete('visits/{visit}', [VisitController::class, 'destroy'])->name('visits.destroy');
+        Route::put('visits/{visit}/move', [VisitController::class, 'move'])->name('visits.move');
+        Route::get('calendar', CalendarController::class)->name('calendar');
         Route::post('visits/{visit}/on-my-way', [VisitActionController::class, 'onMyWay'])->name('visits.on-my-way');
         Route::post('visits/{visit}/start', [VisitActionController::class, 'start'])->name('visits.start');
         Route::post('visits/{visit}/finish', [VisitActionController::class, 'finish'])->name('visits.finish');
@@ -55,6 +59,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::prefix('company')->group(function () {
             Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company.settings.edit');
             Route::put('settings', [CompanySettingsController::class, 'update'])->name('company.settings.update');
+            Route::put('timezone', DetectTimezoneController::class)->name('company.timezone.detect');
 
             Route::resource('brands', BrandController::class)->except('show');
 

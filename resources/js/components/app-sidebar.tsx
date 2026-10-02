@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Building,
     Building2,
+    CalendarDays,
     ClipboardList,
     Contact,
     LayoutGrid,
@@ -23,7 +24,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
+import { calendar, dashboard } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as brands } from '@/routes/brands';
 import { index as customers } from '@/routes/customers';
@@ -44,6 +45,11 @@ export function AppSidebar() {
                   title: 'nav.my_jobs',
                   href: myJobs(),
                   icon: Wrench,
+              },
+              can.viewCalendar && {
+                  title: 'nav.calendar',
+                  href: calendar(),
+                  icon: CalendarDays,
               },
               can.viewJobs && {
                   title: 'nav.jobs',

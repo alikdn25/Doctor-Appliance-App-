@@ -26,6 +26,14 @@ class ServiceJobPolicy
         return $this->isFieldMember($user);
     }
 
+    /**
+     * The dispatch calendar (office).
+     */
+    public function dispatch(User $user): bool
+    {
+        return $this->isOffice($user);
+    }
+
     public function view(User $user, ServiceJob $job): bool
     {
         return $this->seesJob($user, $job);

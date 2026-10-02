@@ -23,6 +23,7 @@ type CompanySettings = {
     estimate_prefix: string;
     estimate_next_number: number;
     business_hours: Record<string, Day>;
+    travel_buffer_minutes: number;
 };
 
 type Props = {
@@ -46,6 +47,7 @@ export default function CompanySettingsPage({
         estimate_prefix: company.estimate_prefix ?? '',
         estimate_next_number: company.estimate_next_number,
         business_hours: company.business_hours,
+        travel_buffer_minutes: company.travel_buffer_minutes,
     });
     const errors = form.errors as Record<string, string | undefined>;
 
@@ -286,6 +288,35 @@ export default function CompanySettingsPage({
                             </div>
                         );
                     })}
+                </section>
+
+                <section className="grid gap-3">
+                    <h2 className="text-base font-medium">
+                        {t('company.dispatch')}
+                    </h2>
+                    <FormField
+                        id="travel_buffer_minutes"
+                        label={t('company.fields.travel_buffer_minutes')}
+                        hint={t('company.travel_buffer_hint')}
+                        error={errors.travel_buffer_minutes}
+                        className="sm:max-w-xs"
+                    >
+                        <Input
+                            id="travel_buffer_minutes"
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            max={240}
+                            step={5}
+                            value={form.data.travel_buffer_minutes}
+                            onChange={(e) =>
+                                form.setData(
+                                    'travel_buffer_minutes',
+                                    Number(e.target.value),
+                                )
+                            }
+                        />
+                    </FormField>
                 </section>
 
                 <Button

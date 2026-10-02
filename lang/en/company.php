@@ -7,6 +7,9 @@ return [
     'numbering' => 'Document numbering',
     'numbering_example' => 'Next invoice number: :example',
     'business_hours' => 'Business hours',
+    'dispatch' => 'Scheduling',
+    'travel_buffer_hint' => 'Time kept free after each visit to drive to the next one. The calendar warns when visits overlap.',
+    'timezone_detected' => 'Time zone set to :timezone from your browser. You can change it in company settings.',
     'closed' => 'Closed',
     'opens' => 'Opens at',
     'closes' => 'Closes at',
@@ -18,6 +21,7 @@ return [
         'invoice_prefix' => 'Invoice prefix',
         'estimate_prefix' => 'Estimate prefix',
         'next_number' => 'Next number',
+        'travel_buffer_minutes' => 'Travel buffer (minutes)',
     ],
 
     'weekdays' => [

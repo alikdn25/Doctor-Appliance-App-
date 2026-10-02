@@ -81,11 +81,53 @@ Deferred on purpose: calendar/dispatch, map, travel buffer (Calendar task); SMS 
 photos, signatures, checklists, rating plate photo by tech, offline/PWA install (Technician PWA task);
 subcontractors (Stage 2); estimates/invoices on the job (placeholders).
 
+### Task 3 — Calendar & dispatch ✅
+
+- `/calendar` for the office (Owner, Admin): **Day** view with one lane per person who can go on calls
+  (Owner/Admin/Technician) plus an "Unassigned" lane, and a **Week** view (Mon–Sun, one row per person).
+  Built on `job_visits`; laid out in the company's timezone.
+- **Drag and drop**: move a visit to another time (15-minute snap) and/or another person; in the week view a drop
+  keeps the time and changes the day/person. Drag a job from **To schedule** (new and waiting-for-parts jobs
+  without an open visit) onto a lane to book a 2-hour arrival window. Tapping a visit opens details with
+  "Open job" / "Edit visit"; tapping a job in To schedule opens the visit form.
+- **Arrival windows, durations, travel buffer**: each visit shows its window, the extra time on site when the
+  estimated duration is longer than the window, and a hatched travel buffer after it. Company setting
+  "Travel buffer (minutes)", default 30. Visits of the same person that overlap including the buffer are
+  flagged in red.
+- **Route of the day** (instead of a map until Google Places): each person's addresses in visit order with an
+  "Open route in Google Maps" link (directions URL, no API key).
+- Visible hours follow the company's business hours, widened to fit early/late visits.
+- New company time zone: in the super-admin form the default is "Detect from the Owner's browser". The company
+  starts on the default zone with `timezone_pending`; the Owner's first page load sends the browser zone once
+  (audited). Saving company settings ends detection.
+- Super-admin panel warns when the server's time zone database is older than 6 months (or unreadable).
+
+Decisions made without asking (change if needed):
+
+- Calendar is office-only. Technicians keep "My jobs"; they cannot move visits.
+- Only visits that have not started (and whose job is active) can be dragged. Started/finished visits are
+  shown greyed out.
+- Dragging a visit with several people from one lane to another swaps only the person it was dragged from;
+  dropping on "Unassigned" removes that person.
+- A visit belongs to the day it starts on. Time on site = the later of window end and start + estimated
+  duration; conflicts are checked on that plus the travel buffer.
+- Drag and drop uses the browser's native drag events: works with a mouse; on phones, tap a visit and use
+  "Edit visit" instead (no extra library).
+- People who left the team keep a lane (marked *) while they still have visits, so nothing disappears.
+- The browser time zone is ignored while a super-admin impersonates the Owner (it would be the super-admin's).
+- The time zone database stores only a version (e.g. `2026b`), not a release date. The age is estimated as two
+  months per release letter from January 1 of that year (capped at December 1). Threshold:
+  `fieldservice.tzdata.max_age_months` (6).
+- Note: the current tzdata (2026b) treats America/Vancouver as UTC−7 all year (BC's permanent daylight time).
+
+Deferred on purpose: Google map of the day and route optimisation (Google Places task), passing visits to a
+subcontractor (Stage 2), recurring visits (Stage 3).
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started
 
 ## Next
 
-Stage 1 — Calendar & dispatch (day/week views with per-technician lanes built on `job_visits`, drag-and-drop,
-travel buffer, map of the day's jobs).
+Stage 1 — Technician PWA view, photos, signatures (installable app, offline-friendly job screen, before/after
+photos with upload retry, rating plate photo, checklists per job type, customer signature).

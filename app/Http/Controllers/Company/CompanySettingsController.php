@@ -23,7 +23,7 @@ class CompanySettingsController extends Controller
             'company' => $company->only([
                 'id', 'name', 'timezone', 'currency',
                 'invoice_prefix', 'invoice_next_number',
-                'estimate_prefix', 'estimate_next_number',
+                'estimate_prefix', 'estimate_next_number', 'travel_buffer_minutes',
             ]) + ['business_hours' => $company->business_hours ?? $company::defaultBusinessHours()],
             'timezones' => DateTimeZone::listIdentifiers(),
             'currencies' => config('fieldservice.currencies'),

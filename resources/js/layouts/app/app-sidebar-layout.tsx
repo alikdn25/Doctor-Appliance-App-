@@ -3,12 +3,15 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
+import { useDetectTimezone } from '@/hooks/use-detect-timezone';
 import type { AppLayoutProps } from '@/types';
 
 export default function AppSidebarLayout({
     children,
     breadcrumbs = [],
 }: AppLayoutProps) {
+    useDetectTimezone();
+
     return (
         <AppShell variant="sidebar">
             <AppSidebar />

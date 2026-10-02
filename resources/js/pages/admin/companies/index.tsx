@@ -1,8 +1,9 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronRight, Plus } from 'lucide-react';
+import { ChevronRight, Clock, Plus } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,12 +28,20 @@ type Paginated<T> = {
     total: number;
 };
 
+type Tzdata = {
+    version: string | null;
+    released: string | null;
+    outdated: boolean | null;
+};
+
 export default function AdminCompaniesIndex({
     companies,
     filters,
+    tzdata,
 }: {
     companies: Paginated<CompanyRow>;
     filters: { search: string };
+    tzdata: Tzdata;
 }) {
     const t = useTrans();
     const [search, setSearch] = useState(filters.search);
@@ -64,6 +73,23 @@ export default function AdminCompaniesIndex({
                         </Button>
                     }
                 />
+
+                {tzdata.outdated !== false && (
+                    <Alert variant="destructive" className="mb-4">
+                        <Clock />
+                        <AlertTitle>
+                            {t('admin.tzdata_outdated_title')}
+                        </AlertTitle>
+                        <AlertDescription>
+                            {tzdata.outdated
+                                ? t('admin.tzdata_outdated', {
+                                      version: tzdata.version,
+                                      released: tzdata.released,
+                                  })
+                                : t('admin.tzdata_unknown')}
+                        </AlertDescription>
+                    </Alert>
+                )}
 
                 <form onSubmit={submit} className="mb-4 flex gap-2">
                     <Input

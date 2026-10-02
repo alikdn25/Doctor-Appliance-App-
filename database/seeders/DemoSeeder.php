@@ -196,5 +196,9 @@ class DemoSeeder extends Seeder
         $parts->update(['tech_notes' => 'Drain pump seized. Ordered replacement pump.']);
 
         $job($robert, ['lead_source' => 'homestars', 'job_type' => 'installation', 'description' => 'Install new range.'], null);
+
+        // The owner goes on calls too.
+        $job($jane, ['lead_source' => 'repeat_customer', 'description' => 'Fridge not cooling.'],
+            $visit($today->setTime(13, 0), 2, [$owner]));
     }
 }
