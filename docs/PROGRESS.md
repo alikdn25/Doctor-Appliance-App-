@@ -30,9 +30,9 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 | 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6)  | ✅ Done        |
 | 7   | PDF + email sending of documents, price book on lines, Square tips/refunds   | ✅ Done        |
 | 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done        |
+| 9   | Online estimate approval (signature, options, expiry, deposit) + Places      | ✅ Done        |
 | —   | Price book: parts with cost/margin, categories (services + picker done)      | 🚧 Partly      |
 | —   | Basic reports                                                                | ⏳ Not started |
-| —   | Google Places autocomplete + geocoding for properties                        | ⏳ Not started |
 
 ### Task 1 — Customers, properties, appliances ✅
 
@@ -449,12 +449,81 @@ Deferred on purpose: shared inbox and reply notifications, "parts arrived" / "pa
 reminders (Stage 2), click-to-call (Twilio voice), per-brand numbers, automated Trust Hub submission, link-click
 tracking for review requests.
 
+### Task 9 — Online estimate approval and Google Places addresses ✅
+
+**Online approval on the estimate's page** `/d/{token}` (no login):
+
+- **Approve** / **Decline** buttons (big, one-handed). Decline asks for an optional reason.
+- **Signature** on approval: draw with a finger (PNG, max 512 KB, kept on the private disk) or type the name. Stored:
+  signer name, signature type and image, date/time, IP address and browser (user agent). Audited
+  (`estimate.approved_online` / `estimate.declined_online`).
+- **Optional lines** (`estimate_items.optional`/`selected`): the office marks a line "Optional" (and may tick "Included"
+  for an on-site agreement). On the page the customer ticks the options; subtotal, discount, taxes, total and deposit are
+  recalculated live (browser mirrors `DocumentTotals`) and again on the server on approval. Lines not picked stay on the
+  estimate as "Optional · not included" and are left out of the invoice.
+- **Expiry**: after "Valid until" (company time zone) Approve is gone and the page says the estimate expired; the server
+  refuses a late approval too. New company setting "Estimates valid for (days)" (default 30, empty = no expiry) fills in
+  "Valid until" on new estimates.
+- **Deposit** (optional, per estimate): % of the total or a fixed amount (never more than the total). On approval the
+  customer goes straight to the connected provider's checkout (Square link for the deposit, no tips); "Pay deposit"
+  stays on the page until paid. The deposit is a payment on the **estimate** (`payments.estimate_id`, no invoice yet;
+  webhook idempotent, refunds handled); converting the estimate moves it onto the invoice (partially paid); voiding that
+  invoice gives it back to the estimate. A paid deposit blocks deleting the estimate. Without a provider the deposit is
+  shown with "we will contact you about payment".
+- **After approval**: status Approved; the office (active Owners/Admins with access to the brand) gets an email; in SMS
+  mode Automatic they also get a text from the company number (to the phone in their profile, after quiet hours, US
+  10DLC rule applies). The estimate page has **Convert to invoice** (one tap, no confirm) and **Schedule visit**.
+- **PDF** of an approved estimate: "Approved by the customer" box with the signature (or typed name), name, date and
+  time, IP; optional lines marked; deposit and deposit paid.
+
+**Google Places** on customer address forms (property dialog, new customer, new customer in the job form):
+
+- Suggestions while typing the street address (Places API (New) through the Maps JavaScript API, session tokens),
+  limited to the property's country (the company's country by default). Picking fills street, unit, city,
+  state/province, postal code, country and keeps `google_place_id`, latitude, longitude. Typing over the street, city,
+  region, postal code or country clears the place ID and coordinates.
+- Key only from `.env` (`GOOGLE_MAPS_BROWSER_KEY`, shared with the page only to logged-in company users). No key, or
+  Google unreachable → the field is a normal input (manual entry as before).
+
+How to test manually:
+
+1. Create an estimate on a job, mark one line Optional, set Deposit 25%, save, "Send by email" (or copy the online link).
+2. Open the link on a phone: tick the option (total changes), Approve → sign with a finger → Approve and sign. With
+   Square connected you land on the Square checkout (sandbox card 4111 1111 1111 1111); without it the page shows the
+   approval and the deposit due. The office email arrives (`MAIL_MAILER=log` → `storage/logs`).
+3. On the estimate page: signature box, deposit paid, "Convert to invoice" → the invoice is partially paid by the deposit.
+4. Download the PDF: signature and approval date are in it.
+5. Set "Valid until" to yesterday → the page shows "expired" and has no Approve button.
+6. Places: put a browser key in `GOOGLE_MAPS_BROWSER_KEY` (Maps JavaScript API + Places API (New) enabled, restricted
+   to your domain), open Customers → New → type an address and pick a suggestion.
+
+Decisions made without asking (change if needed):
+
+- **Estimates always belong to a job**, so "Convert to job/invoice" = one-tap "Convert to invoice" plus a "Schedule
+  visit" shortcut to the job (the job already exists).
+- **The deposit is a payment on the estimate**, not a separate deposit invoice: no double billing, taxes stay correct,
+  and it moves to the invoice made from the estimate.
+- Approval comes first, then the deposit payment: an unpaid deposit does not undo the approval (the office sees
+  "deposit paid" or not). The checkout is opened right after signing.
+- Optional lines start **not included**; the customer adds them. The office can pre-tick "Included".
+- An estimate **signed online is locked**: no editing, no staff approve/decline (the signature is for those lines and that
+  total); it can still be converted. Staff-recorded (on-site) approvals stay editable as before.
+- A declined estimate can still be approved online later (customers change their minds); an approved one cannot be
+  declined online (call the office).
+- Office texts go only for approvals; declines are email only. Office = Owners and Admins (technicians are not told).
+- Staff texts are not stored in the customer message history (they are not customer messages); failures are logged.
+- The signature is embedded in the page/PDF as a data URI (small PNG) instead of a separate route.
+- Places: no geocoding of addresses typed by hand (coordinates only from a picked suggestion); no server-side key.
+
+Deferred on purpose: estimate follow-up reminders and "viewed" notifications, Good/Better/Best option groups, a map
+of the day from the stored coordinates, server-side geocoding of old addresses, Stripe.
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started
 
 ## Next
 
-Stage 1 — basic reports (revenue by brand/technician/job type/lead source, average ticket, conversion), Google Places
-address autocomplete + geocoding, online approval of estimates, price book parts/costs. Stripe as the second payment
+Stage 1 — basic reports (revenue by brand/technician/job type/lead source, average ticket, estimate conversion), price
+book parts/costs, estimate follow-up reminders, map of the day from property coordinates. Stripe as the second payment
 provider. Then Stage 2 (parts orders, warranty claims, online booking, payment reminders, shared SMS inbox).

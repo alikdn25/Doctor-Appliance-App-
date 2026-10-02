@@ -82,7 +82,7 @@ return [
         'approved_title' => 'Approved by the customer',
         'signed_by' => 'Signed by :name on :date',
         'ip' => 'IP address: :ip',
-        'approved_notice' => 'Approved on :date. Thank you!',
+        'approved_notice' => 'Approved on :date — thank you!',
         'declined_notice' => 'You declined this estimate on :date.',
         'reconsider' => 'Changed your mind? You can still approve it.',
         'deposit_asked' => 'A deposit of :amount is due on approval.',
