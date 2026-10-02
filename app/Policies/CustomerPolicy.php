@@ -17,7 +17,8 @@ class CustomerPolicy
 
     public function view(User $user, Customer $customer): bool
     {
-        return $this->inCurrentCompany($customer) && $this->managesCustomers($user);
+        return $this->inCurrentCompany($customer)
+            && ($this->managesCustomers($user) || $this->seesThroughJobs($user, fn ($q) => $q->where('customer_id', $customer->id)));
     }
 
     public function create(User $user): bool
@@ -27,11 +28,11 @@ class CustomerPolicy
 
     public function update(User $user, Customer $customer): bool
     {
-        return $this->view($user, $customer);
+        return $this->inCurrentCompany($customer) && $this->managesCustomers($user);
     }
 
     public function delete(User $user, Customer $customer): bool
     {
-        return $this->view($user, $customer);
+        return $this->update($user, $customer);
     }
 }

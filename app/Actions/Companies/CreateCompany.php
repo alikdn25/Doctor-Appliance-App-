@@ -4,6 +4,7 @@ namespace App\Actions\Companies;
 
 use App\Actions\Members\AddMember;
 use App\Enums\UserRole;
+use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Services\AuditLogger;
 use App\Support\Tenancy\CurrentCompany;
@@ -22,26 +23,29 @@ class CreateCompany
     ) {}
 
     /**
-     * @param  array{name: string, timezone?: string, currency?: string, plan?: string|null, subscription_status?: string|null}  $data
+     * @param  array{name: string, timezone?: string|null, currency?: string, plan?: string|null, subscription_status?: string|null}  $data
      * @param  array{name: string, email: string}  $owner
      */
     public function handle(array $data, array $owner): Company
     {
         return DB::transaction(function () use ($data, $owner) {
+            // Without a time zone the company starts on the default one until the Owner's browser reports theirs.
+            $pending = blank($data['timezone'] ?? null);
+
             $company = Company::create([
                 ...$data,
+                'timezone' => $pending ? config('fieldservice.default_timezone') : $data['timezone'],
+                'timezone_pending' => $pending,
                 'slug' => $this->uniqueSlug($data['name']),
                 'business_hours' => Company::defaultBusinessHours(),
             ]);
 
             $this->audit->record('company.created', $company, ['name' => $company->name], $company->id);
 
-            $this->currentCompany->runAs($company, fn () => $this->addMember->handle(
-                $company,
-                $owner['name'],
-                $owner['email'],
-                UserRole::Owner,
-            ));
+            $this->currentCompany->runAs($company, function () use ($company, $owner) {
+                ChecklistTemplate::createDefaults();
+                $this->addMember->handle($company, $owner['name'], $owner['email'], UserRole::Owner);
+            });
 
             return $company;
         });

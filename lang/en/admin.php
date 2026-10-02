@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'timezone_from_owner' => 'Detect from the Owner\'s browser',
+    'tzdata_outdated_title' => 'Time zone database is out of date',
+    'tzdata_outdated' => 'The server uses time zone data :version (released about :released). Time zone rules change several times a year, so visit times may be off by an hour. Update the server\'s tzdata package (and PHP\'s timezonedb, if installed) and restart PHP.',
+    'tzdata_unknown' => 'The version of the server\'s time zone database could not be read. Check that the tzdata package is installed and up to date.',
     'companies' => [
         'title' => 'Companies',
         'description' => ':count companies on the platform',

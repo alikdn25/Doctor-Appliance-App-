@@ -124,6 +124,16 @@ class User extends Authenticatable
         return $this->belongsToMany(Brand::class)->withTimestamps();
     }
 
+    /**
+     * IDs of the brands this user is limited to in the current company. Empty means all brands.
+     *
+     * @return list<int>
+     */
+    public function limitedBrandIds(): array
+    {
+        return $this->brands()->pluck('brands.id')->map(fn ($id) => (int) $id)->all();
+    }
+
     public function membershipFor(Company|int|null $company): ?Membership
     {
         if ($company === null) {

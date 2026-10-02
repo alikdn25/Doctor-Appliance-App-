@@ -118,7 +118,10 @@ Permissions are configurable per role later; v1 uses fixed roles above.
     - Online: Square payment link on the invoice page.
     - On site: QR code / payment link on the tech's screen; investigate Square Point of Sale API hand-off from the PWA to the Square app for card-present payments.
     - Payments recorded back to the invoice automatically (webhooks).
-- Manual payment types: cash, cheque, e-Transfer.
+- **Payment providers are pluggable.** Build a provider interface; Square is the first implementation. Others (Stripe, Moneris, Helcim, Clover) can be added later without changing invoice logic. Each company picks its provider in settings, or none.
+- A company with no provider records all payments manually.
+- Manual payment methods: cash, cheque, e-Transfer, card on own terminal (with transaction reference), other (with note). Available in every company regardless of provider.
+- Marking an invoice paid manually is a normal flow, not an exception.
 - Automatic reminders for unpaid invoices; aging report.
 - **Review request toggle on invoice sending** (see §8).
 

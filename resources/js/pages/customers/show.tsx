@@ -15,6 +15,8 @@ import {
 import { useState } from 'react';
 import { ApplianceDialog } from '@/components/customers/appliance-dialog';
 import { PropertyDialog } from '@/components/customers/property-dialog';
+import { JobList } from '@/components/jobs/job-list';
+import type { JobRow } from '@/components/jobs/types';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
 import { PageHeader } from '@/components/page-header';
@@ -23,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { useTrans } from '@/lib/i18n';
 import { show as showAppliance } from '@/routes/appliances';
 import { destroy, edit, index } from '@/routes/customers';
+import { create as createJob } from '@/routes/jobs';
 import { destroy as destroyProperty } from '@/routes/properties';
 import type { Option } from '@/types';
 
@@ -70,6 +73,8 @@ type Customer = {
 
 type Props = {
     customer: Customer;
+    jobs: JobRow[];
+    canCreateJob: boolean;
     canUpdate: boolean;
     canDelete: boolean;
     applianceTypes: Option[];
@@ -78,6 +83,8 @@ type Props = {
 
 export default function CustomerShow({
     customer,
+    jobs,
+    canCreateJob,
     canUpdate,
     canDelete,
     applianceTypes,
@@ -115,7 +122,6 @@ export default function CustomerShow({
     };
 
     const placeholders = [
-        'jobs',
         'estimates',
         'invoices',
         'payments',
@@ -446,6 +452,30 @@ export default function CustomerShow({
                             </div>
                         </article>
                     ))}
+                </section>
+
+                <section className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-base font-medium">
+                            {t('customers.sections.jobs')}
+                        </h2>
+                        {canCreateJob && (
+                            <Button variant="outline" size="sm" asChild>
+                                <Link
+                                    href={createJob({
+                                        query: { customer_id: customer.id },
+                                    })}
+                                >
+                                    <Plus /> {t('jobs.add')}
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
+                    <JobList
+                        jobs={jobs}
+                        empty={t('customers.no_jobs')}
+                        showCustomer={false}
+                    />
                 </section>
 
                 <section className="grid gap-2 sm:grid-cols-2">

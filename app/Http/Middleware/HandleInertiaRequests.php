@@ -3,9 +3,11 @@
 namespace App\Http\Middleware;
 
 use App\Models\Brand;
+use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Membership;
+use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Models\User;
 use App\Services\Impersonation;
@@ -70,13 +72,21 @@ class HandleInertiaRequests extends Middleware
                 'is_super_admin' => $user->is_super_admin,
                 'two_factor_enabled' => $user->hasEnabledTwoFactorAuthentication(),
             ],
-            'company' => $company?->only(['id', 'name', 'currency', 'timezone']),
+            'company' => $company ? [
+                ...$company->only(['id', 'name', 'currency', 'timezone']),
+                // The Owner's browser fills in the time zone of a new company.
+                'timezone_pending' => $company->timezone_pending && $user->can('update', $company),
+            ] : null,
             'role' => $role ? ['value' => $role->value, 'label' => $role->label()] : null,
             'companies' => $user->is_super_admin
                 ? []
                 : $user->accessibleCompanies()->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name])->values(),
             'can' => $company === null ? [] : [
                 'viewCustomers' => $user->can('viewAny', Customer::class),
+                'viewJobs' => $user->can('viewAny', ServiceJob::class),
+                'viewMyJobs' => $user->can('viewMine', ServiceJob::class),
+                'viewCalendar' => $user->can('dispatch', ServiceJob::class),
+                'manageChecklists' => $user->can('manage', ChecklistTemplate::class),
                 'manageCompany' => $user->can('update', $company),
                 'viewBrands' => $user->can('viewAny', Brand::class),
                 'manageTeam' => $user->can('viewAny', Membership::class),

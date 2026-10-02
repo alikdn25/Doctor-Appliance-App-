@@ -17,7 +17,8 @@ class PropertyPolicy
 
     public function view(User $user, Property $property): bool
     {
-        return $this->inCurrentCompany($property) && $this->managesCustomers($user);
+        return $this->inCurrentCompany($property)
+            && ($this->managesCustomers($user) || $this->seesThroughJobs($user, fn ($q) => $q->where('property_id', $property->id)));
     }
 
     public function create(User $user): bool
@@ -27,11 +28,11 @@ class PropertyPolicy
 
     public function update(User $user, Property $property): bool
     {
-        return $this->view($user, $property);
+        return $this->inCurrentCompany($property) && $this->managesCustomers($user);
     }
 
     public function delete(User $user, Property $property): bool
     {
-        return $this->view($user, $property);
+        return $this->update($user, $property);
     }
 }

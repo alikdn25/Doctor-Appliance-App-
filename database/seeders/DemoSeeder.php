@@ -4,13 +4,19 @@ namespace Database\Seeders;
 
 use App\Actions\Customers\SaveAppliance;
 use App\Actions\Customers\SaveCustomer;
+use App\Actions\Jobs\SaveJob;
+use App\Actions\Jobs\VisitWorkflow;
+use App\Enums\JobStatus;
 use App\Enums\UserRole;
 use App\Models\Brand;
+use App\Models\ChecklistTemplate;
 use App\Models\Company;
+use App\Models\Customer;
 use App\Models\Membership;
 use App\Models\TaxRate;
 use App\Models\User;
 use App\Support\Tenancy\CurrentCompany;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -52,10 +58,11 @@ class DemoSeeder extends Seeder
                 'created_at' => now(), 'updated_at' => now(),
             ]);
 
+            ChecklistTemplate::createDefaults();
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true, 'sort_order' => 1]);
             TaxRate::create(['name' => 'PST', 'rate' => 7, 'sort_order' => 2]);
 
-            $this->customers();
+            $this->jobs($this->customers(), $doctor, $owner, $tech);
         });
 
         $tenancy->runAs($coastal, function () use ($coastal, $other, $tech) {
@@ -63,6 +70,7 @@ class DemoSeeder extends Seeder
             $this->member($coastal, $tech, UserRole::Technician);
 
             $this->brand('Coastal Appliance Repair', '#1D4ED8', 'Victoria');
+            ChecklistTemplate::createDefaults();
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true]);
 
             app(SaveCustomer::class)->handle(null, ['type' => 'residential', 'first_name' => 'Victoria', 'last_name' => 'Island'],
@@ -115,8 +123,10 @@ class DemoSeeder extends Seeder
 
     /**
      * A few customers with properties and appliances for the current company.
+     *
+     * @return list<Customer>
      */
-    private function customers(): void
+    private function customers(): array
     {
         $saveCustomer = app(SaveCustomer::class);
         $saveAppliance = app(SaveAppliance::class);
@@ -142,12 +152,56 @@ class DemoSeeder extends Seeder
         );
         $saveAppliance->handle($pm->properties()->first(), null, ['type' => 'dishwasher', 'manufacturer' => 'Bosch', 'model_number' => 'SHPM88Z75N']);
 
-        $saveCustomer->handle(
+        $robert = $saveCustomer->handle(
             null,
             ['type' => 'residential', 'first_name' => 'Robert', 'last_name' => 'Fox', 'lead_source' => 'homestars'],
             [['label' => 'mobile', 'number' => '778-555-0123', 'is_primary' => true]],
             [],
             ['line1' => '6200 McKay Ave', 'city' => 'Burnaby', 'province' => 'BC', 'postal_code' => 'V5H 4M9', 'country' => 'CA'],
         );
+
+        return [$jane, $pm, $robert];
+    }
+
+    /**
+     * Jobs in different states: today's visit for the technician, one waiting for parts, one not scheduled.
+     *
+     * @param  list<Customer>  $customers
+     */
+    private function jobs(array $customers, Brand $brand, User $owner, User $tech): void
+    {
+        [$jane, $pm, $robert] = $customers;
+        $saveJob = app(SaveJob::class);
+        $today = CarbonImmutable::now(currentCompany()->timezone)->startOfDay();
+        $visit = fn (CarbonImmutable $start, int $hours, array $people) => [
+            'attributes' => ['scheduled_start' => $start->utc(), 'scheduled_end' => $start->addHours($hours)->utc(), 'estimated_duration_minutes' => 60],
+            'assignee_ids' => array_map(fn (User $u) => $u->id, $people),
+        ];
+        $job = fn (Customer $customer, array $attributes, ?array $visitData) => $saveJob->create(
+            $customer,
+            ['brand_id' => $brand->id, 'property_id' => $customer->properties()->value('id'), 'job_type' => 'repair', ...$attributes],
+            $customer->appliances()->pluck('appliances.id')->take(1)->all(),
+            [],
+            null,
+            $visitData,
+            $owner,
+        );
+
+        $job($jane, ['lead_source' => 'google_business_profile', 'description' => 'Washer stops mid-cycle with OE error.', 'notes' => 'Customer works from home.'],
+            $visit($today->setTime(9, 0), 2, [$tech]));
+
+        $parts = $job($pm, ['lead_source' => 'referral', 'description' => 'Dishwasher not draining.'],
+            $visit($today->subDays(2)->setTime(13, 0), 2, [$tech]));
+        $workflow = app(VisitWorkflow::class);
+        $first = $parts->visits()->first();
+        $workflow->start($first, $tech);
+        $workflow->finish($first, $tech, JobStatus::WaitingForParts, 'Drain pump ordered.');
+        $parts->update(['tech_notes' => 'Drain pump seized. Ordered replacement pump.']);
+
+        $job($robert, ['lead_source' => 'homestars', 'job_type' => 'installation', 'description' => 'Install new range.'], null);
+
+        // The owner goes on calls too.
+        $job($jane, ['lead_source' => 'repeat_customer', 'description' => 'Fridge not cooling.'],
+            $visit($today->setTime(13, 0), 2, [$owner]));
     }
 }

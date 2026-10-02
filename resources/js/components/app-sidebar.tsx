@@ -2,11 +2,15 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Building,
     Building2,
+    ListChecks,
+    CalendarDays,
+    ClipboardList,
     Contact,
     LayoutGrid,
     Percent,
     Tags,
     Users,
+    Wrench,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { CompanySwitcher } from '@/components/company-switcher';
@@ -21,11 +25,13 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
+import { calendar, dashboard } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as brands } from '@/routes/brands';
 import { index as customers } from '@/routes/customers';
+import { edit as checklists } from '@/routes/company/checklists';
 import { edit as companySettings } from '@/routes/company/settings';
+import { index as jobs, mine as myJobs } from '@/routes/jobs';
 import { index as taxes } from '@/routes/taxes';
 import { index as team } from '@/routes/team';
 import type { NavItem } from '@/types';
@@ -37,6 +43,21 @@ export function AppSidebar() {
     const mainItems: NavItem[] = auth.company
         ? ([
               { title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid },
+              can.viewMyJobs && {
+                  title: 'nav.my_jobs',
+                  href: myJobs(),
+                  icon: Wrench,
+              },
+              can.viewCalendar && {
+                  title: 'nav.calendar',
+                  href: calendar(),
+                  icon: CalendarDays,
+              },
+              can.viewJobs && {
+                  title: 'nav.jobs',
+                  href: jobs(),
+                  icon: ClipboardList,
+              },
               can.viewCustomers && {
                   title: 'nav.customers',
                   href: customers(),
@@ -49,6 +70,11 @@ export function AppSidebar() {
         can.viewBrands && { title: 'nav.brands', href: brands(), icon: Tags },
         can.manageTeam && { title: 'nav.team', href: team(), icon: Users },
         can.viewTaxes && { title: 'nav.taxes', href: taxes(), icon: Percent },
+        can.manageChecklists && {
+            title: 'nav.checklists',
+            href: checklists(),
+            icon: ListChecks,
+        },
         can.manageCompany && {
             title: 'nav.company_settings',
             href: companySettings(),

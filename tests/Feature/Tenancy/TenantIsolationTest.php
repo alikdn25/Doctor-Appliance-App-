@@ -6,16 +6,27 @@ use App\Models\Appliance;
 use App\Models\AuditLog;
 use App\Models\Brand;
 use App\Models\BrandAddress;
+use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Customer;
 use App\Models\CustomerEmail;
 use App\Models\CustomerPhone;
+use App\Models\JobAppliance;
+use App\Models\JobChecklistItem;
+use App\Models\JobPhoto;
+use App\Models\JobStatusChange;
+use App\Models\JobVisit;
+use App\Models\JobVisitAssignee;
 use App\Models\Membership;
 use App\Models\Property;
+use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Tenancy\MissingTenantException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -37,6 +48,35 @@ beforeEach(function () {
     $this->propertyB = Property::factory()->for($this->customerB)->create(['line1' => '1 Secret St']);
     $this->applianceA = Appliance::factory()->for($this->propertyA)->create();
     $this->applianceB = Appliance::factory()->for($this->propertyB)->create(['type' => 'washer', 'model_number' => 'SECRETMODEL']);
+
+    $this->techA = memberOf($this->companyA, UserRole::Technician);
+    $this->techB = memberOf($this->companyB, UserRole::Technician);
+    $this->jobA = ServiceJob::factory()->for($this->propertyA)->withAppliances([$this->applianceA])->withVisit($this->techA)
+        ->create(['brand_id' => $this->brandA->id]);
+    $this->jobB = ServiceJob::factory()->for($this->propertyB)->withAppliances([$this->applianceB])->withVisit($this->techB)
+        ->create(['brand_id' => $this->brandB->id, 'description' => 'Secret job']);
+    $this->visitB = JobVisit::withoutCompanyScope()->where('service_job_id', $this->jobB->id)->sole();
+
+    foreach ([$this->jobA, $this->jobB] as $job) {
+        JobStatusChange::withoutCompanyScope()->insert([
+            'company_id' => $job->company_id, 'service_job_id' => $job->id, 'to_status' => 'new', 'created_at' => now(),
+        ]);
+        JobPhoto::withoutCompanyScope()->insert([
+            'company_id' => $job->company_id, 'service_job_id' => $job->id, 'kind' => 'before',
+            'path' => "companies/{$job->company_id}/jobs/{$job->id}/photos/x.jpg", 'client_uuid' => (string) Str::uuid(),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        JobChecklistItem::withoutCompanyScope()->insert([
+            'company_id' => $job->company_id, 'service_job_id' => $job->id, 'position' => 0, 'label' => 'Check',
+            'is_done' => false, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        ChecklistTemplate::withoutCompanyScope()->insert([
+            'company_id' => $job->company_id, 'job_type' => 'repair', 'items' => json_encode(["Item {$job->company_id}"]),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+    $this->photoB = JobPhoto::withoutCompanyScope()->where('service_job_id', $this->jobB->id)->sole();
+    $this->itemB = JobChecklistItem::withoutCompanyScope()->where('service_job_id', $this->jobB->id)->sole();
 });
 
 /**
@@ -53,6 +93,14 @@ dataset('tenant models', [
     'customer emails' => [CustomerEmail::class],
     'properties' => [Property::class],
     'appliances' => [Appliance::class],
+    'jobs' => [ServiceJob::class],
+    'job appliances' => [JobAppliance::class],
+    'job visits' => [JobVisit::class],
+    'job visit assignees' => [JobVisitAssignee::class],
+    'job status changes' => [JobStatusChange::class],
+    'job photos' => [JobPhoto::class],
+    'job checklist items' => [JobChecklistItem::class],
+    'checklist templates' => [ChecklistTemplate::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -68,8 +116,10 @@ test('every tenant-owned model is covered by isolation tests', function () {
         ->all();
 
     expect($tenantModels)->toBe(collect([
-        Appliance::class, Brand::class, BrandAddress::class, Customer::class, CustomerEmail::class,
-        CustomerPhone::class, Membership::class, Property::class, TaxRate::class,
+        Appliance::class, Brand::class, BrandAddress::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class,
+        CustomerPhone::class, JobAppliance::class, JobChecklistItem::class, JobPhoto::class, JobStatusChange::class,
+        JobVisit::class, JobVisitAssignee::class,
+        Membership::class, Property::class, ServiceJob::class, TaxRate::class,
     ])->sort()->values()->all());
 });
 
@@ -149,8 +199,8 @@ test('the team page lists only members of the current company', function () {
     $this->actingAs($this->ownerA)
         ->get(route('team.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->has('members', 1)
-            ->where('members.0.email', $this->ownerA->email)
+            ->where('members', fn ($members) => collect($members)->pluck('email')->sort()->values()->all()
+                === collect([$this->ownerA->email, $this->techA->email])->sort()->values()->all())
             ->has('brands', 1));
 });
 
@@ -275,4 +325,159 @@ test('manufacturer and tag suggestions only come from the current company', func
 
     $this->get(route('customers.index'))
         ->assertInertia(fn (Assert $page) => $page->where('tags', []));
+});
+
+test('the job list, search and my jobs only show jobs of the current company', function () {
+    $this->actingAs($this->ownerA);
+
+    $this->get(route('jobs.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('jobs.total', 1)
+            ->where('jobs.data.0.id', $this->jobA->id)
+            ->where('brands', fn ($brands) => collect($brands)->pluck('label')->all() === ['Brand A'])
+            ->where('technicians', fn ($people) => ! collect($people)->pluck('id')->contains($this->techB->id)));
+
+    foreach ([(string) $this->jobB->number, 'Bella', '604-555-0202', 'Secret St', 'SECRETMODEL'] as $term) {
+        $this->get(route('jobs.index', ['search' => $term]))
+            ->assertInertia(fn (Assert $page) => $page->where('jobs.data', fn ($rows) => collect($rows)->pluck('id')->doesntContain($this->jobB->id)));
+    }
+
+    $this->actingAs($this->techA)
+        ->get(route('jobs.mine', ['tab' => 'upcoming']))
+        ->assertInertia(fn (Assert $page) => $page->has('visits', 1)->where('visits.0.job.id', $this->jobA->id));
+});
+
+test('another company\'s jobs and visits cannot be opened or changed', function () {
+    $this->actingAs($this->ownerA);
+
+    $this->get(route('jobs.show', $this->jobB))->assertNotFound();
+    $this->get(route('jobs.edit', $this->jobB))->assertNotFound();
+    $this->put(route('jobs.update', $this->jobB), ['brand_id' => $this->brandA->id])->assertNotFound();
+    $this->put(route('jobs.status', $this->jobB), ['status' => 'cancelled'])->assertNotFound();
+    $this->put(route('jobs.tech-notes', $this->jobB), ['tech_notes' => 'X'])->assertNotFound();
+    $this->post(route('jobs.appliances.store', $this->jobB), ['type' => 'dryer'])->assertNotFound();
+    $this->put(route('jobs.appliances.update', [$this->jobB, $this->applianceB]), ['model_number' => 'X'])->assertNotFound();
+    $this->post(route('visits.store', $this->jobB), ['date' => '2030-01-01', 'start_time' => '09:00', 'end_time' => '10:00'])->assertNotFound();
+    $this->put(route('visits.update', $this->visitB), ['date' => '2030-01-01', 'start_time' => '09:00', 'end_time' => '10:00'])->assertNotFound();
+    $this->post(route('visits.on-my-way', $this->visitB))->assertNotFound();
+    $this->post(route('visits.start', $this->visitB))->assertNotFound();
+    $this->post(route('visits.finish', $this->visitB), ['outcome' => 'completed'])->assertNotFound();
+    $this->delete(route('visits.destroy', $this->visitB))->assertNotFound();
+    $this->delete(route('jobs.destroy', $this->jobB))->assertNotFound();
+
+    $jobB = ServiceJob::withoutCompanyScope()->find($this->jobB->id);
+    expect($jobB->status->value)->toBe('scheduled')
+        ->and($jobB->trashed())->toBeFalse()
+        ->and($jobB->tech_notes)->toBeNull()
+        ->and(JobVisit::withoutCompanyScope()->find($this->visitB->id)->status->value)->toBe('scheduled')
+        ->and(Appliance::withoutCompanyScope()->where('property_id', $this->propertyB->id)->count())->toBe(1);
+});
+
+test('a job cannot use another company\'s customer, property, appliance, brand or team member', function () {
+    $this->actingAs($this->ownerA);
+    $visit = ['add_visit' => true, 'visit' => ['date' => '2030-01-01', 'start_time' => '09:00', 'end_time' => '10:00']];
+    $base = [
+        'brand_id' => $this->brandA->id, 'job_type' => 'repair',
+        'customer_id' => $this->customerA->id, 'property_id' => $this->propertyA->id,
+    ];
+
+    $this->post(route('jobs.store'), [...$base, 'customer_id' => $this->customerB->id, 'property_id' => $this->propertyB->id])
+        ->assertSessionHasErrors('customer_id');
+    $this->post(route('jobs.store'), [...$base, 'property_id' => $this->propertyB->id])
+        ->assertSessionHasErrors('property_id');
+    $this->post(route('jobs.store'), [...$base, 'appliance_ids' => [$this->applianceB->id]])
+        ->assertSessionHasErrors('appliance_ids');
+    $this->post(route('jobs.store'), [...$base, 'brand_id' => $this->brandB->id])
+        ->assertSessionHasErrors('brand_id');
+    $this->post(route('jobs.store'), [...$base, ...$visit, 'visit' => [...$visit['visit'], 'assignee_ids' => [$this->techB->id]]])
+        ->assertSessionHasErrors('visit.assignee_ids.0');
+    $this->post(route('visits.store', $this->jobA), [...$visit['visit'], 'assignee_ids' => [$this->techB->id]])
+        ->assertSessionHasErrors('assignee_ids.0');
+    $this->post(route('jobs.appliances.store', $this->jobA), ['appliance_id' => $this->applianceB->id])
+        ->assertNotFound();
+
+    expect(ServiceJob::withoutCompanyScope()->where('company_id', $this->companyA->id)->count())->toBe(1);
+});
+
+test('the job customer lookup never returns another company\'s customers', function () {
+    $this->actingAs($this->ownerA)
+        ->getJson(route('jobs.lookup', ['search' => 'Bella']))
+        ->assertOk()
+        ->assertJsonCount(0, 'customers');
+});
+
+test('job numbers are counted per company', function () {
+    $this->actingAs($this->ownerB)->post(route('jobs.store'), [
+        'brand_id' => $this->brandB->id, 'job_type' => 'repair',
+        'customer_id' => $this->customerB->id, 'property_id' => $this->propertyB->id,
+    ])->assertRedirect();
+
+    expect(ServiceJob::withoutCompanyScope()->where('company_id', $this->companyB->id)->orderBy('number')->pluck('number')->all())
+        ->toBe([1001, 1002])
+        ->and(Company::find($this->companyA->id)->job_next_number)->toBe(1002);
+});
+
+test('the calendar only shows the current company\'s visits, people and jobs to schedule', function () {
+    ServiceJob::factory()->for($this->propertyB)->create(['brand_id' => $this->brandB->id]);
+    $visitA = JobVisit::withoutCompanyScope()->where('service_job_id', $this->jobA->id)->sole();
+    $date = $visitA->scheduled_start->setTimezone($this->companyA->timezone)->format('Y-m-d');
+
+    $props = $this->actingAs($this->ownerA)->get(route('calendar', ['date' => $date]))->viewData('page')['props'];
+
+    expect(collect($props['visits'])->pluck('id')->all())->toBe([$visitA->id])
+        ->and(collect($props['lanes'])->pluck('id')->filter()->sort()->values()->all())
+        ->toBe(collect([$this->ownerA->id, $this->techA->id])->sort()->values()->all())
+        ->and($props['unscheduled'])->toBe([]);
+});
+
+test('another company\'s visit cannot be moved or assigned through the calendar', function () {
+    $this->actingAs($this->ownerA);
+
+    $this->put(route('visits.move', $this->visitB), ['date' => '2030-01-01', 'start_time' => '09:00'])->assertNotFound();
+
+    $visitA = JobVisit::withoutCompanyScope()->where('service_job_id', $this->jobA->id)->sole();
+    $this->put(route('visits.move', $visitA), ['date' => '2030-01-01', 'start_time' => '09:00', 'to_user_id' => $this->techB->id])
+        ->assertSessionHasErrors('to_user_id');
+
+    expect(JobVisit::withoutCompanyScope()->find($this->visitB->id)->scheduled_start->toDateTimeString())
+        ->toBe($this->visitB->scheduled_start->toDateTimeString());
+});
+
+test('another company\'s photos, checklist and signature cannot be seen or changed', function () {
+    $this->actingAs($this->ownerA);
+    $jpeg = UploadedFile::fake()->image('p.jpg');
+
+    $this->get(route('jobs.photos.show', [$this->jobB, $this->photoB]))->assertNotFound();
+    $this->delete(route('jobs.photos.destroy', [$this->jobB, $this->photoB]))->assertNotFound();
+    $this->post(route('jobs.photos.store', $this->jobB), ['photo' => $jpeg, 'kind' => 'before', 'client_uuid' => (string) Str::uuid()])->assertNotFound();
+    $this->put(route('jobs.checklist.toggle', [$this->jobB, $this->itemB]), ['is_done' => true])->assertNotFound();
+    $this->post(route('jobs.signature.store', $this->jobB), ['signature' => UploadedFile::fake()->image('s.png'), 'signer_name' => 'X'])->assertNotFound();
+    $this->get(route('jobs.signature.show', $this->jobB))->assertNotFound();
+    $this->post(route('jobs.appliances.rating-plate', [$this->jobB, $this->applianceB]), ['rating_plate' => $jpeg])->assertNotFound();
+
+    // Another company's photo or item through the company's own job.
+    $this->get(route('jobs.photos.show', [$this->jobA, $this->photoB]))->assertNotFound();
+    $this->put(route('jobs.checklist.toggle', [$this->jobA, $this->itemB]), ['is_done' => true])->assertNotFound();
+
+    expect(JobPhoto::withoutCompanyScope()->whereKey($this->photoB->id)->exists())->toBeTrue()
+        ->and($this->itemB->fresh()->is_done)->toBeFalse()
+        ->and(ServiceJob::withoutCompanyScope()->find($this->jobB->id)->signature_path)->toBeNull();
+});
+
+test('a photo uuid used by another company does not collide', function () {
+    Storage::fake('public');
+
+    $this->actingAs($this->ownerA)
+        ->post(route('jobs.photos.store', $this->jobA), [
+            'photo' => UploadedFile::fake()->image('p.jpg'), 'kind' => 'after', 'client_uuid' => $this->photoB->client_uuid,
+        ], ['Accept' => 'application/json'])
+        ->assertCreated();
+
+    expect(JobPhoto::withoutCompanyScope()->where('client_uuid', $this->photoB->client_uuid)->count())->toBe(2);
+});
+
+test('the checklist settings only show the current company\'s checklists', function () {
+    $this->actingAs($this->ownerA)
+        ->get(route('company.checklists.edit'))
+        ->assertInertia(fn (Assert $page) => $page->where('templates.repair', ["Item {$this->companyA->id}"]));
 });

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\UserRole;
 use App\Models\Concerns\BelongsToCompany;
 use Database\Factories\MembershipFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -55,5 +56,16 @@ class Membership extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Active members who can be assigned to job visits (Owners and Admins go on calls too).
+     *
+     * @param  Builder<Membership>  $query
+     */
+    public function scopeAssignable(Builder $query): void
+    {
+        $query->where('is_active', true)
+            ->whereIn('role', [UserRole::Owner->value, UserRole::Admin->value, UserRole::Technician->value]);
     }
 }

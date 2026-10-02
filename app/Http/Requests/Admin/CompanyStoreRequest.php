@@ -21,7 +21,8 @@ class CompanyStoreRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'timezone' => ['required', 'timezone:all'],
+            // Empty: detect from the Owner's browser on their first visit.
+            'timezone' => ['nullable', 'timezone:all'],
             'currency' => ['required', Rule::in(config('fieldservice.currencies'))],
             'plan' => ['nullable', 'string', 'max:50'],
             'subscription_status' => ['nullable', Rule::enum(SubscriptionStatus::class)],

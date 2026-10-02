@@ -8,7 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Customers\ApplianceRequest;
 use App\Models\Appliance;
 use App\Models\Property;
+use App\Models\ServiceJob;
+use App\Support\Jobs\JobPresenter;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -24,9 +27,31 @@ class ApplianceController extends Controller
         return to_route('appliances.show', $appliance);
     }
 
-    public function show(Appliance $appliance): Response
+    public function show(Request $request, Appliance $appliance): Response
     {
         Gate::authorize('view', $appliance);
+
+        $user = $request->user();
+        $visibleIds = ServiceJob::query()->visibleTo($user)->whereHas('appliances', fn ($q) => $q->whereKey($appliance->id))->pluck('id');
+
+        // Repair history across all jobs: date, type and what was done. No prices.
+        $history = ServiceJob::query()
+            ->whereHas('appliances', fn ($q) => $q->whereKey($appliance->id))
+            ->with(['visits'])
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (ServiceJob $job) => [
+                'id' => $job->id,
+                'number' => $job->number,
+                'date' => JobPresenter::iso($job->completed_at ?? $job->visits->last()?->scheduled_start ?? $job->created_at),
+                'job_type_label' => $job->job_type->label(),
+                'status' => $job->status->value,
+                'status_label' => $job->status->label(),
+                'description' => $job->description,
+                'work_done' => $job->tech_notes,
+                'can_open' => $visibleIds->contains($job->id),
+            ])
+            ->values();
 
         $property = $appliance->property()->firstOrFail();
         $customer = $property->customer()->firstOrFail();
@@ -52,7 +77,9 @@ class ApplianceController extends Controller
             'customer' => [
                 'id' => $customer->id,
                 'display_name' => $customer->display_name,
+                'can_view' => Gate::allows('view', $customer),
             ],
+            'history' => $history,
             'canUpdate' => Gate::allows('update', $appliance),
             'applianceTypes' => ApplianceType::options(),
             'manufacturers' => CustomerController::manufacturers(),

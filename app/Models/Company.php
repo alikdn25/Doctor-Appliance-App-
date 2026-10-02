@@ -29,6 +29,9 @@ use Illuminate\Support\Carbon;
  * @property int $invoice_next_number
  * @property string $estimate_prefix
  * @property int $estimate_next_number
+ * @property int $job_next_number
+ * @property int $travel_buffer_minutes
+ * @property bool $timezone_pending
  * @property array<string, array{closed: bool, open: string|null, close: string|null}>|null $business_hours
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -53,6 +56,8 @@ class Company extends Model
         'estimate_prefix',
         'estimate_next_number',
         'business_hours',
+        'travel_buffer_minutes',
+        'timezone_pending',
     ];
 
     protected $attributes = [
@@ -72,6 +77,9 @@ class Company extends Model
             'business_hours' => 'array',
             'invoice_next_number' => 'integer',
             'estimate_next_number' => 'integer',
+            'job_next_number' => 'integer',
+            'travel_buffer_minutes' => 'integer',
+            'timezone_pending' => 'boolean',
         ];
     }
 
