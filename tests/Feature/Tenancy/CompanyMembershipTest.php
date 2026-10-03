@@ -70,15 +70,12 @@ test('a stale current company falls back to an accessible one', function () {
     expect($user->fresh()->current_company_id)->toBe($company->id);
 });
 
-test('a user without an active membership sees the no-company page', function () {
+test('a new user without any membership is guided to company setup', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get(route('dashboard'))
-        ->assertForbidden()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('errors/no-company')
-            ->where('hasSuspendedCompany', false));
+        ->assertRedirect(route('onboarding.company.create'));
 });
 
 test('members of a suspended company are locked out', function () {

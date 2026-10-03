@@ -16,12 +16,6 @@ return [
     'private_media_disk' => env('PRIVATE_MEDIA_DISK', 'local'),
 
     /*
-    | Owners, Admins and super-admins must enable two-factor authentication
-    | before they can use the app (SPEC §9).
-    */
-    'require_two_factor' => (bool) env('AUTH_REQUIRE_TWO_FACTOR', true),
-
-    /*
     | Country preselected when the super-admin creates a company (SPEC §1.1). Currency, regional format,
     | time zone and address format follow the company's country (config/countries.php).
     */

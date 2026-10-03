@@ -297,13 +297,17 @@ from the company number (Twilio voice).
 - Mobile-first UI; technician screens usable with one hand.
 - English UI in v1; all text strings kept in translation files for future languages.
 - Localization per company as in §1.1 (currency, taxes, time zone, regional format, address format, E.164 phones).
-- Security: hashed passwords, 2FA for Owner/Admin, role-based access, rate limiting, audit log of sensitive actions.
+- Security: hashed passwords, optional 2FA for every user, role-based access, rate limiting, audit log of sensitive actions.
 - Privacy: customer data belongs to the company; company can export all its data (CSV); deletion on request.
 - Daily database backups, off-server.
 - Performance: main screens load in under 2 seconds on 4G.
 - Every tenant-owned query is tenant-scoped; automated tests prove isolation.
 
 ## 10. Delivery stages
+
+### First-run account setup
+
+Public registration with name, email and password, signed email confirmation and a clear three-step account/company setup. A verified new user creates their first company as Owner and gets a first brand automatically. Existing memberships keep their company access; suspended accounts cannot bypass restrictions through setup. Two-factor enrollment is optional for all roles, including the platform super-admin. Email confirmation is separate from optional authenticator-based 2FA; email login codes are a future task.
 
 ### Stage 0 — Foundation
 
@@ -319,7 +323,7 @@ Parts orders, manufacturer warranty claims, online booking page, click-to-call, 
 
 ### Stage 3
 
-Strata features & inspection PDFs, service plans & recurring jobs, QuickBooks, advanced reports, onboarding flow for new companies.
+Strata features & inspection PDFs, service plans & recurring jobs, QuickBooks, advanced reports, extended onboarding flow for new companies.
 
 Tenant subscription billing (§11) is a separate task scheduled before the Phase B launch.
 

@@ -19,7 +19,7 @@ npm install
 cp .env.example .env && php artisan key:generate
 # create databases (dev + tests) for the user in .env
 createdb field_service && createdb field_service_test
-# set DB_PASSWORD in .env; locally you may set AUTH_REQUIRE_TWO_FACTOR=false
+# set DB_PASSWORD and mail settings in .env; two-factor enrollment is optional
 php artisan migrate --seed      # demo data, every account uses password "password"
 composer run dev                # app on http://localhost:8000 + Vite + queue worker
 ```

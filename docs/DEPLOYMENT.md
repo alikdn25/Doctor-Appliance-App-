@@ -45,7 +45,7 @@ php artisan migrate --force
 php artisan storage:link
 chmod -R ug+rw storage bootstrap/cache && chgrp -R www-data storage bootstrap/cache
 
-php artisan app:create-super-admin   # your platform account (2FA is required on first sign-in)
+php artisan app:create-super-admin   # your platform account (2FA is optional)
 ```
 
 Production `.env` values that differ from `.env.example`:
@@ -193,7 +193,7 @@ Required in production:
 | `SESSION_DRIVER=database`, `SESSION_SECURE_COOKIE=true`                                                          |                                                                                        |
 | `QUEUE_CONNECTION`, `CACHE_STORE`                                                                                | `database` (or `redis`, §5)                                                            |
 | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME` | transactional email provider; `MAIL_FROM_ADDRESS` on a verified domain                 |
-| `AUTH_REQUIRE_TWO_FACTOR=true`                                                                                   | 2FA for Owners/Admins and super-admins                                                 |
+| Optional 2FA | Enabled by each user in Security settings. Legacy AUTH_REQUIRE_TWO_FACTOR is ignored. |
 | `MEDIA_DISK=public`, `PRIVATE_MEDIA_DISK=local`                                                                  | private media (photos, signatures, receipts) stay in `storage/app/private`; back it up |
 
 Required for the features that use them (empty = the feature is off):
@@ -211,3 +211,9 @@ Optional with sensible defaults: `DEFAULT_COMPANY_COUNTRY` (US), `SMS_REMINDER_H
 
 Backups: the PostgreSQL database **and** `storage/app/private` (job photos, signatures, cash receipts, supplier
 receipts — the latter must be kept 6+ years for the bookkeeper).
+
+## Public registration and first-run setup
+
+Users create their own account at `/register`, confirm a signed email link, then create their first company at `/onboarding/company`. The initial company Owner and brand are automatic. Registration and confirmation resend are rate-limited. Configure and test real SMTP and the queue before advertising signup: the log mailer does not deliver confirmation messages. Existing unverified accounts must confirm their email; a successful invitation/password-reset token also confirms it. Existing confirmed 2FA stays enabled until the user disables it in Security settings; enrollment is optional for every role, even when an old server .env contains AUTH_REQUIRE_TWO_FACTOR=true.
+
+Set APP_NAME="Doctor Appliance" and VITE_APP_NAME="${APP_NAME}" before building if the old installation still uses Field Service. Preserve APP_KEY and all data. Test signup from a private browser, delivery to a controlled inbox, confirmation, company setup and the first customer/job. Email confirmation is implemented now; optional email-based login codes are not implemented.

@@ -101,7 +101,7 @@ return [
     |
     */
 
-    'middleware' => ['web'],
+    'middleware' => ['web', App\Http\Middleware\ThrottleRegistration::class],
 
     /*
     |--------------------------------------------------------------------------
@@ -144,6 +144,8 @@ return [
     */
 
     'features' => [
+        Features::registration(),
+        Features::emailVerification(),
         Features::resetPasswords(),
         Features::twoFactorAuthentication([
             'confirm' => true,

@@ -1,3 +1,11 @@
+# Public signup and first-run usability — validation pending
+
+- Public account registration, queued signed email confirmation, throttled resend and account/company setup steps. Unverified users cannot enter company data. Verification through an invitation/password reset remains supported.
+- Verified first-time users create their own company, become its Owner and receive a first brand. Company creation is transactional and serialized per user; request-supplied roles, owners, company IDs and plan settings are ignored. Existing inactive/suspended memberships cannot use setup to bypass access controls.
+- Mandatory two-factor enrollment is removed for every role; existing enabled two-factor challenges and recovery codes remain. Authenticator-based 2FA is optional in Security settings. Email login codes are a future task.
+- First dashboard offers real links to customers, jobs, team and taxes instead of an obsolete Coming soon message. Auth/setup screens have visible branding, step progress and mobile touch targets.
+- Backend security tests and desktop/mobile signup browser coverage added. CI validation is pending. Real SMTP delivery and server deployment remain to be verified by the server agent.
+
 # Progress
 
 Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the end of every task.
@@ -5,7 +13,7 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 ## Stage 0 — Foundation ✅ Done
 
 - Laravel 13 + Inertia React + TypeScript + Tailwind skeleton, Pest tests, PostgreSQL.
-- Auth (Fortify): login, password reset, 2FA (required for Owner/Admin).
+- Auth (Fortify): login, password reset, optional 2FA.
 - Companies (tenants) with timezone, currency, invoice/estimate numbering, business hours, `plan`,
   `subscription_status`.
 - Tenant isolation: `BelongsToCompany` trait + global scope, fails closed without a current company;

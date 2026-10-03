@@ -10,13 +10,15 @@ import { Spinner } from '@/components/ui/spinner';
 import { store } from '@/routes/login';
 import { useTrans } from '@/lib/i18n';
 import { request } from '@/routes/password';
+import { register } from '@/routes';
 
 type Props = {
     status?: string;
     canResetPassword: boolean;
+    canRegister: boolean;
 };
 
-export default function Login({ status, canResetPassword }: Props) {
+export default function Login({ status, canResetPassword, canRegister }: Props) {
     const t = useTrans();
 
     return (
@@ -99,6 +101,13 @@ export default function Login({ status, canResetPassword }: Props) {
                     </>
                 )}
             </Form>
+
+            {canRegister && (
+                <p className="text-center text-sm text-muted-foreground">
+                    {t('auth.login.new_account')}{' '}
+                    <TextLink href={register()}>{t('auth.register.title')}</TextLink>
+                </p>
+            )}
 
             {status && (
                 <div className="mb-4 text-center text-sm font-medium text-green-600">

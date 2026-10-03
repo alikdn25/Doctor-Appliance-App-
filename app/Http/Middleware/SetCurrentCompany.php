@@ -40,6 +40,10 @@ class SetCurrentCompany
             : $this->resolveCompany($user);
 
         if ($company === null) {
+            if (! $user->memberships()->exists() && ! $this->impersonation->isActive()) {
+                return redirect()->route('onboarding.company.create');
+            }
+
             return Inertia::render('errors/no-company', [
                 'hasSuspendedCompany' => $user->companies()->wherePivot('is_active', true)->exists(),
             ])->toResponse($request)->setStatusCode(403);

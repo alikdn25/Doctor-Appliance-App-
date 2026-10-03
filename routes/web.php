@@ -40,6 +40,7 @@ use App\Http\Controllers\Jobs\JobWorkController;
 use App\Http\Controllers\Jobs\VisitActionController;
 use App\Http\Controllers\Jobs\VisitController;
 use App\Http\Controllers\ManifestController;
+use App\Http\Controllers\Onboarding\CompanyController as OnboardingCompanyController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\Reports\ReportController;
@@ -74,8 +75,13 @@ Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'logi
 
 Route::middleware(['auth', 'active'])->group(function () {
 
+    Route::middleware('verified')->group(function () {
+        Route::get('onboarding/company', [OnboardingCompanyController::class, 'create'])->name('onboarding.company.create');
+        Route::post('onboarding/company', [OnboardingCompanyController::class, 'store'])->middleware('throttle:5,1')->name('onboarding.company.store');
+    });
+
     // Tenant area: everything here runs inside the current company.
-    Route::middleware(['tenant', 'two-factor'])->group(function () {
+    Route::middleware(['verified', 'tenant'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
 
         Route::get('messages', [SmsInboxController::class, 'index'])->name('messages.index');
@@ -218,7 +224,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::delete('impersonation', [ImpersonationController::class, 'destroy'])->name('impersonation.stop');
 
     // Super-admin panel (platform owner only).
-    Route::prefix('admin')->name('admin.')->middleware(['super-admin', 'two-factor'])->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware(['verified', 'super-admin'])->group(function () {
         Route::redirect('/', '/admin/companies');
         Route::resource('companies', AdminCompanyController::class)->except(['edit', 'destroy']);
         Route::put('companies/{company}/sms-registration', [AdminSmsRegistrationController::class, 'update'])->name('companies.sms-registration');

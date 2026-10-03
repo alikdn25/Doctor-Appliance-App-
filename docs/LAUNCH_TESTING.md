@@ -37,3 +37,7 @@ This checklist records remaining manual checks; none are marked complete by auto
 
 Record the tested commit, server URL, browser/device, date and result for each manual check before release.
 Stage 2/3 and platform subscription billing remain outside the completed first-launch work.
+
+## Signup acceptance
+
+Use a private browser and a controlled inbox: register, receive/confirm email, create a company, open the first customer/job, log out and back in without mandatory 2FA. Check resend, expired confirmation, correction of an email typo, existing invitations, company suspension and an account that already enabled optional 2FA. CI logs are test mail only; real SMTP delivery must be checked on the VPS.

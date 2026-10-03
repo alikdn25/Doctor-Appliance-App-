@@ -17,9 +17,8 @@ return [
     'password' => 'The provided password is incorrect.',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
 
-    'two_factor_required' => 'Your role requires two-factor authentication. Please enable it to continue.',
-
     'fields' => [
+        'name' => 'Full name',
         'email' => 'Email address',
         'password' => 'Password',
         'password_confirmation' => 'Confirm password',
@@ -34,6 +33,25 @@ return [
         'forgot' => 'Forgot your password?',
         'remember' => 'Remember me',
         'submit' => 'Log in',
+        'new_account' => 'New to Doctor Appliance?',
+    ],
+
+    'register' => [
+        'title' => 'Create account',
+        'heading' => 'Start with your account',
+        'description' => 'Create your login, confirm your email, then set up your company.',
+        'submit' => 'Create account',
+        'already_registered' => 'Already have an account?',
+    ],
+
+    'verify' => [
+        'title' => 'Confirm your email',
+        'description' => 'Open the confirmation link sent to :email. Then we will help you set up your company.',
+        'sent' => 'A new confirmation link has been sent. Check your inbox and spam folder.',
+        'resend' => 'Resend confirmation email',
+        'change_email' => 'Correct my email address',
+        'sign_out' => 'Use another account',
+        'step' => 'Step 2 of 3 · Confirm email',
     ],
 
     'forgot' => [

@@ -1,11 +1,14 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Tags, Users } from 'lucide-react';
+import { ArrowRight, CalendarDays, Contact, Percent, Tags, Users, Wrench } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTrans } from '@/lib/i18n';
 import { dashboard } from '@/routes';
 import { index as brands } from '@/routes/brands';
 import { index as team } from '@/routes/team';
+import { create as createCustomer } from '@/routes/customers';
+import { create as createJob, mine as myJobs } from '@/routes/jobs';
+import { index as taxes } from '@/routes/taxes';
 
 type Props = {
     companyName: string;
@@ -31,11 +34,19 @@ export default function Dashboard({ companyName, stats }: Props) {
         },
     ];
 
+    const actions = [
+        auth.can.viewCustomers === true && { title: t('dashboard.add_customer'), description: t('dashboard.add_customer_hint'), href: createCustomer(), icon: Contact },
+        auth.can.viewJobs === true && { title: t('dashboard.schedule_job'), description: t('dashboard.schedule_job_hint'), href: createJob(), icon: CalendarDays },
+        auth.can.viewMyJobs === true && { title: t('dashboard.my_work'), description: t('dashboard.my_work_hint'), href: myJobs(), icon: Wrench },
+        auth.can.manageTeam === true && { title: t('dashboard.invite_team'), description: t('dashboard.invite_team_hint'), href: team(), icon: Users },
+        auth.can.viewTaxes === true && { title: t('dashboard.configure_taxes'), description: t('dashboard.configure_taxes_hint'), href: taxes(), icon: Percent },
+    ].filter((action) => action !== false);
+
     return (
         <>
             <Head title={t('nav.dashboard')} />
 
-            <div className="flex flex-1 flex-col gap-4 p-4">
+            <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-4 sm:p-6">
                 <PageHeader
                     title={t('dashboard.welcome', { name: auth.user.name })}
                     description={t('dashboard.subtitle', {
@@ -71,9 +82,21 @@ export default function Dashboard({ companyName, stats }: Props) {
                     })}
                 </div>
 
-                <p className="text-sm text-muted-foreground">
-                    {t('dashboard.coming_soon')}
-                </p>
+                <section aria-labelledby="next-steps" className="space-y-4">
+                    <div>
+                        <h2 id="next-steps" className="text-lg font-semibold">{t('dashboard.next_steps')}</h2>
+                        <p className="text-sm text-muted-foreground">{t('dashboard.next_steps_hint')}</p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {actions.map((action) => (
+                            <Link key={action.title} href={action.href} className="flex min-h-28 items-center gap-4 rounded-2xl border bg-card p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><action.icon className="size-5" aria-hidden="true" /></span>
+                                <div className="min-w-0 flex-1"><h3 className="font-semibold">{action.title}</h3><p className="mt-1 text-sm text-muted-foreground">{action.description}</p></div>
+                                <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                            </Link>
+                        ))}
+                    </div>
+                </section>
             </div>
         </>
     );

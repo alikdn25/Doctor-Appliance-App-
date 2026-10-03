@@ -5,8 +5,10 @@ namespace App\Models;
 use App\Enums\CompanyStatus;
 use App\Enums\UserRole;
 use App\Models\Scopes\CompanyScope;
+use App\Notifications\VerifyEmail;
 use App\Support\Tenancy\CurrentCompany;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -44,7 +46,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  */
 #[Fillable(['name', 'email', 'phone', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
@@ -53,6 +55,11 @@ class User extends Authenticatable
         'is_super_admin' => false,
         'is_active' => true,
     ];
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmail);
+    }
 
     /**
      * @return array<string, string>
