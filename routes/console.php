@@ -14,7 +14,9 @@ Schedule::command('payments:refresh-square-tokens')->dailyAt('03:17')->withoutOv
 // Customer messages (SPEC §7.7, §8).
 Schedule::command('messages:deliver-due')->everyMinute()->withoutOverlapping();
 Schedule::command('messages:send-visit-reminders')->hourlyAt(2)->withoutOverlapping();
+Schedule::command('estimates:send-followups')->hourlyAt(7)->withoutOverlapping();
 Schedule::command('sms:sync-registrations')->dailyAt('06:23');
 
 // Technicians are reminded before visits with a strict arrival time.
 Schedule::command('visits:strict-arrival-reminders')->everyFiveMinutes()->withoutOverlapping();
+

@@ -97,6 +97,7 @@ class Estimate extends Model
             'deposit_amount' => 'integer',
             'revision' => 'integer',
             'revised_at' => 'datetime',
+            'followup_processed_at' => 'datetime',
         ];
     }
 
@@ -214,3 +215,4 @@ class Estimate extends Model
         return in_array($this->status, [EstimateStatus::Draft, EstimateStatus::Declined], true) && ! $this->trashed();
     }
 }
+

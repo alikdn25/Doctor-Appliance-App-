@@ -2,6 +2,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import { ChevronRight, MapPin, Phone, Plus } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import { CustomerAvatar } from '@/components/customers/customer-avatar';
+import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { PageHeader } from '@/components/page-header';
 import { PaginationLinks } from '@/components/pagination-links';
 import type { Paginated } from '@/components/pagination-links';
@@ -17,6 +19,7 @@ import type { Option } from '@/types';
 type CustomerRow = {
     id: number;
     display_name: string;
+    avatar_icon: AvatarIcon;
     type: string;
     type_label: string;
     phone: string | null;
@@ -128,6 +131,7 @@ export default function CustomersIndex({
                                 href={show(customer.id)}
                                 className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-muted/50"
                             >
+                                <CustomerAvatar icon={customer.avatar_icon} />
                                 <div className="min-w-0 flex-1 space-y-1">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <span className="font-medium">
@@ -186,3 +190,4 @@ export default function CustomersIndex({
 CustomersIndex.layout = {
     breadcrumbs: [{ title: 'customers.title', href: index() }],
 };
+

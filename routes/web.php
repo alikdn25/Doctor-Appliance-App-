@@ -79,6 +79,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 
         Route::post('companies/{company}/switch', SwitchCompanyController::class)->name('companies.switch');
 
+        Route::get('customers/avatar', [CustomerController::class, 'avatar'])->middleware('throttle:120,1')->name('customers.avatar');
         Route::get('customers/duplicates', [CustomerController::class, 'duplicates'])->name('customers.duplicates');
         Route::resource('customers', CustomerController::class);
         Route::post('customers/{customer}/properties', [PropertyController::class, 'store'])->name('properties.store');

@@ -54,6 +54,9 @@ import { StatusDialog } from '@/components/jobs/status-dialog';
 import type { ApplianceItem, Assignable, Visit } from '@/components/jobs/types';
 import { applianceTitle } from '@/components/jobs/types';
 import { VisitDialog } from '@/components/jobs/visit-dialog';
+import { CustomerAvatar } from '@/components/customers/customer-avatar';
+import type { AvatarIcon } from '@/components/customers/customer-avatar';
+import { CustomerNotes } from '@/components/customers/customer-notes';
 import { PageHeader } from '@/components/page-header';
 import {
     JobMessagingSection,
@@ -106,6 +109,8 @@ type Job = {
     customer: {
         id: number;
         display_name: string;
+        avatar_icon: AvatarIcon;
+        notes: string | null;
         phones: { id: number; number: string; label_text: string }[];
     };
     property: PropertyData & { full_address: string };
@@ -450,8 +455,9 @@ export default function JobShow({
 
                 {/* Customer and address */}
                 <section className="space-y-4 rounded-3xl border bg-card p-5 shadow-sm">
-                    <div className="flex items-start justify-between gap-2">
-                        <div>
+                    <div className="flex items-start gap-3">
+                        <CustomerAvatar icon={job.customer.avatar_icon} />
+                        <div className="min-w-0 flex-1">
                             <h2 className="text-xs text-muted-foreground">
                                 {t('jobs.sections.customer')}
                             </h2>
@@ -472,6 +478,8 @@ export default function JobShow({
                             </p>
                         </div>
                     </div>
+
+                    <CustomerNotes notes={job.customer.notes} />
 
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                         <Button asChild size="lg" variant="outline">

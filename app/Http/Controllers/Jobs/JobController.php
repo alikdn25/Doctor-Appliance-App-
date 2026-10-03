@@ -180,6 +180,7 @@ class JobController extends Controller
                             'total' => $job->bringItems->count(),
                         ],
                         'customer' => $job->customer?->display_name,
+                        'customer_icon' => $job->customer?->avatarIcon() ?? 'neutral',
                         'phone' => $job->customer?->primaryPhone?->number,
                         'address' => $job->property?->fullAddress(),
                         'appliances' => $job->appliances->map(fn (Appliance $a) => $a->label())->values(),
@@ -278,6 +279,8 @@ class JobController extends Controller
                 'customer' => [
                     'id' => $job->customer->id,
                     'display_name' => $job->customer->display_name,
+                    'avatar_icon' => $job->customer->avatarIcon(),
+                    'notes' => $job->customer->notes,
                     'phones' => $job->customer->phones->map(fn ($p) => [
                         'id' => $p->id,
                         'number' => $p->number,
@@ -538,6 +541,8 @@ class JobController extends Controller
         return [
             'id' => $customer->id,
             'display_name' => $customer->display_name,
+            'avatar_icon' => $customer->avatarIcon(),
+            'notes' => $customer->notes,
             'phone' => $customer->primaryPhone?->number,
             'lead_source' => $customer->lead_source?->value,
             'properties' => $customer->properties->map(fn (Property $p) => [
@@ -549,6 +554,7 @@ class JobController extends Controller
             ])->values(),
             // Earlier jobs, for a return visit or warranty callback.
             'jobs' => ServiceJob::query()
+                ->visibleTo(auth()->user())
                 ->where('customer_id', $customer->id)
                 ->with('appliances')
                 ->orderByDesc('id')
@@ -644,3 +650,4 @@ class JobController extends Controller
         return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 ? $value : '';
     }
 }
+

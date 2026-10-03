@@ -27,6 +27,7 @@ return [
     'none' => 'None',
     'diagnostic_service_hint' => 'Used for "Invoice the diagnosis / service call only" when a customer declines the repair.',
     'closure_reasons_hint' => 'Reasons offered when a job is closed without a repair or cancelled. One per line; empty = the default list.',
+    'estimate_followup_days_hint' => 'Send one reminder this many days after an estimate is sent, while it is still awaiting a decision and has not expired. Empty = off. Uses your messaging settings.',
     'estimate_valid_days_hint' => 'Fills in "Valid until" on new estimates. After that day the customer can no longer approve online. Empty = no expiry.',
     'travel_buffer_hint' => 'Time kept free after each visit to drive to the next one. The calendar warns when visits overlap.',
     'timezone_detected' => 'Time zone set to :timezone from your browser. You can change it in company settings.',
@@ -57,6 +58,7 @@ return [
         'estimate_prefix' => 'Estimate prefix',
         'next_number' => 'Next number',
         'travel_buffer_minutes' => 'Travel buffer (minutes)',
+        'estimate_followup_days' => 'Estimate follow-up after (days)',
         'estimate_valid_days' => 'Estimates valid for (days)',
         'technicians_can_delete_jobs' => 'Allow technicians to delete jobs',
         'technicians_see_costs' => 'Technicians see costs and profit',
@@ -83,3 +85,4 @@ return [
         'sun' => 'Sun',
     ],
 ];
+

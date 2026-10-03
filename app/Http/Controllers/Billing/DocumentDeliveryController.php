@@ -82,7 +82,9 @@ class DocumentDeliveryController extends Controller
         );
 
         if ($message->status !== 'blocked') {
-            $document->forceFill(['sent_at' => now(), 'sent_to' => $message->to])->saveQuietly();
+            $document->forceFill(['sent_at' => now(), 'sent_to' => $message->to,
+                ...($document instanceof Estimate ? ['followup_processed_at' => null] : []),
+            ])->saveQuietly();
         }
 
         return JobMessageController::result($message->status, $message->status_reason, $message->send_after);
@@ -118,3 +120,4 @@ class DocumentDeliveryController extends Controller
         return back();
     }
 }
+

@@ -91,7 +91,7 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 
 ## 6. Core data model (summary)
 
-- **Customer:** type (residential / commercial / property manager / strata or HOA), name, phones (E.164), emails, notes,
+- **Customer:** type (residential / commercial / property manager / strata or HOA), name, phones (E.164), emails, "About the customer" (persistent team notes about preferences and contact/arrival expectations, shown in booking and assigned jobs), optional name-suggested icon with a saved manual override,
   tags, lead source, payment terms (empty = the company default; see §7.6).
 - **Property:** address in the format of its country (Google Places autocomplete, geocoded), access notes, gate/buzzer code. A customer can have many properties. A strata building can have many **units**.
 - **Appliance** (appliance repair vertical): property, type (washer, dryer, fridge, range, dishwasher, etc.), brand, model number, serial number, photo of the rating plate, install/purchase date, warranty info, full repair history.

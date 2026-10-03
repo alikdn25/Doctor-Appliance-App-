@@ -20,6 +20,31 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
+### Customer context, name icons, estimate follow-ups and calendar map — validation pending
+
+- **About the customer** reuses existing customer notes, preserving all earlier entries. Office staff edit it in
+  the customer profile or during the first booking. It appears prominently when booking and on assigned jobs,
+  alongside the customer's earlier jobs, estimates, invoices and message history. Booking history follows
+  the user's brand access; technicians and other companies cannot browse unrelated customers.
+- Optional name-based decorative icons use a local dictionary of 16,589 Latin names from 45 Faker locales,
+  pinned to MIT-licensed FakerPHP v1.24.1. Unknown/conflicting names remain neutral; automatic, neutral,
+  man and woman choices are saved per customer. Business customers use a business icon. No customer names
+  are sent to a third-party guessing service. This is an icon suggestion, not a gender record.
+- Company-configured estimate follow-ups: blank disables them, 1–90 days enables one attempt per explicitly
+  sent estimate. Only unanswered, unexpired estimates on open jobs qualify. Local reminder hour, SMS opt-out,
+  quiet hours and email fallback apply. Row locking prevents duplicate enqueueing; blocked attempts are visible
+  in message history. A new explicit send resets the delay; revisions start without an old reminder stamp.
+- Calendar Map shows the selected local day's visits in order, filtered by person, with numbered markers and
+  links to visit details. Visits without saved coordinates remain in the list. Company/brand permissions apply.
+  Maps and Places share one bounded loader. Directions remain available without an embedded map; long map
+  routes are split into mobile-compatible sections. The optional GOOGLE_MAPS_MAP_ID selects a production
+  Google map style (the demo map ID is the default for testing).
+- New migration adds avatar_style, estimate_followup_days and followup_processed_at. Existing customers
+  default to automatic icons; existing companies keep follow-ups disabled.
+- Build, formatting, lint, TypeScript and backend validation are pending on this change. Manual browser/mobile,
+  Google map, outbound mail/SMS and server checks remain pending. No deployment has occurred.
+
+
 ### Item taxes and employee expense view — CI passed
 
 - Unlimited named company taxes, active/default switches and independent subsets per estimate/invoice item.
@@ -781,6 +806,7 @@ now; automatic supplier price import; cash refunds tied to cash on hand.
 
 ## Next
 
-Stage 1 — validate categories, brand availability and business reports; estimate follow-up reminders,
-map of the day from property coordinates. Stripe as the second payment
-provider. Then Stage 2 (parts orders, warranty claims, online booking, payment reminders, shared SMS inbox).
+Stage 1 — run the customer-context/name-icon/follow-up/map checks, then verify the first server installation,
+mobile layouts, receipt camera uploads, Google map credentials, mail/SMS delivery and payment callbacks.
+Stripe remains the second payment provider. Then Stage 2 (parts orders, warranty claims, online booking,
+payment reminders, shared SMS inbox), Stage 3 and subscription billing.

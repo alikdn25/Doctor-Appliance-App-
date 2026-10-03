@@ -2,6 +2,8 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Plus, TriangleAlert, X } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import { CustomerAvatar, useNameAvatar } from '@/components/customers/customer-avatar';
+import type { AvatarStyle } from '@/components/customers/customer-avatar';
 import { PropertyFields } from '@/components/customers/property-fields';
 import { emptyProperty } from '@/components/customers/types';
 import type { PropertyFormData } from '@/components/customers/types';
@@ -31,6 +33,7 @@ type Customer = {
     id: number;
     type: string;
     first_name: string | null;
+    avatar_style: AvatarStyle;
     last_name: string | null;
     company_name: string | null;
     display_name: string;
@@ -45,6 +48,7 @@ type Customer = {
 type FormData = {
     type: string;
     first_name: string;
+    avatar_style: AvatarStyle;
     last_name: string;
     company_name: string;
     lead_source: string;
@@ -133,6 +137,7 @@ export default function CustomerForm({
     const form = useForm<FormData>({
         type: customer?.type ?? 'residential',
         first_name: customer?.first_name ?? '',
+        avatar_style: customer?.avatar_style ?? 'auto',
         last_name: customer?.last_name ?? '',
         company_name: customer?.company_name ?? '',
         lead_source: customer?.lead_source ?? '',
@@ -157,6 +162,7 @@ export default function CustomerForm({
             is_primary: true,
         },
     });
+    const suggestedIcon = useNameAvatar(form.data.type === 'residential' ? form.data.first_name : '', form.data.avatar_style);
     const errors = form.errors as Record<string, string | undefined>;
 
     const found = useDuplicates(
@@ -242,6 +248,14 @@ export default function CustomerForm({
                     <h2 className="text-base font-medium sm:col-span-2">
                         {t('customers.sections.details')}
                     </h2>
+                    <div className="flex items-start gap-3 sm:col-span-2">
+                        <CustomerAvatar icon={form.data.type === 'residential' ? suggestedIcon : 'business'} />
+                        {form.data.type === 'residential' && <FormField id="avatar_style" label={t('customers.fields.avatar_style')} hint={t('customers.avatar_hint')} error={errors.avatar_style}>
+                            <NativeSelect id="avatar_style" value={form.data.avatar_style} onChange={(event) => form.setData('avatar_style', event.target.value as AvatarStyle)}>
+                                {(['auto', 'neutral', 'man', 'woman'] as const).map((style) => <option key={style} value={style}>{t(`customers.icons.${style}`)}</option>)}
+                            </NativeSelect>
+                        </FormField>}
+                    </div>
                     <FormField
                         id="type"
                         label={t('customers.fields.type')}
@@ -542,6 +556,7 @@ export default function CustomerForm({
                     <FormField
                         id="notes"
                         label={t('customers.fields.notes')}
+                        hint={t('customers.about_hint')}
                         error={errors.notes}
                     >
                         <Textarea
@@ -617,3 +632,4 @@ function RemoveButton({ onClick }: { onClick: () => void }) {
 CustomerForm.layout = {
     breadcrumbs: [{ title: 'customers.title', href: index() }],
 };
+

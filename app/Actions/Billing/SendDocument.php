@@ -26,7 +26,9 @@ class SendDocument
 
         Mail::to($email)->queue(new DocumentMail($document, $message));
 
-        $document->forceFill(['sent_at' => now(), 'sent_to' => $email])->saveQuietly();
+        $document->forceFill(['sent_at' => now(), 'sent_to' => $email,
+            ...($document instanceof Estimate ? ['followup_processed_at' => null] : []),
+        ])->saveQuietly();
 
         $this->audit->record($document instanceof Invoice ? 'invoice.sent' : 'estimate.sent', $document, [
             'number' => $document->number, 'to' => $email,
@@ -58,3 +60,4 @@ class SendDocument
         ]);
     }
 }
+

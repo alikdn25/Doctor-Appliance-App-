@@ -38,6 +38,7 @@ return [
     // Google Places address suggestions in the browser (Places API (New) + Maps JavaScript API). A browser key:
     // restrict it to your domain (HTTP referrers) and to those two APIs in Google Cloud. Empty = manual address entry.
     'google_maps' => [
+        'map_id' => env('GOOGLE_MAPS_MAP_ID', 'DEMO_MAP_ID'),
         'browser_key' => env('GOOGLE_MAPS_BROWSER_KEY'),
     ],
 
@@ -70,3 +71,4 @@ return [
     ],
 
 ];
+

@@ -12,6 +12,9 @@ import InputError from '@/components/input-error';
 import type { ApplianceItem, Assignable } from '@/components/jobs/types';
 import { applianceTitle } from '@/components/jobs/types';
 import { VisitFields } from '@/components/jobs/visit-fields';
+import { CustomerAvatar } from '@/components/customers/customer-avatar';
+import type { AvatarIcon } from '@/components/customers/customer-avatar';
+import { CustomerNotes } from '@/components/customers/customer-notes';
 import { PageHeader } from '@/components/page-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -30,6 +33,8 @@ import type { Option } from '@/types';
 type CustomerOption = {
     id: number;
     display_name: string;
+    avatar_icon: AvatarIcon;
+    notes: string | null;
     phone: string | null;
     lead_source: string | null;
     properties: {
@@ -95,6 +100,7 @@ type FormData = {
         company_name: string;
         phone: string;
         email: string;
+        notes: string;
         property: {
             line1: string;
             unit: string;
@@ -183,6 +189,7 @@ export default function JobForm({
             company_name: '',
             phone: '',
             email: '',
+            notes: '',
             property: {
                 line1: '',
                 unit: '',
@@ -443,15 +450,17 @@ export default function JobForm({
 
                     {customer ? (
                         <div className="flex items-start justify-between gap-2 rounded-md bg-muted/50 p-3">
-                            <div>
-                                <div className="font-medium">
-                                    {customer.display_name}
+                            <div className="min-w-0 flex-1 space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <CustomerAvatar icon={customer.avatar_icon} />
+                                    <span className="font-medium">{customer.display_name}</span>
                                 </div>
                                 {customer.phone && (
                                     <div className="text-sm text-muted-foreground">
                                         {phoneText(customer.phone)}
                                     </div>
                                 )}
+                                <CustomerNotes notes={customer.notes} />
                             </div>
                             {!editing && (
                                 <Button
@@ -512,6 +521,10 @@ export default function JobForm({
                                     'sm:col-span-2',
                                 )}
                             </div>
+
+                            <FormField id="nc-notes" label={t('customers.fields.notes')} hint={t('customers.about_hint')} error={errors['new_customer.notes']}>
+                                <Textarea id="nc-notes" rows={3} maxLength={10000} value={data.new_customer.notes} onChange={(e) => setNewCustomer({ notes: e.target.value })} />
+                            </FormField>
 
                             {duplicate && (
                                 <Alert>
@@ -1222,3 +1235,4 @@ export default function JobForm({
 JobForm.layout = {
     breadcrumbs: [{ title: 'jobs.title', href: index() }],
 };
+

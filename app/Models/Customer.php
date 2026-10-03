@@ -7,6 +7,7 @@ use App\Enums\LeadSource;
 use App\Enums\PaymentTerms;
 use App\Models\Concerns\BelongsToCompany;
 use App\Support\PhoneNumber;
+use App\Support\NameAvatar;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -42,6 +43,7 @@ class Customer extends Model
     protected $fillable = [
         'type',
         'first_name',
+        'avatar_style',
         'last_name',
         'company_name',
         'lead_source',
@@ -53,6 +55,7 @@ class Customer extends Model
     protected $attributes = [
         'type' => 'residential',
         'tags' => '[]',
+        'avatar_style' => 'auto',
     ];
 
     /**
@@ -82,9 +85,17 @@ class Customer extends Model
         });
     }
 
-    /**
-     * The customer's own payment terms, or the company default.
-     */
+    /** Decorative icon; the saved manual choice takes precedence. */
+    public function avatarIcon(): string
+    {
+        if ($this->type !== CustomerType::Residential) {
+            return 'business';
+        }
+
+        return $this->avatar_style === 'auto' ? NameAvatar::suggest($this->first_name) : $this->avatar_style;
+    }
+
+    /** The customer's own payment terms, or the company default. */
     public function paymentTerms(): PaymentTerms
     {
         return $this->payment_terms ?? currentCompany()->default_payment_terms;
@@ -200,3 +211,4 @@ class Customer extends Model
         });
     }
 }
+

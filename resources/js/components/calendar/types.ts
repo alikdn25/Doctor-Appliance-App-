@@ -15,6 +15,7 @@ export type CalendarVisit = Visit & {
         job_type_label: string;
         customer: string | null;
         address: string | null;
+        coordinates: { lat: number; lng: number } | null;
         appliances: string[];
     };
 };
@@ -92,3 +93,4 @@ export const routeUrl = (addresses: string[]) => {
 
     return `https://www.google.com/maps/dir/?${params}`;
 };
+

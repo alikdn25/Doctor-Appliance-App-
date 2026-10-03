@@ -25,6 +25,7 @@ return [
         'visit_reminder' => 'Visit reminder (day before)',
         'on_my_way' => 'On my way',
         'estimate_link' => 'Estimate link',
+        'estimate_followup' => 'Estimate follow-up',
         'invoice_link' => 'Invoice link',
         'review_request' => 'Review request',
         'general' => 'Text from the job',
@@ -36,6 +37,7 @@ return [
         'visit_reminder' => "Hi {customer_first_name}, this is a reminder of your {brand} appointment {visit_date}.\nArrival window: {arrival_window}\nReply to this message if you need to change it.",
         'on_my_way' => 'Hi {customer_first_name}, {tech_name} from {brand} is on the way. Expected arrival: {arrival_window}',
         'estimate_link' => 'Hi {customer_first_name}, here is your estimate {number} from {brand} for {amount}: {link}',
+        'estimate_followup' => 'Hi {customer_first_name}, would you like to proceed with estimate {number} from {brand} for {amount}? You can review it here: {link}',
         'invoice_link' => 'Hi {customer_first_name}, here is your invoice {number} from {brand}. Balance due: {amount}. View and pay online: {link}',
         'review_request' => 'Hi {customer_first_name}, thank you for choosing {brand}! Would you take a moment to review us on Google? {review_link}',
         'general' => 'Hi {customer_first_name}, this is {tech_name} from {brand}. ',
@@ -49,6 +51,7 @@ return [
         'visit_reminder' => 'Reminder: your appointment with :brand',
         'on_my_way' => ':brand is on the way',
         'estimate_link' => 'Estimate :number from :brand',
+        'estimate_followup' => 'Follow-up: estimate :number from :brand',
         'invoice_link' => 'Invoice :number from :brand',
         'review_request' => 'How did we do? — :brand',
         'general' => 'Message from :brand',
@@ -143,3 +146,4 @@ return [
     'opened_on_phone' => "SMS opened from technician's phone",
     'open_job' => 'Open job',
 ];
+

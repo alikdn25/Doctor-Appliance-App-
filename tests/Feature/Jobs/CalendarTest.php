@@ -287,3 +287,31 @@ test('an invalid date falls back to today', function () {
     expect(calendarProps(['date' => '2030-02-31'])['date'])->toBe('2030-06-12')
         ->and(calendarProps(['date' => 'nonsense', 'view' => 'month'])['view'])->toBe('day');
 });
+
+
+test('the map shows only the selected local day and retains addresses without coordinates', function () {
+    $this->property->forceFill(['latitude' => 0, 'longitude' => 0])->saveQuietly();
+    $first = visitAt('2030-06-12 09:00');
+    visitAt('2030-06-13 09:00');
+    visitAt('2030-06-12 11:00', visit: ['status' => VisitStatus::Cancelled]);
+    $props = calendarProps(['view' => 'map']);
+    expect($props['view'])->toBe('map')->and($props['days'])->toBe(['2030-06-12'])
+        ->and(collect($props['visits'])->pluck('id')->all())->toBe([$first->id])
+        ->and($props['visits'][0]['job']['coordinates'])->toBe(['lat' => 0.0, 'lng' => 0.0]);
+    $this->property->forceFill(['latitude' => null, 'longitude' => null])->saveQuietly();
+    expect(calendarProps(['view' => 'map'])['visits'][0]['job']['coordinates'])->toBeNull();
+});
+
+test('map coordinates respect brand and tenant permissions', function () {
+    $otherBrand = Brand::factory()->create(['company_id' => $this->company->id]);
+    $admin = memberOf($this->company, UserRole::Admin);
+    DB::table('brand_user')->insert(['company_id' => $this->company->id, 'brand_id' => $this->brand->id, 'user_id' => $admin->id]);
+    $mine = visitAt('2030-06-12 09:00');
+    visitAt('2030-06-12 11:00', job: ['brand_id' => $otherBrand->id]);
+    $foreign = Company::factory()->create();
+    inCompany($foreign, fn () => JobVisit::factory()->create(['scheduled_start' => '2030-06-12 16:00:00', 'scheduled_end' => '2030-06-12 17:00:00']));
+    $this->actingAs($admin);
+    expect(collect(calendarProps(['view' => 'map'])['visits'])->pluck('id')->all())->toBe([$mine->id]);
+    $this->actingAs($this->tech);
+    $this->get(route('calendar', ['view' => 'map']))->assertForbidden();
+});

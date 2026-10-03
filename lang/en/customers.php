@@ -50,7 +50,11 @@ return [
         'messages' => 'Messages',
     ],
 
+    'about_hint' => 'Preferences and details for your team, such as arrival expectations, children sleeping, or how to contact the customer. Visible during booking and on their jobs.',
+    'avatar_hint' => 'Automatic uses a suggestion from the first name. Uncertain names stay neutral. You can choose and save any icon.',
+    'icons' => ['auto' => 'Automatic', 'neutral' => 'Neutral icon', 'man' => 'Man icon', 'woman' => 'Woman icon', 'business' => 'Business icon'],
     'fields' => [
+        'avatar_style' => 'Customer icon',
         'type' => 'Customer type',
         'first_name' => 'First name',
         'last_name' => 'Last name',
@@ -58,7 +62,7 @@ return [
         'lead_source' => 'Lead source',
         'payment_terms' => 'Payment terms',
         'tags' => 'Tags',
-        'notes' => 'Notes',
+        'notes' => 'About the customer',
         'phone' => 'Phone',
         'phone_label' => 'Phone type',
         'email' => 'Email',
@@ -100,3 +104,4 @@ return [
         'other' => 'Other',
     ],
 ];
+

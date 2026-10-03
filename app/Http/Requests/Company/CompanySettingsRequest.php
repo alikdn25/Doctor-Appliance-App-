@@ -41,6 +41,7 @@ class CompanySettingsRequest extends FormRequest
             'business_hours' => ['required', 'array:'.implode(',', Company::WEEKDAYS)],
             'travel_buffer_minutes' => ['required', 'integer', 'min:0', 'max:240'],
             'estimate_valid_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'estimate_followup_days' => ['nullable', 'integer', 'min:1', 'max:90'],
             'technicians_can_delete_jobs' => ['boolean'],
             'strict_arrival_reminder_minutes' => ['sometimes', 'integer', 'min:5', 'max:480'],
             'diagnostic_service_id' => ['nullable', 'integer', Rule::exists('services', 'id')->where('company_id', currentCompany()->id)],
@@ -137,3 +138,4 @@ class CompanySettingsRequest extends FormRequest
         return $data;
     }
 }
+

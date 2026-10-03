@@ -11,6 +11,8 @@ import { mapsUrl, telUrl } from '@/components/customers/types';
 import { StrictBadge } from '@/components/jobs/job-outcome';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import type { Visit } from '@/components/jobs/types';
+import { CustomerAvatar } from '@/components/customers/customer-avatar';
+import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useInstallPrompt } from '@/hooks/use-install-prompt';
@@ -30,6 +32,7 @@ type MyVisit = Visit & {
         visit_type_label: string;
         bring: { done: number; total: number } | null;
         customer: string | null;
+        customer_icon: AvatarIcon;
         phone: string | null;
         address: string | null;
         appliances: string[];
@@ -149,7 +152,8 @@ export default function MyJobs({
                                         />
                                     </span>
                                 </div>
-                                <div className="text-lg font-semibold tracking-tight">
+                                <div className="flex items-center gap-3 text-lg font-semibold tracking-tight">
+                                    <CustomerAvatar icon={visit.job.customer_icon} />
                                     {visit.job.customer}
                                 </div>
                                 {visit.job.address && (

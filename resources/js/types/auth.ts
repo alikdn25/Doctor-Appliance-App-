@@ -25,6 +25,7 @@ export type CurrentCompany = {
     address: { region_label: string; postal_label: string; order: string };
     /** Google Maps browser key for address suggestions; null = type addresses by hand. */
     google_maps_key: string | null;
+    google_maps_map_id: string;
 };
 
 export type Permissions = {
