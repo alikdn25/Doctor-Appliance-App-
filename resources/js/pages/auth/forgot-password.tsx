@@ -10,7 +10,13 @@ import { login } from '@/routes';
 import { useTrans } from '@/lib/i18n';
 import { email } from '@/routes/password';
 
-export default function ForgotPassword({ status }: { status?: string }) {
+export default function ForgotPassword({
+    status,
+    emailAvailable,
+}: {
+    status?: string;
+    emailAvailable: boolean;
+}) {
     const t = useTrans();
 
     return (
@@ -24,40 +30,47 @@ export default function ForgotPassword({ status }: { status?: string }) {
             )}
 
             <div className="space-y-6">
-                <Form {...email.form()}>
-                    {({ processing, errors }) => (
-                        <>
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">
-                                    {t('auth.fields.email')}
-                                </Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    name="email"
-                                    autoComplete="off"
-                                    autoFocus
-                                    placeholder="email@example.com"
-                                />
+                {!emailAvailable && (
+                    <p className="rounded-xl border bg-muted p-4 text-sm">
+                        {t('auth.email_unavailable')}
+                    </p>
+                )}
+                {emailAvailable && (
+                    <Form {...email.form()}>
+                        {({ processing, errors }) => (
+                            <>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="email">
+                                        {t('auth.fields.email')}
+                                    </Label>
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        name="email"
+                                        autoComplete="off"
+                                        autoFocus
+                                        placeholder="email@example.com"
+                                    />
 
-                                <InputError message={errors.email} />
-                            </div>
+                                    <InputError message={errors.email} />
+                                </div>
 
-                            <div className="my-6 flex items-center justify-start">
-                                <Button
-                                    className="w-full"
-                                    disabled={processing}
-                                    data-test="email-password-reset-link-button"
-                                >
-                                    {processing && (
-                                        <LoaderCircle className="h-4 w-4 animate-spin" />
-                                    )}
-                                    {t('auth.forgot.submit')}
-                                </Button>
-                            </div>
-                        </>
-                    )}
-                </Form>
+                                <div className="my-6 flex items-center justify-start">
+                                    <Button
+                                        className="w-full"
+                                        disabled={processing}
+                                        data-test="email-password-reset-link-button"
+                                    >
+                                        {processing && (
+                                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                                        )}
+                                        {t('auth.forgot.submit')}
+                                    </Button>
+                                </div>
+                            </>
+                        )}
+                    </Form>
+                )}
 
                 <div className="space-x-1 text-center text-sm text-muted-foreground">
                     <span>{t('auth.forgot.return_to')}</span>

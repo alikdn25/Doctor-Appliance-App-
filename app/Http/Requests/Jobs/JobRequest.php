@@ -40,6 +40,8 @@ class JobRequest extends FormRequest
         $this->merge([
             'new_customer_mode' => $this->creating() && $this->boolean('new_customer_mode'),
             'add_visit' => $this->creating() && $this->boolean('add_visit'),
+            'quick_booking' => $this->creating() && $this->boolean('quick_booking'),
+            'open_invoice' => $this->creating() && $this->boolean('open_invoice'),
             'appliance_ids' => array_values(array_filter((array) $this->input('appliance_ids', []), 'is_numeric')),
             'new_appliances' => array_values(array_filter((array) $this->input('new_appliances', []), 'is_array')),
         ]);
@@ -103,6 +105,8 @@ class JobRequest extends FormRequest
         return [
             ...$rules,
             'new_customer_mode' => ['boolean'],
+            'quick_booking' => ['boolean'],
+            'open_invoice' => ['boolean'],
             'customer_id' => $newCustomer ? ['nullable'] : ['required', 'integer'],
             'property_id' => $newCustomer ? ['nullable'] : ['required', 'integer'],
             ...($newCustomer ? [
@@ -113,6 +117,10 @@ class JobRequest extends FormRequest
                 'new_customer.email' => ['nullable', 'email', 'max:255'],
                 'new_customer.notes' => ['nullable', 'string', 'max:10000'],
                 ...PropertyRequest::addressRules('new_customer.property.'),
+                ...($this->boolean('quick_booking') ? [
+                    'new_customer.property.line1' => ['nullable', 'required_with:new_customer.property.city', 'string', 'max:255'],
+                    'new_customer.property.city' => ['nullable', 'required_with:new_customer.property.line1', 'string', 'max:100'],
+                ] : []),
             ] : []),
             'add_visit' => ['boolean'],
             ...VisitRequest::visitRules('visit.', 'required_if_accepted:add_visit'),
@@ -249,7 +257,12 @@ class JobRequest extends FormRequest
             'emails' => filled($data['email'] ?? null)
                 ? [['label' => 'personal', 'email' => mb_strtolower($data['email']), 'is_primary' => true]]
                 : [],
-            'property' => [...$data['property'], 'is_primary' => true],
+            'property' => [
+                ...$data['property'],
+                'line1' => $data['property']['line1'] ?? '',
+                'city' => $data['property']['city'] ?? '',
+                'is_primary' => true,
+            ],
         ];
     }
 

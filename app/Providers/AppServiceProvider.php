@@ -9,6 +9,7 @@ use App\Support\Tenancy\CurrentCompany;
 use App\Support\TimezoneDatabase;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -42,6 +43,8 @@ class AppServiceProvider extends ServiceProvider
                 $event->user->forceFill(['last_login_at' => now()])->saveQuietly();
             }
         });
+
+        Event::listen(Logout::class, fn () => app(Impersonation::class)->finish());
     }
 
     /**

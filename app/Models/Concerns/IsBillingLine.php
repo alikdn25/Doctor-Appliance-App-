@@ -27,9 +27,18 @@ use Illuminate\Support\Carbon;
  */
 trait IsBillingLine
 {
+    public static function bootIsBillingLine(): void
+    {
+        static::creating(function (Model $line) {
+            if (! array_key_exists('cost_owner_id', $line->getAttributes()) && $line->unit_cost !== null) {
+                $line->cost_owner_id = auth()->id();
+            }
+        });
+    }
+
     /** Fields of a line besides description/quantity/price/taxable. */
     public const LINE_FIELDS = [
-        'tax_rate_ids', 'kind', 'service_id', 'part_number', 'supplier', 'unit', 'unit_cost', 'supplier_taxes', 'bill_to_customer',
+        'tax_rate_ids', 'kind', 'service_id', 'part_number', 'supplier', 'unit', 'unit_cost', 'cost_owner_id', 'supplier_taxes', 'bill_to_customer',
         'warranty_value', 'warranty_unit',
     ];
 

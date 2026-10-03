@@ -31,8 +31,8 @@ class SetCurrentCompany
             return $next($request);
         }
 
-        if ($user->isSuperAdmin()) {
-            return redirect()->route('admin.companies.index');
+        if ($user->isSuperAdmin() && $user->memberships()->doesntExist()) {
+            return redirect()->route('workspaces.index');
         }
 
         $company = $this->impersonation->isActive()
@@ -40,6 +40,10 @@ class SetCurrentCompany
             : $this->resolveCompany($user);
 
         if ($company === null) {
+            if (! $user->memberships()->exists() && ! $this->impersonation->isActive()) {
+                return redirect()->route('onboarding.company.create');
+            }
+
             return Inertia::render('errors/no-company', [
                 'hasSuspendedCompany' => $user->companies()->wherePivot('is_active', true)->exists(),
             ])->toResponse($request)->setStatusCode(403);

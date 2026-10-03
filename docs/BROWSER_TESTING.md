@@ -12,6 +12,17 @@ custom tax settings, inbox read/reply, invoice/public totals and PDF download, t
 foreign customer denial, queued job photos and drawn signatures, core office screens, dark mode,
 uncaught JavaScript errors and document width.
 
+Public signup coverage uses a separate anonymous session on each screen size: registration,
+correction of an email typo, signed email confirmation, first-company setup with country/timezone,
+and the first customer screen without mandatory 2FA. These tests read the isolated log mailer;
+they do not verify delivery to a real inbox.
+
+October 3 feedback scenarios also check the visible Menu touch target, booking from the working
+header/menu/calendar with the first visit and selected date, searchable UTC/city/country time
+zones, absence of markup settings and independent technician customer/private purchase prices
+with a calculated difference. Separate backend tests cover working login, Members permissions,
+private-cost redaction and staff replacement/unfinished-job transfer with preserved history.
+
 The workflow uploads browser-smoke-results for seven days. The HTML report includes desktop/mobile screenshots;
 failed scenarios retain traces. Authentication state JSON files are excluded from the upload.
 These are functional browser checks. Real phone camera behavior, visual review, Google Maps credentials,

@@ -5,6 +5,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useTrans } from '@/lib/i18n';
@@ -13,6 +14,7 @@ import type { NavItem } from '@/types';
 export function NavMain({ items, label }: { items: NavItem[]; label: string }) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
     const t = useTrans();
+    const { setOpenMobile } = useSidebar();
 
     if (items.length === 0) {
         return null;
@@ -33,7 +35,11 @@ export function NavMain({ items, label }: { items: NavItem[]; label: string }) {
                             size="lg"
                             className="h-11 rounded-xl px-3 text-[14px] font-medium data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-sm md:h-11 [&>svg]:size-[18px]"
                         >
-                            <Link href={item.href} prefetch>
+                            <Link
+                                href={item.href}
+                                prefetch
+                                onClick={() => setOpenMobile(false)}
+                            >
                                 {item.icon && <item.icon />}
                                 <span>{t(item.title)}</span>
                                 {!!item.badge && (

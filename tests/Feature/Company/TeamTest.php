@@ -11,8 +11,11 @@ use App\Models\User;
 use App\Notifications\AddedToCompany;
 use App\Notifications\MemberInvited;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
+use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     Notification::fake();
@@ -28,6 +31,16 @@ function membershipOf(User $user, Company $company): Membership
         ->where('company_id', $company->id)
         ->sole();
 }
+
+test('an unused owner account is active while a real invitation stays pending until accepted', function () {
+    $this->owner->forceFill(['name' => 'A Owner', 'last_login_at' => null])->save();
+    $invited = memberOf($this->company, UserRole::Technician, ['name' => 'Z Invited', 'last_login_at' => null]);
+    Password::broker()->createToken($invited);
+    $this->get(route('team.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('members.0.invitation_pending', false)->where('members.1.invitation_pending', true));
+    Password::broker()->deleteToken($invited);
+    $this->get(route('team.index'))->assertOk()->assertInertia(fn (Assert $page) => $page->where('members.1.invitation_pending', false));
+});
 
 test('an owner can invite a new person', function () {
     $brand = Brand::factory()->create(['company_id' => $this->company->id]);
@@ -47,6 +60,44 @@ test('an owner can invite a new person', function () {
         ->and(AuditLog::where('action', 'member.added')->exists())->toBeTrue();
 
     Notification::assertSentTo($user, MemberInvited::class);
+});
+
+test('new staff can receive usable credentials when mail is unavailable', function () {
+    config(['auth.email_delivery_enabled' => false]);
+    $this->get(route('team.index'))->assertInertia(fn (Assert $page) => $page->where('emailAvailable', false));
+    $this->post(route('team.store'), [
+        'name' => 'Manual Tech', 'email' => 'manual@example.com', 'role' => 'technician',
+        'password' => 'Technician-password-123!', 'password_confirmation' => 'Technician-password-123!',
+    ])->assertSessionHasNoErrors()->assertRedirect(route('team.index'));
+    $user = User::where('email', 'manual@example.com')->sole();
+    expect(Hash::check('Technician-password-123!', $user->password))->toBeTrue()
+        ->and($user->hasVerifiedEmail())->toBeFalse();
+    Notification::assertNothingSent();
+    $this->post(route('logout'));
+    $this->post(route('login.store'), ['email' => $user->email, 'password' => 'Technician-password-123!'])->assertRedirect(route('jobs.mine', absolute: false));
+    $this->get(route('jobs.mine'))->assertOk();
+});
+
+test('adding new staff without mail requires a confirmed password rather than sending a fake invitation', function () {
+    config(['auth.email_delivery_enabled' => false]);
+    $data = ['name' => 'Manual Tech', 'email' => 'manual@example.com', 'role' => 'technician'];
+    $this->post(route('team.store'), $data)->assertSessionHasErrors('password');
+    $this->post(route('team.store'), [...$data, 'password' => 'Technician-password-123!', 'password_confirmation' => 'wrong'])->assertSessionHasErrors('password');
+    expect(User::where('email', $data['email'])->exists())->toBeFalse();
+    Notification::assertNothingSent();
+});
+
+test('manual staff access cannot reset a preexisting account password or pretend to resend mail', function () {
+    config(['auth.email_delivery_enabled' => false]);
+    $existing = memberOf(Company::factory()->create(), attributes: ['email' => 'existing@example.com']);
+    $oldPassword = $existing->password;
+    $this->post(route('team.store'), [
+        'name' => 'Ignored', 'email' => $existing->email, 'role' => 'technician',
+        'password' => 'Ignored-password-123!', 'password_confirmation' => 'Ignored-password-123!',
+    ])->assertSessionHasNoErrors();
+    expect($existing->fresh()->password)->toBe($oldPassword);
+    $this->post(route('team.resend-invitation', membershipOf($existing, $this->company)))->assertSessionHasErrors('member');
+    Notification::assertNothingSent();
 });
 
 test('a person who already has an account is added without a new user', function () {

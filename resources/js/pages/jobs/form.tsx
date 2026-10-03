@@ -129,6 +129,8 @@ type Props = {
     job: JobData | null;
     customer: CustomerOption | null;
     today: string;
+    booking?: boolean;
+    bookingDate?: string | null;
     brands: Option[];
     jobTypes: Option[];
     leadSources: Option[];
@@ -145,6 +147,8 @@ export default function JobForm({
     job,
     customer: initialCustomer,
     today,
+    booking = false,
+    bookingDate,
     brands,
     jobTypes,
     leadSources,
@@ -203,13 +207,16 @@ export default function JobForm({
                 longitude: '',
             },
         },
-        add_visit: false,
+        add_visit: !job && booking,
         visit: {
-            date: today,
+            date: bookingDate ?? today,
             start_time: '09:00',
             end_time: '11:00',
             estimated_duration_minutes: '60',
-            assignee_ids: [],
+            assignee_ids:
+                booking && assignableUsers.length === 1
+                    ? [assignableUsers[0].id]
+                    : [],
             strict_arrival: false,
         },
     });
@@ -404,8 +411,22 @@ export default function JobForm({
         (p) => p.id === data.property_id,
     );
 
+    const canSave =
+        !!data.brand_id &&
+        (data.new_customer_mode
+            ? !!(
+                  data.new_customer.first_name.trim() ||
+                  data.new_customer.last_name.trim() ||
+                  data.new_customer.company_name.trim()
+              ) &&
+              !!data.new_customer.phone.trim() &&
+              !!data.new_customer.property.line1.trim() &&
+              !!data.new_customer.property.city.trim()
+            : !!data.customer_id && !!data.property_id);
+
     const submit = (e: FormEvent) => {
         e.preventDefault();
+        if (!canSave || form.processing) return;
 
         if (job) {
             form.put(update(job.id).url);
@@ -433,7 +454,9 @@ export default function JobForm({
         </FormField>
     );
 
-    const title = job ? t('jobs.edit') + ` #${job.number}` : t('jobs.add');
+    const title = job
+        ? t('jobs.edit') + ` #${job.number}`
+        : t(booking ? 'nav.book_customer' : 'jobs.add');
 
     return (
         <>
@@ -1237,7 +1260,11 @@ export default function JobForm({
                 )}
 
                 <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button type="submit" size="lg" disabled={form.processing}>
+                    <Button
+                        type="submit"
+                        size="lg"
+                        disabled={form.processing || !canSave}
+                    >
                         {t('common.save')}
                     </Button>
                     <Button type="button" variant="ghost" size="lg" asChild>

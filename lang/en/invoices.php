@@ -5,6 +5,9 @@ return [
     'invoice' => 'Invoice',
     'number' => 'Invoice :number',
     'add' => 'New invoice',
+    'choose_job' => 'Choose the job to invoice, or start with a new customer.',
+    'new_customer_job' => 'New customer and job',
+    'no_jobs' => 'No jobs match your search.',
     'edit' => 'Edit invoice',
     'created' => 'Invoice :number created.',
     'updated' => 'Invoice saved.',
@@ -22,6 +25,7 @@ return [
     'outstanding_total' => 'Outstanding: :amount',
     'all_statuses' => 'All invoices',
     'empty' => 'No invoices match your filters.',
+    'first_invoice' => 'No invoices yet. Create your first invoice.',
     'customer' => 'Customer',
     'paid_in_full' => 'Paid in full',
 

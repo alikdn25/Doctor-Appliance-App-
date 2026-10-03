@@ -189,6 +189,7 @@ test('the invoice list shows outstanding invoices by default', function () {
     $this->get(route('invoices.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('invoices/index')
+            ->where('hasInvoices', true)
             ->has('invoices.data', 1)
             ->where('invoices.data.0.number', 'INV-1042')
             ->where('outstandingTotals', [['currency' => 'CAD', 'amount' => 28050]]));
@@ -209,6 +210,12 @@ test('an office user limited to a brand only sees that brand\'s invoices', funct
     inCompany($this->company, fn () => $admin->brands()->attach($otherBrand->id, ['company_id' => $this->company->id]));
 
     $this->actingAs($admin)->get(route('invoices.index', ['status' => 'all']))
-        ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 0));
+        ->assertInertia(fn (Assert $page) => $page->has('invoices.data', 0)->where('hasInvoices', false));
     $this->actingAs($admin)->get(route('invoices.show', $invoice))->assertForbidden();
+});
+
+test('an empty invoice list differs from filters hiding existing records', function () {
+    $this->get(route('invoices.index'))->assertInertia(fn (Assert $page) => $page->where('hasInvoices', false)->has('invoices.data', 0));
+    $this->post(route('invoices.store', $this->job), documentPayload());
+    $this->get(route('invoices.index', ['search' => 'Missing invoice']))->assertInertia(fn (Assert $page) => $page->where('hasInvoices', true)->has('invoices.data', 0));
 });

@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'workspace_title' => 'Choose your work company',
+    'workspace_hint' => 'Choose once. Future sign-ins open your work menu directly. The admin panel stays separate.',
+    'open_workspace' => 'Open workspace',
+    'support_access' => 'Support access',
     'sms_registration_saved' => 'SMS registration updated.',
     'sms' => [
         'title' => 'SMS',
@@ -18,13 +22,17 @@ return [
     'companies' => [
         'title' => 'Companies',
         'description' => ':count companies on the platform',
+        'description_one' => ':count company on the platform',
         'add' => 'New company',
-        'add_description' => 'Creates the company and invites its Owner by email.',
+        'add_description' => 'Creates the company and its Owner account.',
         'create' => 'Create company',
         'search' => 'Search by name',
         'empty' => 'No companies found.',
         'usage' => ':brands brands · :members active members',
         'brands_count' => ':count brands',
+        'brand_count' => ':count brand',
+        'members_count' => ':count active members',
+        'member_count' => ':count active member',
         'owner' => 'Owner',
         'owner_hint' => 'If this email already has an account, that person is added as Owner.',
         'country_hint' => 'Sets the currency, regional format, time zone, address and phone formats. All can be changed later.',
@@ -32,9 +40,9 @@ return [
     ],
 
     'fields' => [
-        'status' => 'Status',
+        'status' => 'Workspace access',
         'plan' => 'Plan',
-        'subscription_status' => 'Subscription status',
+        'subscription_status' => 'Billing status',
     ],
 
     'company_status' => [
@@ -49,11 +57,21 @@ return [
         'cancelled' => 'Cancelled',
     ],
 
-    'company_created' => 'Company created and Owner invited.',
+    'company_created' => 'Company and Owner access created.',
     'company_updated' => 'Company saved.',
     'members' => 'Members',
-    'last_login' => 'last sign-in :date',
-    'never_logged_in' => 'never signed in',
+    'last_login' => 'Last direct sign-in: :date',
+    'never_logged_in' => 'No direct sign-in recorded',
+    'last_support' => 'Last support access: :date',
+    'access_hint' => 'Active allows work in this company. Suspended blocks ordinary access. This is separate from billing.',
+    'plan_hint' => 'Optional plan name. Leaving this blank means no plan has been assigned.',
+    'plan_unassigned' => 'No plan assigned',
+    'subscription_hint' => 'Tracks the subscription, independently of workspace access. Trial is a billing status.',
+    'subscription_unassigned' => 'No billing status assigned',
+    'support_log_hint' => 'Support access is separate from the member signing in. A missing end time does not mean the session is still connected.',
+    'log_timezone' => 'Times shown in :timezone.',
+    'end_not_recorded' => 'No explicit end recorded',
+    'support_note' => 'Support note entered by the administrator: :reason',
     'impersonate' => 'Log in as',
     'impersonate_reason' => 'Reason for logging in as :name (saved in the log):',
     'impersonating' => 'You are logged in as :user (:company).',

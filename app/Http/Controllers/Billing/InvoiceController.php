@@ -28,6 +28,30 @@ use Inertia\Response;
 
 class InvoiceController extends Controller
 {
+    public function start(Request $request): Response|RedirectResponse
+    {
+        Gate::authorize('viewAny', Invoice::class);
+
+        $search = trim((string) $request->query('search', ''));
+        $base = ServiceJob::query()->visibleTo($request->user());
+
+        if (! (clone $base)->exists()) {
+            return to_route('jobs.create', ['invoice' => 1]);
+        }
+
+        return Inertia::render('invoices/start', [
+            'search' => $search,
+            'jobs' => $base->search($search)->with('customer')->orderByDesc('id')->limit(25)->get()
+                ->filter(fn (ServiceJob $job) => Gate::allows('work', $job))
+                ->map(fn (ServiceJob $job) => [
+                    'id' => $job->id,
+                    'number' => $job->number,
+                    'customer' => $job->customer->display_name,
+                    'description' => $job->description,
+                ])->values(),
+        ]);
+    }
+
     /**
      * All invoices of the brands the office user works for, outstanding first by default.
      */
@@ -64,6 +88,7 @@ class InvoiceController extends Controller
 
         return Inertia::render('invoices/index', [
             'invoices' => $invoices,
+            'hasInvoices' => (clone $base)->exists(),
             'filters' => $filters,
             'statuses' => InvoiceStatus::options(),
             // One sum per currency: documents keep the currency they were created in.

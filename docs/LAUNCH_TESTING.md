@@ -1,13 +1,13 @@
 # First-launch verification
 
-Code commit 2a891aa0d76fed8d80f0ad12727e3e8938e2038f passed build, PHP style, frontend formatting/lint,
-TypeScript, deployment script syntax, all 674 backend tests (5,276 assertions) and 20 desktop/mobile
-browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37090807431.
+Code commit f2e4729e66f918a7aab9e5334b218396f977c26e passed build, PHP style, frontend formatting/lint,
+TypeScript, deployment script syntax, all 710 backend tests (5,615 assertions) and 28 desktop/mobile
+browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37139569448.
 See BROWSER_TESTING.md for the automated coverage and screenshot report. The HTTP server used active CSRF
 protection; SMS went to a loopback test provider. Physical devices and live integrations remain below.
 This checklist records remaining manual checks; none are marked complete by automated tests alone.
 
-1. Sign in as an Owner, Admin and Technician; check 2FA and switching companies.
+1. Sign in as an Owner, Admin and Technician; check voluntary 2FA, existing enabled 2FA and switching companies.
 2. Create a customer with About the customer: "Text only; child sleeping. Arrive on time."
    Select that customer when booking, then open the assigned job as its technician. Confirm the note appears.
    Edit the note and open another job: it must show the same updated note. Confirm another company cannot
@@ -37,3 +37,19 @@ This checklist records remaining manual checks; none are marked complete by auto
 
 Record the tested commit, server URL, browser/device, date and result for each manual check before release.
 Stage 2/3 and platform subscription billing remain outside the completed first-launch work.
+
+## Signup acceptance
+
+Use a private browser and a controlled inbox: register, receive/confirm email, create a company, open the first customer/job, log out and back in without mandatory 2FA. Check resend, expired confirmation, correction of an email typo, existing invitations, company suspension and an account that already enabled optional 2FA. CI logs are test mail only; real SMTP delivery must be checked on the VPS.
+
+## October 3 feedback acceptance
+
+Use FEEDBACK_2026_10_03.md as the seven-item baseline. Verify manual customer/private purchase prices
+and their calculated difference as the author, another technician, the office and a customer; check
+conversion/revision, price history, PDF and export privacy. Search UTC offsets, Vancouver and Canada.
+Find Menu and Book customer immediately on a phone, and book from Calendar with the selected date.
+Sign in normally as a solo Owner and assigned Technician, then reopen the browser. Confirm the
+server explicitly uses SESSION_LIFETIME=43200 and that platform administration/support are separate.
+Open Members as Owner/Admin and verify their role boundaries. Transfer waiting-for-parts work with
+no open visit, reschedule it, replace a company-only technician login with a new password and confirm
+old sessions fail while completed visits and financial authors retain the former person's name.

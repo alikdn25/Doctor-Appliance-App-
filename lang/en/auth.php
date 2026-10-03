@@ -15,11 +15,11 @@ return [
 
     'failed' => 'These credentials do not match our records.',
     'password' => 'The provided password is incorrect.',
+    'email_unavailable' => 'Email delivery is not available yet. Contact your company owner or platform support for help with your account.',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
 
-    'two_factor_required' => 'Your role requires two-factor authentication. Please enable it to continue.',
-
     'fields' => [
+        'name' => 'Full name',
         'email' => 'Email address',
         'password' => 'Password',
         'password_confirmation' => 'Confirm password',
@@ -34,11 +34,30 @@ return [
         'forgot' => 'Forgot your password?',
         'remember' => 'Remember me',
         'submit' => 'Log in',
+        'new_account' => 'New to Doctor Appliance?',
+    ],
+
+    'register' => [
+        'title' => 'Create account',
+        'heading' => 'Start with your account',
+        'description' => 'Create your login, then set up your company.',
+        'submit' => 'Create account',
+        'already_registered' => 'Already have an account?',
+    ],
+
+    'verify' => [
+        'title' => 'Confirm your email',
+        'description' => 'Open the confirmation link sent to :email to confirm your address and continue. Check your spam folder if the message is missing.',
+        'sent' => 'A new confirmation link has been sent. Check your inbox and spam folder.',
+        'resend' => 'Resend confirmation email',
+        'change_email' => 'Correct my email address',
+        'sign_out' => 'Use another account',
+        'step' => 'Step 2 of 3 · Confirm email',
     ],
 
     'forgot' => [
         'title' => 'Forgot password',
-        'description' => 'Enter your email to receive a password reset link',
+        'description' => 'Recover access to your account',
         'submit' => 'Email password reset link',
         'return_to' => 'Or, return to',
         'log_in' => 'log in',

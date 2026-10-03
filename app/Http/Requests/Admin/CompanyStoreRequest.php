@@ -4,11 +4,14 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\SubscriptionStatus;
 use App\Enums\Vertical;
+use App\Models\User;
+use App\Support\AccountEmail;
 use App\Support\Locale\Countries;
 use App\Support\Locale\Currencies;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class CompanyStoreRequest extends FormRequest
 {
@@ -34,6 +37,7 @@ class CompanyStoreRequest extends FormRequest
             'subscription_status' => ['nullable', Rule::enum(SubscriptionStatus::class)],
             'owner_name' => ['required', 'string', 'max:255'],
             'owner_email' => ['required', 'email', 'max:255'],
+            'owner_password' => [Rule::requiredIf(! AccountEmail::deliveryEnabled() && ! User::withTrashed()->where('email', strtolower(trim((string) $this->input('owner_email'))))->exists()), 'nullable', 'string', 'confirmed', Password::defaults()],
         ];
     }
 }

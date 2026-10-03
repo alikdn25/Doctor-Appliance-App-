@@ -37,6 +37,8 @@ export type DocumentItem = {
     warranty_ends_on: string | null;
     supplier: string | null;
     unit_cost: number | null;
+    costs_editable?: boolean;
+    private_difference?: number | null;
     supplier_taxes: {
         tax_rate_id: number | null;
         name: string;
@@ -161,6 +163,7 @@ export type ServiceOption = {
     part_number: string | null;
     unit: string | null;
     unit_cost: number | null;
+    costs_editable?: boolean;
     supplier: string | null;
     warranty_value: number | null;
     warranty_unit: string | null;

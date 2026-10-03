@@ -31,12 +31,13 @@ test('login records the last login time and is case-insensitive on email', funct
     expect($user->fresh()->last_login_at)->not->toBeNull();
 });
 
-test('owners and admins must enable two-factor authentication', function (UserRole $role) {
+test('owners and admins may use the app without enabling two-factor authentication', function (UserRole $role) {
+    // A leftover production environment flag must not reinstate mandatory enrollment.
     config(['fieldservice.require_two_factor' => true]);
 
     $this->actingAs(memberOf(role: $role))
         ->get(route('dashboard'))
-        ->assertRedirect(route('security.edit'));
+        ->assertOk();
 })->with([UserRole::Owner, UserRole::Admin]);
 
 test('owners with two-factor enabled get in', function () {
@@ -55,12 +56,12 @@ test('technicians are not forced to enable two-factor authentication', function 
         ->assertOk();
 });
 
-test('super-admins must enable two-factor authentication', function () {
+test('super-admins may use the platform without enabling two-factor authentication', function () {
     config(['fieldservice.require_two_factor' => true]);
 
     $this->actingAs(User::factory()->superAdmin()->create())
         ->get(route('admin.companies.index'))
-        ->assertRedirect(route('security.edit'));
+        ->assertOk();
 });
 
 test('personal settings stay reachable while two-factor is required', function () {

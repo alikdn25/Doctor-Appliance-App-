@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { FormField } from '@/components/form-field';
+import { TimezoneSelect } from '@/components/timezone-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,8 @@ import { index, store } from '@/routes/admin/companies';
 import type { Option } from '@/types';
 
 type Props = {
-    timezones: string[];
+    emailAvailable: boolean;
+    timezones: Option[];
     countries: Option[];
     countryDefaults: Record<string, { currency: string; locale: string }>;
     currencies: Option[];
@@ -27,6 +29,7 @@ type Props = {
 };
 
 export default function AdminCompanyCreate({
+    emailAvailable,
     timezones,
     countries,
     countryDefaults,
@@ -48,11 +51,16 @@ export default function AdminCompanyCreate({
         subscription_status: 'trialing',
         owner_name: '',
         owner_email: '',
+        owner_password: '',
+        owner_password_confirmation: '',
     });
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
-        form.post(store().url);
+        form.post(store().url, {
+            onSuccess: () =>
+                form.reset('owner_password', 'owner_password_confirmation'),
+        });
     };
 
     return (
@@ -154,20 +162,13 @@ export default function AdminCompanyCreate({
                         label={t('company.fields.timezone')}
                         error={form.errors.timezone}
                     >
-                        <NativeSelect
-                            id="timezone"
+                        <TimezoneSelect
                             value={form.data.timezone}
-                            onChange={(e) =>
-                                form.setData('timezone', e.target.value)
+                            options={timezones}
+                            onChange={(value) =>
+                                form.setData('timezone', value)
                             }
-                        >
-                            <option value="">
-                                {t('admin.timezone_from_owner')}
-                            </option>
-                            {timezones.map((tz) => (
-                                <option key={tz}>{tz}</option>
-                            ))}
-                        </NativeSelect>
+                        />
                     </FormField>
                     <FormField
                         id="currency"
@@ -258,6 +259,50 @@ export default function AdminCompanyCreate({
                         required
                     />
                 </FormField>
+
+                {!emailAvailable && (
+                    <>
+                        <p className="text-sm text-muted-foreground">
+                            {t('team.manual_access')}
+                        </p>
+                        <FormField
+                            id="owner_password"
+                            label={t('team.initial_password')}
+                            error={form.errors.owner_password}
+                        >
+                            <Input
+                                id="owner_password"
+                                type="password"
+                                autoComplete="new-password"
+                                value={form.data.owner_password}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'owner_password',
+                                        e.target.value,
+                                    )
+                                }
+                            />
+                        </FormField>
+                        <FormField
+                            id="owner_password_confirmation"
+                            label={t('team.confirm_password')}
+                            error={form.errors.owner_password_confirmation}
+                        >
+                            <Input
+                                id="owner_password_confirmation"
+                                type="password"
+                                autoComplete="new-password"
+                                value={form.data.owner_password_confirmation}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'owner_password_confirmation',
+                                        e.target.value,
+                                    )
+                                }
+                            />
+                        </FormField>
+                    </>
+                )}
 
                 <Button
                     type="submit"

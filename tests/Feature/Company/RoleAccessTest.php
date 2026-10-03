@@ -22,7 +22,7 @@ test('owners can open every company page', function () {
     $this->get(route('company.settings.edit'))->assertOk();
 });
 
-test('admins can view brands and taxes but not change them, the team or settings', function () {
+test('admins can manage technicians but cannot change brands taxes or company settings', function () {
     $this->actingAs(memberOf($this->company, UserRole::Admin));
 
     $this->get(route('dashboard'))->assertOk();
@@ -36,8 +36,8 @@ test('admins can view brands and taxes but not change them, the team or settings
     $this->delete(route('brands.destroy', $this->brand))->assertForbidden();
     $this->post(route('taxes.store'), ['name' => 'X', 'rate' => 1])->assertForbidden();
     $this->put(route('taxes.update', $this->tax), ['name' => 'X', 'rate' => 1])->assertForbidden();
-    $this->get(route('team.index'))->assertForbidden();
-    $this->post(route('team.store'), [])->assertForbidden();
+    $this->get(route('team.index'))->assertOk();
+    $this->post(route('team.store'), [])->assertSessionHasErrors(['name', 'email', 'role']);
     $this->get(route('company.settings.edit'))->assertForbidden();
     $this->put(route('company.settings.update'), [])->assertForbidden();
 });
@@ -59,9 +59,9 @@ test('the shared permissions match the role', function (UserRole $role, array $c
         ->get(route('dashboard'))
         ->assertInertia(fn ($page) => $page->where('auth.can', $can));
 })->with([
-    'owner' => [UserRole::Owner, ['viewCustomers' => true, 'viewMessageInbox' => true, 'viewBusinessExpenses' => true, 'viewJobs' => true, 'viewInvoices' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageChecklists' => true, 'manageCompany' => true, 'viewBrands' => true, 'manageTeam' => true, 'viewTaxes' => true]],
-    'admin' => [UserRole::Admin, ['viewCustomers' => true, 'viewMessageInbox' => true, 'viewBusinessExpenses' => true, 'viewJobs' => true, 'viewInvoices' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageChecklists' => true, 'manageCompany' => false, 'viewBrands' => true, 'manageTeam' => false, 'viewTaxes' => true]],
-    'technician' => [UserRole::Technician, ['viewCustomers' => false, 'viewMessageInbox' => false, 'viewBusinessExpenses' => true, 'viewJobs' => false, 'viewInvoices' => false, 'viewMyJobs' => true, 'viewCalendar' => false, 'manageChecklists' => false, 'manageCompany' => false, 'viewBrands' => false, 'manageTeam' => false, 'viewTaxes' => false]],
+    'owner' => [UserRole::Owner, ['createJobs' => true, 'viewCustomers' => true, 'viewMessageInbox' => true, 'viewBusinessExpenses' => true, 'viewJobs' => true, 'viewInvoices' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageChecklists' => true, 'manageCompany' => true, 'viewBrands' => true, 'manageTeam' => true, 'viewTaxes' => true]],
+    'admin' => [UserRole::Admin, ['createJobs' => true, 'viewCustomers' => true, 'viewMessageInbox' => true, 'viewBusinessExpenses' => true, 'viewJobs' => true, 'viewInvoices' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageChecklists' => true, 'manageCompany' => false, 'viewBrands' => true, 'manageTeam' => true, 'viewTaxes' => true]],
+    'technician' => [UserRole::Technician, ['createJobs' => false, 'viewCustomers' => false, 'viewMessageInbox' => false, 'viewBusinessExpenses' => true, 'viewJobs' => false, 'viewInvoices' => false, 'viewMyJobs' => true, 'viewCalendar' => false, 'manageChecklists' => false, 'manageCompany' => false, 'viewBrands' => false, 'manageTeam' => false, 'viewTaxes' => false]],
 ]);
 
 test('guests are sent to the login page', function () {

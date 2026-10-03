@@ -24,7 +24,7 @@ assumes a particular country.
 - **Taxes** are configured by each company, with no fixed count limit: several named rates (e.g. GST + PST, state + county sales tax, VAT),
   **compound** taxes (charged on top of the previous taxes), and prices entered **with or without tax** (tax-inclusive
   pricing, as common in the UK/EU/Australia). Nothing like GST/PST is hard-coded.
-- **Time zone**, **regional format** (date, time and number format, e.g. en-US, en-CA, en-GB) and **address format**
+- **Time zone** choices display UTC offsets, familiar cities and countries with search; IANA IDs remain stored to apply daylight saving rules. **Regional format** (date, time and number format, e.g. en-US, en-CA, en-GB) and **address format**
   (labels and order of state/province/county and ZIP/postal code) are company settings derived from the country.
 - **Phone numbers** are stored in **E.164** (+15551234567). Numbers typed without a country code are read as numbers
   of the company's country.
@@ -238,12 +238,12 @@ from the company number (Twilio voice).
 ### 7.11 Price book and materials
 
 - Services and parts catalog with cost and price, categories, per-brand availability.
-- Add to estimates/invoices quickly; margin visible to Owner/Admin only.
+- Add to estimates/invoices quickly. Parts and materials use a manually entered customer price and a separate private purchase price. Only the person who entered the purchase price sees it or its generated difference; other technicians, Owners/Admins and customer documents do not. No markup scale or automatic selling-price calculation.
 
 ### 7.12 Team
 
 - Roles as in §5.
-- Time on jobs per technician.
+- Time on jobs per technician. Owners/Admins can transfer unfinished visits to active team members; completed history keeps its original identity. A company-only technician login can be reassigned with a new password and a new person identity while preserving the old history. Shared cross-company identities cannot be replaced by one company.
 - Subcontractor payout share per job (percentage or fixed), payout report.
 
 ### 7.13 Reports
@@ -294,16 +294,21 @@ from the company number (Twilio voice).
 
 ## 9. Non-functional requirements
 
-- Mobile-first UI; technician screens usable with one hand.
+- Mobile-first UI; technician screens usable with one hand. Visible Menu and permanent Book customer actions lead directly to booking, including from Calendar. Login opens the working company for Owners/Admins and My jobs for technicians. Platform administration/support are separate; persistent sign-in is enabled by default.
+- Quick office booking: name, phone and arrival window create the customer, job and visit atomically; an existing customer can be found by name/phone. Address and details can be supplied later, with a visible pending-address state and no directions until an address exists. Empty calendar days offer booking. New invoice is available from the invoice list and leads to an existing job or short customer entry, then prices. Full job creation cannot save without a customer/property.
 - English UI in v1; all text strings kept in translation files for future languages.
 - Localization per company as in §1.1 (currency, taxes, time zone, regional format, address format, E.164 phones).
-- Security: hashed passwords, 2FA for Owner/Admin, role-based access, rate limiting, audit log of sensitive actions.
+- Security: hashed passwords, optional 2FA for every user, role-based access, rate limiting, audit log of sensitive actions.
 - Privacy: customer data belongs to the company; company can export all its data (CSV); deletion on request.
 - Daily database backups, off-server.
 - Performance: main screens load in under 2 seconds on 4G.
 - Every tenant-owned query is tenant-scoped; automated tests prove isolation.
 
 ## 10. Delivery stages
+
+### First-run account setup
+
+Public registration with name, email and password and clear account/company setup. Signed email confirmation is required only after the operator has tested real delivery and enabled `AUTH_EMAIL_DELIVERY_ENABLED=true` with `AUTH_EMAIL_VERIFICATION_REQUIRED=true`. Delivery defaults off: new users create their own company as Owner with a first brand, and existing company users work without a confirmation wall. Their email addresses remain unverified. Setup omits the confirmation step while delivery is off; password recovery and resend explain that mail is unavailable rather than promising a letter. New staff and administrator-created Owners receive a confirmed password entered by the authorized company administrator while mail is off; existing account passwords are never changed by adding a membership. When delivery is enabled, unverified accounts must confirm and receive their first signed link at the confirmation screen. Readiness is an explicit server setting, never a request parameter or an automatic bypass on a delivery outage. Existing memberships keep their company access; suspended accounts cannot bypass restrictions through setup. Two-factor enrollment is optional for all roles, including the platform super-admin. Email confirmation is separate from optional authenticator-based 2FA; email login codes are a future task.
 
 ### Stage 0 — Foundation
 
@@ -319,7 +324,7 @@ Parts orders, manufacturer warranty claims, online booking page, click-to-call, 
 
 ### Stage 3
 
-Strata features & inspection PDFs, service plans & recurring jobs, QuickBooks, advanced reports, onboarding flow for new companies.
+Strata features & inspection PDFs, service plans & recurring jobs, QuickBooks, advanced reports, extended onboarding flow for new companies.
 
 Tenant subscription billing (§11) is a separate task scheduled before the Phase B launch.
 

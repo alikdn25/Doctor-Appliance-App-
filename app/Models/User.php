@@ -5,8 +5,11 @@ namespace App\Models;
 use App\Enums\CompanyStatus;
 use App\Enums\UserRole;
 use App\Models\Scopes\CompanyScope;
+use App\Notifications\VerifyEmail;
+use App\Support\AccountEmail;
 use App\Support\Tenancy\CurrentCompany;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,6 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
@@ -44,7 +48,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  */
 #[Fillable(['name', 'email', 'phone', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
@@ -53,6 +57,21 @@ class User extends Authenticatable
         'is_super_admin' => false,
         'is_active' => true,
     ];
+
+    public function sendEmailVerificationNotification(): void
+    {
+        if (! AccountEmail::deliveryEnabled()) {
+            return;
+        }
+
+        $this->notify(new VerifyEmail);
+        Cache::put($this->verificationDeliveryKey(), true, now()->addMinutes(15));
+    }
+
+    public function verificationDeliveryKey(): string
+    {
+        return 'account-verification-sent:'.$this->id.':'.sha1($this->email);
+    }
 
     /**
      * @return array<string, string>

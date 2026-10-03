@@ -1,3 +1,33 @@
+# October 3 mail/admin supplement — code validated; server acceptance pending
+
+- Operator-managed mail readiness removes confirmation walls while delivery is unavailable, without verifying emails or changing tenant/role permissions. Password recovery and resend stop promising unavailable mail; new staff/Owners can receive manual initial credentials. Enabling tested mail restores confirmation.
+- Empty invoice states distinguish no invoices from filtered results. Administration explains access versus billing and unassigned plans, uses singular counts, separates direct login from support access and labels support/audit times in the company zone. Logout closes support access; unknown historical ends remain explicitly unknown.
+- Tested code c350d177aac10213e43750c16ccc4fdcee5934ac passed build, deployment script syntax, PHP style, frontend formatting/lint, TypeScript, all 740 backend tests (5,984 assertions) and 40 desktop/mobile browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37146504326. This includes four dedicated mail-disabled scenarios; mobile screenshots were inspected. New comments are recorded in FEEDBACK_MAIL_ADMIN_2026_10_03.md. PR #12 is still unmerged; SERVER_HANDOFF.md pins this candidate. Server installation and real delivery checks remain pending with the server operator.
+
+# October 3 follow-up — code validated; server acceptance pending
+
+- Short Book customer form: name/phone/time, optional address/details, existing-customer search and visible customer preferences; saves customer/job/visit atomically. Calendar empty days and dashboard link to booking.
+- New invoice opens from empty/populated lists, picks a visible job or enters a new customer, then opens prices. No empty invoice is saved by continuing. New job click is covered in browser checks; Save requires customer details.
+- Missing-brand setup is explained, company punctuation is preserved, and Invited requires an actual pending invitation/reset token rather than an unused account alone.
+- Tested code c02a95db7edaf618787c03340bd216c77d49a9ad passed build, PHP style, frontend formatting/lint, TypeScript, deployment syntax, all 719 backend tests (5,752 assertions) and 36 desktop/mobile browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37143711689. New job works through its actual button on both viewports; mobile booking/invoice screenshots were inspected. The new report is FEEDBACK_FOLLOWUP_2026_10_03.md. PR #12 remains unmerged; production needs the tested candidate in SERVER_HANDOFF.md. Server access is not available here.
+
+# Feedback through October 3, 2026 — code validated; server acceptance pending
+
+- Direct customer pricing with separate author-private purchase costs for parts/materials; computed differences. Markup settings and automatic price changes removed. Privacy covers document editing, price history, conversion/revision, PDF/public output, CSV and aggregate profit redaction.
+- Searchable UTC-offset/city/country time zones retain IANA/DST behavior. Visible Menu, persistent Book customer, calendar booking with date and first-visit defaults.
+- Working sign-in and remembered sessions, technician landing on My jobs, separate platform workspace/support entry without a reason prompt. Platform admins can explicitly join their own working company; no automatic grant to arbitrary tenants.
+- Members is accessible to Owners/Admins; Admins manage technicians without promoting themselves or changing Owners. Transfer all unfinished assigned jobs, including waiting for parts without an open visit, and replace a company-only technician login with a new password; preserve former identities/history and invalidate old sessions.
+- Code commit f2e4729e66f918a7aab9e5334b218396f977c26e passed build, PHP style, frontend formatting/lint, TypeScript, deployment shell syntax, all 710 backend tests (5,615 assertions) and 28 desktop/mobile browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37139569448. Mobile booking, time-zone and private-price screenshots were reviewed. Server deployment and live checks remain separate; SERVER_HANDOFF.md pins this tested code. FEEDBACK_2026_10_03.md records the seven supplied comments through October 3; future reports cover new comments only.
+
+# Public signup and first-run usability — code validated; server acceptance pending
+
+- Public account registration, queued signed email confirmation, throttled resend and account/company setup steps. Unverified users cannot enter company data. Verification through an invitation/password reset remains supported.
+- Verified first-time users create their own company, become its Owner and receive a first brand. Company creation is transactional and serialized per user; request-supplied roles, owners, company IDs and plan settings are ignored. Existing inactive/suspended memberships cannot use setup to bypass access controls.
+- Mandatory two-factor enrollment is removed for every role; existing enabled two-factor challenges and recovery codes remain. Authenticator-based 2FA is optional in Security settings. Email login codes are a future task.
+- First dashboard offers real links to customers, jobs, team and taxes instead of an obsolete Coming soon message. Auth/setup screens have visible branding, step progress and mobile touch targets.
+- Correcting an email address sends a new confirmation and returns directly to the confirmation screen.
+- Tested code commit aedf2a89a9023e277b5eaed41c23d9cab84e699a passed build, PHP style, frontend format/lint, TypeScript, deployment script syntax, 692 backend tests (5,413 assertions) and 22 desktop/mobile browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37135218373. Real SMTP delivery and server deployment remain to be verified by the server agent; instructions are in SERVER_HANDOFF.md.
+
 # Progress
 
 Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the end of every task.
@@ -5,7 +35,7 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 ## Stage 0 — Foundation ✅ Done
 
 - Laravel 13 + Inertia React + TypeScript + Tailwind skeleton, Pest tests, PostgreSQL.
-- Auth (Fortify): login, password reset, 2FA (required for Owner/Admin).
+- Auth (Fortify): login, password reset, optional 2FA.
 - Companies (tenants) with timezone, currency, invoice/estimate numbering, business hours, `plan`,
   `subscription_status`.
 - Tenant isolation: `BelongsToCompany` trait + global scope, fails closed without a current company;
@@ -829,7 +859,7 @@ Decisions made without asking (change if needed):
 - No charge is refused if a non-void invoice has a total above zero.
 - Cash deposits and reversals are office-only; balances are per currency.
 - Supplier receipts can't be deleted after an hour (kept for the bookkeeper, 6+ years).
-- Markup tiers are stored in major units of the company currency; prices from markup are suggestions only.
+- Legacy markup columns remain for compatibility; the current UI uses manual customer prices and private purchase prices, with no markup suggestions.
 
 Ideas for later: **stock / inventory of materials** (van stock, reorder levels, consumption per job) — out of scope
 now; automatic supplier price import; cash refunds tied to cash on hand.

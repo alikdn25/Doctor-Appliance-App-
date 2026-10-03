@@ -474,23 +474,32 @@ export default function JobShow({
                                 </span>
                             )}
                             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                                {property.full_address}
+                                {property.full_address ||
+                                    t('jobs.quick.address_pending')}
                             </p>
+                            {property.full_address &&
+                                (!property.line1 || !property.city) && (
+                                    <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                                        {t('jobs.quick.address_pending')}
+                                    </p>
+                                )}
                         </div>
                     </div>
 
                     <CustomerNotes notes={job.customer.notes} />
 
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                        <Button asChild size="lg" variant="outline">
-                            <a
-                                href={mapsUrl(property.full_address)}
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                <Navigation /> {t('jobs.navigate')}
-                            </a>
-                        </Button>
+                        {property.line1 && property.city && (
+                            <Button asChild size="lg" variant="outline">
+                                <a
+                                    href={mapsUrl(property.full_address)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <Navigation /> {t('jobs.navigate')}
+                                </a>
+                            </Button>
+                        )}
                         {phone && (
                             <Button asChild size="lg" variant="outline">
                                 <a href={telUrl(phone)}>

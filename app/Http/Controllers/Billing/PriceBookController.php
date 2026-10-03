@@ -29,7 +29,7 @@ class PriceBookController extends Controller
      */
     public function history(Request $request): JsonResponse
     {
-        abort_unless(CostAccess::canSee($request->user()), 403);
+        abort_unless(CostAccess::canEnterPrivate($request->user()), 403);
 
         $term = trim((string) $request->query('q', ''));
 
@@ -44,9 +44,9 @@ class PriceBookController extends Controller
 
         /** @var Collection<int, EstimateItem|InvoiceItem|JobCostItem> $rows */
         $rows = collect()
-            ->merge($match(InvoiceItem::query())->get())
-            ->merge($match(EstimateItem::query())->get())
-            ->merge($match(JobCostItem::query())->get());
+            ->merge($match(InvoiceItem::query()->where('cost_owner_id', $request->user()->id))->get())
+            ->merge($match(EstimateItem::query()->where('cost_owner_id', $request->user()->id))->get())
+            ->merge($match(JobCostItem::query()->where('created_by', $request->user()->id))->get());
 
         return response()->json([
             'history' => $rows
@@ -69,7 +69,7 @@ class PriceBookController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        abort_unless(CostAccess::canSee($request->user()), 403);
+        abort_unless(CostAccess::canEnterPrivate($request->user()), 403);
 
         $currency = currentCompany()->currency;
         $data = $request->validate([

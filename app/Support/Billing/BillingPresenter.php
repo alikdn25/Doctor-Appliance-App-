@@ -5,7 +5,6 @@ namespace App\Support\Billing;
 use App\Actions\Billing\SendDocument;
 use App\Enums\EstimateStatus;
 use App\Enums\InvoiceStatus;
-use App\Enums\LineKind;
 use App\Enums\WarrantyUnit;
 use App\Models\Estimate;
 use App\Models\Invoice;
@@ -14,7 +13,6 @@ use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Jobs\JobPresenter;
-use App\Support\Locale\Currencies;
 
 /**
  * Shapes estimates, invoices and payments for the React pages. Money stays in minor units, with its currency.
@@ -54,7 +52,7 @@ class BillingPresenter
     {
         $document->loadMissing(['items', 'job', 'customer.primaryPhone', 'customer.primaryEmail', 'property', 'brand', 'creator']);
         $invoice = $document instanceof Invoice;
-        $costs = CostAccess::canSee(auth()->user());
+        $costs = CostAccess::canEnterPrivate(auth()->user());
 
         $data = [
             ...self::row($document),
@@ -86,14 +84,16 @@ class BillingPresenter
                 'warranty_unit' => $item->warranty_unit,
                 'warranty_label' => $item->warrantyLabel(),
                 'warranty_ends_on' => $invoice ? $item->warranty_ends_on?->toDateString() : null,
-                // Costs only for those allowed to see them.
-                'supplier' => $costs ? $item->supplier : null,
-                'unit_cost' => $costs ? $item->unit_cost : null,
-                'supplier_taxes' => $costs ? ($item->supplier_taxes ?? []) : [],
-                'total_cost' => $costs ? $item->totalCost() : null,
+                'costs_editable' => $item->cost_owner_id === null || CostAccess::owns(auth()->user(), $item),
+                // Purchase values are private to their author, including for Owners/Admins.
+                'supplier' => CostAccess::owns(auth()->user(), $item) ? $item->supplier : null,
+                'unit_cost' => CostAccess::owns(auth()->user(), $item) ? $item->unit_cost : null,
+                'supplier_taxes' => CostAccess::owns(auth()->user(), $item) ? ($item->supplier_taxes ?? []) : [],
+                'total_cost' => CostAccess::owns(auth()->user(), $item) ? $item->totalCost() : null,
+                'private_difference' => CostAccess::owns(auth()->user(), $item) && $item->unit_cost !== null ? (int) round((float) $item->quantity * ($item->unit_price - $item->unit_cost)) : null,
             ])->values(),
             'costs_visible' => $costs,
-            'cost_total' => $costs ? $document->items->sum(fn ($item) => $item->totalCost()) : null,
+            'cost_total' => $costs ? $document->items->filter(fn ($item) => CostAccess::owns(auth()->user(), $item))->sum(fn ($item) => $item->totalCost()) : null,
             'job' => self::job($document->job),
             'customer' => [
                 'id' => $document->customer->id,
@@ -287,8 +287,8 @@ class BillingPresenter
                 'kind' => $service->kind->value,
                 'part_number' => $service->part_number,
                 'unit' => $service->unit,
-                'unit_cost' => CostAccess::canSee(auth()->user()) ? $service->unit_cost : null,
-                'supplier' => CostAccess::canSee(auth()->user()) ? $service->supplier : null,
+                'unit_cost' => CostAccess::owns(auth()->user(), $service) ? $service->unit_cost : null,
+                'supplier' => CostAccess::owns(auth()->user(), $service) ? $service->supplier : null,
                 'warranty_value' => $service->warranty_value,
                 'warranty_unit' => $service->warranty_unit,
             ])
@@ -297,22 +297,16 @@ class BillingPresenter
     }
 
     /**
-     * What the line editor needs: cost access, markup scales (minor units), warranty defaults, units, supplier taxes.
+     * What the line editor needs: private cost entry, warranty defaults, units and supplier taxes.
      *
      * @return array<string, mixed>
      */
     public static function lineSetup(): array
     {
         $company = currentCompany();
-        $factor = Currencies::factor($company->currency);
-        $scale = fn (LineKind $kind) => array_map(fn (array $tier) => [
-            'up_to' => $tier['up_to'] === null ? null : (int) round((float) $tier['up_to'] * $factor),
-            'multiplier' => (float) $tier['multiplier'],
-        ], Markup::scale($company, $kind));
 
         return [
-            'costs_visible' => CostAccess::canSee(auth()->user()),
-            'markup' => ['part' => $scale(LineKind::Part), 'material' => $scale(LineKind::Material)],
+            'costs_visible' => CostAccess::canEnterPrivate(auth()->user()),
             'warranty' => [
                 'labor' => ['value' => $company->warranty_labor_value, 'unit' => $company->warranty_labor_unit],
                 'parts' => ['value' => $company->warranty_parts_value, 'unit' => $company->warranty_parts_unit],

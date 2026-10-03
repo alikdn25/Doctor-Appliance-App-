@@ -11,11 +11,13 @@ use App\Http\Requests\Company\MemberRequest;
 use App\Models\Brand;
 use App\Models\Membership;
 use App\Notifications\MemberInvited;
+use App\Support\AccountEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,6 +28,12 @@ class TeamController extends Controller
         Gate::authorize('viewAny', Membership::class);
 
         $company = currentCompany();
+
+        // A never-used account is not necessarily an invitation. Only show the
+        // badge while an invitation/reset token still awaits acceptance.
+        $pendingEmails = DB::table(config('auth.passwords.'.config('auth.defaults.passwords').'.table'))
+            ->whereIn('email', Membership::query()->with('user')->get()->pluck('user.email'))
+            ->pluck('email')->all();
 
         $brandLinks = DB::table('brand_user')
             ->where('company_id', $company->id)
@@ -47,14 +55,16 @@ class TeamController extends Controller
                 'role_label' => $m->role->label(),
                 'is_active' => $m->is_active,
                 'brand_ids' => $brandLinks->get($m->user_id, []),
-                'invitation_pending' => $m->user->last_login_at === null,
+                'invitation_pending' => $m->user->last_login_at === null && in_array($m->user->email, $pendingEmails, true),
                 'is_self' => $m->user_id === $request->user()->id,
+                'can_manage' => $request->user()->can('update', $m),
             ]);
 
         return Inertia::render('team/index', [
             'members' => $members,
-            'roles' => UserRole::assignableOptions(),
+            'roles' => $request->user()->hasRole(UserRole::Owner) ? UserRole::assignableOptions() : [['value' => UserRole::Technician->value, 'label' => UserRole::Technician->label()]],
             'brands' => Brand::query()->orderBy('name')->get(['id', 'name']),
+            'emailAvailable' => AccountEmail::deliveryEnabled(),
         ]);
     }
 
@@ -66,6 +76,7 @@ class TeamController extends Controller
             $request->validated('email'),
             $request->role(),
             $request->brandIds(),
+            $request->validated('password'),
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('team.added')]);
@@ -96,6 +107,10 @@ class TeamController extends Controller
     public function resendInvitation(Membership $membership): RedirectResponse
     {
         Gate::authorize('update', $membership);
+
+        if (! AccountEmail::deliveryEnabled()) {
+            throw ValidationException::withMessages(['member' => __('auth.email_unavailable')]);
+        }
 
         $user = $membership->user;
 

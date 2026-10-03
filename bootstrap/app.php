@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnsureAccountEmailVerified;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureSuperAdmin;
-use App\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -34,18 +34,19 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'active' => EnsureUserIsActive::class,
+            'verified' => EnsureAccountEmailVerified::class,
             'tenant' => SetCurrentCompany::class,
             'role' => EnsureRole::class,
             'super-admin' => EnsureSuperAdmin::class,
-            'two-factor' => EnsureTwoFactorEnabled::class,
         ]);
 
         // The tenant must be known before route model binding runs, so that
         // tenant-scoped models ({brand}, {membership}, ...) resolve inside it.
         $middleware->prependToPriorityList(SubstituteBindings::class, SetCurrentCompany::class);
-        $middleware->prependToPriorityList(SubstituteBindings::class, EnsureTwoFactorEnabled::class);
+        $middleware->prependToPriorityList(SetCurrentCompany::class, EnsureAccountEmailVerified::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['owner_password', 'owner_password_confirmation']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

@@ -18,7 +18,7 @@ beforeEach(function () {
 
     $this->bob = Customer::factory()->for($this->company)->withPhone('778-555-0199')
         ->create(['first_name' => 'Bob', 'last_name' => 'Fox']);
-    Property::factory()->for($this->bob)->create(['line1' => '6200 McKay Ave', 'city' => 'Burnaby']);
+    Property::factory()->for($this->bob)->create(['line1' => '6200 McKay Ave', 'city' => 'Burnaby', 'postal_code' => 'V5H 2K2']);
 });
 
 function searchCustomers(string $term): array

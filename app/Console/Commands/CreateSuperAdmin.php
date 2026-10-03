@@ -42,7 +42,7 @@ class CreateSuperAdmin extends Command
         $user = User::create(['name' => $name, 'email' => $email, 'password' => $password]);
         $user->forceFill(['is_super_admin' => true, 'email_verified_at' => now()])->save();
 
-        $this->info("Super-admin {$user->email} created. They must enable 2FA on first sign-in.");
+        $this->info("Super-admin {$user->email} created. Optional 2FA is available in Security settings.");
 
         return self::SUCCESS;
     }

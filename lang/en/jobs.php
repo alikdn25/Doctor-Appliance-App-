@@ -1,6 +1,29 @@
 <?php
 
 return [
+    'quick' => [
+        'hint' => 'Name, phone and time — save the booking now and add details later.',
+        'invoice_hint' => 'Choose a customer or enter their name and phone, then add invoice prices.',
+        'name' => 'Customer name',
+        'new_customer' => 'New customer',
+        'existing_customer' => 'Find existing customer',
+        'find_customer' => 'Find customer',
+        'search_hint' => 'Name or phone number',
+        'search_failed' => 'Customer search could not load. Try again.',
+        'searching' => 'Searching customers…',
+        'search_empty' => 'No customers found. Choose New customer to book this caller.',
+        'property_needed' => 'Add an address to this customer before booking.',
+        'address_pending' => 'Address not added yet',
+        'appointment' => 'Appointment',
+        'technician' => 'Technician',
+        'more' => 'Address and details (optional)',
+        'customer_notes' => 'About the customer',
+        'book' => 'Save booking',
+        'continue_invoice' => 'Continue to invoice',
+        'full_form' => 'Open full job form',
+        'empty_day' => 'No appointments on this day. Book your next customer here.',
+        'book_day' => 'Book on this day',
+    ],
     'title' => 'Jobs',
     'my_jobs' => 'My jobs',
     'backlog' => [

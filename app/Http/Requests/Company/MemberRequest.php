@@ -7,6 +7,7 @@ use App\Models\Membership;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class MemberRequest extends FormRequest
 {
@@ -37,7 +38,8 @@ class MemberRequest extends FormRequest
         return [
             'name' => [Rule::requiredIf($creating), 'string', 'max:255'],
             'email' => [Rule::requiredIf($creating), 'email', 'max:255'],
-            'role' => ['required', Rule::enum(UserRole::class)->only(UserRole::assignable())],
+            'password' => [$creating ? 'nullable' : 'exclude', 'string', 'confirmed', Password::defaults()],
+            'role' => ['required', Rule::enum(UserRole::class)->only($this->user()->hasRole(UserRole::Owner) ? UserRole::assignable() : [UserRole::Technician])],
             'is_active' => [$creating ? 'exclude' : 'required', 'boolean'],
             'brand_ids' => ['array'],
             'brand_ids.*' => [

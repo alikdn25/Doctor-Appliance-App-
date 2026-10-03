@@ -14,9 +14,9 @@ import { expenses, index, receipts } from '@/routes/reports';
 type Profit = {
     jobs: number;
     revenue: number;
-    cost: number;
+    cost: number | null;
     fees: number;
-    profit: number;
+    profit: number | null;
     margin: number | null;
 };
 type Rate = { jobs: number; callbacks: number; rate: number | null };
@@ -50,8 +50,8 @@ export default function Reports({
     };
     noCharge: {
         count: number;
-        loss: number;
-        byTechnician: { name: string; count: number; loss: number }[];
+        loss: number | null;
+        byTechnician: { name: string; count: number; loss: number | null }[];
     };
 }) {
     const t = useTrans();
@@ -104,10 +104,14 @@ export default function Reports({
                                     {money(r.revenue)}
                                 </td>
                                 <td className="p-2 text-right tabular-nums">
-                                    {money(r.cost + r.fees)}
+                                    {r.cost === null
+                                        ? t('billing.private_cost')
+                                        : money(r.cost + r.fees)}
                                 </td>
                                 <td className="p-2 text-right tabular-nums">
-                                    {money(r.profit)}
+                                    {r.profit === null
+                                        ? t('billing.private_cost')
+                                        : money(r.profit)}
                                 </td>
                                 <td className="p-2 text-right tabular-nums">
                                     {pct(r.margin)}
@@ -195,11 +199,16 @@ export default function Reports({
                                             'reports.revenue',
                                             money(totals.revenue),
                                         ],
-                                        ['reports.cost', money(totals.cost)],
+                                        [
+                                            'reports.cost',
+                                            totals.cost === null
+                                                ? t('billing.private_cost')
+                                                : money(totals.cost),
+                                        ],
                                         ['reports.fees', money(totals.fees)],
                                         [
                                             'reports.profit',
-                                            `${money(totals.profit)} · ${pct(totals.margin)}`,
+                                            `${totals.profit === null ? t('billing.private_cost') : money(totals.profit)} · ${pct(totals.margin)}`,
                                         ],
                                     ] as const
                                 ).map(([label, value]) => (
@@ -258,7 +267,10 @@ export default function Reports({
                     </h2>
                     <p className="text-sm">
                         {t('reports.count')}: {noCharge.count} ·{' '}
-                        {t('reports.loss')}: {money(noCharge.loss)}
+                        {t('reports.loss')}:{' '}
+                        {noCharge.loss === null
+                            ? t('billing.private_cost')
+                            : money(noCharge.loss)}
                     </p>
                     <ul className="divide-y rounded-lg border text-sm">
                         {noCharge.byTechnician.map((r) => (
@@ -268,7 +280,10 @@ export default function Reports({
                             >
                                 <span>{r.name}</span>
                                 <span className="tabular-nums">
-                                    {r.count} · {money(r.loss)}
+                                    {r.count} ·{' '}
+                                    {r.loss === null
+                                        ? t('billing.private_cost')
+                                        : money(r.loss)}
                                 </span>
                             </li>
                         ))}

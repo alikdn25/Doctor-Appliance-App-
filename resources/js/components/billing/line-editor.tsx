@@ -34,6 +34,7 @@ export type Line = {
     supplier: string;
     unit: string;
     unit_cost: string;
+    costs_editable: boolean;
     /** Supplier tax paid, by tax rate id (major units as typed). */
     supplier_taxes: Record<string, string>;
     bill_to_customer: boolean;
@@ -44,12 +45,10 @@ export type Line = {
     warranty_touched: boolean;
 };
 
-type Tier = { up_to: number | null; multiplier: number };
 type Length = { value: number; unit: string };
 
 export type LineSetup = {
     costs_visible: boolean;
-    markup: { part: Tier[]; material: Tier[] };
     warranty: {
         labor: Length;
         parts: Length;
@@ -85,6 +84,7 @@ export const newLine = (patch: Partial<Line> = {}): Line => ({
     supplier: '',
     unit: '',
     unit_cost: '',
+    costs_editable: true,
     supplier_taxes: {},
     bill_to_customer: true,
     warranty_value: '',
@@ -93,14 +93,6 @@ export const newLine = (patch: Partial<Line> = {}): Line => ({
     warranty_touched: false,
     ...patch,
 });
-
-/** Multiplier of the markup scale for a cost (minor units). */
-export function markupFor(scale: Tier[], cost: number): number {
-    return (
-        scale.find((tier) => tier.up_to === null || cost <= tier.up_to)
-            ?.multiplier ?? 1
-    );
-}
 
 /** The company's default warranty for a line (mirrors App\Support\Billing\Warranty::default). */
 export function defaultWarranty(
@@ -131,7 +123,7 @@ export function defaultWarranty(
 
 /**
  * One line of an estimate or invoice: a card that works one-handed on a phone. Services keep the short form;
- * parts and materials add part number, supplier, cost (price from the markup scale), unit, supplier tax.
+ * parts and materials add part number, supplier, private purchase price, unit, supplier tax.
  * Cost, warranty and "bill to customer" are under "Cost & warranty".
  */
 export function LineEditor({
@@ -183,18 +175,11 @@ export function LineEditor({
     const err = (field: string) => errors[`items.${index}.${field}`];
     const costMinor = toMinor(line.unit_cost, currency);
     const priceMinor = toMinor(line.unit_price, currency);
-    const multiplier =
-        goods && line.unit_cost !== ''
-            ? markupFor(
-                  setup.markup[line.kind === 'material' ? 'material' : 'part'],
-                  costMinor,
-              )
+    const privateCosts = setup.costs_visible && line.costs_editable;
+    const difference =
+        privateCosts && line.unit_cost !== '' && line.unit_price !== ''
+            ? Math.round((priceMinor - costMinor) * Number(line.quantity))
             : null;
-    const margin =
-        setup.costs_visible && line.unit_cost !== '' && priceMinor > 0
-            ? Math.round(((priceMinor - costMinor) / priceMinor) * 100)
-            : null;
-    const unitLabel = line.unit || t('billing.units.pcs');
 
     // Default warranty follows kind / price / price book item until set by hand.
     useEffect(() => {
@@ -225,7 +210,7 @@ export function LineEditor({
     useEffect(() => {
         const term = (line.part_number || line.description).trim();
 
-        if (!goods || !setup.costs_visible || term.length < 2) {
+        if (!goods || !privateCosts || term.length < 2) {
             setHistory([]);
 
             return;
@@ -246,22 +231,9 @@ export function LineEditor({
             clearTimeout(timer);
             controller.abort();
         };
-    }, [line.part_number, line.description, goods, setup.costs_visible]);
+    }, [line.part_number, line.description, goods, privateCosts]);
 
-    const setCost = (value: string) => {
-        const patch: Partial<Line> = { unit_cost: value };
-        const cost = toMinor(value, currency);
-
-        if (!line.price_touched && value !== '' && goods) {
-            const m = markupFor(
-                setup.markup[line.kind === 'material' ? 'material' : 'part'],
-                cost,
-            );
-            patch.unit_price = fromMinor(Math.round(cost * m), currency);
-        }
-
-        onChange(patch);
-    };
+    const setCost = (value: string) => onChange({ unit_cost: value });
 
     const pickService = (id: string) => {
         const service = services.find((s) => String(s.id) === id);
@@ -426,7 +398,7 @@ export function LineEditor({
                             })
                         }
                     />
-                    {setup.costs_visible && (
+                    {privateCosts && (
                         <Input
                             aria-label={t('billing.line.supplier')}
                             placeholder={t('billing.line.supplier')}
@@ -440,7 +412,7 @@ export function LineEditor({
                 </div>
             )}
 
-            {goods && setup.costs_visible && history.length > 0 && (
+            {goods && privateCosts && history.length > 0 && (
                 <div className="rounded-md bg-muted/50 p-2 text-xs">
                     <p className="mb-1 flex items-center gap-1 font-medium">
                         <History className="size-3" />
@@ -635,35 +607,10 @@ export function LineEditor({
                     />
                 )}
 
-            <div className="grid grid-cols-2 gap-2">
-                {goods && setup.costs_visible && (
-                    <div>
-                        <label className="text-xs text-muted-foreground">
-                            {line.kind === 'material'
-                                ? t('billing.line.cost_per_unit', {
-                                      unit: unitLabel,
-                                  })
-                                : t('billing.line.cost')}
-                        </label>
-                        <MoneyInput
-                            symbol={symbol}
-                            currency={currency}
-                            value={line.unit_cost}
-                            label={t('billing.line.cost')}
-                            onChange={setCost}
-                        />
-                        <InputError message={err('unit_cost')} />
-                    </div>
-                )}
-                <div
-                    className={goods && setup.costs_visible ? '' : 'col-span-2'}
-                >
+            <div className="space-y-3">
+                <div>
                     <label className="text-xs text-muted-foreground">
-                        {line.kind === 'material'
-                            ? t('billing.line.price_per_unit', {
-                                  unit: unitLabel,
-                              })
-                            : t('billing.fields.unit_price')}
+                        {t('billing.line.customer_price')}
                     </label>
                     <MoneyInput
                         symbol={symbol}
@@ -676,17 +623,35 @@ export function LineEditor({
                     />
                     <InputError message={err('unit_price')} />
                 </div>
+                {goods && privateCosts && (
+                    <div className="rounded-xl border border-dashed bg-muted/40 p-3">
+                        <label className="text-xs font-medium">
+                            {t('billing.line.private_purchase_price')}
+                        </label>
+                        <p className="mb-2 text-xs text-muted-foreground">
+                            {t('billing.line.private_cost_hint')}
+                        </p>
+                        <MoneyInput
+                            symbol={symbol}
+                            currency={currency}
+                            value={line.unit_cost}
+                            label={t('billing.line.private_purchase_price')}
+                            onChange={setCost}
+                        />
+                        <InputError message={err('unit_cost')} />
+                        {difference !== null && (
+                            <p
+                                className="mt-2 text-sm font-medium"
+                                role="status"
+                            >
+                                {t('billing.line.difference', {
+                                    amount: money(difference),
+                                })}
+                            </p>
+                        )}
+                    </div>
+                )}
             </div>
-            {multiplier !== null && !line.price_touched && (
-                <p className="text-xs text-muted-foreground">
-                    {t('billing.line.markup_hint', { multiplier })}
-                </p>
-            )}
-            {margin !== null && (
-                <p className="text-xs text-muted-foreground">
-                    {t('billing.line.margin', { percent: margin })}
-                </p>
-            )}
 
             {estimate && (
                 <div className="flex flex-wrap gap-x-4">
@@ -789,7 +754,7 @@ export function LineEditor({
                     </p>
 
                     {goods &&
-                        setup.costs_visible &&
+                        privateCosts &&
                         setup.supplier_taxes.length > 0 && (
                             <div className="space-y-1">
                                 <p className="text-xs text-muted-foreground">
@@ -869,7 +834,7 @@ export function LineEditor({
                     </label>
 
                     {goods &&
-                        setup.costs_visible &&
+                        privateCosts &&
                         line.service_id === null &&
                         line.description.trim() !== '' && (
                             <Button

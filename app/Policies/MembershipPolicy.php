@@ -13,12 +13,12 @@ class MembershipPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(UserRole::Owner);
+        return $user->hasRole(UserRole::Owner, UserRole::Admin);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRole(UserRole::Owner);
+        return $user->hasRole(UserRole::Owner, UserRole::Admin);
     }
 
     /**
@@ -27,7 +27,7 @@ class MembershipPolicy
     public function update(User $user, Membership $membership): bool
     {
         return $this->inCurrentCompany($membership)
-            && $user->hasRole(UserRole::Owner)
+            && ($user->hasRole(UserRole::Owner) || ($user->hasRole(UserRole::Admin) && $membership->role === UserRole::Technician))
             && $membership->user_id !== $user->id;
     }
 

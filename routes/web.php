@@ -5,6 +5,7 @@ use App\Http\Controllers\Accounting\BusinessExpenseController;
 use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
+use App\Http\Controllers\Admin\WorkspaceController;
 use App\Http\Controllers\Billing\CashController;
 use App\Http\Controllers\Billing\DocumentDeliveryController;
 use App\Http\Controllers\Billing\EstimateController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Company\ChecklistController;
 use App\Http\Controllers\Company\CompanySettingsController;
 use App\Http\Controllers\Company\DetectTimezoneController;
 use App\Http\Controllers\Company\GoogleProfileController;
+use App\Http\Controllers\Company\MemberTransitionController;
 use App\Http\Controllers\Company\MessagingSettingsController;
 use App\Http\Controllers\Company\PaymentProviderController;
 use App\Http\Controllers\Company\ServiceController;
@@ -40,6 +42,7 @@ use App\Http\Controllers\Jobs\JobWorkController;
 use App\Http\Controllers\Jobs\VisitActionController;
 use App\Http\Controllers\Jobs\VisitController;
 use App\Http\Controllers\ManifestController;
+use App\Http\Controllers\Onboarding\CompanyController as OnboardingCompanyController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\Reports\ReportController;
@@ -73,9 +76,18 @@ Route::post('webhooks/payments/{provider}', PaymentWebhookController::class)
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'login'))->name('home');
 
 Route::middleware(['auth', 'active'])->group(function () {
+    Route::middleware(['verified', 'super-admin'])->group(function () {
+        Route::get('workspaces', [WorkspaceController::class, 'index'])->name('workspaces.index');
+        Route::post('admin/companies/{company}/workspace', [WorkspaceController::class, 'store'])->name('admin.companies.workspace');
+    });
+
+    Route::middleware('verified')->group(function () {
+        Route::get('onboarding/company', [OnboardingCompanyController::class, 'create'])->name('onboarding.company.create');
+        Route::post('onboarding/company', [OnboardingCompanyController::class, 'store'])->middleware('throttle:5,1')->name('onboarding.company.store');
+    });
 
     // Tenant area: everything here runs inside the current company.
-    Route::middleware(['tenant', 'two-factor'])->group(function () {
+    Route::middleware(['verified', 'tenant'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
 
         Route::get('messages', [SmsInboxController::class, 'index'])->name('messages.index');
@@ -144,6 +156,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('estimates/{estimate}/revise', [EstimateController::class, 'revise'])->name('estimates.revise');
 
         Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('invoices/create', [InvoiceController::class, 'start'])->name('invoices.start');
         Route::get('jobs/{job}/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
         Route::post('jobs/{job}/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
@@ -203,6 +216,8 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::get('team', [TeamController::class, 'index'])->name('team.index');
             Route::post('team', [TeamController::class, 'store'])->name('team.store');
             Route::put('team/{membership}', [TeamController::class, 'update'])->name('team.update');
+            Route::post('team/{membership}/transfer-jobs', [MemberTransitionController::class, 'transfer'])->name('team.transfer-jobs');
+            Route::post('team/{membership}/replace', [MemberTransitionController::class, 'replace'])->middleware('throttle:6,1')->name('team.replace');
             Route::delete('team/{membership}', [TeamController::class, 'destroy'])->name('team.destroy');
             Route::post('team/{membership}/resend-invitation', [TeamController::class, 'resendInvitation'])
                 ->middleware('throttle:6,1')
@@ -218,7 +233,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::delete('impersonation', [ImpersonationController::class, 'destroy'])->name('impersonation.stop');
 
     // Super-admin panel (platform owner only).
-    Route::prefix('admin')->name('admin.')->middleware(['super-admin', 'two-factor'])->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware(['verified', 'super-admin'])->group(function () {
         Route::redirect('/', '/admin/companies');
         Route::resource('companies', AdminCompanyController::class)->except(['edit', 'destroy']);
         Route::put('companies/{company}/sms-registration', [AdminSmsRegistrationController::class, 'update'])->name('companies.sms-registration');

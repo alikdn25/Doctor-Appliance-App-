@@ -1,11 +1,25 @@
 <?php
 
 return [
+    'transfer_jobs' => 'Transfer jobs',
+    'transfer_to' => 'Assign unfinished work to',
+    'choose_replacement' => 'Choose a team member',
+    'transfer_hint' => 'Move all unfinished jobs from :name, including work waiting for parts or scheduling. Completed visits and history keep their original technician.',
+    'replace_technician' => 'Replace technician',
+    'replace_hint' => 'Reuse this company login for a new technician with a new password. Unfinished jobs move automatically; completed work keeps the previous technician’s name.',
+    'login_kept' => 'Login email stays :email.',
+    'retired_login' => 'Previous technician — login reassigned',
+    'transferred' => 'Unfinished work transferred.',
+    'replaced' => 'Technician replaced. Share the login and new password with the new technician.',
     'title' => 'Team',
     'description' => 'People who work in this company and their roles.',
     'add' => 'Add team member',
     'add_description' => 'New people get an email invitation to set their password. People who already have an account are simply added to this company.',
     'send_invitation' => 'Add and send invitation',
+    'add_without_email' => 'Add team member',
+    'manual_access' => 'Email delivery is not available yet. Set a password for a new account and share the login with this person. An existing account keeps its own password.',
+    'initial_password' => 'Password for a new account',
+    'confirm_password' => 'Confirm password',
     'added' => 'Team member added.',
     'updated' => 'Team member updated.',
     'removed' => 'Team member removed from the company.',
@@ -25,6 +39,9 @@ return [
     ],
 
     'errors' => [
+        'invalid_replacement' => 'Choose a different active member of this company.',
+        'replacement_brands' => 'The replacement must have access to every brand on the transferred jobs.',
+        'shared_account' => 'This login belongs to other companies. Add a new technician account and transfer the jobs instead.',
         'already_member' => 'This person is already a member of the company.',
         'super_admin' => 'Platform administrators cannot be added to a company.',
         'last_owner' => 'The company must keep at least one active Owner.',

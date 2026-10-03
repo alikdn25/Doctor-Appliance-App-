@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'menu' => 'Menu',
+    'book_customer' => 'Book customer',
+    'workspace' => 'My workspace',
     'sms_inbox' => 'SMS Inbox',
     'group_main' => 'Main',
     'group_company' => 'Company',

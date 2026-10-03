@@ -25,6 +25,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoicePaymentLink;
 use App\Models\JobAppliance;
+use App\Models\JobAssignee;
 use App\Models\JobBringItem;
 use App\Models\JobChecklistItem;
 use App\Models\JobCostItem;
@@ -82,6 +83,11 @@ beforeEach(function () {
     $this->visitB = JobVisit::withoutCompanyScope()->where('service_job_id', $this->jobB->id)->sole();
 
     foreach ([$this->jobA, $this->jobB] as $job) {
+        JobAssignee::withoutCompanyScope()->insert([
+            'company_id' => $job->company_id, 'service_job_id' => $job->id,
+            'user_id' => $job->company_id === $this->companyA->id ? $this->techA->id : $this->techB->id,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
         JobStatusChange::withoutCompanyScope()->insert([
             'company_id' => $job->company_id, 'service_job_id' => $job->id, 'to_status' => 'new', 'created_at' => now(),
         ]);
@@ -176,6 +182,7 @@ dataset('tenant models', [
     'appliances' => [Appliance::class],
     'jobs' => [ServiceJob::class],
     'job appliances' => [JobAppliance::class],
+    'job assignees' => [JobAssignee::class],
     'job visits' => [JobVisit::class],
     'job visit assignees' => [JobVisitAssignee::class],
     'job status changes' => [JobStatusChange::class],
@@ -221,7 +228,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         Appliance::class, Brand::class, BrandAddress::class, BusinessExpense::class, BusinessExpenseCategory::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, MessageRead::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class,
         CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceItem::class, InvoicePaymentLink::class, Payment::class,
         PaymentProviderConnection::class,
-        JobAppliance::class, JobBringItem::class, JobChecklistItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
+        JobAppliance::class, JobAssignee::class, JobBringItem::class, JobChecklistItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
         Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class,
     ])->sort()->values()->all());

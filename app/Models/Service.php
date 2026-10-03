@@ -34,9 +34,18 @@ class Service extends Model
 {
     use BelongsToCompany;
 
+    protected static function booted(): void
+    {
+        static::creating(function (Service $service) {
+            if (! array_key_exists('cost_owner_id', $service->getAttributes()) && $service->unit_cost !== null) {
+                $service->cost_owner_id = auth()->id();
+            }
+        });
+    }
+
     protected $fillable = [
         'name', 'description', 'category', 'brand_ids', 'unit_price', 'taxable', 'is_active', 'sort_order',
-        'kind', 'part_number', 'supplier', 'unit', 'unit_cost', 'warranty_value', 'warranty_unit',
+        'kind', 'part_number', 'supplier', 'unit', 'unit_cost', 'cost_owner_id', 'warranty_value', 'warranty_unit',
     ];
 
     protected $attributes = [
