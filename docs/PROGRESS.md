@@ -853,7 +853,7 @@ Decisions made without asking (change if needed):
 - No charge is refused if a non-void invoice has a total above zero.
 - Cash deposits and reversals are office-only; balances are per currency.
 - Supplier receipts can't be deleted after an hour (kept for the bookkeeper, 6+ years).
-- Markup tiers are stored in major units of the company currency; prices from markup are suggestions only.
+- Legacy markup columns remain for compatibility; the current UI uses manual customer prices and private purchase prices, with no markup suggestions.
 
 Ideas for later: **stock / inventory of materials** (van stock, reorder levels, consumption per job) — out of scope
 now; automatic supplier price import; cash refunds tied to cash on hand.

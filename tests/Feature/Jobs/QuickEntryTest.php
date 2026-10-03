@@ -64,7 +64,7 @@ test('a name phone and time create the customer job and visit together without i
 });
 
 test('a failed booking creates no partial customer job or visit and does not consume a number', function () {
-    $number = $this->company->job_next_number;
+    $number = $this->company->fresh()->job_next_number;
     $this->post(route('jobs.store'), quickEntryPayload(['visit' => ['end_time' => '08:00']]))
         ->assertSessionHasErrors('visit.end_time');
     expect(inCompany($this->company, fn () => Customer::count()))->toBe(0)

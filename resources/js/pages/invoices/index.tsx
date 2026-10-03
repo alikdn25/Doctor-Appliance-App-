@@ -55,7 +55,14 @@ export default function InvoicesIndex({
             <div className="max-w-3xl p-4">
                 <PageHeader
                     title={t('invoices.title')}
-                    actions={<Button asChild className="min-h-11"><Link href={start()}><Plus />{t('invoices.add')}</Link></Button>}
+                    actions={
+                        <Button asChild className="min-h-11">
+                            <Link href={start()}>
+                                <Plus />
+                                {t('invoices.add')}
+                            </Link>
+                        </Button>
+                    }
                     description={t('invoices.outstanding_total', {
                         amount:
                             outstandingTotals.length > 0

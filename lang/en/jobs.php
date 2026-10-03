@@ -10,6 +10,8 @@ return [
         'find_customer' => 'Find customer',
         'search_hint' => 'Name or phone number',
         'search_failed' => 'Customer search could not load. Try again.',
+        'searching' => 'Searching customers…',
+        'search_empty' => 'No customers found. Choose New customer to book this caller.',
         'property_needed' => 'Add an address to this customer before booking.',
         'address_pending' => 'Address not added yet',
         'appointment' => 'Appointment',
