@@ -2,6 +2,7 @@
 
 GitHub Actions runs the built Laravel application on PostgreSQL and Chromium at desktop and phone widths.
 Owner authentication passes the real password and TOTP challenge; a technician has a separate session.
+The HTTP server runs in local mode with CSRF protection; only the database fixture command uses testing mode.
 All accounts, phone numbers, receipts and documents are isolated test fixtures. No live SMS is sent:
 the provider points to a loopback stub, which records the actual destination and text.
 

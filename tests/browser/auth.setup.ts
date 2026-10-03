@@ -4,7 +4,8 @@ import { mkdir } from 'node:fs/promises';
 
 function totp(): string {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    const bits = [...'JBSWY3DPEHPK3PXP']
+    const secretChars = 'JBSWY3DPEHPK3PXP'.split('');
+    const bits = secretChars
         .map((char) => alphabet.indexOf(char).toString(2).padStart(5, '0'))
         .join('');
     const secret = Buffer.from(

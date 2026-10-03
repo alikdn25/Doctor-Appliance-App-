@@ -213,7 +213,7 @@ Rules:
 - All texts, emails and the customer's replies are kept on the customer and job timelines with their status
   (scheduled, sent, delivered, failed, not sent + reason).
 
-Later: automated "parts arrived", "payment received", payment reminders (Stage 2), a shared SMS inbox, click-to-call
+Later: automated "parts arrived", "payment received", payment reminders (Stage 2), click-to-call
 from the company number (Twilio voice).
 
 ### 7.8 Appliance-specific features (appliance repair vertical; not in Housecall Pro)

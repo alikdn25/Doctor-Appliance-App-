@@ -70,7 +70,7 @@ class Message extends Model
     public function scopeVisibleTo(Builder $query, User $user): void
     {
         $query->where(function (Builder $query) use ($user) {
-            $query->whereIn('service_job_id', ServiceJob::query()->visibleTo($user)->select('id'));
+            $query->whereIn('service_job_id', ServiceJob::query()->withTrashed()->visibleTo($user)->select('id'));
             if ($user->hasRole(UserRole::Owner, UserRole::Admin)) {
                 $query->orWhereNull('service_job_id');
             }

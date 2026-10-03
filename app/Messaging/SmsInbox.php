@@ -60,7 +60,7 @@ class SmsInbox
         $threads = $query->selectRaw(self::PEER.' AS phone, MAX(messages.id) AS latest_id')
             ->selectRaw("SUM(CASE WHEN direction = 'inbound' AND NOT EXISTS (SELECT 1 FROM message_reads WHERE message_reads.message_id = messages.id AND message_reads.user_id = ? AND message_reads.company_id = ?) THEN 1 ELSE 0 END) AS unread_count", [$user->id, currentCompany()->id])
             ->groupByRaw(self::PEER)->orderByRaw('MAX(messages.id) DESC')->paginate(25)->withQueryString();
-        $latest = self::messages($user)->with(['customer', 'user'])
+        $latest = self::messages($user)->with(['customer', 'user', 'job'])
             ->whereIn('id', $threads->getCollection()->pluck('latest_id'))->get()->keyBy('id');
 
         return $threads->through(function ($thread) use ($latest) {
@@ -103,7 +103,7 @@ class SmsInbox
     {
         abort_unless(self::forPhone($user, $phone)->exists(), 404);
         $recipient = $this->recipient($user, $phone);
-        $messages = self::forPhone($user, $phone)->with('user')->latest('id')
+        $messages = self::forPhone($user, $phone)->with(['user', 'job'])->latest('id')
             ->paginate(50, ['*'], 'message_page')->withQueryString();
         $unreadIds = self::unread($user)->whereIn('id', $messages->getCollection()->pluck('id'))->pluck('id')->all();
         $blocked = match (true) {

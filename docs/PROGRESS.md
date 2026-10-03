@@ -30,6 +30,8 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
   a badge; another employee keeps their own unread count. Sidebar polling refreshes the badge.
   Threads, acknowledgements and sends follow tenant and brand/job visibility; technicians retain
   their assigned-job composer and cannot open the shared office inbox.
+- Archived-job correspondence remains visible without broken job links. Deleted brands retain their
+  membership restriction, preventing an empty brand list from accidentally granting company-wide access.
 - New message_reads migration and role/tenant isolation tests. All 672 backend tests passed on
   8fb2b515 (5,246 assertions). Browser scenarios are being corrected and rerun; that commit is not
   a passing release candidate. The final tested SHA/run will be recorded in SERVER_HANDOFF.md.

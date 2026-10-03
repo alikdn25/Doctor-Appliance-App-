@@ -188,3 +188,32 @@ test('message pagination retains older history and only marks the rendered messa
     $this->post(route('messages.read'), ['phone' => '+16045550142', 'message_ids' => [$this->incoming->id]])->assertRedirect();
     $this->get(route('messages.index'))->assertInertia(fn (Assert $page) => $page->where('unreadMessages', 50));
 });
+
+test('archived jobs retain office correspondence without linking to a deleted job', function () {
+    inCompany($this->company, fn () => $this->job->delete());
+    $this->get(route('messages.index', ['phone' => '+16045550142']))->assertInertia(fn (Assert $page) => $page
+        ->where('unreadMessages', 1)->has('threads.data', 1)
+        ->where('conversation.messages.data.0.job_id', null));
+    $this->post(route('messages.send'), ['phone' => '+16045550142', 'body' => 'We received your reply.'])->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => Message::latest('id')->first()->service_job_id))->toBeNull();
+});
+
+test('deleting a limited brand never grants access to other brands or their inbox messages', function () {
+    [$office, $otherJob] = inCompany($this->company, function () {
+        $office = memberOf($this->company, UserRole::Admin);
+        $office->brands()->attach($this->job->brand_id, ['company_id' => $this->company->id]);
+        $otherJob = ServiceJob::factory()->for($this->job->property)->create();
+        $this->incoming->replicate()->fill([
+            'service_job_id' => $otherJob->id, 'from' => '+16045550143', 'body' => 'Private other-brand reply',
+        ])->save();
+        $this->job->brand->delete();
+
+        return [$office, $otherJob];
+    });
+    expect(inCompany($this->company, fn () => $office->limitedBrandIds()))->toBe([$this->job->brand_id])
+        ->and(inCompany($this->company, fn () => ServiceJob::query()->visibleTo($office)->pluck('id')->all()))->toBe([$this->job->id]);
+    $this->actingAs($office)->get(route('messages.index'))->assertInertia(fn (Assert $page) => $page
+        ->where('unreadMessages', 1)->has('threads.data', 1)->where('threads.data.0.phone', '+16045550142'));
+    $this->get(route('messages.index', ['phone' => '+16045550143']))->assertNotFound();
+    $this->get(route('jobs.show', $otherJob))->assertForbidden();
+});

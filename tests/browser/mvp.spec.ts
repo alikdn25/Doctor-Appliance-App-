@@ -42,7 +42,9 @@ test('customer context and a manual icon persist and follow a newly booked job',
     await page.goto(`/customers/${fixture.customer_id}/edit`);
     await page.locator('#avatar_style').selectOption('auto');
     await page.locator('#first_name').fill('Zzyxunknown');
-    await expect(page.getByRole('img', { name: 'Neutral icon', exact: true })).toBeVisible();
+    await expect(
+        page.getByRole('img', { name: 'Neutral icon', exact: true }),
+    ).toBeVisible();
     await page.locator('#first_name').fill('Jane');
     await page
         .locator('#notes')
@@ -122,18 +124,14 @@ test('business expenses save custom categories, actual named taxes and a private
     await page.locator('#amount').fill('25.00');
     await page.locator(`#tax-${fixture.gst_id}`).fill('1.22');
     await expect(page.locator(`#tax-${fixture.pst_id}`)).toHaveValue('1.75');
-    await page
-        .locator('#receipt')
-        .setInputFiles({
-            name: 'browser-receipt.png',
-            mimeType: 'image/png',
-            buffer: png,
-        });
+    await page.locator('#receipt').setInputFiles({
+        name: 'browser-receipt.png',
+        mimeType: 'image/png',
+        buffer: png,
+    });
     await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page).toHaveURL(/\/business-expenses$/);
-    await page
-        .locator('#search')
-        .fill(`Browser fuel ${info.project.name}`);
+    await expect(page).toHaveURL(/\/business-expenses\?from=/);
+    await page.locator('#search').fill(`Browser fuel ${info.project.name}`);
     await page.getByRole('button', { name: 'Search', exact: true }).click();
     await expect(
         page
@@ -196,7 +194,9 @@ test('inbox opens, acknowledges the visible reply and sends to the actual contac
     await page.getByRole('button', { name: 'Send SMS', exact: true }).click();
     await expect(page.locator('#sms-reply')).toHaveValue('');
     await expect(
-        page.getByRole('region', { name: 'Selected conversation' }).getByText(`Browser reply ${info.project.name}`, { exact: true }),
+        page
+            .getByRole('region', { name: 'Selected conversation' })
+            .getByText(`Browser reply ${info.project.name}`, { exact: true }),
     ).toBeVisible();
     const sent = await (
         await page.request.get('http://127.0.0.1:9001/sent')
@@ -288,8 +288,14 @@ test('dark mode customer and inbox screens fit the viewport', async ({
     await screenshot(page, info, 'inbox-dark');
 });
 
-test('technician uploads a job photo and a drawn customer signature through the field queue', async ({ page, browser }, info) => {
-    const context = await browser.newContext({ storageState: 'test-results/auth-tech.json', viewport: page.viewportSize()! });
+test('technician uploads a job photo and a drawn customer signature through the field queue', async ({
+    page,
+    browser,
+}, info) => {
+    const context = await browser.newContext({
+        storageState: 'test-results/auth-tech.json',
+        viewport: page.viewportSize()!,
+    });
     const tech = await context.newPage();
     tech.on('pageerror', (error) => pageErrors.push(error.message));
     await tech.goto(`http://127.0.0.1:8000/jobs/${fixture.job_id}`);
@@ -297,11 +303,23 @@ test('technician uploads a job photo and a drawn customer signature through the 
         tech.waitForEvent('filechooser'),
         tech.getByRole('button', { name: 'Before photo', exact: true }).click(),
     ]);
-    const uploaded = tech.waitForResponse((response) => response.request().method() === 'POST' && /\/jobs\/\d+\/photos$/.test(response.url()));
-    await chooser.setFiles({ name: 'before.png', mimeType: 'image/png', buffer: png });
+    const uploaded = tech.waitForResponse(
+        (response) =>
+            response.request().method() === 'POST' &&
+            /\/jobs\/\d+\/photos$/.test(response.url()),
+    );
+    await chooser.setFiles({
+        name: 'before.png',
+        mimeType: 'image/png',
+        buffer: png,
+    });
     expect((await uploaded).status()).toBeLessThan(400);
-    await expect(tech.locator(`img[src*="/jobs/${fixture.job_id}/photos/"]`).first()).toBeVisible();
-    await tech.getByRole('button', { name: /Get signature|Sign again/ }).click();
+    await expect(
+        tech.locator(`img[src*="/jobs/${fixture.job_id}/photos/"]`).first(),
+    ).toBeVisible();
+    await tech
+        .getByRole('button', { name: /Get signature|Sign again/ })
+        .click();
     const canvas = tech.getByRole('dialog').locator('canvas');
     await expect(canvas).toBeVisible();
     const rect = (await canvas.boundingBox())!;
@@ -310,23 +328,47 @@ test('technician uploads a job photo and a drawn customer signature through the 
     await tech.mouse.move(rect.x + 80, rect.y + 40, { steps: 5 });
     await tech.mouse.move(rect.x + 150, rect.y + 90, { steps: 5 });
     await tech.mouse.up();
-    const signed = tech.waitForResponse((response) => response.request().method() === 'POST' && /\/jobs\/\d+\/signature$/.test(response.url()));
-    await tech.getByRole('button', { name: 'Save signature', exact: true }).click();
+    const signed = tech.waitForResponse(
+        (response) =>
+            response.request().method() === 'POST' &&
+            /\/jobs\/\d+\/signature$/.test(response.url()),
+    );
+    await tech
+        .getByRole('button', { name: 'Save signature', exact: true })
+        .click();
     expect((await signed).status()).toBeLessThan(400);
-    await expect(tech.getByRole('img', { name: 'Customer signature', exact: true })).toBeVisible();
-    const width = await tech.evaluate(() => ({ page: document.documentElement.scrollWidth, viewport: window.innerWidth }));
+    await expect(
+        tech.getByRole('img', { name: 'Customer signature', exact: true }),
+    ).toBeVisible();
+    const width = await tech.evaluate(() => ({
+        page: document.documentElement.scrollWidth,
+        viewport: window.innerWidth,
+    }));
     expect(width.page).toBeLessThanOrEqual(width.viewport + 1);
     await screenshot(tech, info, 'field-photo-signature');
     await context.close();
     await page.goto('/dashboard');
 });
 
-test('office core screens load without runtime errors at both screen sizes', async ({ page }, info) => {
-    for (const path of ['/customers', '/jobs', '/invoices', '/reports', '/cash', '/company/services', '/company/settings']) {
+test('office core screens load without runtime errors at both screen sizes', async ({
+    page,
+}, info) => {
+    for (const path of [
+        '/customers',
+        '/jobs',
+        '/invoices',
+        '/reports',
+        '/cash',
+        '/company/services',
+        '/company/settings',
+    ]) {
         const response = await page.goto(path);
         expect(response?.status(), path).toBe(200);
         await expect(page.locator('h1').first()).toBeVisible();
-        const width = await page.evaluate(() => ({ page: document.documentElement.scrollWidth, viewport: window.innerWidth }));
+        const width = await page.evaluate(() => ({
+            page: document.documentElement.scrollWidth,
+            viewport: window.innerWidth,
+        }));
         expect(width.page, path).toBeLessThanOrEqual(width.viewport + 1);
     }
     await screenshot(page, info, 'company-settings');

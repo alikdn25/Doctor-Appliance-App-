@@ -37,6 +37,8 @@ export default defineConfig({
             command: 'php artisan serve --host=127.0.0.1 --port=8000',
             url: 'http://127.0.0.1:8000/up',
             reuseExistingServer: false,
+            // Keep CSRF protection active for real HTTP requests; only seeding uses testing mode.
+            env: { APP_ENV: 'local' },
         },
     ],
 });
