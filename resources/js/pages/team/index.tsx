@@ -3,6 +3,7 @@ import { Mail, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { FormField } from '@/components/form-field';
+import { MemberTransitions } from '@/components/member-transitions';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ type Member = {
     brand_ids: number[];
     invitation_pending: boolean;
     is_self: boolean;
+    can_manage: boolean;
 };
 
 type Props = {
@@ -161,12 +163,13 @@ export default function TeamIndex({ members, roles, brands }: Props) {
                                     )}
                                 </div>
                                 <div className="text-xs break-words text-muted-foreground">
-                                    {member.email} ·{' '}
+                                    {member.email.endsWith('@retired.invalid') ? t('team.retired_login') : member.email} ·{' '}
                                     {brandNames(member.brand_ids)}
                                 </div>
                             </div>
-                            {!member.is_self && (
-                                <div className="flex gap-1">
+                            {member.can_manage && (
+                                <div className="flex flex-wrap gap-2">
+                                    <MemberTransitions member={member} members={members} />
                                     {member.invitation_pending && (
                                         <Button
                                             variant="ghost"

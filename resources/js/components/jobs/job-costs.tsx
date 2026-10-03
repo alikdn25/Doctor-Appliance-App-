@@ -23,9 +23,9 @@ import type { Option } from '@/types';
 export type JobCosts = {
     profit: {
         revenue: number;
-        cost: number;
+        cost: number | null;
         fees: number;
-        profit: number;
+        profit: number | null;
         margin: number | null;
     };
     currency: string;
@@ -37,7 +37,7 @@ export type JobCosts = {
         supplier: string | null;
         quantity: string;
         unit: string | null;
-        total_cost: number;
+        total_cost: number | null;
     }[];
     receipts: {
         id: number;
@@ -132,7 +132,7 @@ export function JobCostsSection({
                     <dt className="text-xs text-muted-foreground">
                         {t('costs.cost')}
                     </dt>
-                    <dd className="tabular-nums">{money(p.cost)}</dd>
+                    <dd className="tabular-nums">{p.cost === null ? t('billing.private_cost') : money(p.cost)}</dd>
                 </div>
                 <div>
                     <dt className="text-xs text-muted-foreground">
@@ -142,16 +142,16 @@ export function JobCostsSection({
                 </div>
                 <div>
                     <dt className="text-xs text-muted-foreground">
-                        {p.profit < 0 ? t('costs.loss') : t('costs.profit')}
+                        {(p.profit ?? 0) < 0 ? t('costs.loss') : t('costs.profit')}
                     </dt>
                     <dd
                         className={
-                            p.profit < 0
+                            (p.profit ?? 0) < 0
                                 ? 'font-semibold text-red-700 tabular-nums dark:text-red-400'
                                 : 'font-semibold tabular-nums'
                         }
                     >
-                        {money(p.profit)}
+                        {p.profit === null ? t('billing.private_cost') : money(p.profit)}
                         {p.margin !== null && ` · ${p.margin}%`}
                     </dd>
                 </div>

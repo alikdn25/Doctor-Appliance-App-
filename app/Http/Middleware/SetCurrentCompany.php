@@ -31,8 +31,8 @@ class SetCurrentCompany
             return $next($request);
         }
 
-        if ($user->isSuperAdmin()) {
-            return redirect()->route('admin.companies.index');
+        if ($user->isSuperAdmin() && $user->memberships()->doesntExist()) {
+            return redirect()->route('workspaces.index');
         }
 
         $company = $this->impersonation->isActive()

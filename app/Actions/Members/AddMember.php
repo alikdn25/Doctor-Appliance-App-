@@ -36,7 +36,7 @@ class AddMember
         return DB::transaction(function () use ($company, $name, $email, $role, $brandIds) {
             $user = User::withTrashed()->where('email', $email)->first();
 
-            if ($user?->isSuperAdmin()) {
+            if ($user?->isSuperAdmin() && ! ($user->id === auth()->id() && $role === UserRole::Owner)) {
                 throw ValidationException::withMessages(['email' => __('team.errors.super_admin')]);
             }
 

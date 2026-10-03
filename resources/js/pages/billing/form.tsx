@@ -130,6 +130,7 @@ export default function BillingForm({
             ? document.items.map((item) =>
                   newLine({
                       id: item.id,
+                      costs_editable: item.costs_editable !== false,
                       description: item.description,
                       quantity: String(Number(item.quantity)),
                       unit_price: fromMinor(item.unit_price, currency),
@@ -267,7 +268,7 @@ export default function BillingForm({
                         ? null
                         : Number(line.warranty_value),
                 warranty_unit: line.warranty_unit,
-                ...(lineSetup.costs_visible
+                ...(lineSetup.costs_visible && line.costs_editable
                     ? {
                           supplier: line.supplier || null,
                           unit_cost:

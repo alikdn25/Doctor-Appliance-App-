@@ -12,6 +12,7 @@ import {
     Contact,
     LayoutGrid,
     Percent,
+    Plus,
     Receipt,
     Star,
     Tags,
@@ -46,7 +47,7 @@ import { edit as companySettings } from '@/routes/company/settings';
 import { index as invoices } from '@/routes/invoices';
 import { index as messageInbox } from '@/routes/messages';
 import { index as expenses } from '@/routes/expenses';
-import { index as jobs, mine as myJobs } from '@/routes/jobs';
+import { create as bookCustomer, index as jobs, mine as myJobs } from '@/routes/jobs';
 import { index as taxes } from '@/routes/taxes';
 import { index as team } from '@/routes/team';
 import type { NavItem } from '@/types';
@@ -62,6 +63,7 @@ export function AppSidebar() {
 
     const mainItems: NavItem[] = auth.company
         ? ([
+              can.createJobs && { title: 'nav.book_customer', href: bookCustomer({ query: { book: 1 } }), icon: Plus },
               { title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid },
               can.viewMyJobs && {
                   title: 'nav.my_jobs',
@@ -153,7 +155,7 @@ export function AppSidebar() {
           ]
         : [];
 
-    const homeHref = auth.user?.is_super_admin ? adminCompanies() : dashboard();
+    const homeHref = dashboard();
 
     return (
         <Sidebar collapsible="icon" variant="inset">

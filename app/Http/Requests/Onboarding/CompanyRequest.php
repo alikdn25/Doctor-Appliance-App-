@@ -12,7 +12,7 @@ class CompanyRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return ! $this->user()->isSuperAdmin() && $this->user()->memberships()->doesntExist();
+        return $this->user()->memberships()->doesntExist();
     }
 
     /** @return array<string, array<mixed>> */

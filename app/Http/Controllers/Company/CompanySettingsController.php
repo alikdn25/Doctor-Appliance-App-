@@ -12,10 +12,9 @@ use App\Models\Service;
 use App\Payments\PaymentProvider;
 use App\Payments\PaymentProviders;
 use App\Services\AuditLogger;
-use App\Support\Billing\Markup;
 use App\Support\Locale\Countries;
 use App\Support\Locale\Currencies;
-use DateTimeZone;
+use App\Support\Locale\Timezones;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -40,8 +39,6 @@ class CompanySettingsController extends Controller
             ]) + [
                 'warranty_parts_threshold' => $company->warranty_parts_threshold === null ? null
                     : $company->warranty_parts_threshold / Currencies::factor($company->currency),
-                'markup_parts' => Markup::scale($company, LineKind::Part),
-                'markup_materials' => Markup::scale($company, LineKind::Material),
                 // Reasons per outcome as edited (one per line); defaults shown when the company has none.
                 'closure_reasons' => collect(JobOutcome::cases())
                     ->filter(fn (JobOutcome $o) => $o->needsReason())
@@ -58,7 +55,7 @@ class CompanySettingsController extends Controller
                 'label' => $provider->label(),
                 'connected' => $provider->connectionSummary($company),
             ], $providers->availableFor($company))),
-            'timezones' => DateTimeZone::listIdentifiers(),
+            'timezones' => Timezones::options(),
             'currencies' => Currencies::options(),
             'countries' => Countries::options(),
             'locales' => Countries::localeOptions(),

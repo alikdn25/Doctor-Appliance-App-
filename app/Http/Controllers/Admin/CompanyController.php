@@ -20,7 +20,7 @@ use App\Support\Locale\Countries;
 use App\Support\Locale\Currencies;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\TimezoneDatabase;
-use DateTimeZone;
+use App\Support\Locale\Timezones;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -71,7 +71,7 @@ class CompanyController extends Controller
     public function create(): Response
     {
         return Inertia::render('admin/companies/create', [
-            'timezones' => DateTimeZone::listIdentifiers(),
+            'timezones' => Timezones::options(),
             'countries' => Countries::options(),
             // Currency and regional format each country starts with (both can be changed).
             'countryDefaults' => collect(Countries::codes())

@@ -14,7 +14,6 @@ use App\Models\ServiceJob;
 use App\Models\SupplierReceipt;
 use App\Support\Billing\DocumentPrint;
 use App\Support\Billing\JobProfit;
-use App\Support\Billing\Markup;
 use App\Support\PrivateMedia;
 use App\Support\Tenancy\CurrentCompany;
 use Carbon\CarbonImmutable;
@@ -100,15 +99,15 @@ test('lines carry kind, cost, supplier tax, units, internal flag and the default
         ->where('document.cost_total', 4000 + 280 + 25000 + 100));
 });
 
-test('technicians do not see costs unless the company allows it, and their edits keep them', function () {
+test('costs stay private to their author and another technician edits only customer prices', function () {
     $this->post(route('invoices.store', $this->job), costPayload(['gst' => $this->gst->id, 'pst' => $this->pst->id]))->assertSessionHasNoErrors();
     $invoice = inCompany($this->company, fn () => Invoice::query()->with('items')->sole());
 
     $this->actingAs($this->tech);
     $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
         ->where('document.items.1.unit_cost', null)
-        ->where('document.costs_visible', false));
-    $this->getJson(route('pricebook.history', ['q' => 'WPW']))->assertForbidden();
+        ->where('document.items.1.costs_editable', false));
+    $this->getJson(route('pricebook.history', ['q' => 'WPW']))->assertOk()->assertJsonPath('history', []);
 
     // The technician changes the price; the cost stays.
     $items = $invoice->items->map(fn ($item) => [
@@ -122,7 +121,7 @@ test('technicians do not see costs unless the company allows it, and their edits
     expect($pump->unit_price)->toBe(9500)->and($pump->unit_cost)->toBe(4000);
 
     $this->company->update(['technicians_see_costs' => true]);
-    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page->where('document.items.1.unit_cost', 4000));
+    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page->where('document.items.1.unit_cost', null));
 });
 
 test('earlier costs of a part show by part number or name, newest first', function () {
@@ -152,14 +151,11 @@ test('a line can be saved to the price book, and its warranty is then the defaul
     expect([$line->warranty_value, $line->warranty_unit])->toBe([14, 'days']);
 });
 
-test('the markup scale prices parts and materials from cost', function () {
-    $this->company->update(['markup_parts' => [['up_to' => 50, 'multiplier' => 2], ['up_to' => null, 'multiplier' => 1.5]]]);
-    $company = $this->company->fresh();
-
-    expect(Markup::price($company, LineKind::Part, 4000, 100))->toBe(8000)
-        ->and(Markup::price($company, LineKind::Part, 10000, 100))->toBe(15000)
-        // Materials use the default scale (≤ 10 → ×2).
-        ->and(Markup::price($company, LineKind::Material, 500, 100))->toBe(1000);
+test('client prices are entered directly even when a legacy markup scale exists', function () {
+    $this->company->update(['markup_parts' => [['up_to' => null, 'multiplier' => 9]]]);
+    $this->post(route('invoices.store', $this->job), costPayload(['gst' => $this->gst->id, 'pst' => $this->pst->id]))->assertSessionHasNoErrors();
+    $this->get(route('invoices.edit', inCompany($this->company, fn () => Invoice::query()->sole())))->assertInertia(fn (Assert $page) => $page
+        ->missing('lineSetup.markup')->where('document.items.1.unit_price', 8900)->where('document.items.1.unit_cost', 4000));
 });
 
 test('closing the job sets the warranty dates; the summary changes them, "apply to all" included', function () {

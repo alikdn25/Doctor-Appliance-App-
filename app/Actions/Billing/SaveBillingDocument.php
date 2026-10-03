@@ -15,6 +15,7 @@ use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Models\User;
 use App\Support\Billing\DocumentTotals;
+use App\Support\Billing\CostAccess;
 use App\Support\Billing\Warranties;
 use App\Support\Billing\Warranty;
 use App\Support\Locale\Currencies;
@@ -46,7 +47,7 @@ class SaveBillingDocument
             $estimate = new Estimate;
             $this->attachToJob($estimate, $job, $user);
             $estimate->number = $this->numbers->estimate();
-            $this->fill($estimate, $data, $this->taxSnapshot($data['tax_rate_ids'] ?? []));
+            $this->fill($estimate, $data, $this->taxSnapshot($data['tax_rate_ids'] ?? []), $user);
 
             return $estimate;
         });
@@ -61,7 +62,7 @@ class SaveBillingDocument
             $invoice = new Invoice;
             $this->attachToJob($invoice, $job, $user);
             $invoice->number = $this->numbers->invoice();
-            $this->fill($invoice, $data, $this->taxSnapshot($data['tax_rate_ids'] ?? []));
+            $this->fill($invoice, $data, $this->taxSnapshot($data['tax_rate_ids'] ?? []), $user);
             $this->syncInvoice->handle($invoice, $user);
 
             return $invoice;
@@ -100,7 +101,7 @@ class SaveBillingDocument
                     ->map(fn (EstimateItem $item) => $item->only(['description', 'quantity', 'unit_price', 'taxable', ...EstimateItem::LINE_FIELDS]))
                     ->values()
                     ->all(),
-            ], $estimate->taxes);
+            ], $estimate->taxes, $user, true);
 
             $estimate->status = EstimateStatus::Invoiced;
             $estimate->save();
@@ -123,7 +124,7 @@ class SaveBillingDocument
     public function update(Estimate|Invoice $document, array $data, User $user): void
     {
         DB::transaction(function () use ($document, $data, $user) {
-            $this->fill($document, $data, $this->taxSnapshot($data['tax_rate_ids'] ?? [], $document->taxes));
+            $this->fill($document, $data, $this->taxSnapshot($data['tax_rate_ids'] ?? [], $document->taxes), $user);
 
             if ($document instanceof Invoice) {
                 $this->syncInvoice->handle($document, $user);
@@ -147,7 +148,7 @@ class SaveBillingDocument
      * @param  array<string, mixed>  $data
      * @param  list<array{tax_rate_id: int|null, name: string, rate: string, compound?: bool}>  $taxes
      */
-    private function fill(Estimate|Invoice $document, array $data, array $taxes): void
+    private function fill(Estimate|Invoice $document, array $data, array $taxes, User $user, bool $conversion = false): void
     {
         $estimate = $document instanceof Estimate;
         $company = currentCompany();
@@ -155,10 +156,16 @@ class SaveBillingDocument
         $previous = $document->exists ? $document->items()->get()->keyBy('id') : collect();
         $services = Service::query()->whereIn('id', array_filter(array_column($data['items'], 'service_id')))->get()->keyBy('id');
 
-        $items = array_values(array_map(function (array $item) use ($estimate, $company, $previous, $services) {
+        $items = array_values(array_map(function (array $item) use ($estimate, $company, $previous, $services, $user, $conversion) {
             $kind = $item['kind'] ?? null;
             $kind = $kind instanceof LineKind ? $kind : (LineKind::tryFrom((string) $kind) ?? LineKind::Service);
             $old = isset($item['id']) ? $previous->get($item['id']) : null;
+            $ownsCost = $old === null || $old->cost_owner_id === null || CostAccess::owns($user, $old);
+            // Only the cost author can replace private values. Conversion preserves their original owner.
+            if (! $conversion && ! $ownsCost) {
+                foreach (EstimateItem::COST_FIELDS as $field) unset($item[$field]);
+            }
+            $costOwner = $conversion ? ($item['cost_owner_id'] ?? null) : ($old?->cost_owner_id ?? (isset($item['unit_cost']) ? $user->id : null));
             $line = [
                 'description' => trim((string) $item['description']),
                 'quantity' => (string) $item['quantity'],
@@ -171,6 +178,7 @@ class SaveBillingDocument
                 'unit' => $kind === LineKind::Material ? ($item['unit'] ?? null) : null,
                 'bill_to_customer' => (bool) ($item['bill_to_customer'] ?? true),
                 'supplier' => array_key_exists('supplier', $item) ? $item['supplier'] : $old?->supplier,
+                'cost_owner_id' => $costOwner,
                 'unit_cost' => array_key_exists('unit_cost', $item) ? $item['unit_cost'] : $old?->unit_cost,
                 'supplier_taxes' => array_key_exists('supplier_taxes', $item) ? $item['supplier_taxes'] : $old?->supplier_taxes,
                 ...($estimate ? [

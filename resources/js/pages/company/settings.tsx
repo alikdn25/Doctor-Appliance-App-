@@ -2,6 +2,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { CheckCircle2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { FormField } from '@/components/form-field';
+import { TimezoneSelect } from '@/components/timezone-select';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -50,14 +51,11 @@ type CompanySettings = {
     warranty_parts_above_value: number | null;
     warranty_parts_above_unit: string | null;
     warranty_terms: string | null;
-    markup_parts: Tier[];
-    markup_materials: Tier[];
     technicians_see_costs: boolean;
     accepts_cash: boolean;
     payment_provider: string;
 };
 
-type Tier = { up_to: number | null; multiplier: number };
 
 const REASON_OUTCOMES = [
     'customer_declined',
@@ -68,7 +66,7 @@ const REASON_OUTCOMES = [
 
 type Props = {
     company: CompanySettings & { id: number; vertical: string };
-    timezones: string[];
+    timezones: Option[];
     currencies: Option[];
     countries: Option[];
     locales: Option[];
@@ -135,8 +133,6 @@ export default function CompanySettingsPage({
         warranty_parts_above_value: company.warranty_parts_above_value,
         warranty_parts_above_unit: company.warranty_parts_above_unit,
         warranty_terms: company.warranty_terms ?? '',
-        markup_parts: company.markup_parts,
-        markup_materials: company.markup_materials,
         technicians_see_costs: company.technicians_see_costs,
         accepts_cash: company.accepts_cash,
         // Edited as text, one reason per line; sent as lists.
@@ -259,10 +255,9 @@ export default function CompanySettingsPage({
                     </h2>
                     <div className="grid gap-4 sm:grid-cols-2">
                         {select('country', countries)}
-                        {select(
-                            'timezone',
-                            timezones.map((tz) => ({ value: tz, label: tz })),
-                        )}
+                        <FormField id="timezone" label={t('company.fields.timezone')} error={form.errors.timezone}>
+                            <TimezoneSelect value={form.data.timezone} options={timezones} onChange={(value) => form.setData('timezone', value)} />
+                        </FormField>
                         {select(
                             'locale',
                             locales,
@@ -803,107 +798,6 @@ export default function CompanySettingsPage({
                             </span>
                         </span>
                     </label>
-                    <p className="text-xs text-muted-foreground">
-                        {t('company.markup_hint')}
-                    </p>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        {(['markup_parts', 'markup_materials'] as const).map(
-                            (key) => (
-                                <fieldset key={key} className="space-y-2">
-                                    <legend className="text-sm font-medium">
-                                        {t(`company.${key}`)}
-                                    </legend>
-                                    {form.data[key].map((tier, i) => (
-                                        <div
-                                            key={i}
-                                            className="grid grid-cols-[1fr_1fr_auto] items-center gap-2"
-                                        >
-                                            <Input
-                                                aria-label={t(
-                                                    'company.markup_up_to',
-                                                )}
-                                                placeholder={t(
-                                                    'company.markup_above',
-                                                )}
-                                                inputMode="decimal"
-                                                value={tier.up_to ?? ''}
-                                                onChange={(e) =>
-                                                    form.setData(
-                                                        key,
-                                                        form.data[key].map(
-                                                            (x, j) =>
-                                                                j === i
-                                                                    ? {
-                                                                          ...x,
-                                                                          up_to:
-                                                                              e
-                                                                                  .target
-                                                                                  .value ===
-                                                                              ''
-                                                                                  ? null
-                                                                                  : Number(
-                                                                                        e
-                                                                                            .target
-                                                                                            .value,
-                                                                                    ),
-                                                                      }
-                                                                    : x,
-                                                        ),
-                                                    )
-                                                }
-                                            />
-                                            <Input
-                                                aria-label={t(
-                                                    'company.markup_multiplier',
-                                                )}
-                                                inputMode="decimal"
-                                                value={tier.multiplier}
-                                                onChange={(e) =>
-                                                    form.setData(
-                                                        key,
-                                                        form.data[key].map(
-                                                            (x, j) =>
-                                                                j === i
-                                                                    ? {
-                                                                          ...x,
-                                                                          multiplier:
-                                                                              Number(
-                                                                                  e
-                                                                                      .target
-                                                                                      .value,
-                                                                              ) ||
-                                                                              1,
-                                                                      }
-                                                                    : x,
-                                                        ),
-                                                    )
-                                                }
-                                            />
-                                            <span className="text-xs text-muted-foreground">
-                                                ×
-                                            </span>
-                                        </div>
-                                    ))}
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() =>
-                                            form.setData(key, [
-                                                ...form.data[key],
-                                                {
-                                                    up_to: null,
-                                                    multiplier: 1.5,
-                                                },
-                                            ])
-                                        }
-                                    >
-                                        {t('company.markup_add')}
-                                    </Button>
-                                </fieldset>
-                            ),
-                        )}
-                    </div>
                 </section>
 
                 <section className="grid gap-3">

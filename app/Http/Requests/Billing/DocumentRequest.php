@@ -124,7 +124,7 @@ class DocumentRequest extends FormRequest
         $data = $this->validated();
 
         $currency = $this->currency();
-        $costs = CostAccess::canSee($this->user());
+        $costs = CostAccess::canEnterPrivate($this->user());
         $rates = TaxRate::query()->get()->keyBy('id');
 
         $data['items'] = array_map(fn (array $item) => [

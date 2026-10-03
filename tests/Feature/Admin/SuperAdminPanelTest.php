@@ -21,10 +21,10 @@ test('company members cannot open the super-admin panel', function (UserRole $ro
         ->assertForbidden();
 })->with([UserRole::Owner, UserRole::Admin, UserRole::Technician]);
 
-test('super-admins are sent to the panel instead of a tenant dashboard', function () {
+test('super-admins choose their own workspace separately from the platform panel', function () {
     $this->actingAs($this->admin)
         ->get(route('dashboard'))
-        ->assertRedirect(route('admin.companies.index'));
+        ->assertRedirect(route('workspaces.index'));
 });
 
 test('super-admins see all companies with status, plan and usage', function () {

@@ -84,6 +84,7 @@ export default function Login({
                                 <Checkbox
                                     id="remember"
                                     name="remember"
+                                    defaultChecked
                                     tabIndex={3}
                                 />
                                 <Label htmlFor="remember">

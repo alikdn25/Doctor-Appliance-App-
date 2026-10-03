@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'workspace_title' => 'Choose your work company',
+    'workspace_hint' => 'Choose once. Future sign-ins open your work menu directly. The admin panel stays separate.',
+    'open_workspace' => 'Open workspace',
+    'support_access' => 'Support access',
     'sms_registration_saved' => 'SMS registration updated.',
     'sms' => [
         'title' => 'SMS',

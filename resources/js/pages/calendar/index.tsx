@@ -6,6 +6,7 @@ import {
     MapPin,
     Navigation,
     Pencil,
+    Plus,
 } from 'lucide-react';
 import type { DragEvent, TouchEvent } from 'react';
 import { useRef, useState } from 'react';
@@ -43,7 +44,7 @@ import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
 import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
-import { show as showJob } from '@/routes/jobs';
+import { create as bookCustomer, show as showJob } from '@/routes/jobs';
 import { move, store as storeVisit } from '@/routes/visits';
 
 type Props = {
@@ -244,7 +245,7 @@ export default function CalendarPage({
             <Head title={t('calendar.title')} />
 
             <div className="space-y-4 p-4">
-                <PageHeader title={t('calendar.title')} description={title} />
+                <PageHeader title={t('calendar.title')} description={title} actions={<Button asChild className="h-11"><Link href={bookCustomer({ query: { book: 1, date } })}><Plus />{t('nav.book_customer')}</Link></Button>} />
 
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">

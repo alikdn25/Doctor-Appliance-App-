@@ -53,12 +53,6 @@ class CompanySettingsRequest extends FormRequest
             'warranty_parts_above_value' => ['nullable', 'integer', 'min:0', 'max:999'],
             'warranty_parts_above_unit' => ['nullable', Rule::enum(WarrantyUnit::class)],
             'warranty_terms' => ['nullable', 'string', 'max:5000'],
-            'markup_parts' => ['sometimes', 'array', 'max:10'],
-            'markup_parts.*.up_to' => ['nullable', 'numeric', 'min:0'],
-            'markup_parts.*.multiplier' => ['required', 'numeric', 'min:1', 'max:20'],
-            'markup_materials' => ['sometimes', 'array', 'max:10'],
-            'markup_materials.*.up_to' => ['nullable', 'numeric', 'min:0'],
-            'markup_materials.*.multiplier' => ['required', 'numeric', 'min:1', 'max:20'],
             'technicians_see_costs' => ['boolean'],
             'accepts_cash' => ['boolean'],
             'closure_reasons' => ['sometimes', 'array'],
@@ -109,30 +103,6 @@ class CompanySettingsRequest extends FormRequest
             $data['warranty_parts_threshold'] = filled($data['warranty_parts_threshold'])
                 ? Currencies::toMinor((string) $data['warranty_parts_threshold'], $data['currency'] ?? currentCompany()->currency)
                 : null;
-        }
-
-        // Markup tiers sorted by "up to" (in major units), the open-ended tier last.
-        foreach (['markup_parts', 'markup_materials'] as $key) {
-            if (array_key_exists($key, $data)) {
-                $data[$key] = collect($data[$key])
-                    ->map(fn (array $tier) => [
-                        'up_to' => filled($tier['up_to'] ?? null) ? (float) $tier['up_to'] : null,
-                        'multiplier' => (float) $tier['multiplier'],
-                    ])
-                    ->sortBy(fn (array $tier) => $tier['up_to'] ?? PHP_FLOAT_MAX)
-                    ->values()
-                    ->all() ?: null;
-            }
-        }
-
-        // One list per outcome; empty lines dropped; an empty list falls back to the defaults.
-        if (array_key_exists('closure_reasons', $data)) {
-            $data['closure_reasons'] = collect(JobOutcome::cases())
-                ->filter(fn (JobOutcome $o) => $o->needsReason())
-                ->mapWithKeys(fn (JobOutcome $o) => [$o->value => collect($data['closure_reasons'][$o->value] ?? [])
-                    ->map(fn ($r) => trim((string) $r))->filter()->unique()->values()->all()])
-                ->filter()
-                ->all() ?: null;
         }
 
         return $data;

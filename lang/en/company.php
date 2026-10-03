@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'timezone_search' => 'Search city, country or UTC offset',
+    'timezone_choose' => 'Choose a time zone',
+    'timezone_dst' => 'Offsets shown for today. Appointments follow local daylight saving changes automatically.',
     'title' => 'Company settings',
     'description' => 'Country, regional format, currency, taxes, payment terms, document numbering and business hours.',
     'saved' => 'Company settings saved.',

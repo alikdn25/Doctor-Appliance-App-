@@ -101,10 +101,9 @@ class HandleInertiaRequests extends Middleware
                 'timezone_pending' => $company->timezone_pending && $user->can('update', $company),
             ] : null,
             'role' => $role ? ['value' => $role->value, 'label' => $role->label()] : null,
-            'companies' => $user->is_super_admin
-                ? []
-                : $user->accessibleCompanies()->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name])->values(),
+            'companies' => $user->accessibleCompanies()->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name])->values(),
             'can' => $company === null ? [] : [
+                'createJobs' => $user->can('create', ServiceJob::class),
                 'viewCustomers' => $user->can('viewAny', Customer::class),
                 'viewMessageInbox' => $user->can('viewAny', Message::class),
                 'viewBusinessExpenses' => $user->can('viewAny', BusinessExpense::class),

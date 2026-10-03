@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Support\Locale\Countries;
 use App\Support\Locale\Currencies;
 use App\Support\Tenancy\CurrentCompany;
-use DateTimeZone;
+use App\Support\Locale\Timezones;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,9 +23,6 @@ class CompanyController extends Controller
     public function create(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
-        if ($user->isSuperAdmin()) {
-            return to_route('admin.companies.index');
-        }
         if ($user->memberships()->exists()) {
             return to_route('dashboard');
         }
@@ -37,7 +34,7 @@ class CompanyController extends Controller
             'currencies' => Currencies::options(),
             'locales' => Countries::localeOptions(),
             'verticals' => Vertical::options(),
-            'timezones' => DateTimeZone::listIdentifiers(),
+            'timezones' => Timezones::options(),
             'countryDefaults' => collect(Countries::codes())->mapWithKeys(fn (string $code) => [$code => [
                 'currency' => Countries::currency($code),
                 'locale' => Countries::locale($code),

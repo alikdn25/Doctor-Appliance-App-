@@ -5,6 +5,7 @@ use App\Http\Controllers\Accounting\BusinessExpenseController;
 use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
+use App\Http\Controllers\Admin\WorkspaceController;
 use App\Http\Controllers\Billing\CashController;
 use App\Http\Controllers\Billing\DocumentDeliveryController;
 use App\Http\Controllers\Billing\EstimateController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Company\CompanySettingsController;
 use App\Http\Controllers\Company\DetectTimezoneController;
 use App\Http\Controllers\Company\GoogleProfileController;
 use App\Http\Controllers\Company\MessagingSettingsController;
+use App\Http\Controllers\Company\MemberTransitionController;
 use App\Http\Controllers\Company\PaymentProviderController;
 use App\Http\Controllers\Company\ServiceController;
 use App\Http\Controllers\Company\SwitchCompanyController;
@@ -74,6 +76,10 @@ Route::post('webhooks/payments/{provider}', PaymentWebhookController::class)
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'login'))->name('home');
 
 Route::middleware(['auth', 'active'])->group(function () {
+    Route::middleware(['verified', 'super-admin'])->group(function () {
+        Route::get('workspaces', [WorkspaceController::class, 'index'])->name('workspaces.index');
+        Route::post('admin/companies/{company}/workspace', [WorkspaceController::class, 'store'])->name('admin.companies.workspace');
+    });
 
     Route::middleware('verified')->group(function () {
         Route::get('onboarding/company', [OnboardingCompanyController::class, 'create'])->name('onboarding.company.create');
@@ -209,6 +215,8 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::get('team', [TeamController::class, 'index'])->name('team.index');
             Route::post('team', [TeamController::class, 'store'])->name('team.store');
             Route::put('team/{membership}', [TeamController::class, 'update'])->name('team.update');
+            Route::post('team/{membership}/transfer-jobs', [MemberTransitionController::class, 'transfer'])->name('team.transfer-jobs');
+            Route::post('team/{membership}/replace', [MemberTransitionController::class, 'replace'])->middleware('throttle:6,1')->name('team.replace');
             Route::delete('team/{membership}', [TeamController::class, 'destroy'])->name('team.destroy');
             Route::post('team/{membership}/resend-invitation', [TeamController::class, 'resendInvitation'])
                 ->middleware('throttle:6,1')

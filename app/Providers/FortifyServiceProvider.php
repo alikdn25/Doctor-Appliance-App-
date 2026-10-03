@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Responses\WorkLoginResponse;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -15,6 +16,8 @@ use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use Laravel\Fortify\Contracts\LoginResponse;
+use Laravel\Fortify\Contracts\TwoFactorLoginResponse;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -23,7 +26,8 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(LoginResponse::class, WorkLoginResponse::class);
+        $this->app->singleton(TwoFactorLoginResponse::class, WorkLoginResponse::class);
     }
 
     /**
@@ -73,7 +77,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/verify-email', [
             'email' => $request->user()->email,
-            'needsCompanySetup' => ! $request->user()->isSuperAdmin() && $request->user()->memberships()->doesntExist(),
+            'needsCompanySetup' => $request->user()->memberships()->doesntExist(),
             'status' => $request->session()->get('status'),
         ]));
 

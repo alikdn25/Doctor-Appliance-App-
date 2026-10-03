@@ -76,8 +76,9 @@ test('company setup validates location and cannot create partial company records
     expect(Company::count())->toBe(0)->and($user->memberships()->count())->toBe(0);
 });
 
-test('super admins use the platform panel rather than public company setup', function () {
+test('super admins can create their own working company without impersonation', function () {
     $user = User::factory()->superAdmin()->create();
-    $this->actingAs($user)->get(route('onboarding.company.create'))->assertRedirect(route('admin.companies.index'));
-    $this->post(route('onboarding.company.store'), companySetupPayload())->assertForbidden();
+    $this->actingAs($user)->get(route('onboarding.company.create'))->assertOk();
+    $this->post(route('onboarding.company.store'), companySetupPayload())->assertRedirect(route('dashboard'));
+    $this->get(route('team.index'))->assertOk();
 });

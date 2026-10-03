@@ -49,11 +49,12 @@ class TeamController extends Controller
                 'brand_ids' => $brandLinks->get($m->user_id, []),
                 'invitation_pending' => $m->user->last_login_at === null,
                 'is_self' => $m->user_id === $request->user()->id,
+                'can_manage' => $request->user()->can('update', $m),
             ]);
 
         return Inertia::render('team/index', [
             'members' => $members,
-            'roles' => UserRole::assignableOptions(),
+            'roles' => $request->user()->hasRole(UserRole::Owner) ? UserRole::assignableOptions() : [['value' => UserRole::Technician->value, 'label' => UserRole::Technician->label()]],
             'brands' => Brand::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }

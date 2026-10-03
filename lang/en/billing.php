@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'private_cost' => 'Private',
     'section' => 'Estimates & invoices',
     'empty' => 'No estimates or invoices yet.',
     'new_estimate' => 'New estimate',
@@ -68,6 +69,10 @@ return [
     'warranty_until' => 'Warranty: :length (until :date)',
     'warranty_terms' => 'Warranty terms',
     'line' => [
+        'customer_price' => 'Price you quote to the customer',
+        'private_purchase_price' => 'Your purchase price — private',
+        'private_cost_hint' => 'Only you can see this value. It is never included on the customer invoice.',
+        'difference' => 'Difference before tax: :amount',
         'taxes' => 'Taxes for this item',
         'document_taxes' => 'Use all enabled document taxes',
         'enable_taxes' => 'Enable taxes in the document tax settings to select them here',
@@ -99,5 +104,5 @@ return [
         'lb' => 'lb',
         'oz' => 'oz',
     ],
-    'cost_total' => 'Total cost',
+    'cost_total' => 'Your purchase total (private)',
 ];

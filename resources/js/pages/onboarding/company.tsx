@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import type { FormEvent } from 'react';
 import { AccountSetupSteps } from '@/components/account-setup-steps';
 import { FormField } from '@/components/form-field';
+import { TimezoneSelect } from '@/components/timezone-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
@@ -17,7 +18,7 @@ type Props = {
     currencies: Option[];
     locales: Option[];
     verticals: Option[];
-    timezones: string[];
+    timezones: Option[];
     countryDefaults: Record<
         string,
         { currency: string; locale: string; timezone: string }
@@ -48,7 +49,7 @@ export default function CompanySetup({
         if (timezoneDetected.current) return;
         timezoneDetected.current = true;
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (timezones.includes(timezone)) setData('timezone', timezone);
+        if (timezones.some((option) => option.value === timezone)) setData('timezone', timezone);
     }, [setData, timezones]);
 
     const submit = (event: FormEvent) => {
@@ -134,20 +135,7 @@ export default function CompanySetup({
                     hint={t('onboarding.timezone_hint')}
                     error={form.errors.timezone}
                 >
-                    <NativeSelect
-                        id="timezone"
-                        value={form.data.timezone}
-                        onChange={(event) =>
-                            form.setData('timezone', event.target.value)
-                        }
-                        className="h-12 rounded-xl"
-                    >
-                        {timezones.map((timezone) => (
-                            <option key={timezone} value={timezone}>
-                                {timezone.replaceAll('_', ' ')}
-                            </option>
-                        ))}
-                    </NativeSelect>
+                    <TimezoneSelect value={form.data.timezone} options={timezones} onChange={(value) => form.setData('timezone', value)} />
                 </FormField>
                 <details
                     className="rounded-xl border p-4"

@@ -35,8 +35,8 @@ test('a user in several companies works in their current company and can switch'
             ->has('brands', 1)
             ->where('brands.0.name', 'Second Brand'));
 
-    // The role is per company: Admin cannot manage the team in the second company.
-    $this->get(route('team.index'))->assertForbidden();
+    // Admins can open the team, but cannot change Owners or other Admins.
+    $this->get(route('team.index'))->assertOk();
 });
 
 test('a user cannot switch to a company they do not belong to', function () {

@@ -192,6 +192,7 @@ class JobController extends Controller
 
     public function create(Request $request): Response
     {
+        $request->validate(['date' => ['nullable', 'date_format:Y-m-d']]);
         Gate::authorize('create', ServiceJob::class);
 
         $customer = $request->integer('customer_id')
@@ -200,6 +201,8 @@ class JobController extends Controller
 
         return Inertia::render('jobs/form', [
             'job' => null,
+            'booking' => $request->boolean('book'),
+            'bookingDate' => $request->input('date'),
             'customer' => $customer ? self::customerOption($customer) : null,
             'today' => CarbonImmutable::now(currentCompany()->timezone)->format('Y-m-d'),
             ...$this->formOptions($request->user()),

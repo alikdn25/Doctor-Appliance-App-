@@ -11,6 +11,7 @@ use App\Models\ChecklistTemplate;
 use App\Models\Service;
 use App\Services\AuditLogger;
 use App\Support\Locale\Currencies;
+use App\Support\Billing\CostAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,9 +43,9 @@ class ServiceController extends Controller
                     'is_active' => $service->is_active,
                     'kind' => $service->kind->value,
                     'part_number' => $service->part_number,
-                    'supplier' => $service->supplier,
+                    'supplier' => CostAccess::owns(auth()->user(), $service) ? $service->supplier : null,
                     'unit' => $service->unit,
-                    'unit_cost' => $service->unit_cost,
+                    'unit_cost' => CostAccess::owns(auth()->user(), $service) ? $service->unit_cost : null,
                     'warranty_value' => $service->warranty_value,
                     'warranty_unit' => $service->warranty_unit,
                 ])
@@ -100,9 +101,10 @@ class ServiceController extends Controller
                     'sort_order' => $position + 1,
                     'kind' => $row['kind'] ?? 'service',
                     'part_number' => $row['part_number'] ?? null,
-                    'supplier' => $row['supplier'] ?? null,
+                    'supplier' => ! $service->exists || $service->cost_owner_id === null || CostAccess::owns(auth()->user(), $service) ? ($row['supplier'] ?? null) : $service->supplier,
                     'unit' => $row['unit'] ?? null,
-                    'unit_cost' => filled($row['unit_cost'] ?? null) ? Currencies::toMinor($row['unit_cost'], $currency) : null,
+                    'unit_cost' => ! $service->exists || $service->cost_owner_id === null || CostAccess::owns(auth()->user(), $service) ? (filled($row['unit_cost'] ?? null) ? Currencies::toMinor($row['unit_cost'], $currency) : null) : $service->unit_cost,
+                    'cost_owner_id' => $service->cost_owner_id ?? (filled($row['unit_cost'] ?? null) ? auth()->id() : null),
                     // Empty = the company's default warranty.
                     'warranty_value' => $row['warranty_value'] ?? null,
                     'warranty_unit' => isset($row['warranty_value']) ? ($row['warranty_unit'] ?? 'days') : null,

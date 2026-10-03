@@ -72,9 +72,9 @@ class ReportController extends Controller
             ],
             'noCharge' => [
                 'count' => $noCharge->count(),
-                'loss' => -$noCharge->sum('profit'),
+                'loss' => $noCharge->contains(fn ($r) => $r['profit'] === null) ? null : -$noCharge->sum('profit'),
                 'byTechnician' => $noCharge->groupBy('technician')->map(fn (Collection $g, string $name) => [
-                    'name' => $name, 'count' => $g->count(), 'loss' => -$g->sum('profit'),
+                    'name' => $name, 'count' => $g->count(), 'loss' => $g->contains(fn ($r) => $r['profit'] === null) ? null : -$g->sum('profit'),
                 ])->values(),
             ],
         ]);
@@ -92,6 +92,7 @@ class ReportController extends Controller
         $lines = collect();
         InvoiceItem::query()
             ->whereNotNull('unit_cost')
+            ->where('cost_owner_id', $request->user()->id)
             ->whereHas('invoice', fn ($q) => $q->whereIn('service_job_id', $jobs->keys())->where('status', '!=', InvoiceStatus::Void->value))
             ->with('invoice')
             ->get()
@@ -200,15 +201,16 @@ class ReportController extends Controller
     private function sum(Collection $rows): array
     {
         $revenue = (int) $rows->sum('revenue');
-        $profit = (int) $rows->sum('profit');
+        $private = $rows->contains(fn ($row) => $row['profit'] === null);
+        $profit = $private ? null : (int) $rows->sum('profit');
 
         return [
             'jobs' => $rows->count(),
             'revenue' => $revenue,
-            'cost' => (int) $rows->sum('cost'),
+            'cost' => $private ? null : (int) $rows->sum('cost'),
             'fees' => (int) $rows->sum('fees'),
             'profit' => $profit,
-            'margin' => $revenue > 0 ? round($profit / $revenue * 100, 1) : null,
+            'margin' => ! $private && $revenue > 0 ? round($profit / $revenue * 100, 1) : null,
         ];
     }
 

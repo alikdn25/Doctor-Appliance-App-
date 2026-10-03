@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { FormField } from '@/components/form-field';
+import { TimezoneSelect } from '@/components/timezone-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,7 @@ import { index, store } from '@/routes/admin/companies';
 import type { Option } from '@/types';
 
 type Props = {
-    timezones: string[];
+    timezones: Option[];
     countries: Option[];
     countryDefaults: Record<string, { currency: string; locale: string }>;
     currencies: Option[];
@@ -154,20 +155,7 @@ export default function AdminCompanyCreate({
                         label={t('company.fields.timezone')}
                         error={form.errors.timezone}
                     >
-                        <NativeSelect
-                            id="timezone"
-                            value={form.data.timezone}
-                            onChange={(e) =>
-                                form.setData('timezone', e.target.value)
-                            }
-                        >
-                            <option value="">
-                                {t('admin.timezone_from_owner')}
-                            </option>
-                            {timezones.map((tz) => (
-                                <option key={tz}>{tz}</option>
-                            ))}
-                        </NativeSelect>
+                        <TimezoneSelect value={form.data.timezone} options={timezones} onChange={(value) => form.setData('timezone', value)} />
                     </FormField>
                     <FormField
                         id="currency"

@@ -41,13 +41,14 @@ class JobProfit
             ->get()->sum(fn (JobCostItem $item) => $item->totalCost());
         $fees = (int) Payment::query()->valid()->whereIn('invoice_id', $invoices->pluck('id'))->sum('processing_fee');
         $profit = $revenue - $cost - $fees;
+        $private = $invoices->contains(fn (Invoice $invoice) => $invoice->items->contains(fn (InvoiceItem $item) => $item->unit_cost !== null && ! CostAccess::owns(auth()->user(), $item)));
 
         return [
             'revenue' => $revenue,
-            'cost' => $cost,
+            'cost' => $private ? null : $cost,
             'fees' => $fees,
-            'profit' => $profit,
-            'margin' => $revenue > 0 ? round($profit / $revenue * 100, 1) : null,
+            'profit' => $private ? null : $profit,
+            'margin' => ! $private && $revenue > 0 ? round($profit / $revenue * 100, 1) : null,
         ];
     }
 }

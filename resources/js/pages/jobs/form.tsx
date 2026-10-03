@@ -129,6 +129,8 @@ type Props = {
     job: JobData | null;
     customer: CustomerOption | null;
     today: string;
+    booking?: boolean;
+    bookingDate?: string | null;
     brands: Option[];
     jobTypes: Option[];
     leadSources: Option[];
@@ -145,6 +147,8 @@ export default function JobForm({
     job,
     customer: initialCustomer,
     today,
+    booking = false,
+    bookingDate,
     brands,
     jobTypes,
     leadSources,
@@ -203,13 +207,13 @@ export default function JobForm({
                 longitude: '',
             },
         },
-        add_visit: false,
+        add_visit: !job && booking,
         visit: {
-            date: today,
+            date: bookingDate ?? today,
             start_time: '09:00',
             end_time: '11:00',
             estimated_duration_minutes: '60',
-            assignee_ids: [],
+            assignee_ids: booking && assignableUsers.length === 1 ? [assignableUsers[0].id] : [],
             strict_arrival: false,
         },
     });
@@ -433,7 +437,7 @@ export default function JobForm({
         </FormField>
     );
 
-    const title = job ? t('jobs.edit') + ` #${job.number}` : t('jobs.add');
+    const title = job ? t('jobs.edit') + ` #${job.number}` : t(booking ? 'nav.book_customer' : 'jobs.add');
 
     return (
         <>
