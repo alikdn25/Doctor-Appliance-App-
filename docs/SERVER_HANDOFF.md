@@ -1,7 +1,8 @@
 # Server agent handoff
 
 Repository: alikdn25/Doctor-Appliance-App-. MVP PR #11 is merged into main.
-Signup and first-run usability are in PR #12, branch chatgpt/self-service-onboarding.
+Signup, first-run usability and the seven October 3 feedback fixes are in PR #12,
+branch chatgpt/self-service-onboarding. FEEDBACK_2026_10_03.md records the behavior changes.
 Tested code commit: aedf2a89a9023e277b5eaed41c23d9cab84e699a.
 Validation run: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37135218373.
 All checks passed: build, PHP style, frontend format/lint, TypeScript, deployment shell syntax,
@@ -26,6 +27,7 @@ existing installation. Do not reinstall the OS or reset the database.
 3. Set APP_NAME="Doctor Appliance" and VITE_APP_NAME="${APP_NAME}" in the server .env if the
    existing installation still says Field Service. Use APP_URL=https://app.doctor-appliance.ca,
    production mode, debug off and secure cookies. Preserve the existing APP_KEY.
+   Set SESSION_LIFETIME=43200 (30 days): the old server value overrides the new code default.
 4. Check the existing mail configuration securely. Real SMTP needs a working provider, credentials
    and a verified sender. A Bluehost mailbox can be used only with its actual supported SMTP
    settings; do not invent host names, ports or passwords. Request any missing credentials through
@@ -47,6 +49,11 @@ dependencies, builds assets, migrates without resetting data, refreshes caches a
 queue. A failure leaves maintenance enabled for diagnosis. Do not use migrate:fresh or seed the
 browser fixtures on this VPS.
 
+The feedback migrations add private purchase-cost ownership and durable responsibility for transferred
+jobs. They run after the existing billing tables, preserve historical records and do not remove legacy
+markup columns. Existing document costs are attributed to the document creator; unknown price-book
+cost authors remain hidden. Review attribution on a controlled copy of older records before launch.
+
 ## Acceptance checks
 
 - Verify the deployed SHA, HTTPS /up, /login and the Create account link to /register.
@@ -65,6 +72,22 @@ browser fixtures on this VPS.
   it in Security settings. Email login codes are a future task, separate from signup confirmation.
 - Perform the remaining manual checks in LAUNCH_TESTING.md, including private receipts, tenant
   access, Maps credentials, Square sandbox callbacks and a separate backup restoration test.
+- For the user's existing platform-admin login: return from support access, sign in as the actual
+  account, open the workspace selector or the company's Open workspace action once and select Doctor
+  Appliance. This creates a real Owner membership. Subsequent normal logins open work, without Login
+  as or a reason prompt; platform administration remains a separate destination. A regular invited
+  technician should go directly to My jobs. Check Remember me and reopening the browser.
+- As Owner and office Admin, open Members. Check that Admin can manage a Technician but cannot alter
+  an Owner or promote roles. Verify the visible Menu and permanent Book customer on working screens,
+  and Calendar booking with its selected date/first visit. Check UTC offsets and Vancouver/Canada search.
+- Enter a part and a material with manual customer prices and private purchase prices as a Technician;
+  confirm the difference without changing the quoted prices. Another technician, office user and
+  customer PDF/public page must not reveal private purchase costs or their difference/profit.
+- Transfer unfinished work including a completed diagnosis waiting for parts. Confirm the replacement
+  sees the backlog, the former technician's completed visit retains its name and a later reschedule
+  follows the current assignment. In a controlled test, replace a company-only technician using the
+  same email and a new password; check the old session/password fail and historical names remain.
+  Shared accounts must use ordinary transfer/deactivation instead of a one-company credential reset.
 
 Report the deployed SHA, URL, actual email receipt, worker/scheduler checks, desktop/mobile
 results and remaining blockers. Stage 2/3 features and platform subscription billing are not

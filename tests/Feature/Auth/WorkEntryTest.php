@@ -52,10 +52,12 @@ test('an office admin can open Members and manage technicians without promoting 
 });
 
 test('booking opens directly with the selected calendar date and ordinary job creation remains available', function () {
-    $this->actingAs(memberOf())->get(route('jobs.create', ['book' => 1, 'date' => '2026-10-12']))
+    $office = memberOf();
+    $tech = memberOf($office->accessibleCompanies()->first(), UserRole::Technician);
+    $this->actingAs($office)->get(route('jobs.create', ['book' => 1, 'date' => '2026-10-12']))
         ->assertOk()->assertInertia(fn (Assert $page) => $page->where('booking', true)->where('bookingDate', '2026-10-12')->where('auth.can.createJobs', true));
     $this->get(route('jobs.create', ['date' => 'bad-date']))->assertSessionHasErrors('date');
-    $this->actingAs(memberOf(role: UserRole::Technician))->get(route('jobs.create'))->assertForbidden();
+    $this->actingAs($tech)->get(route('jobs.create'))->assertForbidden();
 });
 
 test('timezone choices show offsets cities and countries while keeping IANA identifiers', function () {

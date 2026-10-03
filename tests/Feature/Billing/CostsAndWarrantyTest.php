@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
- * Parts and materials with cost on lines, markup, internal lines, warranty per line, price book, job profit.
+ * Parts and materials with private purchase costs, internal lines, warranty per line, price book, job profit.
  */
 beforeEach(function () {
     $this->travelTo(CarbonImmutable::parse('2026-10-14 12:00', 'America/Vancouver'));

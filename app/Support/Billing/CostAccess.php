@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Who sees costs, suppliers and profit: Owners and Admins; technicians only when the company allows it.
+ * Document purchase costs belong to their author. Shared job expenses use company role permissions.
  */
 class CostAccess
 {

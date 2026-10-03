@@ -99,7 +99,7 @@ describe('cash on hand', function () {
 describe('reports', function () {
     beforeEach(function () {
         // Repaired by Tim: invoiced 280.50 (no tax), part cost 40.
-        inCompany($this->company, fn () => $this->invoice->items()->first()->forceFill(['unit_cost' => 4000, 'kind' => 'part'])->save());
+        inCompany($this->company, fn () => $this->invoice->items()->first()->forceFill(['unit_cost' => 4000, 'cost_owner_id' => $this->owner->id, 'kind' => 'part'])->save());
         $visit = JobVisit::withoutCompanyScope()->where('service_job_id', $this->job->id)->sole();
         $this->actingAs($this->tech)->post(route('visits.start', $visit));
         $this->post(route('visits.finish', $visit), ['outcome' => 'completed']);

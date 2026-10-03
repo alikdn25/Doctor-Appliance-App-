@@ -58,7 +58,7 @@ class MemberTransitionController extends Controller
             $membership->update(['is_active' => false]);
             DB::table('sessions')->where('user_id', $old->id)->delete();
             DB::table('password_reset_tokens')->where('email', $email)->delete();
-            $audit->record('member.replaced', $membership, ['old_user_id' => $old->id, 'new_user_id' => $new->id, 'old_name' => $old->name, 'login_email' => $email, 'transferred_visits' => $count]);
+            $audit->record('member.replaced', $membership, ['old_user_id' => $old->id, 'new_user_id' => $new->id, 'old_name' => $old->name, 'login_email' => $email, 'transferred_jobs' => $count]);
         });
         Inertia::flash('toast', ['type' => 'success', 'message' => __('team.replaced')]);
 

@@ -70,11 +70,7 @@ test('a technician types customer and private purchase prices independently and 
     });
     const page = await context.newPage();
     await page.goto(`/jobs/${fixture.job_id}/estimates/create`);
-    await page
-        .locator('select')
-        .filter({ has: page.locator('option[value="part"]') })
-        .first()
-        .selectOption('part');
+    await page.getByRole('button', { name: 'Part', exact: true }).first().click();
     const price = page
         .getByRole('textbox', { name: 'Price', exact: true })
         .first();

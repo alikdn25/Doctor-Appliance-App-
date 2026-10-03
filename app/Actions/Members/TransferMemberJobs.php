@@ -7,10 +7,10 @@ use App\Enums\VisitStatus;
 use App\Models\JobVisit;
 use App\Models\Membership;
 use App\Models\ServiceJob;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use App\Models\User;
 use App\Services\AuditLogger;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class TransferMemberJobs

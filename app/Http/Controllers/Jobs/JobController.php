@@ -140,7 +140,7 @@ class JobController extends Controller
 
         $visits = JobVisit::query()
             ->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
-            ->whereHas('job')
+            ->whereHas('job', fn (Builder $q) => $q->visibleTo($user))
             ->when($tab === 'today', fn ($q) => $q
                 ->where(fn ($w) => $w
                     ->whereBetween('scheduled_start', [$todayStart, $todayEnd])

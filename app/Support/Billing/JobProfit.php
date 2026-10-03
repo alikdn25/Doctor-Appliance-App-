@@ -19,7 +19,7 @@ use App\Models\ServiceJob;
 class JobProfit
 {
     /**
-     * @return array{revenue: int, cost: int, fees: int, profit: int, margin: float|null}
+     * @return array{revenue: int, cost: int|null, fees: int, profit: int|null, margin: float|null}
      */
     public static function for(ServiceJob $job): array
     {

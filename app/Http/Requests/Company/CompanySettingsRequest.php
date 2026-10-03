@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Company;
 
+use App\Enums\JobOutcome;
 use App\Enums\PaymentTerms;
 use App\Enums\WarrantyUnit;
 use App\Models\Company;
@@ -102,6 +103,16 @@ class CompanySettingsRequest extends FormRequest
             $data['warranty_parts_threshold'] = filled($data['warranty_parts_threshold'])
                 ? Currencies::toMinor((string) $data['warranty_parts_threshold'], $data['currency'] ?? currentCompany()->currency)
                 : null;
+        }
+
+        // One list per outcome; empty lines dropped; an empty list falls back to the defaults.
+        if (array_key_exists('closure_reasons', $data)) {
+            $data['closure_reasons'] = collect(JobOutcome::cases())
+                ->filter(fn (JobOutcome $o) => $o->needsReason())
+                ->mapWithKeys(fn (JobOutcome $o) => [$o->value => collect($data['closure_reasons'][$o->value] ?? [])
+                    ->map(fn ($r) => trim((string) $r))->filter()->unique()->values()->all()])
+                ->filter()
+                ->all() ?: null;
         }
 
         return $data;

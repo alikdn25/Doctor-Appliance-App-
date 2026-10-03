@@ -303,6 +303,7 @@ class ServiceJob extends Model
         if ($this->assignment_is_explicit) {
             return $this->assignees()->where('users.id', $user->id)->exists();
         }
+
         return $this->visits()
             ->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
             ->exists();

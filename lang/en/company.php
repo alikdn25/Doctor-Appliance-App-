@@ -64,7 +64,7 @@ return [
         'estimate_followup_days' => 'Estimate follow-up after (days)',
         'estimate_valid_days' => 'Estimates valid for (days)',
         'technicians_can_delete_jobs' => 'Allow technicians to delete jobs',
-        'technicians_see_costs' => 'Technicians see costs and profit',
+        'technicians_see_costs' => 'Technicians can view shared job expenses and receipts',
         'accepts_cash' => 'Accept cash payments',
         'warranty_terms' => 'Warranty terms (shown on invoices)',
         'diagnostic_service_id' => 'Diagnostic fee (price book service)',
