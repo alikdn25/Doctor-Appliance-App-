@@ -24,6 +24,16 @@ test('new owner registers, confirms email and creates a usable company without m
     await expect(page).toHaveURL(/\/email\/verify$/);
     await expect(page.getByText(email, { exact: false })).toBeVisible();
 
+    await page.getByRole('link', { name: 'Correct my email address' }).click();
+    await expect(page).toHaveURL(/\/settings\/profile$/);
+    const correctedEmail = `corrected-${email}`;
+    await page.locator('#email').fill(correctedEmail);
+    await page.locator('[data-test="update-profile-button"]').click();
+    await expect(page).toHaveURL(/\/email\/verify$/);
+    await expect(
+        page.getByText(correctedEmail, { exact: false }),
+    ).toBeVisible();
+
     // Isolated CI uses the log mailer and synchronous queue, never a real inbox.
     const mail = readFileSync('storage/logs/laravel.log', 'utf8')
         .replace(/=\r?\n/g, '')
