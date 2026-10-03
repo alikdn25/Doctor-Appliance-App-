@@ -70,7 +70,10 @@ test('a technician types customer and private purchase prices independently and 
     });
     const page = await context.newPage();
     await page.goto(`/jobs/${fixture.job_id}/estimates/create`);
-    await page.getByRole('button', { name: 'Part', exact: true }).first().click();
+    await page
+        .getByRole('button', { name: 'Part', exact: true })
+        .first()
+        .click();
     const price = page
         .getByRole('textbox', { name: 'Price', exact: true })
         .first();
@@ -83,7 +86,7 @@ test('a technician types customer and private purchase prices independently and 
         .first()
         .fill('40.00');
     await expect(price).toHaveValue('90.00');
-    await expect(page.getByText(/Difference before tax:.*50/)).toBeVisible();
+    await expect(page.getByText(/Price difference:.*50/)).toBeVisible();
     await page.screenshot({
         path: info.outputPath('private-purchase-price.png'),
         fullPage: true,

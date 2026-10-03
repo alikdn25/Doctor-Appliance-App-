@@ -74,10 +74,12 @@ test('technicians cannot transfer other people or replace themselves', function 
 
 test('waiting-for-parts work transfers even after its diagnosis visit finished and the new technician can see the backlog', function () {
     JobVisit::withoutCompanyScope()->where('service_job_id', $this->job->id)->update(['status' => VisitStatus::Completed, 'scheduled_start' => now()->subDay()->setTime(9, 0), 'scheduled_end' => now()->subDay()->setTime(11, 0)]);
-    $this->job->update(['status' => JobStatus::WaitingForParts]);
+    $this->job->forceFill(['status' => JobStatus::WaitingForParts])->save();
+    expect($this->job->fresh()->status)->toBe(JobStatus::WaitingForParts);
     $this->post(route('team.transfer-jobs', $this->tech->membershipFor($this->company)), ['replacement_id' => $this->otherTech->membershipFor($this->company)->id])->assertSessionHasNoErrors();
     $this->actingAs($this->otherTech)->get(route('jobs.show', $this->job))->assertOk();
-    $this->get(route('jobs.backlog'))->assertOk();
+    $this->get(route('jobs.backlog'))->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('jobs.total', 1)->where('jobs.data.0.id', $this->job->id)->where('jobs.data.0.backlog_reason', 'waiting_for_parts'));
     $this->actingAs($this->tech)->get(route('jobs.show', $this->job))->assertForbidden();
     $this->get(route('jobs.mine', ['tab' => 'recent']))->assertOk()->assertInertia(fn (Assert $page) => $page->has('visits', 0));
     expect(inCompany($this->company, fn () => JobVisit::query()->where('service_job_id', $this->job->id)->sole()->isAssigned($this->tech)))->toBeTrue();
@@ -100,7 +102,8 @@ test('brand restrictions prevent a partial transfer and completed jobs stay unto
     inCompany($this->company, fn () => $this->otherTech->brands()->attach($differentBrand, ['company_id' => $this->company->id]));
     $this->post(route('team.transfer-jobs', $this->tech->membershipFor($this->company)), ['replacement_id' => $this->otherTech->membershipFor($this->company)->id])->assertSessionHasErrors('replacement_id');
     $this->get(route('team.index'))->assertOk();
-    $this->job->update(['status' => JobStatus::Completed]);
+    $this->job->forceFill(['status' => JobStatus::Completed])->save();
+    expect($this->job->fresh()->status)->toBe(JobStatus::Completed);
     $this->post(route('team.transfer-jobs', $this->tech->membershipFor($this->company)), ['replacement_id' => $this->otherTech->membershipFor($this->company)->id])->assertSessionHasNoErrors();
     expect(inCompany($this->company, fn () => $this->job->fresh()->isAssigned($this->tech)))->toBeTrue();
 });

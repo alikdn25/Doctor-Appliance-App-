@@ -72,7 +72,7 @@ return [
         'customer_price' => 'Price you quote to the customer',
         'private_purchase_price' => 'Your purchase price — private',
         'private_cost_hint' => 'Only you can see this value. It is never included on the customer invoice.',
-        'difference' => 'Difference before tax: :amount',
+        'difference' => 'Price difference: :amount',
         'taxes' => 'Taxes for this item',
         'document_taxes' => 'Use all enabled document taxes',
         'enable_taxes' => 'Enable taxes in the document tax settings to select them here',
