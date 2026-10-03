@@ -133,6 +133,11 @@ test('business expenses save custom categories, actual named taxes and a private
     await expect(page).toHaveURL(/\/business-expenses\?from=/);
     await page.locator('#search').fill(`Browser fuel ${info.project.name}`);
     await page.getByRole('button', { name: 'Search', exact: true }).click();
+    await expect(page).toHaveURL(
+        (url) =>
+            url.searchParams.get('search') ===
+            `Browser fuel ${info.project.name}`,
+    );
     await expect(
         page
             .getByText(`Browser fuel ${info.project.name}`, { exact: true })
@@ -141,6 +146,7 @@ test('business expenses save custom categories, actual named taxes and a private
     const receipt = page
         .getByRole('link', { name: 'Open receipt' })
         .filter({ visible: true });
+    await expect(receipt).toHaveCount(1);
     await expect(receipt).toBeVisible();
     const response = await page.request.get(
         (await receipt.getAttribute('href'))!,
