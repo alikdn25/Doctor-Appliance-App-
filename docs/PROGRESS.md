@@ -1,9 +1,9 @@
-# October 3 follow-up — implementation complete; validation in progress
+# October 3 follow-up — code validated; server acceptance pending
 
 - Short Book customer form: name/phone/time, optional address/details, existing-customer search and visible customer preferences; saves customer/job/visit atomically. Calendar empty days and dashboard link to booking.
 - New invoice opens from empty/populated lists, picks a visible job or enters a new customer, then opens prices. No empty invoice is saved by continuing. New job click is covered in browser checks; Save requires customer details.
 - Missing-brand setup is explained, company punctuation is preserved, and Invited requires an actual pending invitation/reset token rather than an unused account alone.
-- Backend tenant/validation checks and desktop/mobile browser scenarios added. The follow-up report covers only Grok's new walkthrough in FEEDBACK_FOLLOWUP_2026_10_03.md. PR #12 is still unmerged; production needs the exact tested build, not only an update of main. Server access is not available here.
+- Tested code c02a95db7edaf618787c03340bd216c77d49a9ad passed build, PHP style, frontend formatting/lint, TypeScript, deployment syntax, all 719 backend tests (5,752 assertions) and 36 desktop/mobile browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37143711689. New job works through its actual button on both viewports; mobile booking/invoice screenshots were inspected. The new report is FEEDBACK_FOLLOWUP_2026_10_03.md. PR #12 remains unmerged; production needs the tested candidate in SERVER_HANDOFF.md. Server access is not available here.
 
 # Feedback through October 3, 2026 — code validated; server acceptance pending
 

@@ -45,6 +45,10 @@ checked through Team with an actual Owner/Admin account, separate from platform 
 
 ## Validation and deployment
 
-Automated results and the tested deployment SHA will be recorded after CI completes. Live email
-delivery, the existing account's workspace selection and VPS deployment remain operator checks;
-read-only walkthroughs do not install changes. See `SERVER_HANDOFF.md` for the complete sequence.
+Tested code: `c02a95db7edaf618787c03340bd216c77d49a9ad`. [Validation run](https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37143711689)
+passed build, PHP style, frontend formatting/lint, TypeScript, deployment shell syntax, 719 backend
+tests (5,752 assertions) and 36 desktop/mobile browser scenarios. Real clicks on New job, the empty
+calendar day, short booking/customer search and New invoice were checked on both viewports.
+Mobile booking/invoice screenshots were inspected. Live email delivery, the existing account's
+workspace selection and VPS deployment remain operator checks. See `SERVER_HANDOFF.md` for the
+complete sequence; a read-only walkthrough does not install changes.
