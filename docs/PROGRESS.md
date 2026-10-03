@@ -18,9 +18,9 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 - Super-admin panel: companies list, status, plan, impersonation with audit log.
 - CI (GitHub Actions tests) and manual deploy pipeline to the VPS (`docs/DEPLOYMENT.md`).
 
-## Stage 1 — MVP 🚧 In progress
+## Stage 1 — MVP code validated; server acceptance pending
 
-### Office SMS inbox and automated browser validation — verification in progress
+### Office SMS inbox and desktop/mobile browser checks — CI passed
 
 - Shared SMS Inbox for Owner/Admin: phone-based conversations, search, unread filter, pagination,
   incoming/outgoing bodies and delivery status, customer/job links and exact-number replies.
@@ -32,9 +32,12 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
   their assigned-job composer and cannot open the shared office inbox.
 - Archived-job correspondence remains visible without broken job links. Deleted brands retain their
   membership restriction, preventing an empty brand list from accidentally granting company-wide access.
-- New message_reads migration and role/tenant isolation tests. All 672 backend tests passed on
-  8fb2b515 (5,246 assertions). Browser scenarios are being corrected and rerun; that commit is not
-  a passing release candidate. The final tested SHA/run will be recorded in SERVER_HANDOFF.md.
+- New message_reads migration and role/tenant isolation tests. Code commit
+  2a891aa0d76fed8d80f0ad12727e3e8938e2038f passed build, PHP style, frontend formatting/lint,
+  TypeScript, deployment shell syntax, all 674 backend tests (5,276 assertions), and 20 desktop/mobile
+  browser scenarios with real password/TOTP login and active CSRF protection:
+  https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37090807431.
+  The following documentation-only commit records the result.
 - Playwright exercises actual password/TOTP login on PostgreSQL with isolated testing fixtures and
   a local SMS stub. Desktop and phone checks include customer context/booking, expenses/receipts/taxes,
   inbox replies, public documents/PDF, technician access, photos/signatures, core screens and dark mode.
@@ -73,7 +76,7 @@ Shared SMS Inbox is part of Stage 1 in SPEC.md; the earlier Next entry deferring
 - First-server preparation adds app:deployment-check, serialized deployments, pinned commit selection,
   maintenance retained on failure, HTTPS health/login probes and docs/SERVER_HANDOFF.md. Web and queue processes
   must share a runtime user for private files; the setup also documents receipt upload limits.
-- Manual browser/mobile, Google map, outbound mail/SMS, payment callbacks, backup restore and server checks
+- Physical-device/visual, Google map, outbound mail/SMS, payment callbacks, backup restore and server checks
   remain pending. No SSH credential is attached to this workspace and no deployment has occurred.
 
 ### Item taxes and employee expense view — CI passed
@@ -837,7 +840,8 @@ now; automatic supplier price import; cash refunds tied to cash on hand.
 
 ## Next
 
-Stage 1 — connect the server agent/SSH environment and install the tested code commit from SERVER_HANDOFF.md.
+Stage 1 code is ready for the first testing installation. Connect the server agent/SSH environment and
+install the tested code commit from SERVER_HANDOFF.md. No deployment has occurred in this workspace.
 Verify mobile layouts, receipt camera uploads, Google map credentials, mail/SMS delivery, payment callbacks
 and backup restore using LAUNCH_TESTING.md.
 Stripe remains the second payment provider. Then Stage 2 (parts orders, warranty claims, online booking,

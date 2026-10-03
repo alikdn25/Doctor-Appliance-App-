@@ -5,6 +5,10 @@ Stack: Laravel 13, Inertia.js + React + TypeScript, Tailwind CSS, PostgreSQL, Re
 
 **Current stage: Stage 1 — MVP.** Progress per stage and task: [`docs/PROGRESS.md`](docs/PROGRESS.md).
 
+MVP code is validated for a first testing installation: 674 backend tests and 20 desktop/mobile browser scenarios
+passed. It has not been deployed to a server. See the [server handoff](docs/SERVER_HANDOFF.md),
+[browser checks](docs/BROWSER_TESTING.md) and [remaining launch checks](docs/LAUNCH_TESTING.md).
+
 ## Local setup
 
 Requirements: PHP 8.3+, Composer, Node 22, PostgreSQL 16, Redis.

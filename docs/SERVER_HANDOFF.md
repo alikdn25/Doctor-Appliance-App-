@@ -1,8 +1,11 @@
 # Server agent handoff
 
 The repository is alikdn25/Doctor-Appliance-App-. Current work is in draft PR #11, branch chatgpt/bolt-ui.
-Last verified code commit: 39e560e63354108b5902e9497b21e77db2c7c9c8 (655 tests, 5,049 assertions, build/style/lint/TypeScript).
-Passing run: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37086077377.
+Last verified code commit: 2a891aa0d76fed8d80f0ad12727e3e8938e2038f.
+Passing checks: build, PHP style, frontend format/lint, TypeScript, deployment shell syntax,
+674 backend tests (5,276 assertions) and 20 desktop/mobile browser scenarios with CSRF protection.
+Passing run: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37090807431.
+Browser report/screenshots: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37090807431/artifacts/11261694174.
 The following documentation-only update records these results. There is no server credential attached to this development workspace. A GitHub connection alone does not give
 SSH access. Use a server agent with SSH credentials stored in its environment or the production GitHub environment;
 never paste passwords/private keys into a chat or commit them.
@@ -31,5 +34,6 @@ never paste passwords/private keys into a chat or commit them.
 8. Report the deployed commit, URL, worker/scheduler result, manual test outcomes and remaining blockers. Do not
    report Stage 2/3 or subscription billing complete. Record a backup restore test before allowing business data.
 
-This handoff is ready for an agent with actual server access. Server configuration, deployment and browser/mobile
-verification have not happened in the current development workspace.
+MVP code is ready for a testing installation by an agent with server access. Automated desktop/mobile browser
+checks have passed. Server configuration/deployment, physical-device visual checks, live integrations and
+backup restoration have not happened in the current development workspace.

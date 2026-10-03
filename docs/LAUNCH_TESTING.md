@@ -1,8 +1,10 @@
 # First-launch verification
 
-Code commit 39e560e63354108b5902e9497b21e77db2c7c9c8 passed build, PHP style, frontend formatting/lint,
-TypeScript, deployment script syntax and all 655 backend tests (5,049 assertions):
-https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37086077377.
+Code commit 2a891aa0d76fed8d80f0ad12727e3e8938e2038f passed build, PHP style, frontend formatting/lint,
+TypeScript, deployment script syntax, all 674 backend tests (5,276 assertions) and 20 desktop/mobile
+browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37090807431.
+See BROWSER_TESTING.md for the automated coverage and screenshot report. The HTTP server used active CSRF
+protection; SMS went to a loopback test provider. Physical devices and live integrations remain below.
 This checklist records remaining manual checks; none are marked complete by automated tests alone.
 
 1. Sign in as an Owner, Admin and Technician; check 2FA and switching companies.
@@ -28,6 +30,10 @@ This checklist records remaining manual checks; none are marked complete by auto
 9. On the server, verify HTTPS, queue worker, minute scheduler, email delivery, private receipts/photos,
    database/files backups and a restore into a separate test database. Test Square sandbox callbacks before live payments.
 10. Inspect iPhone/Android widths, long addresses, dark mode, keyboard focus, date/time formatting and fixed action bars.
+11. Send a controlled customer SMS reply. Open SMS Inbox as two office users; verify their separate unread counts.
+    Read a conversation, search old messages, reply to a secondary phone and compare the actual destination.
+    Test STOP, US registration, quiet hours, unknown/shared numbers and archived jobs. Restrict an office user's
+    brands and confirm other-brand/other-company conversations are inaccessible. Technicians use job messaging.
 
 Record the tested commit, server URL, browser/device, date and result for each manual check before release.
 Stage 2/3 and platform subscription billing remain outside the completed first-launch work.
