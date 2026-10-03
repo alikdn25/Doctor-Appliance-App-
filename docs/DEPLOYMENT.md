@@ -193,7 +193,7 @@ Required in production:
 | `SESSION_DRIVER=database`, `SESSION_SECURE_COOKIE=true`                                                          |                                                                                        |
 | `QUEUE_CONNECTION`, `CACHE_STORE`                                                                                | `database` (or `redis`, §5)                                                            |
 | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME` | transactional email provider; `MAIL_FROM_ADDRESS` on a verified domain                 |
-| Optional 2FA | Enabled by each user in Security settings. Legacy AUTH_REQUIRE_TWO_FACTOR is ignored. |
+| Optional 2FA                                                                                                     | Enabled by each user in Security settings. Legacy AUTH_REQUIRE_TWO_FACTOR is ignored.  |
 | `MEDIA_DISK=public`, `PRIVATE_MEDIA_DISK=local`                                                                  | private media (photos, signatures, receipts) stay in `storage/app/private`; back it up |
 
 Required for the features that use them (empty = the feature is off):

@@ -1,6 +1,6 @@
 # Server agent handoff
 
-The repository is alikdn25/Doctor-Appliance-App-. Current work is in draft PR #11, branch chatgpt/bolt-ui.
+The repository is alikdn25/Doctor-Appliance-App-. MVP PR #11 is merged. The signup/usability update is in draft PR #12, branch chatgpt/self-service-onboarding.
 Last verified code commit: 2a891aa0d76fed8d80f0ad12727e3e8938e2038f.
 Passing checks: build, PHP style, frontend format/lint, TypeScript, deployment shell syntax,
 674 backend tests (5,276 assertions) and 20 desktop/mobile browser scenarios with CSRF protection.
@@ -37,3 +37,9 @@ never paste passwords/private keys into a chat or commit them.
 MVP code is ready for a testing installation by an agent with server access. Automated desktop/mobile browser
 checks have passed. Server configuration/deployment, physical-device visual checks, live integrations and
 backup restoration have not happened in the current development workspace.
+
+## Signup update (PR #12, validation pending)
+
+Deploy only its exact tested SHA once CI passes; do not assume branch head is verified. Preserve APP_KEY, database and media. Public registration is at /register. Configure real SMTP and a verified sender, and verify the queue before advertising registration: confirmation emails use the queue, and log transport cannot activate customer accounts. Existing unverified users need email confirmation; a valid invitation/password-reset token confirms their address. Confirmed users with no membership go to /onboarding/company; the first Owner and brand are automatic. Accounts with existing suspended/inactive memberships cannot use setup to bypass restrictions.
+
+Mandatory 2FA enrollment is removed for all roles. Legacy AUTH_REQUIRE_TWO_FACTOR flags are ignored by routes. Existing enabled authenticator-based 2FA continues until each user disables it in Security settings. Email login codes are not part of this update. Set APP_NAME="Doctor Appliance" and VITE_APP_NAME="${APP_NAME}" before rebuilding when the old installation shows Field Service. Check signup/email/company setup in a private browser on desktop and mobile, then the first customer/job and an existing employee invitation.

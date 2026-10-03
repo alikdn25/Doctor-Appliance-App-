@@ -30,7 +30,7 @@ return [
 
     'two_factor' => [
         'heading' => 'Two-factor authentication',
-        'description' => 'Optional extra protection for your account. Enable it when you are ready.',
+        'description' => 'Optional extra protection using an authenticator app. Enable it when you are ready.',
         'enabled_text' => 'You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.',
         'disabled_text' => 'When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.',
         'enable' => 'Enable 2FA',

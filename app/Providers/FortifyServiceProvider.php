@@ -73,6 +73,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/verify-email', [
             'email' => $request->user()->email,
+            'needsCompanySetup' => ! $request->user()->isSuperAdmin() && $request->user()->memberships()->doesntExist(),
             'status' => $request->session()->get('status'),
         ]));
 

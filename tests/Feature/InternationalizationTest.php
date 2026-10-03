@@ -73,7 +73,7 @@ test('a handyman company gets its own job types, checklists and services', funct
     expect($types)->toBe(['assembly', 'inspection', 'installation', 'maintenance', 'mounting', 'repair'])
         ->and(Service::withoutCompanyScope()->where('company_id', $company->id)->pluck('name'))->toContain('TV mounting', 'Furniture assembly');
 
-    $owner->forceFill(['two_factor_confirmed_at' => now(), 'two_factor_secret' => encrypt('x')])->save();
+    $owner->forceFill(['email_verified_at' => now()])->save();
     $this->actingAs($owner)->get(route('company.checklists.edit'))
         ->assertInertia(fn (Assert $page) => $page->has('jobTypes', 6)->where('jobTypes.2.value', 'assembly'));
 });

@@ -5,6 +5,7 @@ use App\Models\Membership;
 use App\Models\User;
 use App\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -76,7 +77,7 @@ test('a signed confirmation activates only its authenticated account', function 
     $this->actingAs($user)->get($url)->assertRedirect();
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
     $this->get(route('dashboard'))->assertRedirect(route('onboarding.company.create'));
-    expect(Membership::count())->toBe(0);
+    expect(Membership::withoutCompanyScope()->count())->toBe(0);
 });
 
 test('confirmation rejects expired links and links for another account', function () {
@@ -122,7 +123,7 @@ test('unverified accounts cannot create or inspect company data', function () {
 
 test('setting a password through a valid invitation or reset token also confirms the email', function () {
     $user = User::factory()->unverified()->create();
-    $token = Illuminate\Support\Facades\Password::broker()->createToken($user);
+    $token = Password::broker()->createToken($user);
     $this->post(route('password.update'), [
         'token' => $token, 'email' => $user->email,
         'password' => 'New-owner-password-123!', 'password_confirmation' => 'New-owner-password-123!',

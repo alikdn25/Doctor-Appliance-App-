@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SetCurrentCompany;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -41,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // The tenant must be known before route model binding runs, so that
         // tenant-scoped models ({brand}, {membership}, ...) resolve inside it.
         $middleware->prependToPriorityList(SubstituteBindings::class, SetCurrentCompany::class);
+        $middleware->prependToPriorityList(SetCurrentCompany::class, EnsureEmailIsVerified::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

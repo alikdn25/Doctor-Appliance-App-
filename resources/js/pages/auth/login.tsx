@@ -18,7 +18,11 @@ type Props = {
     canRegister: boolean;
 };
 
-export default function Login({ status, canResetPassword, canRegister }: Props) {
+export default function Login({
+    status,
+    canResetPassword,
+    canRegister,
+}: Props) {
     const t = useTrans();
 
     return (
@@ -105,7 +109,9 @@ export default function Login({ status, canResetPassword, canRegister }: Props) 
             {canRegister && (
                 <p className="text-center text-sm text-muted-foreground">
                     {t('auth.login.new_account')}{' '}
-                    <TextLink href={register()}>{t('auth.register.title')}</TextLink>
+                    <TextLink href={register()}>
+                        {t('auth.register.title')}
+                    </TextLink>
                 </p>
             )}
 

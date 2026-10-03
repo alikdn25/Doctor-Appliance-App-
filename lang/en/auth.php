@@ -46,7 +46,7 @@ return [
 
     'verify' => [
         'title' => 'Confirm your email',
-        'description' => 'Open the confirmation link sent to :email. Then we will help you set up your company.',
+        'description' => 'Open the confirmation link sent to :email to confirm your address and continue. Check your spam folder if the message is missing.',
         'sent' => 'A new confirmation link has been sent. Check your inbox and spam folder.',
         'resend' => 'Resend confirmation email',
         'change_email' => 'Correct my email address',

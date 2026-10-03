@@ -21,7 +21,9 @@ export default function AuthSimpleLayout({
                             <div className="mb-1 flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
                                 <Wrench className="size-6" aria-hidden="true" />
                             </div>
-                            <span className="text-lg font-semibold">{name}</span>
+                            <span className="text-lg font-semibold">
+                                {name}
+                            </span>
                         </Link>
 
                         <div className="space-y-2 text-center">

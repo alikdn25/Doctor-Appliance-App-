@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ThrottleRegistration;
 use Laravel\Fortify\Features;
 
 return [
@@ -101,7 +102,7 @@ return [
     |
     */
 
-    'middleware' => ['web', App\Http\Middleware\ThrottleRegistration::class],
+    'middleware' => ['web', ThrottleRegistration::class],
 
     /*
     |--------------------------------------------------------------------------
