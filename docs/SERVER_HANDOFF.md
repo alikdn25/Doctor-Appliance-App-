@@ -4,8 +4,10 @@ Repository: alikdn25/Doctor-Appliance-App-. MVP PR #11 is merged into main.
 Signup, first-run usability, the seven October 3 feedback fixes, Grok follow-up and mail/admin
 supplement are in PR #12, branch chatgpt/self-service-onboarding. FEEDBACK_2026_10_03.md,
 FEEDBACK_FOLLOWUP_2026_10_03.md and FEEDBACK_MAIL_ADMIN_2026_10_03.md record the changes.
-PR #12 is not merged at this audit;
-a pull of main alone does not install its corrections.
+PR #12 was merged into main on October 3, 2026. Merge commit:
+b3a96c2ad0009a591466e1b9c18f9c122b6b8a07. Its tree is identical to the validated
+documentation head 3fc1682d327be0f3fe191592e9487d400c647f64. Fetch main for installation;
+the tested code candidate below is now an ancestor of main.
 Tested code commit: c350d177aac10213e43750c16ccc4fdcee5934ac.
 Validation run: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37146504326.
 All checks passed: build, PHP style, frontend format/lint, TypeScript, deployment shell syntax,
@@ -59,18 +61,20 @@ old read-only walkthrough and report deployment complete without installing this
 
 ```bash
 cd /var/www/fieldservice
-git fetch --no-tags origin chatgpt/self-service-onboarding
+git fetch --no-tags origin main
 git merge-base --is-ancestor c350d177aac10213e43750c16ccc4fdcee5934ac FETCH_HEAD
 php artisan down --retry=15
 git merge --ff-only c350d177aac10213e43750c16ccc4fdcee5934ac
-DEPLOY_REF=chatgpt/self-service-onboarding DEPLOY_SHA=c350d177aac10213e43750c16ccc4fdcee5934ac bash deploy/deploy.sh
+DEPLOY_REF=main DEPLOY_SHA=c350d177aac10213e43750c16ccc4fdcee5934ac bash deploy/deploy.sh
 ```
 
 Run these commands sequentially and stop on any failure. If fast-forwarding fails, report the
 current commits/local changes before choosing a recovery. The deployment script installs
 dependencies, builds assets, migrates without resetting data, refreshes caches and restarts the
 queue. A failure leaves maintenance enabled for diagnosis. Do not use migrate:fresh or seed the
-browser fixtures on this VPS.
+browser fixtures on this VPS. After deployment, reload the actual PHP-FPM service used by Nginx
+so workers do not retain old PHP/opcache state. Determine the installed service rather than guessing
+the PHP version. Confirm the existing queue worker is running after queue restart.
 
 The feedback migrations add private purchase-cost ownership and durable responsibility for transferred
 jobs. They run after the existing billing tables, preserve historical records and do not remove legacy
@@ -79,6 +83,10 @@ cost authors remain hidden. Review attribution on a controlled copy of older rec
 
 ## Acceptance checks
 
+- If the existing session is at /email/verify, do not use Resend while mail is disconnected. First
+  install this code and verify that runtime auth.email_delivery_enabled is false after configuration
+  refresh. A stale cached setting or old PHP worker can retain the verification wall. Reload the page
+  and check ordinary working login; do not mark the owner's email verified just to hide the barrier.
 - Verify the deployed SHA, HTTPS /up, /login and the Create account link to /register.
 - With mail disabled, use a private browser on desktop and mobile: register, create a company,
   open the first customer/job, add a new Technician with a confirmed password and sign in as them.

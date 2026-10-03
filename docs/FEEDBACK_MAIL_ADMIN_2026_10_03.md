@@ -1,6 +1,6 @@
 # October 3 supplement: mail readiness and administration
 
-This report covers only the new comments in Grok's supplemental live audit. Earlier booking, pricing, navigation and login corrections remain recorded in FEEDBACK_2026_10_03.md and FEEDBACK_FOLLOWUP_2026_10_03.md. PR #12 remains separate from the deployed server; main alone does not yet contain these changes.
+This report covers only the new comments in Grok's supplemental live audit. Earlier booking, pricing, navigation and login corrections remain recorded in FEEDBACK_2026_10_03.md and FEEDBACK_FOLLOWUP_2026_10_03.md. PR #12 was merged into main on October 3, 2026, at b3a96c2ad0009a591466e1b9c18f9c122b6b8a07. Server installation still requires the operator to deploy the candidate.
 
 ## Mail-dependent account access
 
@@ -27,4 +27,4 @@ Tested code commit: c350d177aac10213e43750c16ccc4fdcee5934ac. All checks passed 
 
 New tests cover mail-disabled signup and direct work access, later confirmation, permission boundaries, manual staff credentials, truthful support history and invoice empty states. Desktop/mobile browser checks include the complete mail-disabled signup-to-staff-login flow.
 
-This workspace does not have VPS access. Installing the tested candidate and checking actual SMTP delivery remain with the server operator; use SERVER_HANDOFF.md. PR #12 is unmerged at this handoff, so updating main alone does not install these corrections.
+This workspace does not have VPS access. Installing the tested candidate and checking actual SMTP delivery remain with the server operator; use SERVER_HANDOFF.md. Main now contains the corrections. The server operator must install the code, set mail readiness false while delivery is unavailable, refresh configuration and reload PHP-FPM before repeating the login check.

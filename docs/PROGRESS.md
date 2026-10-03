@@ -1,3 +1,8 @@
+# October 3 login unblock — merged; VPS installation pending
+
+- PR #12 is merged into main at b3a96c2ad0009a591466e1b9c18f9c122b6b8a07. Its tree matches validated head 3fc1682d327be0f3fe191592e9487d400c647f64; that full workflow passed 740 backend tests and 40 desktop/mobile browser scenarios. No application code changed during this integration.
+- SERVER_HANDOFF.md now uses main and explains installing the mail-disabled candidate, refreshing configuration and reloading the actual PHP-FPM service. Resend cannot unblock an old installation when mail is disconnected. VPS access is absent here, so the server operator must confirm actual deployment and direct login.
+
 # October 3 mail/admin supplement — code validated; server acceptance pending
 
 - Operator-managed mail readiness removes confirmation walls while delivery is unavailable, without verifying emails or changing tenant/role permissions. Password recovery and resend stop promising unavailable mail; new staff/Owners can receive manual initial credentials. Enabling tested mail restores confirmation.
