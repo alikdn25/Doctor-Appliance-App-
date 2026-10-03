@@ -392,7 +392,22 @@ export default function CompanySettingsPage({
                         error={errors.estimate_followup_days}
                         className="sm:max-w-xs"
                     >
-                        <Input id="estimate_followup_days" type="number" inputMode="numeric" min={1} max={90} value={form.data.estimate_followup_days ?? ''} onChange={(e) => form.setData('estimate_followup_days', e.target.value === '' ? null : Number(e.target.value))} />
+                        <Input
+                            id="estimate_followup_days"
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={90}
+                            value={form.data.estimate_followup_days ?? ''}
+                            onChange={(e) =>
+                                form.setData(
+                                    'estimate_followup_days',
+                                    e.target.value === ''
+                                        ? null
+                                        : Number(e.target.value),
+                                )
+                            }
+                        />
                     </FormField>
                     <FormField
                         id="estimate_valid_days"
@@ -1028,4 +1043,3 @@ export default function CompanySettingsPage({
 CompanySettingsPage.layout = {
     breadcrumbs: [{ title: 'company.title', href: edit() }],
 };
-

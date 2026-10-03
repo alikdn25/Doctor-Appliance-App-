@@ -100,4 +100,3 @@ class ReviseEstimate
         return "{$base}-R{$revision}";
     }
 }
-

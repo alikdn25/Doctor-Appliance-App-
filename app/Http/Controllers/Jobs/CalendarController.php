@@ -226,4 +226,3 @@ class CalendarController extends Controller
         return $date !== false && $date->format('Y-m-d') === $value ? $date : null;
     }
 }
-

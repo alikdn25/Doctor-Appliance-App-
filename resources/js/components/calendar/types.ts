@@ -93,4 +93,3 @@ export const routeUrl = (addresses: string[]) => {
 
     return `https://www.google.com/maps/dir/?${params}`;
 };
-

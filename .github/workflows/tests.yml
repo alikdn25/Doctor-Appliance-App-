@@ -48,7 +48,7 @@ jobs:
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: '8.3'
-          extensions: pdo_pgsql, pgsql, redis, intl, gd, zip
+          extensions: pdo_pgsql, pgsql, redis, intl, gd, zip, bcmath
           tools: composer:v2
           coverage: none
 
@@ -70,6 +70,9 @@ jobs:
 
       - name: Build assets
         run: npm run build
+
+      - name: Deployment script syntax
+        run: bash -n deploy/deploy.sh
 
       - name: PHP code style
         id: php_style
@@ -93,4 +96,4 @@ jobs:
         run: |
           npm run check:fix || true
           vendor/bin/pint || true
-          git diff -- app database tests resources lang docs
+          git diff -- app config database tests resources routes lang docs vite.config.ts

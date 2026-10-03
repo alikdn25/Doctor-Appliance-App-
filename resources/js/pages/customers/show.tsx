@@ -151,26 +151,26 @@ export default function CustomerShow({
                 <div className="flex items-start gap-3">
                     <CustomerAvatar icon={customer.avatar_icon} />
                     <div className="min-w-0 flex-1">
-                <PageHeader
-                    title={customer.display_name}
-                    description={[
-                        customer.type_label,
-                        contactPerson,
-                        customer.lead_source_label,
-                        customer.payment_terms_label,
-                    ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    actions={
-                        canUpdate && (
-                            <Button variant="outline" asChild>
-                                <Link href={edit(customer.id)}>
-                                    <Pencil /> {t('common.edit')}
-                                </Link>
-                            </Button>
-                        )
-                    }
-                />
+                        <PageHeader
+                            title={customer.display_name}
+                            description={[
+                                customer.type_label,
+                                contactPerson,
+                                customer.lead_source_label,
+                                customer.payment_terms_label,
+                            ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            actions={
+                                canUpdate && (
+                                    <Button variant="outline" asChild>
+                                        <Link href={edit(customer.id)}>
+                                            <Pencil /> {t('common.edit')}
+                                        </Link>
+                                    </Button>
+                                )
+                            }
+                        />
                     </div>
                 </div>
                 <CustomerNotes notes={customer.notes} />
@@ -579,4 +579,3 @@ export default function CustomerShow({
 CustomerShow.layout = {
     breadcrumbs: [{ title: 'customers.title', href: index() }],
 };
-

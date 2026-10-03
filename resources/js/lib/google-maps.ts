@@ -1,6 +1,8 @@
 declare global {
     interface Window {
-        google?: { maps?: { importLibrary?: (name: string) => Promise<unknown> } };
+        google?: {
+            maps?: { importLibrary?: (name: string) => Promise<unknown> };
+        };
         __doctorMapsReady?: () => void;
     }
 }
@@ -8,7 +10,10 @@ declare global {
 let loading: Promise<void> | null = null;
 
 /** Load one Maps script for both Places and the dispatch map, with a bounded failure time. */
-export async function loadGoogleMapsLibrary<T>(key: string, library: string): Promise<T> {
+export async function loadGoogleMapsLibrary<T>(
+    key: string,
+    library: string,
+): Promise<T> {
     if (!window.google?.maps?.importLibrary) {
         loading ??= new Promise<void>((resolve, reject) => {
             const script = document.createElement('script');

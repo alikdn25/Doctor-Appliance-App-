@@ -120,4 +120,3 @@ class DocumentDeliveryController extends Controller
         return back();
     }
 }
-

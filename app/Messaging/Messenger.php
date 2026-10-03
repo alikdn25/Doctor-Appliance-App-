@@ -231,4 +231,3 @@ class Messenger
         return SmsRegistration::query()->where('status', SmsRegistration::APPROVED)->exists();
     }
 }
-

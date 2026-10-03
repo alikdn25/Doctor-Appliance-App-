@@ -44,7 +44,6 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 - Build, formatting, lint, TypeScript and backend validation are pending on this change. Manual browser/mobile,
   Google map, outbound mail/SMS and server checks remain pending. No deployment has occurred.
 
-
 ### Item taxes and employee expense view — CI passed
 
 - Unlimited named company taxes, active/default switches and independent subsets per estimate/invoice item.

@@ -452,8 +452,12 @@ export default function JobForm({
                         <div className="flex items-start justify-between gap-2 rounded-md bg-muted/50 p-3">
                             <div className="min-w-0 flex-1 space-y-3">
                                 <div className="flex items-center gap-3">
-                                    <CustomerAvatar icon={customer.avatar_icon} />
-                                    <span className="font-medium">{customer.display_name}</span>
+                                    <CustomerAvatar
+                                        icon={customer.avatar_icon}
+                                    />
+                                    <span className="font-medium">
+                                        {customer.display_name}
+                                    </span>
                                 </div>
                                 {customer.phone && (
                                     <div className="text-sm text-muted-foreground">
@@ -522,8 +526,23 @@ export default function JobForm({
                                 )}
                             </div>
 
-                            <FormField id="nc-notes" label={t('customers.fields.notes')} hint={t('customers.about_hint')} error={errors['new_customer.notes']}>
-                                <Textarea id="nc-notes" rows={3} maxLength={10000} value={data.new_customer.notes} onChange={(e) => setNewCustomer({ notes: e.target.value })} />
+                            <FormField
+                                id="nc-notes"
+                                label={t('customers.fields.notes')}
+                                hint={t('customers.about_hint')}
+                                error={errors['new_customer.notes']}
+                            >
+                                <Textarea
+                                    id="nc-notes"
+                                    rows={3}
+                                    maxLength={10000}
+                                    value={data.new_customer.notes}
+                                    onChange={(e) =>
+                                        setNewCustomer({
+                                            notes: e.target.value,
+                                        })
+                                    }
+                                />
                             </FormField>
 
                             {duplicate && (
@@ -1235,4 +1254,3 @@ export default function JobForm({
 JobForm.layout = {
     breadcrumbs: [{ title: 'jobs.title', href: index() }],
 };
-

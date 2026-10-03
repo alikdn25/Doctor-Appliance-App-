@@ -318,4 +318,3 @@ class Company extends Model
         return $hours;
     }
 }
-

@@ -1,9 +1,11 @@
 <?php
 
+use App\Actions\Billing\SendDocument;
 use App\Enums\EstimateStatus;
 use App\Enums\JobStatus;
 use App\Enums\MessageKind;
 use App\Enums\SmsMode;
+use App\Enums\UserRole;
 use App\Mail\CustomerMessageMail;
 use App\Models\Brand;
 use App\Models\Company;
@@ -59,7 +61,7 @@ test('unsent recent expired and answered estimates do not receive reminders', fu
 });
 
 test('disabled companies and reminder hours are respected', function () {
-    $estimate = followupEstimate();
+    $estimate = followupEstimate(['sent_at' => now()->subDays(4)]);
     $this->company->update(['estimate_followup_days' => null]);
     $this->artisan('estimates:send-followups', ['--force' => true])->assertSuccessful();
     $this->company->update(['estimate_followup_days' => 3]);
@@ -78,6 +80,9 @@ test('closed jobs and inactive companies are excluded', function () {
     }
     $this->job->forceFill(['status' => JobStatus::WaitingForCustomer, 'closed_at' => now()])->saveQuietly();
     $this->artisan('estimates:send-followups', ['--force' => true])->assertSuccessful();
+    $this->job->forceFill(['status' => JobStatus::WaitingForCustomer, 'closed_at' => null])->saveQuietly();
+    $this->company->update(['status' => 'suspended']);
+    $this->artisan('estimates:send-followups', ['--force' => true])->assertSuccessful();
     expect($estimate->fresh()->followup_processed_at)->toBeNull();
 });
 
@@ -92,11 +97,32 @@ test('a missing contact is recorded once instead of retried every hour', functio
 });
 
 test('processing more than a chunk never skips estimates and keeps tenants separate', function () {
-    for ($i = 0; $i < 102; $i++) followupEstimate();
+    for ($i = 0; $i < 102; $i++) {
+        followupEstimate();
+    }
     $other = Company::factory()->create(['timezone' => 'America/Regina', 'estimate_followup_days' => null]);
-    $otherEstimate = inCompany($other, fn () => Estimate::factory()->create(['sent_at' => now()->subDays(4)]));
+    $otherEstimate = inCompany($other, function () use ($other) {
+        $customer = Customer::factory()->for($other)->create();
+        $property = Property::factory()->for($customer)->create();
+        $job = ServiceJob::factory()->for($property)->create();
+
+        return Estimate::factory()->create(['service_job_id' => $job->id, 'sent_at' => now()->subDays(4)]);
+    });
     $this->artisan('estimates:send-followups', ['--force' => true])->assertSuccessful();
     expect(inCompany($this->company, fn () => Message::count()))->toBe(102)
         ->and(inCompany($other, fn () => Message::count()))->toBe(0)
         ->and($otherEstimate->fresh()->followup_processed_at)->toBeNull();
+});
+
+test('an explicit resend restarts the delay before a new reminder', function () {
+    $estimate = followupEstimate();
+    $owner = memberOf($this->company, UserRole::Owner);
+    $this->artisan('estimates:send-followups', ['--force' => true])->assertSuccessful();
+    inCompany($this->company, fn () => app(SendDocument::class)->handle($estimate->fresh(), 'client@example.com', 'Updated estimate.', $owner));
+    expect($estimate->fresh()->followup_processed_at)->toBeNull();
+    $this->artisan('estimates:send-followups', ['--force' => true])->assertSuccessful();
+    expect(inCompany($this->company, fn () => Message::count()))->toBe(1);
+    $this->travel(3)->days();
+    $this->artisan('estimates:send-followups', ['--force' => true])->assertSuccessful();
+    expect(inCompany($this->company, fn () => Message::count()))->toBe(2);
 });

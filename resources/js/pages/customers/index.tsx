@@ -190,4 +190,3 @@ export default function CustomersIndex({
 CustomersIndex.layout = {
     breadcrumbs: [{ title: 'customers.title', href: index() }],
 };
-

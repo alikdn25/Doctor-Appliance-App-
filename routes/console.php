@@ -19,4 +19,3 @@ Schedule::command('sms:sync-registrations')->dailyAt('06:23');
 
 // Technicians are reminded before visits with a strict arrival time.
 Schedule::command('visits:strict-arrival-reminders')->everyFiveMinutes()->withoutOverlapping();
-

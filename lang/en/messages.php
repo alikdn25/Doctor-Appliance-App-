@@ -146,4 +146,3 @@ return [
     'opened_on_phone' => "SMS opened from technician's phone",
     'open_job' => 'Open job',
 ];
-

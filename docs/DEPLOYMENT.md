@@ -105,11 +105,15 @@ Application secrets (database password, mail credentials, later Square/Twilio ke
 
 ## 4. What `deploy/deploy.sh` does
 
-1. `php artisan down` (maintenance mode; brought back up automatically if a step fails)
+1. Verify prerequisites and a clean checkout, lock deployment and resolve the selected tested commit; enter maintenance mode
 2. `git fetch` + `git reset --hard <tested commit>`
-3. `composer install --no-dev`, `npm ci && npm run build`
+3. `composer install --no-dev`, clear old config, run `app:deployment-check --before-migrate`, then build assets
 4. `php artisan migrate --force`, `storage:link`, `optimize`, `queue:restart`
-5. `php artisan up`
+5. Run `app:deployment-check`, reopen and verify HTTPS `/up` and `/login`. A failed deployment leaves maintenance on for diagnosis
+
+Take and verify a database and media backup before upgrading an existing installation.
+For testing a green draft commit, use `DEPLOY_REF=chatgpt/bolt-ui DEPLOY_SHA=<tested-sha> bash deploy/deploy.sh`
+on the server; the GitHub production workflow remains limited to `main`.
 
 Rollback: on the server run `DEPLOY_SHA=<older-commit-sha> bash deploy/deploy.sh`
 (database migrations are not rolled back automatically).
@@ -152,7 +156,7 @@ REDIS_PORT=6379
 then `php artisan config:cache && php artisan queue:restart`. Jobs still waiting in the `jobs` table are not moved:
 switch when the queue is empty (`php artisan queue:monitor database:default`).
 
-## 6. Google Maps key (address suggestions)
+## 6. Google Maps key (address suggestions and calendar map)
 
 1. Google Cloud Console → create a project → **Billing** (Places is billed per session; there is a monthly free
    credit).
@@ -161,7 +165,9 @@ switch when the queue is empty (`php artisan queue:monitor database:default`).
     - Application restrictions: **Websites (HTTP referrers)** → `https://app.doctor-appliance.ca/*`
       (add `http://localhost:8000/*` on a separate development key, never on the production one);
     - API restrictions: **Restrict key** → Maps JavaScript API, Places API (New).
-4. In the server's `.env`: `GOOGLE_MAPS_BROWSER_KEY=<the key>`, then `php artisan config:cache`.
+4. In the server's `.env`: `GOOGLE_MAPS_BROWSER_KEY=<the key>`. Create a JavaScript map ID in Google Cloud
+   Map Management and set `GOOGLE_MAPS_MAP_ID=<your map ID>` for the calendar map. The built-in demo ID is for
+   initial testing. Run `php artisan config:cache` after changing either setting.
 
 The key is sent to the browser (that is how the Maps JavaScript API works), which is why the referrer and API
 restrictions matter. Without a key, address fields are typed by hand.
@@ -197,3 +203,4 @@ Optional with sensible defaults: `DEFAULT_COMPANY_COUNTRY` (US), `SMS_REMINDER_H
 
 Backups: the PostgreSQL database **and** `storage/app/private` (job photos, signatures, cash receipts, supplier
 receipts — the latter must be kept 6+ years for the bookkeeper).
+

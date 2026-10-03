@@ -138,4 +138,3 @@ class CompanySettingsRequest extends FormRequest
         return $data;
     }
 }
-

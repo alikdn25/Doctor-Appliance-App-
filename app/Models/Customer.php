@@ -6,8 +6,8 @@ use App\Enums\CustomerType;
 use App\Enums\LeadSource;
 use App\Enums\PaymentTerms;
 use App\Models\Concerns\BelongsToCompany;
-use App\Support\PhoneNumber;
 use App\Support\NameAvatar;
+use App\Support\PhoneNumber;
 use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -211,4 +211,3 @@ class Customer extends Model
         });
     }
 }
-

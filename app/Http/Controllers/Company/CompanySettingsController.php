@@ -85,4 +85,3 @@ class CompanySettingsController extends Controller
         return to_route('company.settings.edit');
     }
 }
-

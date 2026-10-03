@@ -2,7 +2,10 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Plus, TriangleAlert, X } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
-import { CustomerAvatar, useNameAvatar } from '@/components/customers/customer-avatar';
+import {
+    CustomerAvatar,
+    useNameAvatar,
+} from '@/components/customers/customer-avatar';
 import type { AvatarStyle } from '@/components/customers/customer-avatar';
 import { PropertyFields } from '@/components/customers/property-fields';
 import { emptyProperty } from '@/components/customers/types';
@@ -162,7 +165,10 @@ export default function CustomerForm({
             is_primary: true,
         },
     });
-    const suggestedIcon = useNameAvatar(form.data.type === 'residential' ? form.data.first_name : '', form.data.avatar_style);
+    const suggestedIcon = useNameAvatar(
+        form.data.type === 'residential' ? form.data.first_name : '',
+        form.data.avatar_style,
+    );
     const errors = form.errors as Record<string, string | undefined>;
 
     const found = useDuplicates(
@@ -249,12 +255,45 @@ export default function CustomerForm({
                         {t('customers.sections.details')}
                     </h2>
                     <div className="flex items-start gap-3 sm:col-span-2">
-                        <CustomerAvatar icon={form.data.type === 'residential' ? suggestedIcon : 'business'} />
-                        {form.data.type === 'residential' && <FormField id="avatar_style" label={t('customers.fields.avatar_style')} hint={t('customers.avatar_hint')} error={errors.avatar_style}>
-                            <NativeSelect id="avatar_style" value={form.data.avatar_style} onChange={(event) => form.setData('avatar_style', event.target.value as AvatarStyle)}>
-                                {(['auto', 'neutral', 'man', 'woman'] as const).map((style) => <option key={style} value={style}>{t(`customers.icons.${style}`)}</option>)}
-                            </NativeSelect>
-                        </FormField>}
+                        <CustomerAvatar
+                            icon={
+                                form.data.type === 'residential'
+                                    ? suggestedIcon
+                                    : 'business'
+                            }
+                        />
+                        {form.data.type === 'residential' && (
+                            <FormField
+                                id="avatar_style"
+                                label={t('customers.fields.avatar_style')}
+                                hint={t('customers.avatar_hint')}
+                                error={errors.avatar_style}
+                            >
+                                <NativeSelect
+                                    id="avatar_style"
+                                    value={form.data.avatar_style}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'avatar_style',
+                                            event.target.value as AvatarStyle,
+                                        )
+                                    }
+                                >
+                                    {(
+                                        [
+                                            'auto',
+                                            'neutral',
+                                            'man',
+                                            'woman',
+                                        ] as const
+                                    ).map((style) => (
+                                        <option key={style} value={style}>
+                                            {t(`customers.icons.${style}`)}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </FormField>
+                        )}
                     </div>
                     <FormField
                         id="type"
@@ -632,4 +671,3 @@ function RemoveButton({ onClick }: { onClick: () => void }) {
 CustomerForm.layout = {
     breadcrumbs: [{ title: 'customers.title', href: index() }],
 };
-

@@ -8,8 +8,8 @@ use App\Enums\LeadSource;
 use App\Enums\PaymentTerms;
 use App\Enums\PhoneLabel;
 use App\Models\Customer;
-use App\Support\PhoneNumber;
 use App\Support\NameAvatar;
+use App\Support\PhoneNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -152,4 +152,3 @@ class CustomerRequest extends FormRequest
         return [...$this->validated('property', []), 'is_primary' => true];
     }
 }
-

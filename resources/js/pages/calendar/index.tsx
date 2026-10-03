@@ -309,7 +309,11 @@ export default function CalendarPage({
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
                     <div className="min-w-0">
                         {view === 'map' ? (
-                            <DayMap visits={visits} lanes={lanes} onOpen={open} />
+                            <DayMap
+                                visits={visits}
+                                lanes={lanes}
+                                onOpen={open}
+                            />
                         ) : view === 'day' ? (
                             <DayGrid
                                 date={date}
@@ -622,4 +626,3 @@ export default function CalendarPage({
 CalendarPage.layout = {
     breadcrumbs: [{ title: 'calendar.title', href: calendar() }],
 };
-

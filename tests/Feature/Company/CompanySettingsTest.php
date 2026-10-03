@@ -71,7 +71,6 @@ test('saving settings ends time zone detection from the browser', function () {
     expect($this->company->fresh())->timezone->toBe('America/Edmonton')->timezone_pending->toBeFalse();
 });
 
-
 test('estimate follow-up delay is optional and bounded', function () {
     $this->put(route('company.settings.update'), settingsPayload(['estimate_followup_days' => 3]))->assertSessionHasNoErrors();
     expect($this->company->fresh()->estimate_followup_days)->toBe(3);

@@ -37,4 +37,3 @@ return [
         'not_movable' => 'This visit has started, is finished or its job is on hold, so it cannot be moved.',
     ],
 ];
-

@@ -64,7 +64,7 @@ test('customer context follows booking and assigned jobs without exposing anothe
         ->where('job.customer.notes', 'Text only. Please arrive on time.')->where('job.customer.avatar_icon', 'woman'));
     $this->get(route('customers.show', $customer))->assertInertia(fn (Assert $page) => $page->where('customer.notes', 'Text only. Please arrive on time.'));
     $foreign = Company::factory()->create();
-    $this->actingAs(memberOf($foreign, UserRole::Owner));
+    $this->actingAs(inCompany($foreign, fn () => memberOf($foreign, UserRole::Owner)));
     $this->get(route('customers.show', $customer))->assertNotFound();
     $this->get(route('jobs.show', $job))->assertNotFound();
     $this->getJson(route('jobs.lookup', ['search' => 'Maria']))->assertJsonPath('customers', []);

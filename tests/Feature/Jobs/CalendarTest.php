@@ -288,7 +288,6 @@ test('an invalid date falls back to today', function () {
         ->and(calendarProps(['date' => 'nonsense', 'view' => 'month'])['view'])->toBe('day');
 });
 
-
 test('the map shows only the selected local day and retains addresses without coordinates', function () {
     $this->property->forceFill(['latitude' => 0, 'longitude' => 0])->saveQuietly();
     $first = visitAt('2030-06-12 09:00');
@@ -309,7 +308,12 @@ test('map coordinates respect brand and tenant permissions', function () {
     $mine = visitAt('2030-06-12 09:00');
     visitAt('2030-06-12 11:00', job: ['brand_id' => $otherBrand->id]);
     $foreign = Company::factory()->create();
-    inCompany($foreign, fn () => JobVisit::factory()->create(['scheduled_start' => '2030-06-12 16:00:00', 'scheduled_end' => '2030-06-12 17:00:00']));
+    inCompany($foreign, function () use ($foreign) {
+        $customer = Customer::factory()->for($foreign)->create();
+        $property = Property::factory()->for($customer)->create();
+        $job = ServiceJob::factory()->for($property)->create();
+        JobVisit::factory()->for($job, 'job')->create(['scheduled_start' => '2030-06-12 16:00:00', 'scheduled_end' => '2030-06-12 17:00:00']);
+    });
     $this->actingAs($admin);
     expect(collect(calendarProps(['view' => 'map'])['visits'])->pluck('id')->all())->toBe([$mine->id]);
     $this->actingAs($this->tech);

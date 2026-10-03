@@ -215,4 +215,3 @@ class Estimate extends Model
         return in_array($this->status, [EstimateStatus::Draft, EstimateStatus::Declined], true) && ! $this->trashed();
     }
 }
-

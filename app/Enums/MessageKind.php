@@ -31,4 +31,3 @@ enum MessageKind: string
         return [self::VisitReminder, self::OnMyWay, self::EstimateLink, self::EstimateFollowup, self::InvoiceLink, self::ReviewRequest, self::General];
     }
 }
-

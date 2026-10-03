@@ -349,4 +349,3 @@ class JobRequest extends FormRequest
         }
     }
 }
-

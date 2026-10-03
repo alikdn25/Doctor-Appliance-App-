@@ -153,7 +153,9 @@ export default function MyJobs({
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-3 text-lg font-semibold tracking-tight">
-                                    <CustomerAvatar icon={visit.job.customer_icon} />
+                                    <CustomerAvatar
+                                        icon={visit.job.customer_icon}
+                                    />
                                     {visit.job.customer}
                                 </div>
                                 {visit.job.address && (
