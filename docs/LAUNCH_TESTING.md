@@ -1,6 +1,8 @@
 # First-launch verification
 
-Automated build, style, lint, TypeScript and backend tests must pass on the code commit selected for the server.
+Code commit 39e560e63354108b5902e9497b21e77db2c7c9c8 passed build, PHP style, frontend formatting/lint,
+TypeScript, deployment script syntax and all 655 backend tests (5,049 assertions):
+https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37086077377.
 This checklist records remaining manual checks; none are marked complete by automated tests alone.
 
 1. Sign in as an Owner, Admin and Technician; check 2FA and switching companies.

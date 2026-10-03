@@ -121,8 +121,10 @@ Take and verify a database and media backup before upgrading an existing install
 For testing a green draft commit, use `DEPLOY_REF=chatgpt/bolt-ui DEPLOY_SHA=<tested-sha> bash deploy/deploy.sh`
 on the server; the GitHub production workflow remains limited to `main`.
 
-Rollback: on the server run `DEPLOY_SHA=<older-commit-sha> bash deploy/deploy.sh`
-(database migrations are not rolled back automatically).
+Recovery: leave maintenance mode on until the failed step is understood. Choose a previously tested revision
+whose code supports the installed schema, and use that revision's deployment instructions; older revisions
+predating app:deployment-check cannot use the current script unchanged. Database migrations are not rolled
+back automatically. Restore a verified backup when recovery requires older schema/data.
 
 ## 5. Redis or not?
 

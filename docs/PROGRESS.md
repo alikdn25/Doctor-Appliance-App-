@@ -20,12 +20,13 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
-### Customer context, name icons, estimate follow-ups and calendar map — validation pending
+### Customer context, name icons, estimate follow-ups and calendar map — CI passed
 
 - **About the customer** reuses existing customer notes, preserving all earlier entries. Office staff edit it in
   the customer profile or during the first booking. It appears prominently when booking and on assigned jobs,
   alongside the customer's earlier jobs, estimates, invoices and message history. Booking history follows
-  the user's brand access; technicians and other companies cannot browse unrelated customers.
+  the user's brand access. Job-linked message history follows job visibility; customer-level correspondence is
+  office-only. Technicians and other companies cannot browse unrelated customers. Removed the obsolete Messages placeholder.
 - Optional name-based decorative icons use a local dictionary of 16,589 Latin names from 45 Faker locales,
   pinned to MIT-licensed FakerPHP v1.24.1. Unknown/conflicting names remain neutral; automatic, neutral,
   man and woman choices are saved per customer. Business customers use a business icon. No customer names
@@ -41,8 +42,13 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
   Google map style (the demo map ID is the default for testing).
 - New migration adds avatar_style, estimate_followup_days and followup_processed_at. Existing customers
   default to automatic icons; existing companies keep follow-ups disabled.
-- Build, formatting, lint, TypeScript and backend validation are pending on this change. Manual browser/mobile,
-  Google map, outbound mail/SMS and server checks remain pending. No deployment has occurred.
+- Build, PHP style, frontend formatting/lint, TypeScript, deployment script syntax and all 655 backend tests
+  (5,049 assertions) passed on code commit `39e560e`: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37086077377.
+- First-server preparation adds app:deployment-check, serialized deployments, pinned commit selection,
+  maintenance retained on failure, HTTPS health/login probes and docs/SERVER_HANDOFF.md. Web and queue processes
+  must share a runtime user for private files; the setup also documents receipt upload limits.
+- Manual browser/mobile, Google map, outbound mail/SMS, payment callbacks, backup restore and server checks
+  remain pending. No SSH credential is attached to this workspace and no deployment has occurred.
 
 ### Item taxes and employee expense view — CI passed
 
@@ -805,7 +811,8 @@ now; automatic supplier price import; cash refunds tied to cash on hand.
 
 ## Next
 
-Stage 1 — run the customer-context/name-icon/follow-up/map checks, then verify the first server installation,
-mobile layouts, receipt camera uploads, Google map credentials, mail/SMS delivery and payment callbacks.
+Stage 1 — connect the server agent/SSH environment and install the tested code commit from SERVER_HANDOFF.md.
+Verify mobile layouts, receipt camera uploads, Google map credentials, mail/SMS delivery, payment callbacks
+and backup restore using LAUNCH_TESTING.md.
 Stripe remains the second payment provider. Then Stage 2 (parts orders, warranty claims, online booking,
 payment reminders, shared SMS inbox), Stage 3 and subscription billing.

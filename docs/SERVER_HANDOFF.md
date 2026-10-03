@@ -1,7 +1,9 @@
 # Server agent handoff
 
 The repository is alikdn25/Doctor-Appliance-App-. Current work is in draft PR #11, branch chatgpt/bolt-ui.
-There is no server credential attached to this development workspace. A GitHub connection alone does not give
+Last verified code commit: 39e560e63354108b5902e9497b21e77db2c7c9c8 (655 tests, 5,049 assertions, build/style/lint/TypeScript).
+Passing run: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37086077377.
+The following documentation-only update records these results. There is no server credential attached to this development workspace. A GitHub connection alone does not give
 SSH access. Use a server agent with SSH credentials stored in its environment or the production GitHub environment;
 never paste passwords/private keys into a chat or commit them.
 
