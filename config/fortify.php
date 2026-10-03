@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Middleware\ThrottleRegistration;
 use App\Http\Middleware\HandleAccountEmail;
+use App\Http\Middleware\ThrottleRegistration;
 use Laravel\Fortify\Features;
 
 return [

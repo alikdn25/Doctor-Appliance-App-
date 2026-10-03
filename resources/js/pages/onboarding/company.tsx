@@ -63,7 +63,10 @@ export default function CompanySetup({
     return (
         <>
             <Head title={t('onboarding.title')} />
-            <AccountSetupSteps current={3} confirmationRequired={confirmationRequired} />
+            <AccountSetupSteps
+                current={3}
+                confirmationRequired={confirmationRequired}
+            />
             <p className="rounded-2xl bg-primary/5 p-4 text-sm leading-relaxed text-muted-foreground">
                 {t('onboarding.explanation')}
             </p>

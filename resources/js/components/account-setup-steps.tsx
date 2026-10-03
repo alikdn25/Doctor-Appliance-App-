@@ -2,18 +2,29 @@ import { Check } from 'lucide-react';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
-export function AccountSetupSteps({ current, confirmationRequired = true }: { current: 1 | 2 | 3; confirmationRequired?: boolean }) {
+export function AccountSetupSteps({
+    current,
+    confirmationRequired = true,
+}: {
+    current: 1 | 2 | 3;
+    confirmationRequired?: boolean;
+}) {
     const t = useTrans();
     const steps = [
         { id: 1, label: t('onboarding.steps.account') },
-        ...(confirmationRequired ? [{ id: 2, label: t('onboarding.steps.email') }] : []),
+        ...(confirmationRequired
+            ? [{ id: 2, label: t('onboarding.steps.email') }]
+            : []),
         { id: 3, label: t('onboarding.steps.company') },
     ];
 
     return (
         <ol
             aria-label={t('onboarding.steps.label')}
-            className={cn('grid gap-2', confirmationRequired ? 'grid-cols-3' : 'grid-cols-2')}
+            className={cn(
+                'grid gap-2',
+                confirmationRequired ? 'grid-cols-3' : 'grid-cols-2',
+            )}
         >
             {steps.map(({ id: step, label }, index) => {
                 return (

@@ -8,8 +8,8 @@ use App\Models\Company;
 use App\Models\Membership;
 use App\Models\User;
 use App\Notifications\MemberInvited;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {

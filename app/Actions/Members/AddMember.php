@@ -13,8 +13,8 @@ use App\Support\AccountEmail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\Password as PasswordRule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Adds a person to a company. Emails are unique platform-wide: an existing user

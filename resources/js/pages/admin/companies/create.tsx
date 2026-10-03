@@ -57,7 +57,10 @@ export default function AdminCompanyCreate({
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
-        form.post(store().url, { onSuccess: () => form.reset('owner_password', 'owner_password_confirmation') });
+        form.post(store().url, {
+            onSuccess: () =>
+                form.reset('owner_password', 'owner_password_confirmation'),
+        });
     };
 
     return (
@@ -257,15 +260,49 @@ export default function AdminCompanyCreate({
                     />
                 </FormField>
 
-                {!emailAvailable && <>
-                    <p className="text-sm text-muted-foreground">{t('team.manual_access')}</p>
-                    <FormField id="owner_password" label={t('team.initial_password')} error={form.errors.owner_password}>
-                        <Input id="owner_password" type="password" autoComplete="new-password" value={form.data.owner_password} onChange={(e) => form.setData('owner_password', e.target.value)} />
-                    </FormField>
-                    <FormField id="owner_password_confirmation" label={t('team.confirm_password')} error={form.errors.owner_password_confirmation}>
-                        <Input id="owner_password_confirmation" type="password" autoComplete="new-password" value={form.data.owner_password_confirmation} onChange={(e) => form.setData('owner_password_confirmation', e.target.value)} />
-                    </FormField>
-                </>}
+                {!emailAvailable && (
+                    <>
+                        <p className="text-sm text-muted-foreground">
+                            {t('team.manual_access')}
+                        </p>
+                        <FormField
+                            id="owner_password"
+                            label={t('team.initial_password')}
+                            error={form.errors.owner_password}
+                        >
+                            <Input
+                                id="owner_password"
+                                type="password"
+                                autoComplete="new-password"
+                                value={form.data.owner_password}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'owner_password',
+                                        e.target.value,
+                                    )
+                                }
+                            />
+                        </FormField>
+                        <FormField
+                            id="owner_password_confirmation"
+                            label={t('team.confirm_password')}
+                            error={form.errors.owner_password_confirmation}
+                        >
+                            <Input
+                                id="owner_password_confirmation"
+                                type="password"
+                                autoComplete="new-password"
+                                value={form.data.owner_password_confirmation}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'owner_password_confirmation',
+                                        e.target.value,
+                                    )
+                                }
+                            />
+                        </FormField>
+                    </>
+                )}
 
                 <Button
                     type="submit"

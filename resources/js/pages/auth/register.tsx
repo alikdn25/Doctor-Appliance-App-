@@ -10,12 +10,21 @@ import { useTrans } from '@/lib/i18n';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 
-export default function Register({ passwordRules, confirmationRequired }: { passwordRules: string; confirmationRequired: boolean }) {
+export default function Register({
+    passwordRules,
+    confirmationRequired,
+}: {
+    passwordRules: string;
+    confirmationRequired: boolean;
+}) {
     const t = useTrans();
     return (
         <>
             <Head title={t('auth.register.title')} />
-            <AccountSetupSteps current={1} confirmationRequired={confirmationRequired} />
+            <AccountSetupSteps
+                current={1}
+                confirmationRequired={confirmationRequired}
+            />
             <Form
                 {...store.form()}
                 resetOnSuccess={['password', 'password_confirmation']}

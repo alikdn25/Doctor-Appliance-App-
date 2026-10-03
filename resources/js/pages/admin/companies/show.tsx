@@ -179,7 +179,9 @@ export default function AdminCompanyShow({
                                 )
                             }
                         >
-                            <option value="">{t('admin.subscription_unassigned')}</option>
+                            <option value="">
+                                {t('admin.subscription_unassigned')}
+                            </option>
                             {subscriptionStatuses.map((s) => (
                                 <option key={s.value} value={s.value}>
                                     {s.label}
@@ -232,7 +234,9 @@ export default function AdminCompanyShow({
                                     </div>
                                     {m.last_support_at && (
                                         <p className="text-xs text-muted-foreground">
-                                            {t('admin.last_support', { date: date(m.last_support_at) })}
+                                            {t('admin.last_support', {
+                                                date: date(m.last_support_at),
+                                            })}
                                         </p>
                                     )}
                                 </div>
@@ -255,7 +259,10 @@ export default function AdminCompanyShow({
                         {t('admin.impersonation_log')}
                     </h2>
                     <p className="mb-3 text-sm text-muted-foreground">
-                        {t('admin.support_log_hint')} {t('admin.log_timezone', { timezone: company.timezone_label })}
+                        {t('admin.support_log_hint')}{' '}
+                        {t('admin.log_timezone', {
+                            timezone: company.timezone_label,
+                        })}
                     </p>
                     {impersonations.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
@@ -273,9 +280,17 @@ export default function AdminCompanyShow({
                                     </div>
                                     <div className="text-xs text-muted-foreground">
                                         {date(log.started_at)} →{' '}
-                                        {log.ended_at ? date(log.ended_at) : t('admin.end_not_recorded')}
+                                        {log.ended_at
+                                            ? date(log.ended_at)
+                                            : t('admin.end_not_recorded')}
                                     </div>
-                                    {log.reason && <p className="mt-1 break-words whitespace-pre-wrap text-xs text-muted-foreground">{t('admin.support_note', { reason: log.reason })}</p>}
+                                    {log.reason && (
+                                        <p className="mt-1 text-xs break-words whitespace-pre-wrap text-muted-foreground">
+                                            {t('admin.support_note', {
+                                                reason: log.reason,
+                                            })}
+                                        </p>
+                                    )}
                                 </li>
                             ))}
                         </ul>
@@ -286,7 +301,11 @@ export default function AdminCompanyShow({
                     <h2 className="mb-3 text-base font-medium">
                         {t('admin.audit_log')}
                     </h2>
-                    <p className="mb-3 text-xs text-muted-foreground">{t('admin.log_timezone', { timezone: company.timezone_label })}</p>
+                    <p className="mb-3 text-xs text-muted-foreground">
+                        {t('admin.log_timezone', {
+                            timezone: company.timezone_label,
+                        })}
+                    </p>
                     {auditLogs.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             {t('admin.none')}

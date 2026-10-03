@@ -53,7 +53,12 @@ type MemberForm = {
     password_confirmation: string;
 };
 
-export default function TeamIndex({ members, roles, brands, emailAvailable }: Props) {
+export default function TeamIndex({
+    members,
+    roles,
+    brands,
+    emailAvailable,
+}: Props) {
     const t = useTrans();
     const [editing, setEditing] = useState<Member | null>(null);
     const [open, setOpen] = useState(false);
@@ -95,7 +100,10 @@ export default function TeamIndex({ members, roles, brands, emailAvailable }: Pr
         e.preventDefault();
         const options = {
             preserveScroll: true,
-            onSuccess: () => { form.reset('password', 'password_confirmation'); setOpen(false); },
+            onSuccess: () => {
+                form.reset('password', 'password_confirmation');
+                setOpen(false);
+            },
         };
 
         if (editing) {
@@ -163,11 +171,12 @@ export default function TeamIndex({ members, roles, brands, emailAvailable }: Pr
                                             {t('common.inactive')}
                                         </Badge>
                                     )}
-                                    {member.invitation_pending && emailAvailable && (
-                                        <Badge variant="secondary">
-                                            {t('team.invited')}
-                                        </Badge>
-                                    )}
+                                    {member.invitation_pending &&
+                                        emailAvailable && (
+                                            <Badge variant="secondary">
+                                                {t('team.invited')}
+                                            </Badge>
+                                        )}
                                 </div>
                                 <div className="text-xs break-words text-muted-foreground">
                                     {member.email.endsWith('@retired.invalid')
@@ -237,7 +246,11 @@ export default function TeamIndex({ members, roles, brands, emailAvailable }: Pr
                         <DialogDescription>
                             {editing
                                 ? editing.email
-                                : t(emailAvailable ? 'team.add_description' : 'team.manual_access')}
+                                : t(
+                                      emailAvailable
+                                          ? 'team.add_description'
+                                          : 'team.manual_access',
+                                  )}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -276,14 +289,49 @@ export default function TeamIndex({ members, roles, brands, emailAvailable }: Pr
                                         required
                                     />
                                 </FormField>
-                                {!emailAvailable && <>
-                                    <FormField id="password" label={t('team.initial_password')} error={errors.password}>
-                                        <Input id="password" type="password" autoComplete="new-password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} />
-                                    </FormField>
-                                    <FormField id="password_confirmation" label={t('team.confirm_password')} error={errors.password_confirmation}>
-                                        <Input id="password_confirmation" type="password" autoComplete="new-password" value={form.data.password_confirmation} onChange={(e) => form.setData('password_confirmation', e.target.value)} />
-                                    </FormField>
-                                </>}
+                                {!emailAvailable && (
+                                    <>
+                                        <FormField
+                                            id="password"
+                                            label={t('team.initial_password')}
+                                            error={errors.password}
+                                        >
+                                            <Input
+                                                id="password"
+                                                type="password"
+                                                autoComplete="new-password"
+                                                value={form.data.password}
+                                                onChange={(e) =>
+                                                    form.setData(
+                                                        'password',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            />
+                                        </FormField>
+                                        <FormField
+                                            id="password_confirmation"
+                                            label={t('team.confirm_password')}
+                                            error={errors.password_confirmation}
+                                        >
+                                            <Input
+                                                id="password_confirmation"
+                                                type="password"
+                                                autoComplete="new-password"
+                                                value={
+                                                    form.data
+                                                        .password_confirmation
+                                                }
+                                                onChange={(e) =>
+                                                    form.setData(
+                                                        'password_confirmation',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            />
+                                        </FormField>
+                                    </>
+                                )}
                             </>
                         )}
 
@@ -352,7 +400,11 @@ export default function TeamIndex({ members, roles, brands, emailAvailable }: Pr
                         <Button type="submit" disabled={form.processing}>
                             {editing
                                 ? t('common.save')
-                                : t(emailAvailable ? 'team.send_invitation' : 'team.add_without_email')}
+                                : t(
+                                      emailAvailable
+                                          ? 'team.send_invitation'
+                                          : 'team.add_without_email',
+                                  )}
                         </Button>
                     </form>
                 </DialogContent>

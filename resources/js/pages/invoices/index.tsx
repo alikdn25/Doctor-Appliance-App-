@@ -109,7 +109,11 @@ export default function InvoicesIndex({
 
                 {invoices.data.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                        {t(hasInvoices ? 'invoices.empty' : 'invoices.first_invoice')}
+                        {t(
+                            hasInvoices
+                                ? 'invoices.empty'
+                                : 'invoices.first_invoice',
+                        )}
                     </p>
                 ) : (
                     <DocumentList documents={invoices.data} showCustomer />

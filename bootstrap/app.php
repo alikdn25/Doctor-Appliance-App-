@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureAccountEmailVerified;
+use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
