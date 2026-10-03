@@ -67,7 +67,7 @@ class JobMessageController extends Controller
     public static function result(string $status, ?string $reason, mixed $sendAfter = null): RedirectResponse
     {
         $toast = match (true) {
-            $status === 'blocked' => ['type' => 'error', 'message' => __('messages.sms_blocked', ['reason' => $reason])],
+            in_array($status, ['blocked', 'failed'], true) => ['type' => 'error', 'message' => __('messages.sms_blocked', ['reason' => $reason])],
             $sendAfter !== null && $sendAfter->isFuture() => ['type' => 'success', 'message' => __('messages.sms_queued', [
                 'time' => MessageContext::date($sendAfter).' '.MessageContext::time($sendAfter),
             ])],

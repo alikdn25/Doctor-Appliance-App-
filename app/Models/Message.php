@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\MessageKind;
+use App\Enums\UserRole;
 use App\Models\Concerns\BelongsToCompany;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -62,6 +64,17 @@ class Message extends Model
             'send_after' => 'datetime',
             'sent_at' => 'datetime',
         ];
+    }
+
+    /** Correspondence follows job visibility; unassigned conversations belong to the office. */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        $query->where(function (Builder $query) use ($user) {
+            $query->whereIn('service_job_id', ServiceJob::query()->visibleTo($user)->select('id'));
+            if ($user->hasRole(UserRole::Owner, UserRole::Admin)) {
+                $query->orWhereNull('service_job_id');
+            }
+        });
     }
 
     /**

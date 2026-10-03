@@ -54,10 +54,10 @@ class Messenger
     /**
      * An SMS through the platform provider, or a "not sent" record saying why.
      */
-    public function sms(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user = null, bool $afterCommit = false): Message
+    public function sms(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user = null, bool $afterCommit = false, ?CustomerPhone $recipient = null): Message
     {
         $company = currentCompany();
-        $phone = $this->mobile($customer);
+        $phone = $this->recipient($customer, $recipient);
         $account = SmsAccount::query()->first();
 
         $reason = match (true) {
@@ -149,9 +149,9 @@ class Messenger
     /**
      * Whether the company can text this number now (for the UI): null = yes, otherwise the reason.
      */
-    public function smsBlockedReason(Customer $customer): ?string
+    public function smsBlockedReason(Customer $customer, ?CustomerPhone $recipient = null): ?string
     {
-        $phone = $this->mobile($customer);
+        $phone = $this->recipient($customer, $recipient);
 
         return match (true) {
             $phone === null => __('messages.blocked.no_phone'),
@@ -170,6 +170,12 @@ class Messenger
         $phones = $customer->phones()->get();
 
         return $phones->firstWhere('is_primary', true) ?? $phones->first();
+    }
+
+    private function recipient(Customer $customer, ?CustomerPhone $recipient): ?CustomerPhone
+    {
+        return $recipient === null ? $this->mobile($customer) : CustomerPhone::query()
+            ->where('customer_id', $customer->id)->whereKey($recipient->id)->firstOrFail();
     }
 
     private function email(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user, ?string $subject, bool $failIfMissing, bool $afterCommit = false): ?Message

@@ -44,6 +44,7 @@ use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\SmsWebhookController;
+use App\Http\Controllers\SmsInboxController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
@@ -76,6 +77,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Tenant area: everything here runs inside the current company.
     Route::middleware(['tenant', 'two-factor'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+        Route::get('messages', [SmsInboxController::class, 'index'])->name('messages.index');
+        Route::post('messages/read', [SmsInboxController::class, 'read'])->name('messages.read');
+        Route::post('messages/send', [SmsInboxController::class, 'send'])->middleware('throttle:30,1')->name('messages.send');
 
         Route::post('companies/{company}/switch', SwitchCompanyController::class)->name('companies.switch');
 

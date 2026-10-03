@@ -58,6 +58,11 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Prepare browser test dependency lock
+        run: |
+          npm install --package-lock-only --ignore-scripts --save-dev @playwright/test@1.58.2
+          git diff -- package.json package-lock.json
+
       - name: Install dependencies
         run: |
           composer install --no-interaction --prefer-dist --no-progress

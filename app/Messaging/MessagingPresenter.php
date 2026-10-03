@@ -134,7 +134,12 @@ class MessagingPresenter
      */
     private function history($query): array
     {
-        return $query->with('user')->latest('id')->limit(50)->get()->map(fn (Message $m) => [
+        return $query->with('user')->latest('id')->limit(50)->get()->map(fn (Message $m) => self::item($m))->values()->all();
+    }
+
+    public static function item(Message $m): array
+    {
+        return [
             'id' => $m->id,
             'direction' => $m->direction,
             'channel' => $m->channel,
@@ -149,6 +154,6 @@ class MessagingPresenter
             'user' => $m->user?->name,
             'at' => JobPresenter::iso($m->sent_at ?? $m->send_after ?? $m->created_at),
             'job_id' => $m->service_job_id,
-        ])->values()->all();
+        ];
     }
 }

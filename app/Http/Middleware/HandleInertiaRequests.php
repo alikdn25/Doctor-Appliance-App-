@@ -9,6 +9,8 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Membership;
+use App\Models\Message;
+use App\Messaging\SmsInbox;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Models\User;
@@ -53,6 +55,13 @@ class HandleInertiaRequests extends Middleware
                     : null;
             }),
             'locale' => app()->getLocale(),
+            'unreadMessages' => Inertia::always(function () use ($request) {
+                $user = $request->user();
+
+                return $user !== null && app(CurrentCompany::class)->get() !== null && $user->can('viewAny', Message::class)
+                    ? SmsInbox::unreadCount($user)
+                    : null;
+            }),
             'translations' => Inertia::once(fn () => Translations::forLocale(app()->getLocale())),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
@@ -97,6 +106,7 @@ class HandleInertiaRequests extends Middleware
                 : $user->accessibleCompanies()->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name])->values(),
             'can' => $company === null ? [] : [
                 'viewCustomers' => $user->can('viewAny', Customer::class),
+                'viewMessageInbox' => $user->can('viewAny', Message::class),
                 'viewBusinessExpenses' => $user->can('viewAny', BusinessExpense::class),
                 'viewJobs' => $user->can('viewAny', ServiceJob::class),
                 'viewInvoices' => $user->can('viewAny', Invoice::class),

@@ -14,6 +14,7 @@ declare module '@inertiajs/core' {
             auth: Auth;
             impersonation: Impersonation;
             unfinishedJobs: JobBacklogSummary | null;
+            unreadMessages: number | null;
             locale: string;
             translations: Record<string, unknown>;
             sidebarOpen: boolean;

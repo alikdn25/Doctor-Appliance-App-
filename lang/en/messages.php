@@ -1,6 +1,26 @@
 <?php
 
 return [
+    'inbox' => [
+        'title' => 'SMS Inbox',
+        'description' => 'Customer replies and company texts in one place.',
+        'conversations' => 'Conversations',
+        'conversation' => 'Selected conversation',
+        'search' => 'Name, phone or message',
+        'unread_only' => 'Unread only',
+        'unread_count' => ':count unread messages',
+        'empty' => 'No conversations match these filters.',
+        'select' => 'Select a conversation to read and reply.',
+        'unknown' => 'Unlinked phone number',
+        'link_customer' => 'Add this number to a customer before replying. If multiple customers share it, review the contact details.',
+        'automatic_required' => 'Replies from the company number require Automatic SMS mode in Messaging settings.',
+        'reply' => 'Reply to this number',
+        'reply_placeholder' => 'Write your reply…',
+        'quiet_hint' => 'Texts wait until company quiet hours end.',
+        'newest_first' => 'Newest messages first. Read status is personal to each employee.',
+        'back' => 'Conversations',
+        'open_customer' => 'Open customer',
+    ],
     'title' => 'Messages',
     'empty' => 'No messages yet.',
     'settings_title' => 'Messaging',

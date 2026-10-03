@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'sms_inbox' => 'SMS Inbox',
     'group_main' => 'Main',
     'group_company' => 'Company',
     'group_platform' => 'Platform',
