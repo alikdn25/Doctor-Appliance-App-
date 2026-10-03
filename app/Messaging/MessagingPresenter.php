@@ -61,11 +61,20 @@ class MessagingPresenter
     /**
      * @return array<string, mixed>
      */
-    public function forCustomer(Customer $customer): array
+    public function forCustomer(Customer $customer, User $user): array
     {
+        $query = Message::query()->where('customer_id', $customer->id)
+            ->where(function (Builder $query) use ($customer, $user) {
+                $query->whereIn('service_job_id', ServiceJob::query()->visibleTo($user)->select('id'));
+                // Customer-level correspondence is office-only; technicians see assigned-job messages.
+                if ($user->can('update', $customer)) {
+                    $query->orWhereNull('service_job_id');
+                }
+            });
+
         return [
             'mode' => currentCompany()->sms_mode->value,
-            'messages' => $this->history(Message::query()->where('customer_id', $customer->id)),
+            'messages' => $this->history($query),
         ];
     }
 

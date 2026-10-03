@@ -1,13 +1,16 @@
 <?php
 
 use App\Enums\CustomerType;
+use App\Enums\MessageKind;
 use App\Enums\UserRole;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\Message;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Support\NameAvatar;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('name suggestions support Latin names and leave ambiguous or unknown names neutral', function () {
@@ -68,4 +71,35 @@ test('customer context follows booking and assigned jobs without exposing anothe
     $this->get(route('customers.show', $customer))->assertNotFound();
     $this->get(route('jobs.show', $job))->assertNotFound();
     $this->getJson(route('jobs.lookup', ['search' => 'Maria']))->assertJsonPath('customers', []);
+});
+
+test('customer message history respects technician assignments and office brand access', function () {
+    $company = Company::factory()->create();
+    $owner = memberOf($company, UserRole::Owner);
+    $tech = memberOf($company, UserRole::Technician);
+    $admin = memberOf($company, UserRole::Admin);
+    $brand = Brand::factory()->create(['company_id' => $company->id]);
+    $otherBrand = Brand::factory()->create(['company_id' => $company->id]);
+    $customer = Customer::factory()->for($company)->create();
+    $property = Property::factory()->for($customer)->create();
+    $mine = ServiceJob::factory()->for($property)->withVisit($tech)->create(['brand_id' => $brand->id]);
+    $other = ServiceJob::factory()->for($property)->create(['brand_id' => $otherBrand->id]);
+    DB::table('brand_user')->insert(['company_id' => $company->id, 'brand_id' => $brand->id, 'user_id' => $admin->id]);
+    inCompany($company, function () use ($customer, $mine, $other) {
+        foreach ([$mine->id, $other->id, null] as $jobId) {
+            Message::query()->create(['customer_id' => $customer->id, 'service_job_id' => $jobId,
+                'direction' => Message::OUTBOUND, 'channel' => Message::EMAIL, 'kind' => MessageKind::General,
+                'body' => 'Customer correspondence', 'status' => 'sent']);
+        }
+    });
+    $this->actingAs($owner);
+    $this->get(route('customers.show', $customer))->assertInertia(fn (Assert $page) => $page->has('messaging.messages', 3));
+    $this->actingAs($tech);
+    $this->get(route('customers.show', $customer))->assertInertia(fn (Assert $page) => $page
+        ->has('messaging.messages', 1)->where('messaging.messages.0.job_id', $mine->id));
+    $this->actingAs($admin);
+    $this->get(route('customers.show', $customer))->assertInertia(fn (Assert $page) => $page
+        ->has('messaging.messages', 2)->where('messaging.messages.1.job_id', $mine->id));
+    $this->get(route('jobs.create', ['customer_id' => $customer->id]))->assertInertia(fn (Assert $page) => $page
+        ->has('customer.jobs', 1)->where('customer.jobs.0.id', $mine->id));
 });

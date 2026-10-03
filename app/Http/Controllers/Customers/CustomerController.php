@@ -125,7 +125,7 @@ class CustomerController extends Controller
         }
 
         return Inertia::render('customers/show', [
-            'messaging' => app(MessagingPresenter::class)->forCustomer($customer),
+            'messaging' => app(MessagingPresenter::class)->forCustomer($customer, $user),
             'customer' => [
                 ...$this->customerData($customer),
                 'type_label' => $customer->type->label(),

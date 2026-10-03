@@ -141,8 +141,6 @@ export default function CustomerShow({
         }
     };
 
-    const placeholders = ['messages'] as const;
-
     return (
         <>
             <Head title={customer.display_name} />
@@ -528,22 +526,6 @@ export default function CustomerShow({
                     ) : (
                         <DocumentList documents={[...invoices, ...estimates]} />
                     )}
-                </section>
-
-                <section className="grid gap-2 sm:grid-cols-2">
-                    {placeholders.map((section) => (
-                        <div
-                            key={section}
-                            className="rounded-lg border border-dashed p-4"
-                        >
-                            <h2 className="text-sm font-medium">
-                                {t(`customers.sections.${section}`)}
-                            </h2>
-                            <p className="text-xs text-muted-foreground">
-                                {t('customers.coming_soon')}
-                            </p>
-                        </div>
-                    ))}
                 </section>
 
                 {canDelete && (
