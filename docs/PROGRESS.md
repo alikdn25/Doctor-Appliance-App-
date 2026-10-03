@@ -1,10 +1,10 @@
-# Feedback through October 3, 2026 — implementation complete, validation pending
+# Feedback through October 3, 2026 — code validated; server acceptance pending
 
 - Direct customer pricing with separate author-private purchase costs for parts/materials; computed differences. Markup settings and automatic price changes removed. Privacy covers document editing, price history, conversion/revision, PDF/public output, CSV and aggregate profit redaction.
 - Searchable UTC-offset/city/country time zones retain IANA/DST behavior. Visible Menu, persistent Book customer, calendar booking with date and first-visit defaults.
 - Working sign-in and remembered sessions, technician landing on My jobs, separate platform workspace/support entry without a reason prompt. Platform admins can explicitly join their own working company; no automatic grant to arbitrary tenants.
 - Members is accessible to Owners/Admins; Admins manage technicians without promoting themselves or changing Owners. Transfer all unfinished assigned jobs, including waiting for parts without an open visit, and replace a company-only technician login with a new password; preserve former identities/history and invalidate old sessions.
-- New backend and desktop/mobile browser coverage is pending CI. Server deployment and live checks remain separate. FEEDBACK_2026_10_03.md records the seven supplied comments through October 3; future reports cover new comments only.
+- Code commit f2e4729e66f918a7aab9e5334b218396f977c26e passed build, PHP style, frontend formatting/lint, TypeScript, deployment shell syntax, all 710 backend tests (5,615 assertions) and 28 desktop/mobile browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37139569448. Mobile booking, time-zone and private-price screenshots were reviewed. Server deployment and live checks remain separate; SERVER_HANDOFF.md pins this tested code. FEEDBACK_2026_10_03.md records the seven supplied comments through October 3; future reports cover new comments only.
 
 # Public signup and first-run usability — code validated; server acceptance pending
 

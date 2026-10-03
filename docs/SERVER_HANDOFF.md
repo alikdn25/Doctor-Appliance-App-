@@ -3,10 +3,10 @@
 Repository: alikdn25/Doctor-Appliance-App-. MVP PR #11 is merged into main.
 Signup, first-run usability and the seven October 3 feedback fixes are in PR #12,
 branch chatgpt/self-service-onboarding. FEEDBACK_2026_10_03.md records the behavior changes.
-Tested code commit: aedf2a89a9023e277b5eaed41c23d9cab84e699a.
-Validation run: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37135218373.
+Tested code commit: f2e4729e66f918a7aab9e5334b218396f977c26e.
+Validation run: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37139569448.
 All checks passed: build, PHP style, frontend format/lint, TypeScript, deployment shell syntax,
-692 backend tests (5,413 assertions) and 22 desktop/mobile browser scenarios with CSRF protection.
+710 backend tests (5,615 assertions) and 28 desktop/mobile browser scenarios with CSRF protection.
 Later documentation-only commits do not change this tested code.
 
 This development workspace has no VPS credentials; production deployment and live email delivery
@@ -37,10 +37,10 @@ existing installation. Do not reinstall the OS or reset the database.
 ```bash
 cd /var/www/fieldservice
 git fetch --no-tags origin chatgpt/self-service-onboarding
-git merge-base --is-ancestor aedf2a89a9023e277b5eaed41c23d9cab84e699a FETCH_HEAD
+git merge-base --is-ancestor f2e4729e66f918a7aab9e5334b218396f977c26e FETCH_HEAD
 php artisan down --retry=15
-git merge --ff-only aedf2a89a9023e277b5eaed41c23d9cab84e699a
-DEPLOY_REF=chatgpt/self-service-onboarding DEPLOY_SHA=aedf2a89a9023e277b5eaed41c23d9cab84e699a bash deploy/deploy.sh
+git merge --ff-only f2e4729e66f918a7aab9e5334b218396f977c26e
+DEPLOY_REF=chatgpt/self-service-onboarding DEPLOY_SHA=f2e4729e66f918a7aab9e5334b218396f977c26e bash deploy/deploy.sh
 ```
 
 Run these commands sequentially and stop on any failure. If fast-forwarding fails, report the

@@ -1,8 +1,8 @@
 # First-launch verification
 
-Code commit aedf2a89a9023e277b5eaed41c23d9cab84e699a passed build, PHP style, frontend formatting/lint,
-TypeScript, deployment script syntax, all 692 backend tests (5,413 assertions) and 22 desktop/mobile
-browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37135218373.
+Code commit f2e4729e66f918a7aab9e5334b218396f977c26e passed build, PHP style, frontend formatting/lint,
+TypeScript, deployment script syntax, all 710 backend tests (5,615 assertions) and 28 desktop/mobile
+browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37139569448.
 See BROWSER_TESTING.md for the automated coverage and screenshot report. The HTTP server used active CSRF
 protection; SMS went to a loopback test provider. Physical devices and live integrations remain below.
 This checklist records remaining manual checks; none are marked complete by automated tests alone.
@@ -41,3 +41,15 @@ Stage 2/3 and platform subscription billing remain outside the completed first-l
 ## Signup acceptance
 
 Use a private browser and a controlled inbox: register, receive/confirm email, create a company, open the first customer/job, log out and back in without mandatory 2FA. Check resend, expired confirmation, correction of an email typo, existing invitations, company suspension and an account that already enabled optional 2FA. CI logs are test mail only; real SMTP delivery must be checked on the VPS.
+
+## October 3 feedback acceptance
+
+Use FEEDBACK_2026_10_03.md as the seven-item baseline. Verify manual customer/private purchase prices
+and their calculated difference as the author, another technician, the office and a customer; check
+conversion/revision, price history, PDF and export privacy. Search UTC offsets, Vancouver and Canada.
+Find Menu and Book customer immediately on a phone, and book from Calendar with the selected date.
+Sign in normally as a solo Owner and assigned Technician, then reopen the browser. Confirm the
+server explicitly uses SESSION_LIFETIME=43200 and that platform administration/support are separate.
+Open Members as Owner/Admin and verify their role boundaries. Transfer waiting-for-parts work with
+no open visit, reschedule it, replace a company-only technician login with a new password and confirm
+old sessions fail while completed visits and financial authors retain the former person's name.
