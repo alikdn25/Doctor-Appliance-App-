@@ -27,6 +27,12 @@ class TeamController extends Controller
 
         $company = currentCompany();
 
+        // A never-used account is not necessarily an invitation. Only show the
+        // badge while an invitation/reset token still awaits acceptance.
+        $pendingEmails = DB::table(config('auth.passwords.'.config('auth.defaults.passwords').'.table'))
+            ->whereIn('email', Membership::query()->with('user')->get()->pluck('user.email'))
+            ->pluck('email')->all();
+
         $brandLinks = DB::table('brand_user')
             ->where('company_id', $company->id)
             ->get(['user_id', 'brand_id'])
@@ -47,7 +53,7 @@ class TeamController extends Controller
                 'role_label' => $m->role->label(),
                 'is_active' => $m->is_active,
                 'brand_ids' => $brandLinks->get($m->user_id, []),
-                'invitation_pending' => $m->user->last_login_at === null,
+                'invitation_pending' => $m->user->last_login_at === null && in_array($m->user->email, $pendingEmails, true),
                 'is_self' => $m->user_id === $request->user()->id,
                 'can_manage' => $request->user()->can('update', $m),
             ]);

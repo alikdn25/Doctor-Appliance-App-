@@ -1,3 +1,10 @@
+# October 3 follow-up — implementation complete; validation in progress
+
+- Short Book customer form: name/phone/time, optional address/details, existing-customer search and visible customer preferences; saves customer/job/visit atomically. Calendar empty days and dashboard link to booking.
+- New invoice opens from empty/populated lists, picks a visible job or enters a new customer, then opens prices. No empty invoice is saved by continuing. New job click is covered in browser checks; Save requires customer details.
+- Missing-brand setup is explained, company punctuation is preserved, and Invited requires an actual pending invitation/reset token rather than an unused account alone.
+- Backend tenant/validation checks and desktop/mobile browser scenarios added. The follow-up report covers only Grok's new walkthrough in FEEDBACK_FOLLOWUP_2026_10_03.md. PR #12 is still unmerged; production needs the exact tested build, not only an update of main. Server access is not available here.
+
 # Feedback through October 3, 2026 — code validated; server acceptance pending
 
 - Direct customer pricing with separate author-private purchase costs for parts/materials; computed differences. Markup settings and automatic price changes removed. Privacy covers document editing, price history, conversion/revision, PDF/public output, CSV and aggregate profit redaction.

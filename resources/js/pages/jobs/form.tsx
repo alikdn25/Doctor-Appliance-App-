@@ -411,8 +411,14 @@ export default function JobForm({
         (p) => p.id === data.property_id,
     );
 
+    const canSave = !!data.brand_id && (data.new_customer_mode
+        ? !!(data.new_customer.first_name.trim() || data.new_customer.last_name.trim() || data.new_customer.company_name.trim())
+            && !!data.new_customer.phone.trim() && !!data.new_customer.property.line1.trim() && !!data.new_customer.property.city.trim()
+        : !!data.customer_id && !!data.property_id);
+
     const submit = (e: FormEvent) => {
         e.preventDefault();
+        if (!canSave || form.processing) return;
 
         if (job) {
             form.put(update(job.id).url);
@@ -1246,7 +1252,7 @@ export default function JobForm({
                 )}
 
                 <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button type="submit" size="lg" disabled={form.processing}>
+                    <Button type="submit" size="lg" disabled={form.processing || !canSave}>
                         {t('common.save')}
                     </Button>
                     <Button type="button" variant="ghost" size="lg" asChild>

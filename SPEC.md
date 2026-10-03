@@ -295,6 +295,7 @@ from the company number (Twilio voice).
 ## 9. Non-functional requirements
 
 - Mobile-first UI; technician screens usable with one hand. Visible Menu and permanent Book customer actions lead directly to booking, including from Calendar. Login opens the working company for Owners/Admins and My jobs for technicians. Platform administration/support are separate; persistent sign-in is enabled by default.
+- Quick office booking: name, phone and arrival window create the customer, job and visit atomically; an existing customer can be found by name/phone. Address and details can be supplied later, with a visible pending-address state and no directions until an address exists. Empty calendar days offer booking. New invoice is available from the invoice list and leads to an existing job or short customer entry, then prices. Full job creation cannot save without a customer/property.
 - English UI in v1; all text strings kept in translation files for future languages.
 - Localization per company as in §1.1 (currency, taxes, time zone, regional format, address format, E.164 phones).
 - Security: hashed passwords, optional 2FA for every user, role-based access, rate limiting, audit log of sensitive actions.

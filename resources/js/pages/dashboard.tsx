@@ -9,6 +9,7 @@ import {
     Wrench,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTrans } from '@/lib/i18n';
 import { dashboard } from '@/routes';
@@ -52,7 +53,7 @@ export default function Dashboard({ companyName, stats }: Props) {
         auth.can.viewJobs === true && {
             title: t('dashboard.schedule_job'),
             description: t('dashboard.schedule_job_hint'),
-            href: createJob(),
+            href: createJob({ query: { book: 1 } }),
             icon: CalendarDays,
         },
         auth.can.viewMyJobs === true && {
@@ -86,6 +87,12 @@ export default function Dashboard({ companyName, stats }: Props) {
                         company: companyName,
                     })}
                 />
+
+                {stats.brands === 0 && <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+                    <h2 className="font-semibold">{t('dashboard.brand_needed')}</h2>
+                    <p className="mt-2 text-sm">{t(auth.can.manageCompany ? 'dashboard.brand_needed_hint' : 'dashboard.brand_needed_admin')}</p>
+                    {auth.can.manageCompany && <Button asChild variant="outline" className="mt-4"><Link href={brands()}>{t('dashboard.brand_needed')}</Link></Button>}
+                </div>}
 
                 <div className="grid grid-cols-2 gap-3 md:max-w-xl">
                     {tiles.map((tile) => {
@@ -121,7 +128,7 @@ export default function Dashboard({ companyName, stats }: Props) {
                             {t('dashboard.next_steps')}
                         </h2>
                         <p className="text-sm text-muted-foreground">
-                            {t('dashboard.next_steps_hint')}
+                            {t(stats.brands === 0 ? 'dashboard.brand_needed_hint' : 'dashboard.next_steps_hint')}
                         </p>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">

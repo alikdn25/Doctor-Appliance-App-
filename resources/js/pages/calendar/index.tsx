@@ -262,6 +262,11 @@ export default function CalendarPage({
                     }
                 />
 
+                {!visits.some((visit) => visit.date === date) && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+                    <p className="text-sm text-muted-foreground">{t('jobs.quick.empty_day')}</p>
+                    <Button asChild variant="outline" className="min-h-11"><Link href={bookCustomer({ query: { book: 1, date } })}><Plus />{t('jobs.quick.book_day')}</Link></Button>
+                </div>}
+
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
                         {(['day', 'week', 'map'] as const).map((v) => (

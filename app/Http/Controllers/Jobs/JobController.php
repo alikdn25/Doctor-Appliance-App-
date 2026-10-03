@@ -199,9 +199,12 @@ class JobController extends Controller
             ? Customer::query()->find($request->integer('customer_id'))
             : null;
 
-        return Inertia::render('jobs/form', [
+        $quick = $request->boolean('book') || $request->boolean('invoice');
+
+        return Inertia::render($quick ? 'jobs/quick-book' : 'jobs/form', [
             'job' => null,
             'booking' => $request->boolean('book'),
+            'openInvoice' => $request->boolean('invoice'),
             'bookingDate' => $request->input('date'),
             'customer' => $customer ? self::customerOption($customer) : null,
             'today' => CarbonImmutable::now(currentCompany()->timezone)->format('Y-m-d'),
@@ -224,7 +227,9 @@ class JobController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.created', ['number' => $job->number])]);
 
-        return to_route('jobs.show', $job);
+        return $request->boolean('open_invoice')
+            ? to_route('invoices.create', $job)
+            : to_route('jobs.show', $job);
     }
 
     public function show(Request $request, ServiceJob $job): Response

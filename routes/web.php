@@ -156,6 +156,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('estimates/{estimate}/revise', [EstimateController::class, 'revise'])->name('estimates.revise');
 
         Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('invoices/create', [InvoiceController::class, 'start'])->name('invoices.start');
         Route::get('jobs/{job}/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
         Route::post('jobs/{job}/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');

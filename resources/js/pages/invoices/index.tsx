@@ -1,4 +1,5 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { DocumentList } from '@/components/billing/document-list';
@@ -11,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
-import { index } from '@/routes/invoices';
+import { index, start } from '@/routes/invoices';
 import type { Option } from '@/types';
 
 type Filters = { search: string; status: string };
@@ -54,6 +55,7 @@ export default function InvoicesIndex({
             <div className="max-w-3xl p-4">
                 <PageHeader
                     title={t('invoices.title')}
+                    actions={<Button asChild className="min-h-11"><Link href={start()}><Plus />{t('invoices.add')}</Link></Button>}
                     description={t('invoices.outstanding_total', {
                         amount:
                             outstandingTotals.length > 0

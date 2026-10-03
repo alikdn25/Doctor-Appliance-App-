@@ -12,7 +12,9 @@ use App\Notifications\AddedToCompany;
 use App\Notifications\MemberInvited;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
+use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     Notification::fake();
@@ -28,6 +30,16 @@ function membershipOf(User $user, Company $company): Membership
         ->where('company_id', $company->id)
         ->sole();
 }
+
+test('an unused owner account is active while a real invitation stays pending until accepted', function () {
+    $this->owner->forceFill(['name' => 'A Owner', 'last_login_at' => null])->save();
+    $invited = memberOf($this->company, UserRole::Technician, ['name' => 'Z Invited', 'last_login_at' => null]);
+    Password::broker()->createToken($invited);
+    $this->get(route('team.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('members.0.invitation_pending', false)->where('members.1.invitation_pending', true));
+    Password::broker()->deleteToken($invited);
+    $this->get(route('team.index'))->assertOk()->assertInertia(fn (Assert $page) => $page->where('members.1.invitation_pending', false));
+});
 
 test('an owner can invite a new person', function () {
     $brand = Brand::factory()->create(['company_id' => $this->company->id]);
