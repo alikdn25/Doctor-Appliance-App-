@@ -23,6 +23,8 @@ SMS settings already exist in the company's working Messaging section. The audit
 
 ## Validation and server status
 
-Validation is pending for this supplement. New tests cover mail-disabled signup and direct work access, later confirmation, permission boundaries, manual staff credentials, truthful support history and invoice empty states. Desktop/mobile browser checks include the complete mail-disabled signup-to-staff-login flow.
+Tested code commit: c350d177aac10213e43750c16ccc4fdcee5934ac. All checks passed in [run 37146504326](https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37146504326): build, deployment script syntax, PHP style, frontend format/lint, TypeScript, 740 backend tests (5,984 assertions) and 40 desktop/mobile browser scenarios. The browser total includes 36 existing scenarios and four dedicated mail-disabled scenarios; those four are intentionally skipped in the mail-enabled pass and run separately with delivery disabled. Mobile screenshots of manual staff access and unavailable recovery were inspected.
 
-This workspace does not have VPS access. Installing the tested candidate and checking actual SMTP delivery remain with the server operator; use SERVER_HANDOFF.md after validation is recorded.
+New tests cover mail-disabled signup and direct work access, later confirmation, permission boundaries, manual staff credentials, truthful support history and invoice empty states. Desktop/mobile browser checks include the complete mail-disabled signup-to-staff-login flow.
+
+This workspace does not have VPS access. Installing the tested candidate and checking actual SMTP delivery remain with the server operator; use SERVER_HANDOFF.md. PR #12 is unmerged at this handoff, so updating main alone does not install these corrections.

@@ -1,14 +1,16 @@
 # Server agent handoff
 
 Repository: alikdn25/Doctor-Appliance-App-. MVP PR #11 is merged into main.
-Signup, first-run usability, the seven October 3 feedback fixes and Grok follow-up are in PR #12,
-branch chatgpt/self-service-onboarding. FEEDBACK_2026_10_03.md and
-FEEDBACK_FOLLOWUP_2026_10_03.md record the behavior changes. PR #12 is not merged at this audit;
+Signup, first-run usability, the seven October 3 feedback fixes, Grok follow-up and mail/admin
+supplement are in PR #12, branch chatgpt/self-service-onboarding. FEEDBACK_2026_10_03.md,
+FEEDBACK_FOLLOWUP_2026_10_03.md and FEEDBACK_MAIL_ADMIN_2026_10_03.md record the changes.
+PR #12 is not merged at this audit;
 a pull of main alone does not install its corrections.
-Tested code commit: c02a95db7edaf618787c03340bd216c77d49a9ad.
-Validation run: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37143711689.
+Tested code commit: c350d177aac10213e43750c16ccc4fdcee5934ac.
+Validation run: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37146504326.
 All checks passed: build, PHP style, frontend format/lint, TypeScript, deployment shell syntax,
-719 backend tests (5,752 assertions) and 36 desktop/mobile browser scenarios with CSRF protection.
+740 backend tests (5,984 assertions) and 40 desktop/mobile browser scenarios with CSRF protection.
+The browser total includes a separate mail-disabled pass; no real mail provider is used in CI.
 Later documentation-only commits do not change this tested code.
 
 This development workspace has no VPS credentials; production deployment and live email delivery
@@ -42,19 +44,26 @@ old read-only walkthrough and report deployment complete without installing this
    existing installation still says Field Service. Use APP_URL=https://app.doctor-appliance.ca,
    production mode, debug off and secure cookies. Preserve the existing APP_KEY.
    Set SESSION_LIFETIME=43200 (30 days): the old server value overrides the new code default.
-4. Check the existing mail configuration securely. Real SMTP needs a working provider, credentials
-   and a verified sender. A Bluehost mailbox can be used only with its actual supported SMTP
-   settings; do not invent host names, ports or passwords. Request any missing credentials through
-   secure fields. Configure the database queue and its Supervisor worker before testing signup.
+4. Mail is currently reported disconnected. Set AUTH_EMAIL_DELIVERY_ENABLED=false and
+   AUTH_EMAIL_VERIFICATION_REQUIRED=true in the server environment. With delivery disabled,
+   ordinary working access and signup must not require confirmation; emails remain unverified.
+   New staff/administrator-created Owners can receive manual initial passwords from their forms.
+   Check the existing mail configuration securely. Real SMTP needs a working provider, credentials
+   and a verified sender. Use a Bluehost mailbox only with its actual supported SMTP settings;
+   do not invent host names, ports or passwords. Request missing credentials through secure fields.
+   Configure the database queue and Supervisor worker, verify real receipt using the actual provider,
+   then set AUTH_EMAIL_DELIVERY_ENABLED=true. Refresh configuration and restart the queue after
+   changing readiness. Keep verification required when delivery is enabled; do not set readiness true
+   merely because SMTP fields are populated or /up is healthy.
 5. As the application owner, fetch the branch and bring in the tested deployment script first:
 
 ```bash
 cd /var/www/fieldservice
 git fetch --no-tags origin chatgpt/self-service-onboarding
-git merge-base --is-ancestor c02a95db7edaf618787c03340bd216c77d49a9ad FETCH_HEAD
+git merge-base --is-ancestor c350d177aac10213e43750c16ccc4fdcee5934ac FETCH_HEAD
 php artisan down --retry=15
-git merge --ff-only c02a95db7edaf618787c03340bd216c77d49a9ad
-DEPLOY_REF=chatgpt/self-service-onboarding DEPLOY_SHA=c02a95db7edaf618787c03340bd216c77d49a9ad bash deploy/deploy.sh
+git merge --ff-only c350d177aac10213e43750c16ccc4fdcee5934ac
+DEPLOY_REF=chatgpt/self-service-onboarding DEPLOY_SHA=c350d177aac10213e43750c16ccc4fdcee5934ac bash deploy/deploy.sh
 ```
 
 Run these commands sequentially and stop on any failure. If fast-forwarding fails, report the
@@ -71,16 +80,16 @@ cost authors remain hidden. Review attribution on a controlled copy of older rec
 ## Acceptance checks
 
 - Verify the deployed SHA, HTTPS /up, /login and the Create account link to /register.
-- In a private browser on desktop and mobile: register with a controlled real inbox, receive and
-  click confirmation, create a company, then open the first customer/job. Owner membership and
-  the initial brand are automatic. No company data is available before email confirmation.
-- Correct an email typo and verify that a new link goes to the corrected address and the app
-  returns to confirmation. Check resend and an expired link. A log mailer is not email delivery.
+- With mail disabled, use a private browser on desktop and mobile: register, create a company,
+  open the first customer/job, add a new Technician with a confirmed password and sign in as them.
+  No confirmation wall or fake mail-success message may appear. Emails remain unverified.
+  The Owner and first brand are automatic. Password recovery must explain mail is unavailable.
+- When enabling delivery, separately verify actual receipt, click confirmation, correct an email
+  typo, check resend and an expired link. Unverified existing accounts then require confirmation;
+  the confirmation screen sends their first link. A log mailer is not delivery. Valid invitation/reset
+  tokens also confirm email. Existing inactive/suspended memberships cannot bypass restrictions.
 - Confirm Supervisor worker status, queue:failed and the minute scheduler. Successful /up alone
-  does not prove that queued mail is sent. Do not advertise registration until real email works.
-- Existing unverified accounts must confirm their email. Valid invitation/password-reset tokens
-  also confirm the email. Existing inactive/suspended memberships cannot bypass access through
-  company setup. Test an existing employee invitation and existing company access.
+  does not prove queued mail is delivered. Report mail readiness independently from work access.
 - Two-factor enrollment is optional for every role. Legacy AUTH_REQUIRE_TWO_FACTOR flags are
   ignored. Existing enabled authenticator-based 2FA still challenges the user until they disable
   it in Security settings. Email login codes are a future task, separate from signup confirmation.
@@ -101,6 +110,11 @@ cost authors remain hidden. Review attribution on a controlled copy of older rec
   From an empty/populated Invoices list, click New invoice. Choose an existing job or enter a new
   caller and continue to prices. No invoice exists until its pricing form is saved. Check that an
   unused manually created Owner account does not show Invited without a pending invitation.
+  An entirely empty Invoices list should explain that there are no invoices yet, rather than blame filters.
+- In platform company details, check separate workspace/billing explanations, unassigned plans,
+  singular counts, direct sign-in versus support access, and labelled company-zone times. Ordinary
+  logout from support access closes its log. Historical entries without an end must say the end is
+  unrecorded, without claiming they are active; administrator notes must be labelled as such.
 - If there are no active brands, the dashboard explains the requirement and directs the Owner to
   create the first brand. Normal signup/workspace selection creates the first brand automatically.
 - Enter a part and a material with manual customer prices and private purchase prices as a Technician;

@@ -1,8 +1,8 @@
-# October 3 mail/admin supplement — validation in progress
+# October 3 mail/admin supplement — code validated; server acceptance pending
 
 - Operator-managed mail readiness removes confirmation walls while delivery is unavailable, without verifying emails or changing tenant/role permissions. Password recovery and resend stop promising unavailable mail; new staff/Owners can receive manual initial credentials. Enabling tested mail restores confirmation.
 - Empty invoice states distinguish no invoices from filtered results. Administration explains access versus billing and unassigned plans, uses singular counts, separates direct login from support access and labels support/audit times in the company zone. Logout closes support access; unknown historical ends remain explicitly unknown.
-- New comments are recorded in FEEDBACK_MAIL_ADMIN_2026_10_03.md. Automated validation is in progress; PR #12 is still unmerged and server acceptance remains pending.
+- Tested code c350d177aac10213e43750c16ccc4fdcee5934ac passed build, deployment script syntax, PHP style, frontend formatting/lint, TypeScript, all 740 backend tests (5,984 assertions) and 40 desktop/mobile browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37146504326. This includes four dedicated mail-disabled scenarios; mobile screenshots were inspected. New comments are recorded in FEEDBACK_MAIL_ADMIN_2026_10_03.md. PR #12 is still unmerged; SERVER_HANDOFF.md pins this candidate. Server installation and real delivery checks remain pending with the server operator.
 
 # October 3 follow-up — code validated; server acceptance pending
 
