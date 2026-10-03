@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Company;
 
 use App\Enums\JobOutcome;
-use App\Enums\LineKind;
 use App\Enums\PaymentTerms;
 use App\Enums\WarrantyUnit;
 use App\Http\Controllers\Controller;

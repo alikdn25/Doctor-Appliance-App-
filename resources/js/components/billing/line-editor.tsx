@@ -176,8 +176,10 @@ export function LineEditor({
     const costMinor = toMinor(line.unit_cost, currency);
     const priceMinor = toMinor(line.unit_price, currency);
     const privateCosts = setup.costs_visible && line.costs_editable;
-    const difference = privateCosts && line.unit_cost !== '' && line.unit_price !== ''
-        ? Math.round((priceMinor - costMinor) * Number(line.quantity)) : null;
+    const difference =
+        privateCosts && line.unit_cost !== '' && line.unit_price !== ''
+            ? Math.round((priceMinor - costMinor) * Number(line.quantity))
+            : null;
 
     // Default warranty follows kind / price / price book item until set by hand.
     useEffect(() => {
@@ -607,17 +609,48 @@ export function LineEditor({
 
             <div className="space-y-3">
                 <div>
-                    <label className="text-xs text-muted-foreground">{t('billing.line.customer_price')}</label>
-                    <MoneyInput symbol={symbol} currency={currency} value={line.unit_price} label={t('billing.fields.unit_price')} onChange={(value) => onChange({ unit_price: value, price_touched: true })} />
+                    <label className="text-xs text-muted-foreground">
+                        {t('billing.line.customer_price')}
+                    </label>
+                    <MoneyInput
+                        symbol={symbol}
+                        currency={currency}
+                        value={line.unit_price}
+                        label={t('billing.fields.unit_price')}
+                        onChange={(value) =>
+                            onChange({ unit_price: value, price_touched: true })
+                        }
+                    />
                     <InputError message={err('unit_price')} />
                 </div>
-                {goods && privateCosts && <div className="rounded-xl border border-dashed bg-muted/40 p-3">
-                    <label className="text-xs font-medium">{t('billing.line.private_purchase_price')}</label>
-                    <p className="mb-2 text-xs text-muted-foreground">{t('billing.line.private_cost_hint')}</p>
-                    <MoneyInput symbol={symbol} currency={currency} value={line.unit_cost} label={t('billing.line.private_purchase_price')} onChange={setCost} />
-                    <InputError message={err('unit_cost')} />
-                    {difference !== null && <p className="mt-2 text-sm font-medium" role="status">{t('billing.line.difference', { amount: money(difference) })}</p>}
-                </div>}
+                {goods && privateCosts && (
+                    <div className="rounded-xl border border-dashed bg-muted/40 p-3">
+                        <label className="text-xs font-medium">
+                            {t('billing.line.private_purchase_price')}
+                        </label>
+                        <p className="mb-2 text-xs text-muted-foreground">
+                            {t('billing.line.private_cost_hint')}
+                        </p>
+                        <MoneyInput
+                            symbol={symbol}
+                            currency={currency}
+                            value={line.unit_cost}
+                            label={t('billing.line.private_purchase_price')}
+                            onChange={setCost}
+                        />
+                        <InputError message={err('unit_cost')} />
+                        {difference !== null && (
+                            <p
+                                className="mt-2 text-sm font-medium"
+                                role="status"
+                            >
+                                {t('billing.line.difference', {
+                                    amount: money(difference),
+                                })}
+                            </p>
+                        )}
+                    </div>
+                )}
             </div>
 
             {estimate && (

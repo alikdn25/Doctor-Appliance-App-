@@ -355,7 +355,10 @@ export default function BillingShow({
                                                     length: item.warranty_label,
                                                 })
                                               : item.warranty_label}
-                                        {item.private_difference !== null && item.private_difference !== undefined && ` · ${t('billing.line.difference', { amount: money(item.private_difference) })}`}
+                                        {item.private_difference !== null &&
+                                            item.private_difference !==
+                                                undefined &&
+                                            ` · ${t('billing.line.difference', { amount: money(item.private_difference) })}`}
                                         {item.total_cost !== null &&
                                             item.total_cost > 0 &&
                                             ` · ${t('billing.line.total_cost')} ${money(item.total_cost)}${item.supplier ? ` (${item.supplier})` : ''}`}

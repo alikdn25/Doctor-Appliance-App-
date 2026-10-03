@@ -37,7 +37,7 @@ export type JobCosts = {
         supplier: string | null;
         quantity: string;
         unit: string | null;
-        total_cost: number | null;
+        total_cost: number;
     }[];
     receipts: {
         id: number;
@@ -132,7 +132,11 @@ export function JobCostsSection({
                     <dt className="text-xs text-muted-foreground">
                         {t('costs.cost')}
                     </dt>
-                    <dd className="tabular-nums">{p.cost === null ? t('billing.private_cost') : money(p.cost)}</dd>
+                    <dd className="tabular-nums">
+                        {p.cost === null
+                            ? t('billing.private_cost')
+                            : money(p.cost)}
+                    </dd>
                 </div>
                 <div>
                     <dt className="text-xs text-muted-foreground">
@@ -142,7 +146,9 @@ export function JobCostsSection({
                 </div>
                 <div>
                     <dt className="text-xs text-muted-foreground">
-                        {(p.profit ?? 0) < 0 ? t('costs.loss') : t('costs.profit')}
+                        {(p.profit ?? 0) < 0
+                            ? t('costs.loss')
+                            : t('costs.profit')}
                     </dt>
                     <dd
                         className={
@@ -151,7 +157,9 @@ export function JobCostsSection({
                                 : 'font-semibold tabular-nums'
                         }
                     >
-                        {p.profit === null ? t('billing.private_cost') : money(p.profit)}
+                        {p.profit === null
+                            ? t('billing.private_cost')
+                            : money(p.profit)}
                         {p.margin !== null && ` · ${p.margin}%`}
                     </dd>
                 </div>

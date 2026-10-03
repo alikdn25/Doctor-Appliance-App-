@@ -3,7 +3,6 @@
 use App\Enums\UserRole;
 use App\Models\Company;
 use App\Models\ImpersonationLog;
-use App\Models\Membership;
 use App\Models\User;
 use App\Support\Locale\Timezones;
 use Illuminate\Support\Facades\Auth;

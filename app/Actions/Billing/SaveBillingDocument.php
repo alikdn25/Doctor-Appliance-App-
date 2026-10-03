@@ -14,8 +14,8 @@ use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Models\User;
-use App\Support\Billing\DocumentTotals;
 use App\Support\Billing\CostAccess;
+use App\Support\Billing\DocumentTotals;
 use App\Support\Billing\Warranties;
 use App\Support\Billing\Warranty;
 use App\Support\Locale\Currencies;
@@ -163,7 +163,9 @@ class SaveBillingDocument
             $ownsCost = $old === null || $old->cost_owner_id === null || CostAccess::owns($user, $old);
             // Only the cost author can replace private values. Conversion preserves their original owner.
             if (! $conversion && ! $ownsCost) {
-                foreach (EstimateItem::COST_FIELDS as $field) unset($item[$field]);
+                foreach (EstimateItem::COST_FIELDS as $field) {
+                    unset($item[$field]);
+                }
             }
             $costOwner = $conversion ? ($item['cost_owner_id'] ?? null) : ($old?->cost_owner_id ?? (isset($item['unit_cost']) ? $user->id : null));
             $line = [

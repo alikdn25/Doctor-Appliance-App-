@@ -213,7 +213,10 @@ export default function JobForm({
             start_time: '09:00',
             end_time: '11:00',
             estimated_duration_minutes: '60',
-            assignee_ids: booking && assignableUsers.length === 1 ? [assignableUsers[0].id] : [],
+            assignee_ids:
+                booking && assignableUsers.length === 1
+                    ? [assignableUsers[0].id]
+                    : [],
             strict_arrival: false,
         },
     });
@@ -437,7 +440,9 @@ export default function JobForm({
         </FormField>
     );
 
-    const title = job ? t('jobs.edit') + ` #${job.number}` : t(booking ? 'nav.book_customer' : 'jobs.add');
+    const title = job
+        ? t('jobs.edit') + ` #${job.number}`
+        : t(booking ? 'nav.book_customer' : 'jobs.add');
 
     return (
         <>

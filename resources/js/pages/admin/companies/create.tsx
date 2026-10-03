@@ -155,7 +155,13 @@ export default function AdminCompanyCreate({
                         label={t('company.fields.timezone')}
                         error={form.errors.timezone}
                     >
-                        <TimezoneSelect value={form.data.timezone} options={timezones} onChange={(value) => form.setData('timezone', value)} />
+                        <TimezoneSelect
+                            value={form.data.timezone}
+                            options={timezones}
+                            onChange={(value) =>
+                                form.setData('timezone', value)
+                            }
+                        />
                     </FormField>
                     <FormField
                         id="currency"

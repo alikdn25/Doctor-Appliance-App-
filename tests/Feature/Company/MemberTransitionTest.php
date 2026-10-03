@@ -70,6 +70,16 @@ test('technicians cannot transfer other people or replace themselves', function 
     $this->post(route('team.replace', $membership), [])->assertForbidden();
 });
 
+test('waiting-for-parts work transfers even after its diagnosis visit finished and the new technician can see the backlog', function () {
+    JobVisit::withoutCompanyScope()->where('service_job_id', $this->job->id)->update(['status' => VisitStatus::Completed]);
+    $this->job->update(['status' => JobStatus::WaitingForParts]);
+    $this->post(route('team.transfer-jobs', $this->tech->membershipFor($this->company)), ['replacement_id' => $this->otherTech->membershipFor($this->company)->id])->assertSessionHasNoErrors();
+    $this->actingAs($this->otherTech)->get(route('jobs.show', $this->job))->assertOk();
+    $this->get(route('jobs.backlog'))->assertOk();
+    $this->actingAs($this->tech)->get(route('jobs.show', $this->job))->assertForbidden();
+    expect(inCompany($this->company, fn () => JobVisit::query()->where('service_job_id', $this->job->id)->sole()->isAssigned($this->tech)))->toBeTrue();
+});
+
 test('brand restrictions prevent a partial transfer and completed jobs stay untouched', function () {
     $differentBrand = Brand::factory()->create(['company_id' => $this->company->id]);
     inCompany($this->company, fn () => $this->otherTech->brands()->attach($differentBrand, ['company_id' => $this->company->id]));

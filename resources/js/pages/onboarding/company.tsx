@@ -49,7 +49,8 @@ export default function CompanySetup({
         if (timezoneDetected.current) return;
         timezoneDetected.current = true;
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (timezones.some((option) => option.value === timezone)) setData('timezone', timezone);
+        if (timezones.some((option) => option.value === timezone))
+            setData('timezone', timezone);
     }, [setData, timezones]);
 
     const submit = (event: FormEvent) => {
@@ -135,7 +136,11 @@ export default function CompanySetup({
                     hint={t('onboarding.timezone_hint')}
                     error={form.errors.timezone}
                 >
-                    <TimezoneSelect value={form.data.timezone} options={timezones} onChange={(value) => form.setData('timezone', value)} />
+                    <TimezoneSelect
+                        value={form.data.timezone}
+                        options={timezones}
+                        onChange={(value) => form.setData('timezone', value)}
+                    />
                 </FormField>
                 <details
                     className="rounded-xl border p-4"

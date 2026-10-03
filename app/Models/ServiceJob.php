@@ -93,6 +93,7 @@ class ServiceJob extends Model
             'job_type' => JobType::class,
             'lead_source' => LeadSource::class,
             'status' => JobStatus::class,
+            'assignment_is_explicit' => 'boolean',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'signed_at' => 'datetime',
@@ -299,9 +300,17 @@ class ServiceJob extends Model
 
     public function isAssigned(User $user): bool
     {
+        if ($this->assignment_is_explicit) {
+            return $this->assignees()->where('users.id', $user->id)->exists();
+        }
         return $this->visits()
             ->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
             ->exists();
+    }
+
+    public function assignees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'service_job_user')->using(JobAssignee::class)->withPivot('company_id')->withTimestamps()->wherePivot('company_id', currentCompany()->id);
     }
 
     /**
@@ -316,7 +325,8 @@ class ServiceJob extends Model
         $brandIds = $office ? $user->limitedBrandIds() : [];
 
         $query->where(function (Builder $q) use ($user, $office, $brandIds) {
-            $q->whereHas('visits.assignees', fn (Builder $a) => $a->where('users.id', $user->id));
+            $q->whereHas('assignees', fn (Builder $a) => $a->where('users.id', $user->id))
+                ->orWhere(fn (Builder $legacy) => $legacy->where('assignment_is_explicit', false)->whereHas('visits.assignees', fn (Builder $a) => $a->where('users.id', $user->id)));
 
             if ($office) {
                 $q->orWhere(fn (Builder $b) => $brandIds === []

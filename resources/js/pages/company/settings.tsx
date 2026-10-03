@@ -56,7 +56,6 @@ type CompanySettings = {
     payment_provider: string;
 };
 
-
 const REASON_OUTCOMES = [
     'customer_declined',
     'unable_to_repair',
@@ -255,8 +254,18 @@ export default function CompanySettingsPage({
                     </h2>
                     <div className="grid gap-4 sm:grid-cols-2">
                         {select('country', countries)}
-                        <FormField id="timezone" label={t('company.fields.timezone')} error={form.errors.timezone}>
-                            <TimezoneSelect value={form.data.timezone} options={timezones} onChange={(value) => form.setData('timezone', value)} />
+                        <FormField
+                            id="timezone"
+                            label={t('company.fields.timezone')}
+                            error={form.errors.timezone}
+                        >
+                            <TimezoneSelect
+                                value={form.data.timezone}
+                                options={timezones}
+                                onChange={(value) =>
+                                    form.setData('timezone', value)
+                                }
+                            />
                         </FormField>
                         {select(
                             'locale',

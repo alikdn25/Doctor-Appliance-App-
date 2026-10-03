@@ -245,7 +245,22 @@ export default function CalendarPage({
             <Head title={t('calendar.title')} />
 
             <div className="space-y-4 p-4">
-                <PageHeader title={t('calendar.title')} description={title} actions={<Button asChild className="h-11"><Link href={bookCustomer({ query: { book: 1, date } })}><Plus />{t('nav.book_customer')}</Link></Button>} />
+                <PageHeader
+                    title={t('calendar.title')}
+                    description={title}
+                    actions={
+                        <Button asChild className="h-11">
+                            <Link
+                                href={bookCustomer({
+                                    query: { book: 1, date },
+                                })}
+                            >
+                                <Plus />
+                                {t('nav.book_customer')}
+                            </Link>
+                        </Button>
+                    }
+                />
 
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">

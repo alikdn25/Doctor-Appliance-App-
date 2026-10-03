@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Company;
 
-use App\Enums\JobOutcome;
 use App\Enums\PaymentTerms;
 use App\Enums\WarrantyUnit;
 use App\Models\Company;

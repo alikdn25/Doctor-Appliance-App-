@@ -35,7 +35,11 @@ export function NavMain({ items, label }: { items: NavItem[]; label: string }) {
                             size="lg"
                             className="h-11 rounded-xl px-3 text-[14px] font-medium data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-sm md:h-11 [&>svg]:size-[18px]"
                         >
-                            <Link href={item.href} prefetch onClick={() => setOpenMobile(false)}>
+                            <Link
+                                href={item.href}
+                                prefetch
+                                onClick={() => setOpenMobile(false)}
+                            >
                                 {item.icon && <item.icon />}
                                 <span>{t(item.title)}</span>
                                 {!!item.badge && (

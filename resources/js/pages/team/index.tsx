@@ -163,13 +163,18 @@ export default function TeamIndex({ members, roles, brands }: Props) {
                                     )}
                                 </div>
                                 <div className="text-xs break-words text-muted-foreground">
-                                    {member.email.endsWith('@retired.invalid') ? t('team.retired_login') : member.email} ·{' '}
-                                    {brandNames(member.brand_ids)}
+                                    {member.email.endsWith('@retired.invalid')
+                                        ? t('team.retired_login')
+                                        : member.email}{' '}
+                                    · {brandNames(member.brand_ids)}
                                 </div>
                             </div>
                             {member.can_manage && (
                                 <div className="flex flex-wrap gap-2">
-                                    <MemberTransitions member={member} members={members} />
+                                    <MemberTransitions
+                                        member={member}
+                                        members={members}
+                                    />
                                     {member.invitation_pending && (
                                         <Button
                                             variant="ghost"

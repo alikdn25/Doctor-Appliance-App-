@@ -5,7 +5,6 @@ namespace App\Support\Billing;
 use App\Actions\Billing\SendDocument;
 use App\Enums\EstimateStatus;
 use App\Enums\InvoiceStatus;
-use App\Enums\LineKind;
 use App\Enums\WarrantyUnit;
 use App\Models\Estimate;
 use App\Models\Invoice;
@@ -14,7 +13,6 @@ use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Jobs\JobPresenter;
-use App\Support\Locale\Currencies;
 
 /**
  * Shapes estimates, invoices and payments for the React pages. Money stays in minor units, with its currency.

@@ -10,7 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
-import { impersonate, index, update, workspace } from '@/routes/admin/companies';
+import {
+    impersonate,
+    index,
+    update,
+    workspace,
+} from '@/routes/admin/companies';
 import type { Option } from '@/types';
 
 type Props = {
@@ -87,7 +92,16 @@ export default function AdminCompanyShow({
             <div className="flex max-w-3xl flex-col gap-8 p-4">
                 <PageHeader
                     title={company.name}
-                    actions={<Button onClick={() => router.post(workspace(company.id).url)} className="h-11">{t('admin.open_workspace')}</Button>}
+                    actions={
+                        <Button
+                            onClick={() =>
+                                router.post(workspace(company.id).url)
+                            }
+                            className="h-11"
+                        >
+                            {t('admin.open_workspace')}
+                        </Button>
+                    }
                     description={`${company.slug} · ${company.timezone} · ${company.currency} · ${t('admin.companies.brands_count', { count: company.brands_count })}`}
                 />
 
