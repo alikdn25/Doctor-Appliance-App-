@@ -37,7 +37,13 @@ export function NavMain({ items, label }: { items: NavItem[]; label: string }) {
                                 {item.icon && <item.icon />}
                                 <span>{t(item.title)}</span>
                                 {!!item.badge && (
-                                    <span className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-xs tabular-nums group-data-[collapsible=icon]:hidden" aria-label={t('messages.inbox.unread_count', { count: item.badge })}>
+                                    <span
+                                        className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-xs tabular-nums group-data-[collapsible=icon]:hidden"
+                                        aria-label={t(
+                                            'messages.inbox.unread_count',
+                                            { count: item.badge },
+                                        )}
+                                    >
                                         {item.badge}
                                     </span>
                                 )}

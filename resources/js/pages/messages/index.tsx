@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
-import { show as customerShow } from '@/routes/customers';
+import { create as customerCreate, show as customerShow } from '@/routes/customers';
 import { index, read, send } from '@/routes/messages';
 
 type Thread = {
@@ -135,7 +135,9 @@ export default function SmsInbox({
                 <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
                     <section
                         aria-label={t('messages.inbox.conversations')}
-                        className={conversation ? 'hidden min-w-0 lg:block' : 'min-w-0'}
+                        className={
+                            conversation ? 'hidden min-w-0 lg:block' : 'min-w-0'
+                        }
                     >
                         <form onSubmit={submit} className="mb-3 flex gap-2">
                             <Input
@@ -144,9 +146,15 @@ export default function SmsInbox({
                                 maxLength={100}
                                 aria-label={t('common.search')}
                                 placeholder={t('messages.inbox.search')}
-                                onChange={(event) => setSearch(event.target.value)}
+                                onChange={(event) =>
+                                    setSearch(event.target.value)
+                                }
                             />
-                            <Button type="submit" variant="outline" className="min-h-11">
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                className="min-h-11"
+                            >
                                 {t('common.search')}
                             </Button>
                         </form>
@@ -162,59 +170,142 @@ export default function SmsInbox({
                             {threads.data.map((thread) => (
                                 <li key={thread.phone}>
                                     <Link
-                                        href={index({ query: { phone: thread.phone, search: filters.search, unread: filters.unread ? 1 : 0 } })}
+                                        href={index({
+                                            query: {
+                                                phone: thread.phone,
+                                                search: filters.search,
+                                                unread: filters.unread ? 1 : 0,
+                                            },
+                                        })}
                                         className={`block min-w-0 space-y-1 p-4 hover:bg-muted/50 ${thread.phone === phone ? 'bg-muted' : ''}`}
-                                        aria-current={thread.phone === phone ? 'page' : undefined}
+                                        aria-current={
+                                            thread.phone === phone
+                                                ? 'page'
+                                                : undefined
+                                        }
                                     >
                                         <div className="flex items-start justify-between gap-2">
-                                            <span className="min-w-0 break-words font-medium">
-                                                {thread.customer_name ?? phoneText(thread.phone)}
+                                            <span className="min-w-0 font-medium break-words">
+                                                {thread.customer_name ??
+                                                    phoneText(thread.phone)}
                                             </span>
                                             {thread.unread_count > 0 && (
-                                                <Badge className="shrink-0" aria-label={t('messages.inbox.unread_count', { count: thread.unread_count })}>
+                                                <Badge
+                                                    className="shrink-0"
+                                                    aria-label={t(
+                                                        'messages.inbox.unread_count',
+                                                        {
+                                                            count: thread.unread_count,
+                                                        },
+                                                    )}
+                                                >
                                                     {thread.unread_count}
                                                 </Badge>
                                             )}
                                         </div>
-                                        <p className="text-xs text-muted-foreground">{phoneText(thread.phone)}</p>
-                                        <p className="line-clamp-2 text-sm [overflow-wrap:anywhere]">{thread.preview}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {phoneText(thread.phone)}
+                                        </p>
+                                        <p className="line-clamp-2 text-sm [overflow-wrap:anywhere]">
+                                            {thread.preview}
+                                        </p>
                                         {thread.latest.at && (
-                                            <p className="text-xs text-muted-foreground">{time.dateTime(thread.latest.at)} · {thread.latest.status_label}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {time.dateTime(
+                                                    thread.latest.at,
+                                                )}{' '}
+                                                · {thread.latest.status_label}
+                                            </p>
                                         )}
                                     </Link>
                                 </li>
                             ))}
                             {threads.data.length === 0 && (
-                                <li className="p-6 text-sm text-muted-foreground">{t('messages.inbox.empty')}</li>
+                                <li className="p-6 text-sm text-muted-foreground">
+                                    {t('messages.inbox.empty')}
+                                </li>
                             )}
                         </ul>
                         <PaginationLinks links={threads.links} />
                     </section>
-                    <section aria-label={t('messages.inbox.conversation')} className="min-w-0 rounded-xl border">
+                    <section
+                        aria-label={t('messages.inbox.conversation')}
+                        className="min-w-0 rounded-xl border"
+                    >
                         {conversation ? (
                             <>
                                 <div className="flex flex-wrap items-center justify-between gap-2 border-b p-4">
                                     <div className="min-w-0">
-                                        <h2 className="break-words font-semibold">{conversation.customer?.display_name ?? t('messages.inbox.unknown')}</h2>
-                                        <p className="text-sm text-muted-foreground">{phoneText(conversation.phone)}</p>
+                                        <h2 className="font-semibold break-words">
+                                            {conversation.customer
+                                                ?.display_name ??
+                                                t('messages.inbox.unknown')}
+                                        </h2>
+                                        <p className="text-sm text-muted-foreground">
+                                            {phoneText(conversation.phone)}
+                                        </p>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                        <Button asChild variant="outline" className="min-h-11 lg:hidden">
-                                            <Link href={index({ query: { search: filters.search, unread: filters.unread ? 1 : 0 } })}><ArrowLeft /> {t('messages.inbox.back')}</Link>
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            className="min-h-11 lg:hidden"
+                                        >
+                                            <Link
+                                                href={index({
+                                                    query: {
+                                                        search: filters.search,
+                                                        unread: filters.unread
+                                                            ? 1
+                                                            : 0,
+                                                    },
+                                                })}
+                                            >
+                                                <ArrowLeft />{' '}
+                                                {t('messages.inbox.back')}
+                                            </Link>
                                         </Button>
                                         {conversation.customer && (
+                                            <Button
+                                                asChild
+                                                variant="outline"
+                                                className="min-h-11"
+                                            >
+                                                <Link
+                                                    href={customerShow(
+                                                        conversation.customer
+                                                            .id,
+                                                    )}
+                                                >
+                                                    {t(
+                                                        'messages.inbox.open_customer',
+                                                    )}
+                                                </Link>
+                                            </Button>
+                                        )}
+                                        {!conversation.customer && (
                                             <Button asChild variant="outline" className="min-h-11">
-                                                <Link href={customerShow(conversation.customer.id)}>{t('messages.inbox.open_customer')}</Link>
+                                                <Link href={customerCreate()}>{t('customers.add')}</Link>
                                             </Button>
                                         )}
                                     </div>
                                 </div>
                                 <div className="min-w-0 space-y-4 p-4">
-                                    <p className="text-xs text-muted-foreground">{t('messages.inbox.newest_first')}</p>
-                                    <MessageHistory messages={conversation.messages.data} showJobLinks />
-                                    <PaginationLinks links={conversation.messages.links} />
+                                    <p className="text-xs text-muted-foreground">
+                                        {t('messages.inbox.newest_first')}
+                                    </p>
+                                    <MessageHistory
+                                        messages={conversation.messages.data}
+                                        showJobLinks
+                                    />
+                                    <PaginationLinks
+                                        links={conversation.messages.links}
+                                    />
                                 </div>
-                                <Reply key={conversation.phone} conversation={conversation} />
+                                <Reply
+                                    key={conversation.phone}
+                                    conversation={conversation}
+                                />
                             </>
                         ) : (
                             <div className="flex min-h-52 flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
@@ -229,4 +320,6 @@ export default function SmsInbox({
     );
 }
 
-SmsInbox.layout = { breadcrumbs: [{ title: 'messages.inbox.title', href: index() }] };
+SmsInbox.layout = {
+    breadcrumbs: [{ title: 'messages.inbox.title', href: index() }],
+};

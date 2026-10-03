@@ -88,14 +88,15 @@ test('brand restrictions apply to inbox threads, read state, replies and partial
 
         return $user;
     });
-    $this->actingAs($office)->get(route('messages.index'))->assertInertia(fn (Assert $page) => $page
+    $response = $this->actingAs($office)->get(route('messages.index'))->assertInertia(fn (Assert $page) => $page
         ->where('unreadMessages', 0)->has('threads.data', 0));
     $this->get(route('messages.index', ['phone' => '+16045550142']))->assertNotFound();
     $this->post(route('messages.send'), ['phone' => '+16045550142', 'body' => 'Unauthorized'])->assertNotFound();
     $this->post(route('messages.read'), ['phone' => '+16045550142', 'message_ids' => [$this->incoming->id]])->assertRedirect();
     expect(inCompany($this->company, fn () => MessageRead::count()))->toBe(0);
     $this->get(route('messages.index'), [
-        'X-Inertia' => 'true', 'X-Inertia-Partial-Component' => 'messages/index', 'X-Inertia-Partial-Data' => 'threads',
+        'X-Inertia' => 'true', 'X-Inertia-Version' => $response->viewData('page')['version'],
+        'X-Inertia-Partial-Component' => 'messages/index', 'X-Inertia-Partial-Data' => 'threads',
     ])->assertJsonPath('props.unreadMessages', 0);
     Http::assertNothingSent();
 });

@@ -43,8 +43,8 @@ use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\Reports\ReportController;
-use App\Http\Controllers\SmsWebhookController;
 use App\Http\Controllers\SmsInboxController;
+use App\Http\Controllers\SmsWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');

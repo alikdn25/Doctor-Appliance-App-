@@ -34,6 +34,7 @@ use App\Models\JobVisit;
 use App\Models\JobVisitAssignee;
 use App\Models\Membership;
 use App\Models\Message;
+use App\Models\MessageRead;
 use App\Models\Payment;
 use App\Models\PaymentProviderConnection;
 use App\Models\Property;
@@ -144,6 +145,7 @@ beforeEach(function () {
                 'customer_id' => $job->customer_id, 'service_job_id' => $job->id, 'direction' => 'outbound', 'channel' => 'sms',
                 'kind' => 'general', 'to' => '+16045550000', 'body' => 'Secret text', 'status' => 'sent',
             ]);
+            MessageRead::create(['user_id' => $owner->id, 'message_id' => $message->id, 'read_at' => now()]);
             ReviewRequest::create([
                 'customer_id' => $job->customer_id, 'service_job_id' => $job->id, 'google_profile_id' => $profile->id,
                 'status' => 'sent', 'sent_at' => now(), 'message_id' => $message->id,
@@ -198,6 +200,7 @@ dataset('tenant models', [
     'sms accounts' => [SmsAccount::class],
     'sms registrations' => [SmsRegistration::class],
     'messages' => [Message::class],
+    'message reads' => [MessageRead::class],
     'google profiles' => [GoogleProfile::class],
     'review requests' => [ReviewRequest::class],
 ]);
@@ -215,7 +218,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         ->all();
 
     expect($tenantModels)->toBe(collect([
-        Appliance::class, Brand::class, BrandAddress::class, BusinessExpense::class, BusinessExpenseCategory::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class,
+        Appliance::class, Brand::class, BrandAddress::class, BusinessExpense::class, BusinessExpenseCategory::class, ChecklistTemplate::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, MessageRead::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class,
         CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceItem::class, InvoicePaymentLink::class, Payment::class,
         PaymentProviderConnection::class,
         JobAppliance::class, JobBringItem::class, JobChecklistItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,

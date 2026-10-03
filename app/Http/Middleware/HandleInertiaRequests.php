@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Messaging\SmsInbox;
 use App\Models\Brand;
 use App\Models\BusinessExpense;
 use App\Models\ChecklistTemplate;
@@ -10,7 +11,6 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Membership;
 use App\Models\Message;
-use App\Messaging\SmsInbox;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Models\User;

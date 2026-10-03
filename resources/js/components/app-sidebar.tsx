@@ -54,7 +54,11 @@ import type { NavItem } from '@/types';
 export function AppSidebar() {
     const { auth, unreadMessages } = usePage().props;
     const can = auth.can ?? {};
-    usePoll(30000, { only: ['unreadMessages'] }, { autoStart: Boolean(can.viewMessageInbox) });
+    usePoll(
+        30000,
+        { only: ['unreadMessages'] },
+        { autoStart: Boolean(can.viewMessageInbox) },
+    );
 
     const mainItems: NavItem[] = auth.company
         ? ([

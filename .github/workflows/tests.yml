@@ -58,11 +58,6 @@ jobs:
           node-version: '22'
           cache: npm
 
-      - name: Prepare browser test dependency lock
-        run: |
-          npm install --package-lock-only --ignore-scripts --save-dev @playwright/test@1.58.2
-          git diff -- package.json package-lock.json
-
       - name: Install dependencies
         run: |
           composer install --no-interaction --prefer-dist --no-progress
@@ -96,9 +91,46 @@ jobs:
         if: ${{ !cancelled() }}
         run: php artisan test
 
+      - name: Browser smoke tests on desktop and mobile
+        id: browser
+        if: ${{ !cancelled() }}
+        env:
+          APP_ENV: testing
+          APP_URL: http://127.0.0.1:8000
+          DB_DATABASE: field_service_test
+          QUEUE_CONNECTION: sync
+          CACHE_STORE: database
+          SESSION_DRIVER: database
+          SESSION_SECURE_COOKIE: false
+          MAIL_MAILER: log
+          TWILIO_ACCOUNT_SID: ACbrowser-master
+          TWILIO_AUTH_TOKEN: browser-test-token
+          TWILIO_BASE_URL: http://127.0.0.1:9001
+          TWILIO_MESSAGING_URL: http://127.0.0.1:9001
+        run: |
+          npx playwright install --with-deps chromium
+          php artisan migrate:fresh --force
+          php artisan db:seed --class=BrowserSmokeSeeder --force
+          npx playwright test
+
+      - name: Upload browser results and screenshots
+        if: ${{ !cancelled() && steps.browser.outcome != 'skipped' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-smoke-results
+          path: |
+            playwright-report/
+            test-results/
+            !test-results/auth-*.json
+          retention-days: 7
+
+      - name: Browser failure application log
+        if: ${{ failure() && steps.browser.outcome == 'failure' }}
+        run: tail -120 storage/logs/laravel.log
+
       - name: Show suggested code style fixes
         if: ${{ failure() && (steps.frontend.outcome == 'failure' || steps.php_style.outcome == 'failure') }}
         run: |
           npm run check:fix || true
           vendor/bin/pint || true
-          git diff -- app config database tests resources routes lang docs vite.config.ts
+          git diff -- app config database tests resources routes lang docs vite.config.ts playwright.config.ts
