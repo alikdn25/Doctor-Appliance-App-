@@ -106,7 +106,7 @@ test('processing more than a chunk never skips estimates and keeps tenants separ
         $property = Property::factory()->for($customer)->create();
         $job = ServiceJob::factory()->for($property)->create();
 
-        return Estimate::factory()->create(['service_job_id' => $job->id, 'sent_at' => now()->subDays(4)]);
+        return Estimate::factory()->create(['service_job_id' => $job->id, 'currency' => $other->currency, 'sent_at' => now()->subDays(4)]);
     });
     $this->artisan('estimates:send-followups', ['--force' => true])->assertSuccessful();
     expect(inCompany($this->company, fn () => Message::count()))->toBe(102)

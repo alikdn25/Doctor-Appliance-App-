@@ -17,7 +17,7 @@ apt update && apt install -y nginx postgresql supervisor git unzip certbot pytho
 curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs
 
-# deploy user (owns the app, runs deploys and the queue worker)
+# deploy user owns the app and runs deploys; PHP-FPM and the worker use www-data
 adduser --disabled-password --gecos "" deploy
 usermod -aG www-data deploy
 
@@ -75,6 +75,12 @@ sudo supervisorctl reread && sudo supervisorctl update
 # Laravel scheduler (crontab -e as deploy)
 * * * * * cd /var/www/fieldservice && php artisan schedule:run >> /dev/null 2>&1
 ```
+
+Keep the queue worker and PHP-FPM on the same OS user (`www-data` in these examples), so queued PDFs and emails
+can read private photos/signatures created by web requests. If PHP-FPM runs under another user, set that same
+user in Supervisor. Before testing camera uploads, configure the application's PHP-FPM pool with
+`php_admin_value[upload_max_filesize] = 15M` and `php_admin_value[post_max_size] = 20M`, then reload PHP-FPM;
+otherwise PHP's default upload limit can reject receipts before Laravel validates them.
 
 ## 2. SSH key for GitHub Actions
 
@@ -203,4 +209,3 @@ Optional with sensible defaults: `DEFAULT_COMPANY_COUNTRY` (US), `SMS_REMINDER_H
 
 Backups: the PostgreSQL database **and** `storage/app/private` (job photos, signatures, cash receipts, supplier
 receipts — the latter must be kept 6+ years for the bookkeeper).
-
