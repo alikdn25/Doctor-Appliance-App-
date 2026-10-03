@@ -16,7 +16,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
-import { create as customerCreate, show as customerShow } from '@/routes/customers';
+import {
+    create as customerCreate,
+    show as customerShow,
+} from '@/routes/customers';
 import { index, read, send } from '@/routes/messages';
 
 type Thread = {
@@ -284,8 +287,14 @@ export default function SmsInbox({
                                             </Button>
                                         )}
                                         {!conversation.customer && (
-                                            <Button asChild variant="outline" className="min-h-11">
-                                                <Link href={customerCreate()}>{t('customers.add')}</Link>
+                                            <Button
+                                                asChild
+                                                variant="outline"
+                                                className="min-h-11"
+                                            >
+                                                <Link href={customerCreate()}>
+                                                    {t('customers.add')}
+                                                </Link>
                                             </Button>
                                         )}
                                     </div>

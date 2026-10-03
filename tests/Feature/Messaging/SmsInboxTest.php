@@ -160,8 +160,7 @@ test('unknown numbers stay visible and become replyable after a unique customer 
 
 test('ambiguous shared contact numbers and non-automatic modes cannot send replies', function () {
     inCompany($this->company, function () {
-        $other = Customer::factory()->for($this->company)->withPhone('+16045550142')->create();
-        $this->incoming->replicate()->fill(['customer_id' => $other->id, 'service_job_id' => null])->save();
+        Customer::factory()->for($this->company)->withPhone('+16045550142')->create();
     });
     $this->post(route('messages.send'), ['phone' => '+16045550142', 'body' => 'Ambiguous'])->assertSessionHasErrors('body');
     $this->company->update(['sms_mode' => 'technician_phone']);

@@ -20,6 +20,30 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 
 ## Stage 1 — MVP 🚧 In progress
 
+### Office SMS inbox and automated browser validation — verification in progress
+
+- Shared SMS Inbox for Owner/Admin: phone-based conversations, search, unread filter, pagination,
+  incoming/outgoing bodies and delivery status, customer/job links and exact-number replies.
+  Unknown numbers stay visible; a uniquely registered contact enables replies. Shared or removed
+  contact numbers require review. STOP, US registration, quiet hours and company SMS mode apply.
+- Personal read acknowledgements cover only rendered incoming messages. Prefetch/GET does not clear
+  a badge; another employee keeps their own unread count. Sidebar polling refreshes the badge.
+  Threads, acknowledgements and sends follow tenant and brand/job visibility; technicians retain
+  their assigned-job composer and cannot open the shared office inbox.
+- New message_reads migration and role/tenant isolation tests. All 672 backend tests passed on
+  8fb2b515 (5,246 assertions). Browser scenarios are being corrected and rerun; that commit is not
+  a passing release candidate. The final tested SHA/run will be recorded in SERVER_HANDOFF.md.
+- Playwright exercises actual password/TOTP login on PostgreSQL with isolated testing fixtures and
+  a local SMS stub. Desktop and phone checks include customer context/booking, expenses/receipts/taxes,
+  inbox replies, public documents/PDF, technician access, photos/signatures, core screens and dark mode.
+  BROWSER_TESTING.md describes reproduction and the screenshot/trace artifact.
+- Manual check: send a controlled SMS reply, open the inbox as two office users, verify separate unread
+  badges, reply to a secondary contact, and test STOP/quiet hours. Check old conversation pagination,
+  an unknown number, restricted brands and another tenant. Physical-device camera/visual checks,
+  Maps, real mail/SMS, Square callbacks, backups and server installation remain pending.
+
+Shared SMS Inbox is part of Stage 1 in SPEC.md; the earlier Next entry deferring it to Stage 2 was incorrect.
+
 ### Customer context, name icons, estimate follow-ups and calendar map — CI passed
 
 - **About the customer** reuses existing customer notes, preserving all earlier entries. Office staff edit it in
@@ -815,4 +839,4 @@ Stage 1 — connect the server agent/SSH environment and install the tested code
 Verify mobile layouts, receipt camera uploads, Google map credentials, mail/SMS delivery, payment callbacks
 and backup restore using LAUNCH_TESTING.md.
 Stripe remains the second payment provider. Then Stage 2 (parts orders, warranty claims, online booking,
-payment reminders, shared SMS inbox), Stage 3 and subscription billing.
+payment reminders), Stage 3 and subscription billing.

@@ -15,11 +15,28 @@ export default defineConfig({
         screenshot: 'only-on-failure',
     },
     projects: [
-        { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
-        { name: 'mobile', use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium' } },
+        {
+            name: 'desktop',
+            use: {
+                ...devices['Desktop Chrome'],
+                viewport: { width: 1440, height: 900 },
+            },
+        },
+        {
+            name: 'mobile',
+            use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium' },
+        },
     ],
     webServer: [
-        { command: 'node tests/browser/sms-stub.mjs', url: 'http://127.0.0.1:9001/health', reuseExistingServer: false },
-        { command: 'php artisan serve --host=127.0.0.1 --port=8000', url: 'http://127.0.0.1:8000/up', reuseExistingServer: false },
+        {
+            command: 'node tests/browser/sms-stub.mjs',
+            url: 'http://127.0.0.1:9001/health',
+            reuseExistingServer: false,
+        },
+        {
+            command: 'php artisan serve --host=127.0.0.1 --port=8000',
+            url: 'http://127.0.0.1:8000/up',
+            reuseExistingServer: false,
+        },
     ],
 });

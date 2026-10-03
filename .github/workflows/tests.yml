@@ -126,7 +126,10 @@ jobs:
 
       - name: Browser failure application log
         if: ${{ failure() && steps.browser.outcome == 'failure' }}
-        run: tail -120 storage/logs/laravel.log
+        run: |
+          if [[ -f storage/logs/laravel.log ]]; then
+            tail -120 storage/logs/laravel.log
+          fi
 
       - name: Show suggested code style fixes
         if: ${{ failure() && (steps.frontend.outcome == 'failure' || steps.php_style.outcome == 'failure') }}

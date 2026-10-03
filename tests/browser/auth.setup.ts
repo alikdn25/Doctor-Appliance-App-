@@ -4,13 +4,19 @@ import { mkdir } from 'node:fs/promises';
 
 function totp(): string {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    const bits = [...'JBSWY3DPEHPK3PXP'].map((char) => alphabet.indexOf(char).toString(2).padStart(5, '0')).join('');
-    const secret = Buffer.from(bits.match(/.{8}/g)!.map((byte) => parseInt(byte, 2)));
+    const bits = [...'JBSWY3DPEHPK3PXP']
+        .map((char) => alphabet.indexOf(char).toString(2).padStart(5, '0'))
+        .join('');
+    const secret = Buffer.from(
+        bits.match(/.{8}/g)!.map((byte) => parseInt(byte, 2)),
+    );
     const counter = Buffer.alloc(8);
     counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
     const digest = createHmac('sha1', secret).update(counter).digest();
     const offset = digest[digest.length - 1] & 15;
-    return String((digest.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(6, '0');
+    return String(
+        (digest.readUInt32BE(offset) & 0x7fffffff) % 1000000,
+    ).padStart(6, '0');
 }
 
 export default async function setup() {
@@ -26,7 +32,9 @@ export default async function setup() {
         if (role === 'owner') {
             await expect(page).toHaveURL(/two-factor-challenge/);
             await page.locator('input[name="code"]').fill(totp());
-            await page.getByRole('button', { name: 'Continue', exact: true }).click();
+            await page
+                .getByRole('button', { name: 'Continue', exact: true })
+                .click();
         }
         await expect(page).toHaveURL(/dashboard/);
         await expect(page.locator('h1')).toBeVisible();

@@ -64,7 +64,8 @@ class BrowserSmokeSeeder extends Seeder
             ]);
             $gst = TaxRate::create(['name' => 'GST', 'rate' => '5', 'is_default' => true]);
             $pst = TaxRate::create(['name' => 'PST', 'rate' => '7', 'is_default' => true, 'sort_order' => 1]);
-            $invoice = app(SaveBillingDocument::class)->createInvoice($job, [
+            $billingJob = ServiceJob::factory()->for($property)->create(['brand_id' => $brand->id]);
+            $invoice = app(SaveBillingDocument::class)->createInvoice($billingJob, [
                 'issued_on' => now()->toDateString(), 'tax_rate_ids' => [$gst->id, $pst->id],
                 'items' => [
                     ['description' => 'Labour GST only', 'quantity' => '1', 'unit_price' => 10000, 'taxable' => true, 'tax_rate_ids' => [$gst->id]],

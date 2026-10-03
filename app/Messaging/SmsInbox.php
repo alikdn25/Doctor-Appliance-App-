@@ -80,13 +80,15 @@ class SmsInbox
     public function recipient(User $user, string $phone): ?CustomerPhone
     {
         $customers = self::forPhone($user, $phone)->whereNotNull('customer_id')->select('customer_id');
-        $query = CustomerPhone::query()->with('customer')->where('number_normalized', $phone);
-        if ($customers->exists()) {
-            $query->whereIn('customer_id', $customers);
+        $phones = CustomerPhone::query()->with('customer')->where('number_normalized', $phone)
+            ->get()->filter(fn (CustomerPhone $phone) => $phone->customer !== null);
+        if ($phones->pluck('customer_id')->unique()->count() !== 1) {
+            return null;
         }
-        $phones = $query->get()->filter(fn (CustomerPhone $phone) => $phone->customer !== null);
+        $recipient = $phones->first();
 
-        return $phones->pluck('customer_id')->unique()->count() === 1 ? $phones->first() : null;
+        return ! $customers->exists() || (clone $customers)->where('customer_id', $recipient->customer_id)->exists()
+            ? $recipient : null;
     }
 
     public function job(User $user, string $phone, CustomerPhone $recipient): ?ServiceJob
