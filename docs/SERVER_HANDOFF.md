@@ -1,45 +1,71 @@
 # Server agent handoff
 
-The repository is alikdn25/Doctor-Appliance-App-. MVP PR #11 is merged. The signup/usability update is in draft PR #12, branch chatgpt/self-service-onboarding.
-Last verified code commit: 2a891aa0d76fed8d80f0ad12727e3e8938e2038f.
-Passing checks: build, PHP style, frontend format/lint, TypeScript, deployment shell syntax,
-674 backend tests (5,276 assertions) and 20 desktop/mobile browser scenarios with CSRF protection.
-Passing run: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37090807431.
-Browser report/screenshots: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37090807431/artifacts/11261694174.
-The following documentation-only update records these results. There is no server credential attached to this development workspace. A GitHub connection alone does not give
-SSH access. Use a server agent with SSH credentials stored in its environment or the production GitHub environment;
-never paste passwords/private keys into a chat or commit them.
+Repository: alikdn25/Doctor-Appliance-App-. MVP PR #11 is merged into main.
+Signup and first-run usability are in PR #12, branch chatgpt/self-service-onboarding.
+Tested code commit: aedf2a89a9023e277b5eaed41c23d9cab84e699a.
+Validation run: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37135218373.
+All checks passed: build, PHP style, frontend format/lint, TypeScript, deployment shell syntax,
+692 backend tests (5,413 assertions) and 22 desktop/mobile browser scenarios with CSRF protection.
+Later documentation-only commits do not change this tested code.
 
-## Task for the agent with server access
+This development workspace has no VPS credentials; production deployment and live email delivery
+are not verified here. Grok Bot is the separate agent with server access. Store credentials in its
+secure fields or server environment, never in a conversation or GitHub.
 
-1. Confirm the OS, domain/DNS, SSH user, application path and whether an app/database already exist. The setup in
-   DEPLOYMENT.md assumes Ubuntu 24.04, PHP 8.3 and PostgreSQL. Adapt versions/socket paths to the actual server.
-   Save and verify database/media backups before changing an existing installation; do not overwrite other sites.
-2. Select the exact code commit whose tests workflow passed. Retrieve PR #11 and its current test run, rather
-   than assuming the branch head is tested. For a first testing install, check out that commit from chatgpt/bolt-ui.
-   Keep Square in sandbox while testing. Follow-ups stay off until enabled in the testing company's settings.
-3. Install the packages, database, deploy user and read-only repository access from DEPLOYMENT.md. Configure
-   the server .env with a fresh APP_KEY, production mode, debug off, HTTPS URL, secure cookies and database details.
-   Preserve the APP_KEY on subsequent updates because existing encrypted data depends on it.
-4. Configure Nginx and a trusted TLS certificate, writable storage, the Supervisor queue worker and the minute
-   scheduler. Use the example config files; update their domain, app directory and PHP-FPM socket.
-5. On first install, install dependencies/build, run migrations and app:deployment-check, then create the
-   super-admin interactively. For later updates use DEPLOY_REF=chatgpt/bolt-ui DEPLOY_SHA=<tested-code-sha>
-   bash deploy/deploy.sh for this testing branch. The normal GitHub deploy workflow accepts main only.
-6. Confirm /up and /login over HTTPS; check worker status, schedule:list and queue:failed. A successful /up alone
-   does not prove that queued emails or scheduled reminders execute. Send a testing-company document to a controlled
-   inbox, upload/download a private receipt, and verify another company/technician cannot open it.
-7. Perform LAUNCH_TESTING.md on desktop and narrow mobile screens. Attach the production-restricted Maps browser
-   key/map ID, test Square sandbox callbacks, and configure Twilio only when outbound SMS testing is intended.
-8. Report the deployed commit, URL, worker/scheduler result, manual test outcomes and remaining blockers. Do not
-   report Stage 2/3 or subscription billing complete. Record a backup restore test before allowing business data.
+## Existing Contabo installation
 
-MVP code is ready for a testing installation by an agent with server access. Automated desktop/mobile browser
-checks have passed. Server configuration/deployment, physical-device visual checks, live integrations and
-backup restoration have not happened in the current development workspace.
+The user reports https://app.doctor-appliance.ca, VPS 144.126.129.149 and application directory
+/var/www/fieldservice. Confirm the actual Nginx root, application owner, PHP version, database,
+current commit and clean tracked worktree before changing anything. Adapt DEPLOYMENT.md to the
+existing installation. Do not reinstall the OS or reset the database.
 
-## Signup update (PR #12, validation pending)
+1. Back up the database, private media and server .env. Verify that the backups can be read.
+   Preserve APP_KEY, user accounts, companies and receipts. Do not print .env or credentials.
+2. Confirm that the exact candidate above passed its tests workflow. Do not substitute a newer
+   branch head. After PR #12 merges, main can be used if it contains the same tested code.
+3. Set APP_NAME="Doctor Appliance" and VITE_APP_NAME="${APP_NAME}" in the server .env if the
+   existing installation still says Field Service. Use APP_URL=https://app.doctor-appliance.ca,
+   production mode, debug off and secure cookies. Preserve the existing APP_KEY.
+4. Check the existing mail configuration securely. Real SMTP needs a working provider, credentials
+   and a verified sender. A Bluehost mailbox can be used only with its actual supported SMTP
+   settings; do not invent host names, ports or passwords. Request any missing credentials through
+   secure fields. Configure the database queue and its Supervisor worker before testing signup.
+5. As the application owner, fetch the branch and bring in the tested deployment script first:
 
-Deploy only its exact tested SHA once CI passes; do not assume branch head is verified. Preserve APP_KEY, database and media. Public registration is at /register. Configure real SMTP and a verified sender, and verify the queue before advertising registration: confirmation emails use the queue, and log transport cannot activate customer accounts. Existing unverified users need email confirmation; a valid invitation/password-reset token confirms their address. Confirmed users with no membership go to /onboarding/company; the first Owner and brand are automatic. Accounts with existing suspended/inactive memberships cannot use setup to bypass restrictions.
+```bash
+cd /var/www/fieldservice
+git fetch --no-tags origin chatgpt/self-service-onboarding
+git merge-base --is-ancestor aedf2a89a9023e277b5eaed41c23d9cab84e699a FETCH_HEAD
+php artisan down --retry=15
+git merge --ff-only aedf2a89a9023e277b5eaed41c23d9cab84e699a
+DEPLOY_REF=chatgpt/self-service-onboarding DEPLOY_SHA=aedf2a89a9023e277b5eaed41c23d9cab84e699a bash deploy/deploy.sh
+```
 
-Mandatory 2FA enrollment is removed for all roles. Legacy AUTH_REQUIRE_TWO_FACTOR flags are ignored by routes. Existing enabled authenticator-based 2FA continues until each user disables it in Security settings. Email login codes are not part of this update. Set APP_NAME="Doctor Appliance" and VITE_APP_NAME="${APP_NAME}" before rebuilding when the old installation shows Field Service. Check signup/email/company setup in a private browser on desktop and mobile, then the first customer/job and an existing employee invitation.
+Run these commands sequentially and stop on any failure. If fast-forwarding fails, report the
+current commits/local changes before choosing a recovery. The deployment script installs
+dependencies, builds assets, migrates without resetting data, refreshes caches and restarts the
+queue. A failure leaves maintenance enabled for diagnosis. Do not use migrate:fresh or seed the
+browser fixtures on this VPS.
+
+## Acceptance checks
+
+- Verify the deployed SHA, HTTPS /up, /login and the Create account link to /register.
+- In a private browser on desktop and mobile: register with a controlled real inbox, receive and
+  click confirmation, create a company, then open the first customer/job. Owner membership and
+  the initial brand are automatic. No company data is available before email confirmation.
+- Correct an email typo and verify that a new link goes to the corrected address and the app
+  returns to confirmation. Check resend and an expired link. A log mailer is not email delivery.
+- Confirm Supervisor worker status, queue:failed and the minute scheduler. Successful /up alone
+  does not prove that queued mail is sent. Do not advertise registration until real email works.
+- Existing unverified accounts must confirm their email. Valid invitation/password-reset tokens
+  also confirm the email. Existing inactive/suspended memberships cannot bypass access through
+  company setup. Test an existing employee invitation and existing company access.
+- Two-factor enrollment is optional for every role. Legacy AUTH_REQUIRE_TWO_FACTOR flags are
+  ignored. Existing enabled authenticator-based 2FA still challenges the user until they disable
+  it in Security settings. Email login codes are a future task, separate from signup confirmation.
+- Perform the remaining manual checks in LAUNCH_TESTING.md, including private receipts, tenant
+  access, Maps credentials, Square sandbox callbacks and a separate backup restoration test.
+
+Report the deployed SHA, URL, actual email receipt, worker/scheduler checks, desktop/mobile
+results and remaining blockers. Stage 2/3 features and platform subscription billing are not
+completed by this signup update.

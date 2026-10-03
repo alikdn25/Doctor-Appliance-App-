@@ -1,10 +1,11 @@
-# Public signup and first-run usability — validation pending
+# Public signup and first-run usability — code validated; server acceptance pending
 
 - Public account registration, queued signed email confirmation, throttled resend and account/company setup steps. Unverified users cannot enter company data. Verification through an invitation/password reset remains supported.
 - Verified first-time users create their own company, become its Owner and receive a first brand. Company creation is transactional and serialized per user; request-supplied roles, owners, company IDs and plan settings are ignored. Existing inactive/suspended memberships cannot use setup to bypass access controls.
 - Mandatory two-factor enrollment is removed for every role; existing enabled two-factor challenges and recovery codes remain. Authenticator-based 2FA is optional in Security settings. Email login codes are a future task.
 - First dashboard offers real links to customers, jobs, team and taxes instead of an obsolete Coming soon message. Auth/setup screens have visible branding, step progress and mobile touch targets.
-- Backend security tests and desktop/mobile signup browser coverage added. CI validation is pending. Real SMTP delivery and server deployment remain to be verified by the server agent.
+- Correcting an email address sends a new confirmation and returns directly to the confirmation screen.
+- Tested code commit aedf2a89a9023e277b5eaed41c23d9cab84e699a passed build, PHP style, frontend format/lint, TypeScript, deployment script syntax, 692 backend tests (5,413 assertions) and 22 desktop/mobile browser scenarios: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37135218373. Real SMTP delivery and server deployment remain to be verified by the server agent; instructions are in SERVER_HANDOFF.md.
 
 # Progress
 
