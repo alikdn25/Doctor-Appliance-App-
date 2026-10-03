@@ -21,6 +21,9 @@ import { JobList } from '@/components/jobs/job-list';
 import type { JobRow } from '@/components/jobs/types';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
+import { CustomerAvatar } from '@/components/customers/customer-avatar';
+import type { AvatarIcon } from '@/components/customers/customer-avatar';
+import { CustomerNotes } from '@/components/customers/customer-notes';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { MessageHistory } from '@/components/messaging/message-history';
@@ -55,6 +58,7 @@ type Customer = {
     type: string;
     type_label: string;
     display_name: string;
+    avatar_icon: AvatarIcon;
     first_name: string | null;
     last_name: string | null;
     company_name: string | null;
@@ -137,33 +141,37 @@ export default function CustomerShow({
         }
     };
 
-    const placeholders = ['messages'] as const;
-
     return (
         <>
             <Head title={customer.display_name} />
 
             <div className="max-w-3xl space-y-6 p-4">
-                <PageHeader
-                    title={customer.display_name}
-                    description={[
-                        customer.type_label,
-                        contactPerson,
-                        customer.lead_source_label,
-                        customer.payment_terms_label,
-                    ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    actions={
-                        canUpdate && (
-                            <Button variant="outline" asChild>
-                                <Link href={edit(customer.id)}>
-                                    <Pencil /> {t('common.edit')}
-                                </Link>
-                            </Button>
-                        )
-                    }
-                />
+                <div className="flex items-start gap-3">
+                    <CustomerAvatar icon={customer.avatar_icon} />
+                    <div className="min-w-0 flex-1">
+                        <PageHeader
+                            title={customer.display_name}
+                            description={[
+                                customer.type_label,
+                                contactPerson,
+                                customer.lead_source_label,
+                                customer.payment_terms_label,
+                            ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            actions={
+                                canUpdate && (
+                                    <Button variant="outline" asChild>
+                                        <Link href={edit(customer.id)}>
+                                            <Pencil /> {t('common.edit')}
+                                        </Link>
+                                    </Button>
+                                )
+                            }
+                        />
+                    </div>
+                </div>
+                <CustomerNotes notes={customer.notes} />
 
                 {(primaryPhone || primaryEmail) && (
                     <div className="grid grid-cols-2 gap-2 sm:flex">
@@ -242,11 +250,6 @@ export default function CustomerShow({
                                 </Badge>
                             ))}
                         </div>
-                    )}
-                    {customer.notes && (
-                        <p className="pt-1 text-sm whitespace-pre-line text-muted-foreground">
-                            {customer.notes}
-                        </p>
                     )}
                     {customer.created_at && (
                         <p className="pt-1 text-xs text-muted-foreground">
@@ -523,22 +526,6 @@ export default function CustomerShow({
                     ) : (
                         <DocumentList documents={[...invoices, ...estimates]} />
                     )}
-                </section>
-
-                <section className="grid gap-2 sm:grid-cols-2">
-                    {placeholders.map((section) => (
-                        <div
-                            key={section}
-                            className="rounded-lg border border-dashed p-4"
-                        >
-                            <h2 className="text-sm font-medium">
-                                {t(`customers.sections.${section}`)}
-                            </h2>
-                            <p className="text-xs text-muted-foreground">
-                                {t('customers.coming_soon')}
-                            </p>
-                        </div>
-                    ))}
                 </section>
 
                 {canDelete && (

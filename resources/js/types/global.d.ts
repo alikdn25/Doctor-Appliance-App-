@@ -1,4 +1,5 @@
 import type { Auth, Impersonation } from '@/types/auth';
+import type { JobBacklogSummary } from '@/types/job-backlog';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -12,6 +13,8 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             impersonation: Impersonation;
+            unfinishedJobs: JobBacklogSummary | null;
+            unreadMessages: number | null;
             locale: string;
             translations: Record<string, unknown>;
             sidebarOpen: boolean;

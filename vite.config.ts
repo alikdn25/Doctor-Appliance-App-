@@ -64,6 +64,8 @@ export default defineConfig({
             'composer.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
+            'resources/data/name-icons.json',
+            'resources/data/name-icons.LICENSE',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],

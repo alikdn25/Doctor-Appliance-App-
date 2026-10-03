@@ -68,6 +68,9 @@ return [
     'warranty_until' => 'Warranty: :length (until :date)',
     'warranty_terms' => 'Warranty terms',
     'line' => [
+        'taxes' => 'Taxes for this item',
+        'document_taxes' => 'Use all enabled document taxes',
+        'enable_taxes' => 'Enable taxes in the document tax settings to select them here',
         'part_number' => 'Part number',
         'supplier' => 'Supplier',
         'unit' => 'Unit',

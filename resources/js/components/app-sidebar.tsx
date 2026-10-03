@@ -1,4 +1,4 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, usePage, usePoll } from '@inertiajs/react';
 import {
     Banknote,
     BarChart3,
@@ -17,6 +17,7 @@ import {
     Tags,
     Users,
     Wrench,
+    Wallet,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { CompanySwitcher } from '@/components/company-switcher';
@@ -43,14 +44,21 @@ import { edit as messaging } from '@/routes/company/messaging';
 import { edit as services } from '@/routes/company/services';
 import { edit as companySettings } from '@/routes/company/settings';
 import { index as invoices } from '@/routes/invoices';
+import { index as messageInbox } from '@/routes/messages';
+import { index as expenses } from '@/routes/expenses';
 import { index as jobs, mine as myJobs } from '@/routes/jobs';
 import { index as taxes } from '@/routes/taxes';
 import { index as team } from '@/routes/team';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
-    const { auth } = usePage().props;
+    const { auth, unreadMessages } = usePage().props;
     const can = auth.can ?? {};
+    usePoll(
+        30000,
+        { only: ['unreadMessages'] },
+        { autoStart: Boolean(can.viewMessageInbox) },
+    );
 
     const mainItems: NavItem[] = auth.company
         ? ([
@@ -80,6 +88,12 @@ export function AppSidebar() {
                   href: customers(),
                   icon: Contact,
               },
+              can.viewMessageInbox && {
+                  title: 'nav.sms_inbox',
+                  href: messageInbox(),
+                  icon: MessageSquare,
+                  badge: unreadMessages ?? 0,
+              },
               can.viewInvoices && {
                   title: 'nav.reports',
                   href: reports(),
@@ -89,6 +103,11 @@ export function AppSidebar() {
                   title: 'nav.cash',
                   href: cash(),
                   icon: Banknote,
+              },
+              can.viewBusinessExpenses && {
+                  title: 'nav.business_expenses',
+                  href: expenses(),
+                  icon: Wallet,
               },
           ].filter(Boolean) as NavItem[])
         : [];

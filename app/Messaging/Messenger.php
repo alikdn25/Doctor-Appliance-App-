@@ -32,32 +32,32 @@ class Messenger
 {
     public function __construct(private readonly SmsProvider $sms) {}
 
-    public function send(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user = null, ?string $emailSubject = null): Message
+    public function send(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user = null, ?string $emailSubject = null, bool $afterCommit = false): Message
     {
         $company = currentCompany();
 
         if ($company->sms_mode === SmsMode::Automatic) {
-            $sms = $this->sms($kind, $customer, $job, $body, $user);
+            $sms = $this->sms($kind, $customer, $job, $body, $user, $afterCommit);
 
             if ($sms->status !== 'blocked') {
                 return $sms;
             }
 
-            $email = $this->email($kind, $customer, $job, $body, $user, $emailSubject, failIfMissing: false);
+            $email = $this->email($kind, $customer, $job, $body, $user, $emailSubject, failIfMissing: false, afterCommit: $afterCommit);
 
             return $email ?? $sms;
         }
 
-        return $this->email($kind, $customer, $job, $body, $user, $emailSubject, failIfMissing: true);
+        return $this->email($kind, $customer, $job, $body, $user, $emailSubject, failIfMissing: true, afterCommit: $afterCommit);
     }
 
     /**
      * An SMS through the platform provider, or a "not sent" record saying why.
      */
-    public function sms(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user = null): Message
+    public function sms(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user = null, bool $afterCommit = false, ?CustomerPhone $recipient = null): Message
     {
         $company = currentCompany();
-        $phone = $this->mobile($customer);
+        $phone = $this->recipient($customer, $recipient);
         $account = SmsAccount::query()->first();
 
         $reason = match (true) {
@@ -84,7 +84,10 @@ class Messenger
         ]);
 
         if ($reason === null) {
-            DeliverSmsMessage::dispatch($message->id, $company->id)->delay($message->send_after);
+            $dispatch = DeliverSmsMessage::dispatch($message->id, $company->id)->delay($message->send_after);
+            if ($afterCommit) {
+                $dispatch->afterCommit();
+            }
         }
 
         return $message;
@@ -146,9 +149,9 @@ class Messenger
     /**
      * Whether the company can text this number now (for the UI): null = yes, otherwise the reason.
      */
-    public function smsBlockedReason(Customer $customer): ?string
+    public function smsBlockedReason(Customer $customer, ?CustomerPhone $recipient = null): ?string
     {
-        $phone = $this->mobile($customer);
+        $phone = $this->recipient($customer, $recipient);
 
         return match (true) {
             $phone === null => __('messages.blocked.no_phone'),
@@ -169,7 +172,13 @@ class Messenger
         return $phones->firstWhere('is_primary', true) ?? $phones->first();
     }
 
-    private function email(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user, ?string $subject, bool $failIfMissing): ?Message
+    private function recipient(Customer $customer, ?CustomerPhone $recipient): ?CustomerPhone
+    {
+        return $recipient === null ? $this->mobile($customer) : CustomerPhone::query()
+            ->where('customer_id', $customer->id)->whereKey($recipient->id)->firstOrFail();
+    }
+
+    private function email(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user, ?string $subject, bool $failIfMissing, bool $afterCommit = false): ?Message
     {
         $email = $customer->primaryEmail()->value('email');
 
@@ -193,8 +202,12 @@ class Messenger
         ]);
 
         if ($email !== null) {
-            Mail::to($email)->queue(new CustomerMessageMail($message->id, currentCompany()->id,
-                $subject ?? __("messages.email_subject.{$kind->value}", ['brand' => $brand, 'number' => ''])));
+            $mail = new CustomerMessageMail($message->id, currentCompany()->id,
+                $subject ?? __("messages.email_subject.{$kind->value}", ['brand' => $brand, 'number' => '']));
+            if ($afterCommit) {
+                $mail->afterCommit();
+            }
+            Mail::to($email)->queue($mail);
         }
 
         return $message;

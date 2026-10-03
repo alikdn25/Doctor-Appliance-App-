@@ -34,7 +34,7 @@ class CompanySettingsController extends Controller
                 'id', 'name', 'country', 'timezone', 'currency', 'locale', 'prices_include_tax',
                 'invoice_prefix', 'invoice_next_number', 'online_tips',
                 'estimate_prefix', 'estimate_next_number', 'travel_buffer_minutes', 'payment_provider',
-                'estimate_valid_days', 'technicians_can_delete_jobs', 'diagnostic_service_id', 'strict_arrival_reminder_minutes',
+                'estimate_valid_days', 'estimate_followup_days', 'technicians_can_delete_jobs', 'diagnostic_service_id', 'strict_arrival_reminder_minutes',
                 'warranty_labor_value', 'warranty_labor_unit', 'warranty_parts_value', 'warranty_parts_unit',
                 'warranty_parts_above_value', 'warranty_parts_above_unit', 'warranty_terms', 'technicians_see_costs', 'accepts_cash',
             ]) + [

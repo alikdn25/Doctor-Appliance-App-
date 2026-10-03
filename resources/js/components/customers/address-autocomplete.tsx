@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/react';
 import { MapPin } from 'lucide-react';
 import type { ComponentProps, KeyboardEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { loadGoogleMapsLibrary } from '@/lib/google-maps';
 import { Input } from '@/components/ui/input';
 
 /** An address picked from Google Places, split into our fields. */
@@ -66,51 +67,8 @@ type PlacesLibrary = {
     AutocompleteSessionToken: new () => unknown;
 };
 
-declare global {
-    interface Window {
-        google?: {
-            maps?: { importLibrary?: (name: string) => Promise<unknown> };
-        };
-        __placesReady?: () => void;
-    }
-}
-
-let loading: Promise<PlacesLibrary> | null = null;
-
-/** Loads the Maps JavaScript API once, then its Places library. */
 function loadPlaces(key: string): Promise<PlacesLibrary> {
-    if (loading) {
-        return loading;
-    }
-
-    loading = new Promise<PlacesLibrary>((resolve, reject) => {
-        const ready = () =>
-            window.google?.maps?.importLibrary
-                ? (
-                      window.google.maps.importLibrary(
-                          'places',
-                      ) as Promise<PlacesLibrary>
-                  ).then(resolve, reject)
-                : reject(new Error('Google Maps not loaded'));
-
-        if (window.google?.maps?.importLibrary) {
-            void ready();
-
-            return;
-        }
-
-        window.__placesReady = ready;
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&callback=__placesReady`;
-        script.async = true;
-        script.onerror = () => {
-            loading = null;
-            reject(new Error('Google Maps failed to load'));
-        };
-        document.head.append(script);
-    });
-
-    return loading;
+    return loadGoogleMapsLibrary<PlacesLibrary>(key, 'places');
 }
 
 // Countries that write the house number before the street ("123 Main St"); elsewhere "Hauptstraße 12".

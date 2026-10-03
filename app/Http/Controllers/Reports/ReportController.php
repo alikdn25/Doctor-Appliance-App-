@@ -15,9 +15,11 @@ use App\Models\SupplierReceipt;
 use App\Support\Billing\JobProfit;
 use App\Support\Locale\Currencies;
 use App\Support\PrivateMedia;
+use App\Support\Reports\BusinessReport;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -58,6 +60,7 @@ class ReportController extends Controller
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'currency' => currentCompany()->currency,
+            'business' => BusinessReport::for($from, $to, $request->user()),
             'totals' => $this->sum($billable),
             'byTechnician' => $this->groupProfit($billable, 'technician'),
             'byAppliance' => $this->groupProfit($billable, 'appliance'),
@@ -140,7 +143,8 @@ class ReportController extends Controller
         [$from, $to] = $this->period($request);
         $jobIds = $this->closedJobs($from, $to)->pluck('id');
 
-        $receipts = SupplierReceipt::query()->whereHas('jobs', fn ($q) => $q->whereIn('service_jobs.id', $jobIds))->with('jobs')->get();
+        $receipts = SupplierReceipt::query()->whereHas('jobs', fn ($q) => $q->whereIn('service_jobs.id', $jobIds))
+            ->with(['jobs' => fn ($q) => $q->whereIn('service_jobs.id', $jobIds)])->get();
         $path = tempnam(sys_get_temp_dir(), 'receipts');
         $zip = new ZipArchive;
         $zip->open($path, ZipArchive::OVERWRITE);
@@ -171,10 +175,10 @@ class ReportController extends Controller
         $tz = currentCompany()->timezone;
 
         return ServiceJob::query()
+            ->visibleTo(auth()->user())
             ->whereNotNull('closed_at')
             ->whereBetween('closed_at', [$from->startOfDay()->shiftTimezone($tz)->utc(), $to->endOfDay()->shiftTimezone($tz)->utc()])
             ->with(['appliances', 'brand', 'visits.assignees'])
-            ->limit(5000)
             ->get();
     }
 
@@ -251,12 +255,19 @@ class ReportController extends Controller
     private function period(Request $request): array
     {
         $tz = currentCompany()->timezone;
-        $date = fn (string $key) => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query($key)) === 1
-            ? CarbonImmutable::parse((string) $request->query($key), $tz)
-            : null;
+        $validated = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d'],
+        ]);
         $now = CarbonImmutable::now($tz);
+        $from = isset($validated['from']) ? CarbonImmutable::parse($validated['from'], $tz) : $now->startOfMonth();
+        $to = isset($validated['to']) ? CarbonImmutable::parse($validated['to'], $tz) : $now;
+        Validator::make(
+            ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+            ['to' => ['after_or_equal:from']],
+        )->validate();
 
-        return [$date('from') ?? $now->startOfMonth(), $date('to') ?? $now];
+        return [$from, $to];
     }
 
     private function authorizeOffice(Request $request): void

@@ -61,11 +61,20 @@ class MessagingPresenter
     /**
      * @return array<string, mixed>
      */
-    public function forCustomer(Customer $customer): array
+    public function forCustomer(Customer $customer, User $user): array
     {
+        $query = Message::query()->where('customer_id', $customer->id)
+            ->where(function (Builder $query) use ($customer, $user) {
+                $query->whereIn('service_job_id', ServiceJob::query()->visibleTo($user)->select('id'));
+                // Customer-level correspondence is office-only; technicians see assigned-job messages.
+                if ($user->can('update', $customer)) {
+                    $query->orWhereNull('service_job_id');
+                }
+            });
+
         return [
             'mode' => currentCompany()->sms_mode->value,
-            'messages' => $this->history(Message::query()->where('customer_id', $customer->id)),
+            'messages' => $this->history($query),
         ];
     }
 
@@ -125,7 +134,12 @@ class MessagingPresenter
      */
     private function history($query): array
     {
-        return $query->with('user')->latest('id')->limit(50)->get()->map(fn (Message $m) => [
+        return $query->with(['user', 'job'])->latest('id')->limit(50)->get()->map(fn (Message $m) => self::item($m))->values()->all();
+    }
+
+    public static function item(Message $m): array
+    {
+        return [
             'id' => $m->id,
             'direction' => $m->direction,
             'channel' => $m->channel,
@@ -139,7 +153,7 @@ class MessagingPresenter
             'from' => $m->from,
             'user' => $m->user?->name,
             'at' => JobPresenter::iso($m->sent_at ?? $m->send_after ?? $m->created_at),
-            'job_id' => $m->service_job_id,
-        ])->values()->all();
+            'job_id' => $m->job?->trashed() ? null : $m->service_job_id,
+        ];
     }
 }

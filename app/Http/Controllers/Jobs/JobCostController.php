@@ -40,7 +40,7 @@ class JobCostController extends Controller
             'quantity' => ['required', 'numeric', 'gt:0', 'max:99999'],
             'unit' => ['nullable', 'string', 'max:20'],
             'unit_cost' => ['required', 'numeric', DocumentRequest::moneyRule($currency)],
-            'supplier_taxes' => ['nullable', 'array', 'max:5'],
+            'supplier_taxes' => ['nullable', 'array'],
             'supplier_taxes.*.tax_rate_id' => ['required', 'integer', Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)],
             'supplier_taxes.*.amount' => ['required', 'numeric', DocumentRequest::moneyRule($currency)],
         ]);

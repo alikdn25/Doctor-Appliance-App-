@@ -37,6 +37,7 @@ type CompanySettings = {
     business_hours: Record<string, Day>;
     travel_buffer_minutes: number;
     estimate_valid_days: number | null;
+    estimate_followup_days: number | null;
     technicians_can_delete_jobs: boolean;
     diagnostic_service_id: number | null;
     strict_arrival_reminder_minutes: number;
@@ -121,6 +122,7 @@ export default function CompanySettingsPage({
         business_hours: company.business_hours,
         travel_buffer_minutes: company.travel_buffer_minutes,
         estimate_valid_days: company.estimate_valid_days,
+        estimate_followup_days: company.estimate_followup_days,
         technicians_can_delete_jobs: company.technicians_can_delete_jobs,
         diagnostic_service_id: company.diagnostic_service_id,
         strict_arrival_reminder_minutes:
@@ -383,6 +385,30 @@ export default function CompanySettingsPage({
                             example: `${form.data.invoice_prefix}${form.data.invoice_next_number}`,
                         })}
                     </p>
+                    <FormField
+                        id="estimate_followup_days"
+                        label={t('company.fields.estimate_followup_days')}
+                        hint={t('company.estimate_followup_days_hint')}
+                        error={errors.estimate_followup_days}
+                        className="sm:max-w-xs"
+                    >
+                        <Input
+                            id="estimate_followup_days"
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={90}
+                            value={form.data.estimate_followup_days ?? ''}
+                            onChange={(e) =>
+                                form.setData(
+                                    'estimate_followup_days',
+                                    e.target.value === ''
+                                        ? null
+                                        : Number(e.target.value),
+                                )
+                            }
+                        />
+                    </FormField>
                     <FormField
                         id="estimate_valid_days"
                         label={t('company.fields.estimate_valid_days')}

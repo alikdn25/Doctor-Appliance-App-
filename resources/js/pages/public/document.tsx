@@ -54,6 +54,7 @@ type PrintedDocument = {
         unit_price: string;
         total: string;
         taxable: boolean;
+        tax_names: string[];
         optional: boolean;
         included: boolean;
         unit: string | null;
@@ -300,6 +301,8 @@ export default function PublicDocument({
                                                 : item.quantity,
                                             price: item.unit_price,
                                         })}
+                                        {item.tax_names.length > 0 &&
+                                            ` · ${item.tax_names.join(', ')}`}
                                     </p>
                                     {item.warranty && (
                                         <p className="text-xs text-muted-foreground">

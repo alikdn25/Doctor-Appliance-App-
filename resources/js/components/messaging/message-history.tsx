@@ -50,8 +50,8 @@ export function MessageHistory({
                         key={m.id}
                         className={
                             inbound
-                                ? 'mr-8 rounded-lg border bg-muted/50 p-3 text-sm'
-                                : 'ml-8 rounded-lg border p-3 text-sm'
+                                ? 'mr-4 min-w-0 rounded-lg border bg-muted/50 p-3 text-sm [overflow-wrap:anywhere] sm:mr-8'
+                                : 'ml-4 min-w-0 rounded-lg border p-3 text-sm [overflow-wrap:anywhere] sm:ml-8'
                         }
                     >
                         <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">

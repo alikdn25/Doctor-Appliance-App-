@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Accounting\BusinessExpenseCategoryController;
+use App\Http\Controllers\Accounting\BusinessExpenseController;
 use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
@@ -26,6 +28,7 @@ use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Customers\PropertyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Jobs\CalendarController;
+use App\Http\Controllers\Jobs\JobBacklogController;
 use App\Http\Controllers\Jobs\JobCloseController;
 use App\Http\Controllers\Jobs\JobController;
 use App\Http\Controllers\Jobs\JobCostController;
@@ -40,6 +43,7 @@ use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\Reports\ReportController;
+use App\Http\Controllers\SmsInboxController;
 use App\Http\Controllers\SmsWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -74,8 +78,13 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['tenant', 'two-factor'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
 
+        Route::get('messages', [SmsInboxController::class, 'index'])->name('messages.index');
+        Route::post('messages/read', [SmsInboxController::class, 'read'])->name('messages.read');
+        Route::post('messages/send', [SmsInboxController::class, 'send'])->middleware('throttle:30,1')->name('messages.send');
+
         Route::post('companies/{company}/switch', SwitchCompanyController::class)->name('companies.switch');
 
+        Route::get('customers/avatar', [CustomerController::class, 'avatar'])->middleware('throttle:120,1')->name('customers.avatar');
         Route::get('customers/duplicates', [CustomerController::class, 'duplicates'])->name('customers.duplicates');
         Route::resource('customers', CustomerController::class);
         Route::post('customers/{customer}/properties', [PropertyController::class, 'store'])->name('properties.store');
@@ -88,6 +97,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('appliances/{appliance}', [ApplianceController::class, 'destroy'])->name('appliances.destroy');
 
         Route::get('my-jobs', [JobController::class, 'mine'])->name('jobs.mine');
+        Route::get('jobs/not-completed', JobBacklogController::class)->name('jobs.backlog');
         Route::get('jobs/customers', [JobController::class, 'lookup'])->name('jobs.lookup');
         Route::get('jobs/deleted', [JobController::class, 'trash'])->name('jobs.trash');
         Route::post('jobs/{job}/restore', [JobController::class, 'restore'])->withTrashed()->name('jobs.restore');
@@ -145,6 +155,11 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('invoices/{invoice}/refund', [PaymentController::class, 'refund'])->name('invoices.refund');
         Route::post('payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('business-expenses/export.csv', [BusinessExpenseController::class, 'export'])->name('expenses.download');
+        Route::get('business-expenses/{expense}/receipt', [BusinessExpenseController::class, 'receipt'])->name('expenses.receipt');
+        Route::resource('business-expenses', BusinessExpenseController::class)->parameters(['business-expenses' => 'expense'])->names('expenses')->except('show');
+        Route::post('business-expense-categories', [BusinessExpenseCategoryController::class, 'store'])->name('expense-categories.store');
+        Route::put('business-expense-categories/{category}', [BusinessExpenseCategoryController::class, 'update'])->name('expense-categories.update');
         Route::get('reports/expenses.csv', [ReportController::class, 'expenses'])->name('reports.expenses');
         Route::get('reports/receipts.zip', [ReportController::class, 'receipts'])->name('reports.receipts');
         Route::get('cash', [CashController::class, 'index'])->name('cash.index');

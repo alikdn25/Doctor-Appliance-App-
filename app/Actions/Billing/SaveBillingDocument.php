@@ -164,6 +164,7 @@ class SaveBillingDocument
                 'quantity' => (string) $item['quantity'],
                 'unit_price' => (int) $item['unit_price'],
                 'taxable' => (bool) $item['taxable'],
+                'tax_rate_ids' => array_key_exists('tax_rate_ids', $item) ? $item['tax_rate_ids'] : $old?->tax_rate_ids,
                 'kind' => $kind,
                 'service_id' => $item['service_id'] ?? null,
                 'part_number' => $item['part_number'] ?? null,
@@ -248,6 +249,7 @@ class SaveBillingDocument
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'taxable' => $item->taxable,
+                'tax_rate_ids' => $item->tax_rate_ids,
                 'included' => $item->isIncluded() && $item->bill_to_customer,
             ])->values()->all(),
             $estimate->discount_type,
@@ -298,9 +300,12 @@ class SaveBillingDocument
         // Compound taxes come last: they are charged on the amount plus the other taxes.
         $rates = TaxRate::query()->whereIn('id', $ids)->orderBy('is_compound')->orderBy('sort_order')->orderBy('name')->get();
 
-        return $rates->map(fn (TaxRate $rate) => $kept->has($rate->id)
-            ? ['tax_rate_id' => $rate->id, 'name' => $kept[$rate->id]['name'], 'rate' => (string) $kept[$rate->id]['rate'], 'compound' => (bool) ($kept[$rate->id]['compound'] ?? false)]
-            : ['tax_rate_id' => $rate->id, 'name' => $rate->name, 'rate' => (string) $rate->rate, 'compound' => $rate->is_compound])
+        // Preserve the order and compound flags already saved, regardless of later settings changes.
+        return $kept->values()->map(fn (array $tax) => [
+            'tax_rate_id' => $tax['tax_rate_id'], 'name' => $tax['name'], 'rate' => (string) $tax['rate'], 'compound' => (bool) ($tax['compound'] ?? false),
+        ])->concat($rates->reject(fn (TaxRate $rate) => $kept->has($rate->id))->map(fn (TaxRate $rate) => [
+            'tax_rate_id' => $rate->id, 'name' => $rate->name, 'rate' => (string) $rate->rate, 'compound' => $rate->is_compound,
+        ]))->sortBy('compound')
             ->values()
             ->all();
     }

@@ -21,7 +21,7 @@ assumes a particular country.
 - **Currency** per company (ISO 4217 code). Every amount is stored together with its currency (documents and payments
   keep the currency they were created in). Amounts are stored in the currency's minor units. The currency symbol and
   number format follow the company's currency and regional format; no "$" is hard-coded anywhere (discounts included).
-- **Taxes** are configured by each company: several named rates (e.g. GST + PST, state + county sales tax, VAT),
+- **Taxes** are configured by each company, with no fixed count limit: several named rates (e.g. GST + PST, state + county sales tax, VAT),
   **compound** taxes (charged on top of the previous taxes), and prices entered **with or without tax** (tax-inclusive
   pricing, as common in the UK/EU/Australia). Nothing like GST/PST is hard-coded.
 - **Time zone**, **regional format** (date, time and number format, e.g. en-US, en-CA, en-GB) and **address format**
@@ -91,7 +91,7 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 
 ## 6. Core data model (summary)
 
-- **Customer:** type (residential / commercial / property manager / strata or HOA), name, phones (E.164), emails, notes,
+- **Customer:** type (residential / commercial / property manager / strata or HOA), name, phones (E.164), emails, "About the customer" (persistent team notes about preferences and contact/arrival expectations, shown in booking and assigned jobs), optional name-suggested icon with a saved manual override,
   tags, lead source, payment terms (empty = the company default; see §7.6).
 - **Property:** address in the format of its country (Google Places autocomplete, geocoded), access notes, gate/buzzer code. A customer can have many properties. A strata building can have many **units**.
 - **Appliance** (appliance repair vertical): property, type (washer, dryer, fridge, range, dishwasher, etc.), brand, model number, serial number, photo of the rating plate, install/purchase date, warranty info, full repair history.
@@ -102,7 +102,12 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 
 ### Job statuses
 
-`new` → `scheduled` → `on_the_way` → `in_progress` → `waiting_for_parts` → `completed` → `invoiced` → `paid`, plus `cancelled` and `on_hold`. Every status change is logged with user and time.
+`new` → `scheduled` → `on_the_way` → `in_progress` → `waiting_for_parts` → `completed` → `invoiced` → `paid`, plus `waiting_for_customer`, `cancelled` and `on_hold`. Every status change is logged with user and time.
+
+All unfinished jobs remain in a date-independent queue, reached from a compact persistent top bar with a job
+counter. It includes overdue visits, work needing scheduling, waiting for parts/customer, on-hold work and future
+scheduled work. Completed, invoiced, paid, cancelled, outcome-closed and deleted jobs are excluded. Reopened jobs
+return. Each job counts once; access follows company, brand and technician assignment permissions.
 
 ## 7. Feature list
 
@@ -147,6 +152,8 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 ### 7.6 Invoices and payments
 
 - Invoice from job in one tap; line items, taxes, discounts, deposits, partial payments.
+- Each estimate/invoice item can inherit enabled document taxes or select its own subset, including no taxes.
+  Named rates can be activated/deactivated. Existing documents retain their tax names, rates and selections.
 - Configurable taxes per company (§1.1): several named rates, compound taxes, prices with or without tax. Examples:
   BC — GST 5% + PST 7%; a US city — one combined sales tax rate; UK — VAT 20% with tax-inclusive prices.
 - **Payment terms:** company default (Due on receipt, Net 7, Net 15, Net 30), changeable per customer (stratas and
@@ -206,7 +213,7 @@ Rules:
 - All texts, emails and the customer's replies are kept on the customer and job timelines with their status
   (scheduled, sent, delivered, failed, not sent + reason).
 
-Later: automated "parts arrived", "payment received", payment reminders (Stage 2), a shared SMS inbox, click-to-call
+Later: automated "parts arrived", "payment received", payment reminders (Stage 2), click-to-call
 from the company number (Twilio voice).
 
 ### 7.8 Appliance-specific features (appliance repair vertical; not in Housecall Pro)
@@ -246,6 +253,19 @@ from the company number (Twilio voice).
 - Accounts receivable aging.
 - Jobs waiting for parts.
 - Warranty claims outstanding.
+
+#### Business expenses (bookkeeping)
+
+- Expenses independent of jobs and customer invoices: fuel, meals, tools and other overhead.
+- Company members create shared custom categories. Each record has a date, description, merchant, price before
+  tax, actual tax paid, original currency, notes and an optional private receipt photo/PDF. Select any number of
+  company taxes per receipt and adjust their actual amounts. Historical undivided tax entries remain editable.
+- Show price, tax and total beside each category for the chosen period, with separate rows for currencies.
+  No combined expense counter or overall amount. Filter/search/pagination and CSV export for bookkeeping.
+- Owners/Admins can filter company expenses by employee and see price/tax/total per employee and currency; technicians see and manage their own entries. Members manage categories
+  they created; the office manages all categories. Archive categories without losing historical records.
+- Expenses do not change a job's margin or appear on customer documents. Receipts and removed records are
+  retained privately; changes are audited.
 
 ### 7.14 Integrations
 

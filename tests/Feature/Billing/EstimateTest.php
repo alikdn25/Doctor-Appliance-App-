@@ -192,3 +192,68 @@ test('the job page lists its estimates and invoices', function () {
             ->has('job.invoices', 1)
             ->where('job.invoices.0.balance', 28050));
 });
+
+test('per item tax choices persist through edits and conversion using historical names and rates', function () {
+    $items = [
+        ['description' => 'Labor', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => [$this->gst->id]],
+        ['description' => 'Part', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => [$this->gst->id, $this->pst->id]],
+        ['description' => 'Exempt', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => []],
+    ];
+    $payload = documentPayload(['tax_rate_ids' => [$this->gst->id, $this->pst->id], 'items' => $items]);
+    $this->actingAs($this->tech)->post(route('estimates.store', $this->job), $payload)->assertSessionHasNoErrors();
+    $estimate = estimateOf($this->company);
+    expect($estimate->total)->toBe(31700)->and($estimate->items->pluck('tax_rate_ids')->all())->toBe([[$this->gst->id], [$this->gst->id, $this->pst->id], []]);
+    $this->gst->update(['name' => 'Renamed', 'rate' => 20, 'is_active' => false]);
+    // Older clients omitting the new field keep the selection of their existing lines.
+    $payload['items'] = $estimate->items->map(fn ($item) => $item->only(['id', 'description', 'quantity', 'taxable']) + ['unit_price' => '100'])->all();
+    $this->put(route('estimates.update', $estimate), $payload)->assertSessionHasNoErrors();
+    $estimate = estimateOf($this->company);
+    expect($estimate->total)->toBe(31700)->and($estimate->taxes[0]['name'])->toBe('GST')->and($estimate->taxes[0]['rate'])->toBe('5');
+    $this->get(route('estimates.show', $estimate))->assertInertia(fn (Assert $page) => $page
+        ->where('document.items.0.tax_names', ['GST'])->where('document.items.1.tax_names', ['GST', 'PST'])->where('document.items.2.tax_names', []));
+    $this->post(route('estimates.convert', $estimate))->assertRedirect();
+    $invoice = inCompany($this->company, fn () => Invoice::query()->with('items')->sole());
+    expect($invoice->total)->toBe(31700)->and($invoice->taxes)->toBe($estimate->taxes)
+        ->and($invoice->items->pluck('tax_rate_ids')->all())->toBe($estimate->items->pluck('tax_rate_ids')->all());
+});
+
+test('new documents reject disabled foreign and document-disabled item taxes', function () {
+    $disabled = TaxRate::factory()->create(['company_id' => $this->company->id, 'is_active' => false]);
+    $foreign = TaxRate::factory()->create();
+    foreach ([$disabled->id, $foreign->id] as $id) {
+        $this->post(route('estimates.store', $this->job), documentPayload(['tax_rate_ids' => [$id]]))->assertSessionHasErrors('tax_rate_ids.0');
+    }
+    $this->post(route('invoices.store', $this->job), documentPayload([
+        'tax_rate_ids' => [$this->gst->id],
+        'items' => [['description' => 'Repair', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => [$this->pst->id]]],
+    ]))->assertSessionHasErrors('items.0.tax_rate_ids.0');
+});
+
+test('documents accept more than five company taxes on an item and its supplier costs', function () {
+    $rates = TaxRate::factory()->count(7)->create(['company_id' => $this->company->id, 'rate' => 1, 'is_compound' => false]);
+    $this->post(route('invoices.store', $this->job), documentPayload([
+        'tax_rate_ids' => $rates->modelKeys(),
+        'items' => [['description' => 'Part', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => $rates->modelKeys(),
+            'supplier_taxes' => $rates->map(fn ($rate) => ['tax_rate_id' => $rate->id, 'amount' => '1'])->all()]],
+    ]))->assertSessionHasNoErrors();
+    $invoice = inCompany($this->company, fn () => Invoice::query()->with('items')->sole());
+    expect($invoice->taxes)->toHaveCount(7)->and($invoice->total)->toBe(10700)->and($invoice->items->first()->supplier_taxes)->toHaveCount(7);
+});
+
+test('saved compound ordering and edit form rates survive changed company settings', function () {
+    $this->pst->update(['is_compound' => true]);
+    $payload = documentPayload(['tax_rate_ids' => [$this->gst->id, $this->pst->id], 'items' => [
+        ['description' => 'Repair', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => [$this->gst->id, $this->pst->id]],
+        ['description' => 'Regional only', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => [$this->pst->id]],
+    ]]);
+    $this->post(route('estimates.store', $this->job), $payload)->assertSessionHasNoErrors();
+    $estimate = estimateOf($this->company);
+    expect($estimate->total)->toBe(21935);
+    $this->gst->update(['is_compound' => true, 'name' => 'Changed federal', 'rate' => 20]);
+    $this->pst->update(['is_compound' => false, 'name' => 'Changed regional', 'rate' => 15]);
+    $this->get(route('estimates.edit', $estimate))->assertInertia(fn (Assert $page) => $page
+        ->where('taxRates.0.id', $this->gst->id)->where('taxRates.0.name', 'GST')->where('taxRates.0.rate', '5')
+        ->where('taxRates.0.is_compound', false)->where('taxRates.1.is_compound', true));
+    $this->put(route('estimates.update', $estimate), $payload)->assertSessionHasNoErrors();
+    expect(estimateOf($this->company)->total)->toBe(21935)->and(estimateOf($this->company)->taxes)->toBe($estimate->taxes);
+});

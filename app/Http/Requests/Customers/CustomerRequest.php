@@ -8,6 +8,7 @@ use App\Enums\LeadSource;
 use App\Enums\PaymentTerms;
 use App\Enums\PhoneLabel;
 use App\Models\Customer;
+use App\Support\NameAvatar;
 use App\Support\PhoneNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -66,6 +67,7 @@ class CustomerRequest extends FormRequest
         $rules = [
             'type' => ['required', Rule::enum(CustomerType::class)],
             'first_name' => ['nullable', 'required_without_all:last_name,company_name', 'string', 'max:100'],
+            'avatar_style' => ['sometimes', Rule::in(NameAvatar::STYLES)],
             'last_name' => ['nullable', 'string', 'max:100'],
             'company_name' => ['nullable', 'string', 'max:255'],
             'lead_source' => ['nullable', Rule::enum(LeadSource::class)],
@@ -134,7 +136,7 @@ class CustomerRequest extends FormRequest
     public function customerAttributes(): array
     {
         return collect($this->validated())
-            ->only(['type', 'first_name', 'last_name', 'company_name', 'lead_source', 'payment_terms', 'tags', 'notes'])
+            ->only(['type', 'first_name', 'last_name', 'company_name', 'lead_source', 'payment_terms', 'tags', 'notes', 'avatar_style'])
             ->all();
     }
 

@@ -33,7 +33,7 @@ class CalendarController extends Controller
         $user = $request->user();
         $company = currentCompany();
         $timezone = $company->timezone;
-        $view = $request->query('view') === 'week' ? 'week' : 'day';
+        $view = in_array($request->query('view'), ['day', 'week', 'map'], true) ? $request->query('view') : 'day';
         $today = CarbonImmutable::now($timezone)->startOfDay();
         $anchor = $this->date($request->query('date'), $timezone) ?? $today;
         $from = $view === 'week' ? $anchor->startOfWeek(CarbonImmutable::MONDAY) : $anchor;
@@ -106,6 +106,9 @@ class CalendarController extends Controller
                 'job_type_label' => $job->job_type->label(),
                 'customer' => $job->customer?->display_name,
                 'address' => $job->property?->fullAddress(),
+                'coordinates' => $job->property?->latitude !== null && $job->property?->longitude !== null
+                    ? ['lat' => (float) $job->property->latitude, 'lng' => (float) $job->property->longitude]
+                    : null,
                 'appliances' => $job->appliances->map(fn (Appliance $a) => $a->label())->values(),
             ],
         ];

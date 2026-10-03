@@ -72,6 +72,8 @@ class BillingPresenter
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'taxable' => $item->taxable,
+                'tax_rate_ids' => $item->tax_rate_ids,
+                'tax_names' => collect($document->taxes)->filter(fn ($tax) => $item->taxable && ($item->tax_rate_ids === null || in_array((int) $tax['tax_rate_id'], $item->tax_rate_ids, true)))->pluck('name')->values()->all(),
                 'total' => $item->total,
                 'optional' => $invoice ? false : $item->optional,
                 'selected' => $invoice ? true : $item->selected,
@@ -214,6 +216,8 @@ class BillingPresenter
     public static function taxOptions(array $onDocument = []): array
     {
         $ids = array_filter(array_column($onDocument, 'tax_rate_id'));
+        $saved = collect($onDocument)->keyBy('tax_rate_id');
+        $positions = array_flip($ids);
 
         return TaxRate::query()
             ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', $ids))
@@ -223,11 +227,12 @@ class BillingPresenter
             ->get()
             ->map(fn (TaxRate $rate) => [
                 'id' => $rate->id,
-                'name' => $rate->name,
-                'rate' => rtrim(rtrim((string) $rate->rate, '0'), '.'),
-                'is_compound' => $rate->is_compound,
+                'name' => $saved[$rate->id]['name'] ?? $rate->name,
+                'rate' => isset($saved[$rate->id]) ? (string) $saved[$rate->id]['rate'] : rtrim(rtrim((string) $rate->rate, '0'), '.'),
+                'is_compound' => $saved[$rate->id]['compound'] ?? $rate->is_compound,
                 'is_default' => $rate->is_default && $rate->is_active,
             ])
+            ->sortBy(fn ($rate) => [(int) $rate['is_compound'], $positions[$rate['id']] ?? count($positions)])
             ->values()
             ->all();
     }
@@ -261,11 +266,12 @@ class BillingPresenter
      *
      * @return list<array{id: int, name: string, description: string|null, unit_price: int|null, currency: string, taxable: bool}>
      */
-    public static function serviceOptions(): array
+    public static function serviceOptions(int $brandId): array
     {
         $currency = currentCompany()->currency;
 
         return Service::query()
+            ->availableForBrand($brandId)
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -273,6 +279,7 @@ class BillingPresenter
             ->map(fn (Service $service) => [
                 'id' => $service->id,
                 'name' => $service->name,
+                'category' => $service->category,
                 'description' => $service->description,
                 'unit_price' => $service->unit_price,
                 'currency' => $currency,

@@ -36,7 +36,7 @@ class ReviseEstimate
             }
 
             $new = $old->replicate([
-                'number', 'status', 'public_token', 'sent_at', 'sent_to', 'viewed_at', 'approved_at', 'declined_at',
+                'number', 'status', 'public_token', 'sent_at', 'sent_to', 'followup_processed_at', 'viewed_at', 'approved_at', 'declined_at',
                 'signer_name', 'signature_type', 'signature_path', 'approved_ip', 'approved_user_agent',
                 'decline_reason', 'declined_ip', 'revised_at', 'revised_by', 'created_by',
             ]);

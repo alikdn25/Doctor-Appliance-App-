@@ -17,7 +17,7 @@ apt update && apt install -y nginx postgresql supervisor git unzip certbot pytho
 curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt install -y nodejs
 
-# deploy user (owns the app, runs deploys and the queue worker)
+# deploy user owns the app and runs deploys; PHP-FPM and the worker use www-data
 adduser --disabled-password --gecos "" deploy
 usermod -aG www-data deploy
 
@@ -76,6 +76,12 @@ sudo supervisorctl reread && sudo supervisorctl update
 * * * * * cd /var/www/fieldservice && php artisan schedule:run >> /dev/null 2>&1
 ```
 
+Keep the queue worker and PHP-FPM on the same OS user (`www-data` in these examples), so queued PDFs and emails
+can read private photos/signatures created by web requests. If PHP-FPM runs under another user, set that same
+user in Supervisor. Before testing camera uploads, configure the application's PHP-FPM pool with
+`php_admin_value[upload_max_filesize] = 15M` and `php_admin_value[post_max_size] = 20M`, then reload PHP-FPM;
+otherwise PHP's default upload limit can reject receipts before Laravel validates them.
+
 ## 2. SSH key for GitHub Actions
 
 On your computer (not the server):
@@ -105,14 +111,20 @@ Application secrets (database password, mail credentials, later Square/Twilio ke
 
 ## 4. What `deploy/deploy.sh` does
 
-1. `php artisan down` (maintenance mode; brought back up automatically if a step fails)
+1. Verify prerequisites and a clean checkout, lock deployment and resolve the selected tested commit; enter maintenance mode
 2. `git fetch` + `git reset --hard <tested commit>`
-3. `composer install --no-dev`, `npm ci && npm run build`
+3. `composer install --no-dev`, clear old config, run `app:deployment-check --before-migrate`, then build assets
 4. `php artisan migrate --force`, `storage:link`, `optimize`, `queue:restart`
-5. `php artisan up`
+5. Run `app:deployment-check`, reopen and verify HTTPS `/up` and `/login`. A failed deployment leaves maintenance on for diagnosis
 
-Rollback: on the server run `DEPLOY_SHA=<older-commit-sha> bash deploy/deploy.sh`
-(database migrations are not rolled back automatically).
+Take and verify a database and media backup before upgrading an existing installation.
+For testing a green draft commit, use `DEPLOY_REF=chatgpt/bolt-ui DEPLOY_SHA=<tested-sha> bash deploy/deploy.sh`
+on the server; the GitHub production workflow remains limited to `main`.
+
+Recovery: leave maintenance mode on until the failed step is understood. Choose a previously tested revision
+whose code supports the installed schema, and use that revision's deployment instructions; older revisions
+predating app:deployment-check cannot use the current script unchanged. Database migrations are not rolled
+back automatically. Restore a verified backup when recovery requires older schema/data.
 
 ## 5. Redis or not?
 
@@ -152,7 +164,7 @@ REDIS_PORT=6379
 then `php artisan config:cache && php artisan queue:restart`. Jobs still waiting in the `jobs` table are not moved:
 switch when the queue is empty (`php artisan queue:monitor database:default`).
 
-## 6. Google Maps key (address suggestions)
+## 6. Google Maps key (address suggestions and calendar map)
 
 1. Google Cloud Console → create a project → **Billing** (Places is billed per session; there is a monthly free
    credit).
@@ -161,7 +173,9 @@ switch when the queue is empty (`php artisan queue:monitor database:default`).
     - Application restrictions: **Websites (HTTP referrers)** → `https://app.doctor-appliance.ca/*`
       (add `http://localhost:8000/*` on a separate development key, never on the production one);
     - API restrictions: **Restrict key** → Maps JavaScript API, Places API (New).
-4. In the server's `.env`: `GOOGLE_MAPS_BROWSER_KEY=<the key>`, then `php artisan config:cache`.
+4. In the server's `.env`: `GOOGLE_MAPS_BROWSER_KEY=<the key>`. Create a JavaScript map ID in Google Cloud
+   Map Management and set `GOOGLE_MAPS_MAP_ID=<your map ID>` for the calendar map. The built-in demo ID is for
+   initial testing. Run `php artisan config:cache` after changing either setting.
 
 The key is sent to the browser (that is how the Maps JavaScript API works), which is why the referrer and API
 restrictions matter. Without a key, address fields are typed by hand.

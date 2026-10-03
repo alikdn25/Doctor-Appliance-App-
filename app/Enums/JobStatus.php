@@ -13,6 +13,7 @@ enum JobStatus: string
     case OnTheWay = 'on_the_way';
     case InProgress = 'in_progress';
     case WaitingForParts = 'waiting_for_parts';
+    case WaitingForCustomer = 'waiting_for_customer';
     case Completed = 'completed';
     case Invoiced = 'invoiced';
     case Paid = 'paid';
@@ -58,7 +59,7 @@ enum JobStatus: string
      */
     public function allowsVisitWork(): bool
     {
-        return ! in_array($this, [self::Cancelled, self::OnHold, self::Invoiced, self::Paid], true);
+        return ! in_array($this, [self::Cancelled, self::OnHold, self::WaitingForCustomer, self::Invoiced, self::Paid], true);
     }
 
     /**
@@ -66,6 +67,6 @@ enum JobStatus: string
      */
     public function reschedulable(): bool
     {
-        return in_array($this, [self::New, self::WaitingForParts, self::OnHold, self::Completed], true);
+        return in_array($this, [self::New, self::WaitingForParts, self::WaitingForCustomer, self::OnHold, self::Completed], true);
     }
 }

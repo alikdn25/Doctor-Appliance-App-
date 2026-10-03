@@ -58,6 +58,8 @@ class DocumentPrint
                 'unit_price' => $money($item->unit_price),
                 'total' => $money($item->total),
                 'taxable' => $item->taxable,
+                'tax_rate_ids' => $item->tax_rate_ids,
+                'tax_names' => collect($document->taxes)->filter(fn ($tax) => $item->taxable && ($item->tax_rate_ids === null || in_array((int) $tax['tax_rate_id'], $item->tax_rate_ids, true)))->pluck('name')->values()->all(),
                 'optional' => $estimate && $item->optional,
                 'included' => ! $estimate || $item->isIncluded(),
                 'unit' => $item->unit,

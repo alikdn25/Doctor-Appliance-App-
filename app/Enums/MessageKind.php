@@ -10,6 +10,7 @@ enum MessageKind: string
     case VisitReminder = 'visit_reminder';
     case OnMyWay = 'on_my_way';
     case EstimateLink = 'estimate_link';
+    case EstimateFollowup = 'estimate_followup';
     case InvoiceLink = 'invoice_link';
     case ReviewRequest = 'review_request';
     case General = 'general';
@@ -27,6 +28,6 @@ enum MessageKind: string
      */
     public static function templated(): array
     {
-        return [self::VisitReminder, self::OnMyWay, self::EstimateLink, self::InvoiceLink, self::ReviewRequest, self::General];
+        return [self::VisitReminder, self::OnMyWay, self::EstimateLink, self::EstimateFollowup, self::InvoiceLink, self::ReviewRequest, self::General];
     }
 }

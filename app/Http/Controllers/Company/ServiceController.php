@@ -6,6 +6,7 @@ use App\Enums\LineKind;
 use App\Enums\WarrantyUnit;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
+use App\Models\Brand;
 use App\Models\ChecklistTemplate;
 use App\Models\Service;
 use App\Services\AuditLogger;
@@ -34,6 +35,8 @@ class ServiceController extends Controller
                     'id' => $service->id,
                     'name' => $service->name,
                     'description' => $service->description,
+                    'category' => $service->category,
+                    'brand_ids' => $service->brand_ids,
                     'unit_price' => $service->unit_price,
                     'taxable' => $service->taxable,
                     'is_active' => $service->is_active,
@@ -47,6 +50,7 @@ class ServiceController extends Controller
                 ])
                 ->values(),
             'warrantyUnits' => WarrantyUnit::options(),
+            'brands' => Brand::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -60,6 +64,9 @@ class ServiceController extends Controller
             'services.*.id' => ['nullable', 'integer'],
             'services.*.name' => ['required', 'string', 'max:255'],
             'services.*.description' => ['nullable', 'string', 'max:500'],
+            'services.*.category' => ['nullable', 'string', 'max:80'],
+            'services.*.brand_ids' => ['array', 'max:100'],
+            'services.*.brand_ids.*' => ['integer', Rule::exists('brands', 'id')->where('company_id', currentCompany()->id)],
             'services.*.unit_price' => ['nullable', 'numeric', 'min:0', DocumentRequest::moneyRule($currency)],
             'services.*.taxable' => ['boolean'],
             'services.*.is_active' => ['boolean'],
@@ -85,6 +92,8 @@ class ServiceController extends Controller
                 $service->fill([
                     'name' => trim($row['name']),
                     'description' => $row['description'] ?? null,
+                    'category' => filled(trim($row['category'] ?? '')) ? trim($row['category']) : null,
+                    'brand_ids' => array_values(array_unique(array_map('intval', $row['brand_ids'] ?? []))),
                     'unit_price' => filled($row['unit_price'] ?? null) ? Currencies::toMinor($row['unit_price'], $currency) : null,
                     'taxable' => (bool) ($row['taxable'] ?? true),
                     'is_active' => (bool) ($row['is_active'] ?? true),

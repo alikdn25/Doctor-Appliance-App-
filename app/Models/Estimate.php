@@ -97,6 +97,7 @@ class Estimate extends Model
             'deposit_amount' => 'integer',
             'revision' => 'integer',
             'revised_at' => 'datetime',
+            'followup_processed_at' => 'datetime',
         ];
     }
 

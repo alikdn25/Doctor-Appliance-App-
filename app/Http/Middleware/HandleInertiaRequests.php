@@ -2,16 +2,20 @@
 
 namespace App\Http\Middleware;
 
+use App\Messaging\SmsInbox;
 use App\Models\Brand;
+use App\Models\BusinessExpense;
 use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Membership;
+use App\Models\Message;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Models\User;
 use App\Services\Impersonation;
+use App\Support\Jobs\JobBacklog;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\Translations;
 use Illuminate\Http\Request;
@@ -43,7 +47,21 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => fn () => $this->auth($request),
             'impersonation' => fn () => $this->impersonation($request),
+            'unfinishedJobs' => Inertia::always(function () use ($request) {
+                $user = $request->user();
+
+                return $user !== null && app(CurrentCompany::class)->get() !== null && $user->can('viewMine', ServiceJob::class)
+                    ? JobBacklog::summary($user)
+                    : null;
+            }),
             'locale' => app()->getLocale(),
+            'unreadMessages' => Inertia::always(function () use ($request) {
+                $user = $request->user();
+
+                return $user !== null && app(CurrentCompany::class)->get() !== null && $user->can('viewAny', Message::class)
+                    ? SmsInbox::unreadCount($user)
+                    : null;
+            }),
             'translations' => Inertia::once(fn () => Translations::forLocale(app()->getLocale())),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
@@ -77,6 +95,7 @@ class HandleInertiaRequests extends Middleware
                 ...$company->only(['id', 'name']),
                 ...$company->formatSettings(),
                 // Browser key for Google Places address suggestions; null = addresses are typed by hand.
+                'google_maps_map_id' => config('services.google_maps.map_id'),
                 'google_maps_key' => config('services.google_maps.browser_key') ?: null,
                 // The Owner's browser fills in the time zone of a new company.
                 'timezone_pending' => $company->timezone_pending && $user->can('update', $company),
@@ -87,6 +106,8 @@ class HandleInertiaRequests extends Middleware
                 : $user->accessibleCompanies()->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name])->values(),
             'can' => $company === null ? [] : [
                 'viewCustomers' => $user->can('viewAny', Customer::class),
+                'viewMessageInbox' => $user->can('viewAny', Message::class),
+                'viewBusinessExpenses' => $user->can('viewAny', BusinessExpense::class),
                 'viewJobs' => $user->can('viewAny', ServiceJob::class),
                 'viewInvoices' => $user->can('viewAny', Invoice::class),
                 'viewMyJobs' => $user->can('viewMine', ServiceJob::class),

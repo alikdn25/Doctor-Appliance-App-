@@ -44,6 +44,17 @@ export function JobList({
                                     status={job.status}
                                     label={job.status_label}
                                 />
+                                {job.backlog_reason_label && (
+                                    <span
+                                        className={
+                                            job.backlog_reason === 'overdue'
+                                                ? 'text-xs font-medium text-red-700 dark:text-red-300'
+                                                : 'text-xs font-medium text-muted-foreground'
+                                        }
+                                    >
+                                        {job.backlog_reason_label}
+                                    </span>
+                                )}
                                 {job.visit?.strict_arrival && <StrictBadge />}
                                 {job.outcome_label &&
                                     job.outcome !== 'repaired' && (

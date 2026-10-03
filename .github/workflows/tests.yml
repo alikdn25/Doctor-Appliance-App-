@@ -48,7 +48,7 @@ jobs:
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: '8.3'
-          extensions: pdo_pgsql, pgsql, redis, intl, gd, zip
+          extensions: pdo_pgsql, pgsql, redis, intl, gd, zip, bcmath
           tools: composer:v2
           coverage: none
 
@@ -71,11 +71,69 @@ jobs:
       - name: Build assets
         run: npm run build
 
-      - name: Lint and type-check
-        run: |
-          vendor/bin/pint --parallel --test
-          npm run check
-          npm run types:check
+      - name: Deployment script syntax
+        run: bash -n deploy/deploy.sh
+
+      - name: PHP code style
+        id: php_style
+        run: vendor/bin/pint --parallel --test
+
+      - name: Frontend code style and lint
+        id: frontend
+        if: ${{ !cancelled() }}
+        run: npm run check
+
+      - name: Type-check
+        if: ${{ !cancelled() }}
+        run: npm run types:check
 
       - name: Run tests
+        if: ${{ !cancelled() }}
         run: php artisan test
+
+      - name: Browser smoke tests on desktop and mobile
+        id: browser
+        if: ${{ !cancelled() }}
+        env:
+          APP_ENV: testing
+          APP_URL: http://127.0.0.1:8000
+          DB_DATABASE: field_service_test
+          QUEUE_CONNECTION: sync
+          CACHE_STORE: database
+          SESSION_DRIVER: database
+          SESSION_SECURE_COOKIE: false
+          MAIL_MAILER: log
+          TWILIO_ACCOUNT_SID: ACbrowser-master
+          TWILIO_AUTH_TOKEN: browser-test-token
+          TWILIO_BASE_URL: http://127.0.0.1:9001
+          TWILIO_MESSAGING_URL: http://127.0.0.1:9001
+        run: |
+          npx playwright install --with-deps chromium
+          php artisan migrate:fresh --force
+          php artisan db:seed --class=BrowserSmokeSeeder --force
+          npx playwright test
+
+      - name: Upload browser results and screenshots
+        if: ${{ !cancelled() && steps.browser.outcome != 'skipped' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-smoke-results
+          path: |
+            playwright-report/
+            test-results/
+            !test-results/auth-*.json
+          retention-days: 7
+
+      - name: Browser failure application log
+        if: ${{ failure() && steps.browser.outcome == 'failure' }}
+        run: |
+          if [[ -f storage/logs/laravel.log ]]; then
+            tail -120 storage/logs/laravel.log
+          fi
+
+      - name: Show suggested code style fixes
+        if: ${{ failure() && (steps.frontend.outcome == 'failure' || steps.php_style.outcome == 'failure') }}
+        run: |
+          npm run check:fix || true
+          vendor/bin/pint || true
+          git diff -- app config database tests resources routes lang docs vite.config.ts playwright.config.ts

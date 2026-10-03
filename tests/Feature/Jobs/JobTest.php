@@ -112,6 +112,7 @@ test('a new customer can be created right in the job form', function () {
             'last_name' => 'Lee',
             'phone' => '(778) 555-0199',
             'email' => 'Sam@Example.com',
+            'notes' => 'Text only. Baby sleeping.',
             'property' => ['line1' => '100 Main St', 'unit' => '4', 'city' => 'Burnaby', 'postal_code' => 'V5H 1A1', 'gate_code' => '#1234'],
         ],
         'new_appliances' => [['type' => 'refrigerator', 'manufacturer' => 'Samsung', 'model_number' => 'rf28 ', 'serial_number' => '']],
@@ -123,6 +124,7 @@ test('a new customer can be created right in the job form', function () {
 
         expect($customer)
             ->display_name->toBe('Sam Lee')
+            ->notes->toBe('Text only. Baby sleeping.')
             ->lead_source->value->toBe('website')
             ->and($customer->phones->sole())->number->toBe('+17785550199')->is_primary->toBeTrue()
             ->and($customer->emails->sole()->email)->toBe('sam@example.com')
@@ -274,7 +276,8 @@ test('the job page shows customer, address, appliances, visits and history', fun
             ->where('otherAppliances.0.id', $this->dryer->id)
             ->where('myVisitId', null)
             ->where('can.update', true)
-            ->has('statusOptions', 8)
+            ->has('statusOptions', 9)
+            ->where('statusOptions.5.value', 'waiting_for_customer')
             ->has('assignableUsers', 2));
 });
 

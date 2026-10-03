@@ -10,6 +10,7 @@ import {
 import type { DragEvent, TouchEvent } from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { DayMap } from '@/components/calendar/day-map';
 import { DayGrid, HOUR_PX } from '@/components/calendar/day-grid';
 import type {
     CalendarVisit,
@@ -46,7 +47,7 @@ import { show as showJob } from '@/routes/jobs';
 import { move, store as storeVisit } from '@/routes/visits';
 
 type Props = {
-    view: 'day' | 'week';
+    view: 'day' | 'week' | 'map';
     date: string;
     today: string;
     days: string[];
@@ -221,7 +222,7 @@ export default function CalendarPage({
     ) => startDrag(e, { kind: 'visit', visit, fromLane: lane.id, grabOffset });
 
     const title =
-        view === 'day'
+        view !== 'week'
             ? dayLabel(date, locale, {
                   weekday: 'long',
                   month: 'long',
@@ -246,8 +247,8 @@ export default function CalendarPage({
                 <PageHeader title={t('calendar.title')} description={title} />
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
-                        {(['day', 'week'] as const).map((v) => (
+                    <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+                        {(['day', 'week', 'map'] as const).map((v) => (
                             <Link
                                 key={v}
                                 href={calendar({ query: { view: v, date } })}
@@ -307,7 +308,13 @@ export default function CalendarPage({
 
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
                     <div className="min-w-0">
-                        {view === 'day' ? (
+                        {view === 'map' ? (
+                            <DayMap
+                                visits={visits}
+                                lanes={lanes}
+                                onOpen={open}
+                            />
+                        ) : view === 'day' ? (
                             <DayGrid
                                 date={date}
                                 lanes={lanes}

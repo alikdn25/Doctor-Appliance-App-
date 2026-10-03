@@ -131,7 +131,8 @@ class User extends Authenticatable
      */
     public function limitedBrandIds(): array
     {
-        return $this->brands()->pluck('brands.id')->map(fn ($id) => (int) $id)->all();
+        // A soft-deleted brand must not turn a restricted membership into access to every brand.
+        return $this->brands()->withTrashed()->pluck('brands.id')->map(fn ($id) => (int) $id)->all();
     }
 
     public function membershipFor(Company|int|null $company): ?Membership

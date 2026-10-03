@@ -23,6 +23,7 @@ use App\Models\ServiceJob;
 use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Jobs\JobPresenter;
+use App\Support\NameAvatar;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -53,6 +54,7 @@ class CustomerController extends Controller
             ->through(fn (Customer $customer) => [
                 'id' => $customer->id,
                 'display_name' => $customer->display_name,
+                'avatar_icon' => $customer->avatarIcon(),
                 'type' => $customer->type->value,
                 'type_label' => $customer->type->label(),
                 'phone' => $customer->primaryPhone?->number,
@@ -66,6 +68,14 @@ class CustomerController extends Controller
             'types' => CustomerType::options(),
             'tags' => $this->tags(),
         ]);
+    }
+
+    public function avatar(Request $request): JsonResponse
+    {
+        Gate::authorize('create', Customer::class);
+        $data = $request->validate(['first_name' => ['nullable', 'string', 'max:100']]);
+
+        return response()->json(['icon' => NameAvatar::suggest($data['first_name'] ?? null)]);
     }
 
     public function create(): Response
@@ -115,7 +125,7 @@ class CustomerController extends Controller
         }
 
         return Inertia::render('customers/show', [
-            'messaging' => app(MessagingPresenter::class)->forCustomer($customer),
+            'messaging' => app(MessagingPresenter::class)->forCustomer($customer, $user),
             'customer' => [
                 ...$this->customerData($customer),
                 'type_label' => $customer->type->label(),
@@ -280,6 +290,8 @@ class CustomerController extends Controller
             'last_name' => $customer->last_name,
             'company_name' => $customer->company_name,
             'display_name' => $customer->display_name,
+            'avatar_style' => $customer->avatar_style,
+            'avatar_icon' => $customer->avatarIcon(),
             'lead_source' => $customer->lead_source?->value,
             'payment_terms' => $customer->payment_terms?->value,
             'tags' => $customer->tags,

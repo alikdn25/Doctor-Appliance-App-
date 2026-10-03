@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'sms_inbox' => 'SMS Inbox',
     'group_main' => 'Main',
     'group_company' => 'Company',
     'group_platform' => 'Platform',
@@ -24,4 +25,5 @@ return [
     'switch_company' => 'Switch company',
     'reports' => 'Reports',
     'cash' => 'Cash on hand',
+    'business_expenses' => 'Business expenses',
 ];

@@ -20,6 +20,8 @@ export type DocumentItem = {
     quantity: string;
     unit_price: number;
     taxable: boolean;
+    tax_rate_ids: number[] | null;
+    tax_names: string[];
     total: number;
     /** Estimates: the customer may add it; counted only when selected. */
     optional: boolean;
@@ -150,6 +152,7 @@ export type BillingDocument = DocumentRow & {
 export type ServiceOption = {
     id: number;
     name: string;
+    category: string | null;
     description: string | null;
     unit_price: number | null;
     currency: string;

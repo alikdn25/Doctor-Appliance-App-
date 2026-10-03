@@ -18,23 +18,183 @@ Status of the delivery stages from [`SPEC.md`](../SPEC.md) §10. Updated at the 
 - Super-admin panel: companies list, status, plan, impersonation with audit log.
 - CI (GitHub Actions tests) and manual deploy pipeline to the VPS (`docs/DEPLOYMENT.md`).
 
-## Stage 1 — MVP 🚧 In progress
+## Stage 1 — MVP code validated; server acceptance pending
 
-| #   | Task                                                                         | Status    |
-| --- | ---------------------------------------------------------------------------- | --------- |
-| 1   | Customers, properties (manual address), appliances (§6, §7.1)                | ✅ Done   |
-| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)               | ✅ Done   |
-| 3   | Calendar & dispatch                                                          | ✅ Done   |
-| 4   | Technician PWA view, photos, signatures                                      | ✅ Done   |
-| 5   | Estimates, invoices, manual payments (§7.5, §7.6)                            | ✅ Done   |
-| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6)  | ✅ Done   |
-| 7   | PDF + email sending of documents, price book on lines, Square tips/refunds   | ✅ Done   |
-| 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done   |
-| 9   | Online estimate approval (signature, options, expiry, deposit) + Places      | ✅ Done   |
-| 10A | Estimate revisions, deleting jobs, outcomes, visit types, strict arrival     | ✅ Done   |
-| 10B | Warranty & callbacks, refunds, costs & profit, no charge, cash               | ✅ Done   |
-| —   | Price book: categories (parts/materials with cost and markup done in 10B)    | 🚧 Partly |
-| —   | Basic reports (profit, callbacks, no charge done in 10B; revenue/conversion) | 🚧 Partly |
+### Office SMS inbox and desktop/mobile browser checks — CI passed
+
+- Shared SMS Inbox for Owner/Admin: phone-based conversations, search, unread filter, pagination,
+  incoming/outgoing bodies and delivery status, customer/job links and exact-number replies.
+  Unknown numbers stay visible; a uniquely registered contact enables replies. Shared or removed
+  contact numbers require review. STOP, US registration, quiet hours and company SMS mode apply.
+- Personal read acknowledgements cover only rendered incoming messages. Prefetch/GET does not clear
+  a badge; another employee keeps their own unread count. Sidebar polling refreshes the badge.
+  Threads, acknowledgements and sends follow tenant and brand/job visibility; technicians retain
+  their assigned-job composer and cannot open the shared office inbox.
+- Archived-job correspondence remains visible without broken job links. Deleted brands retain their
+  membership restriction, preventing an empty brand list from accidentally granting company-wide access.
+- New message_reads migration and role/tenant isolation tests. Code commit
+  2a891aa0d76fed8d80f0ad12727e3e8938e2038f passed build, PHP style, frontend formatting/lint,
+  TypeScript, deployment shell syntax, all 674 backend tests (5,276 assertions), and 20 desktop/mobile
+  browser scenarios with real password/TOTP login and active CSRF protection:
+  https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37090807431.
+  The following documentation-only commit records the result.
+- Playwright exercises actual password/TOTP login on PostgreSQL with isolated testing fixtures and
+  a local SMS stub. Desktop and phone checks include customer context/booking, expenses/receipts/taxes,
+  inbox replies, public documents/PDF, technician access, photos/signatures, core screens and dark mode.
+  BROWSER_TESTING.md describes reproduction and the screenshot/trace artifact.
+- Manual check: send a controlled SMS reply, open the inbox as two office users, verify separate unread
+  badges, reply to a secondary contact, and test STOP/quiet hours. Check old conversation pagination,
+  an unknown number, restricted brands and another tenant. Physical-device camera/visual checks,
+  Maps, real mail/SMS, Square callbacks, backups and server installation remain pending.
+
+Shared SMS Inbox is part of Stage 1 in SPEC.md; the earlier Next entry deferring it to Stage 2 was incorrect.
+
+### Customer context, name icons, estimate follow-ups and calendar map — CI passed
+
+- **About the customer** reuses existing customer notes, preserving all earlier entries. Office staff edit it in
+  the customer profile or during the first booking. It appears prominently when booking and on assigned jobs,
+  alongside the customer's earlier jobs, estimates, invoices and message history. Booking history follows
+  the user's brand access. Job-linked message history follows job visibility; customer-level correspondence is
+  office-only. Technicians and other companies cannot browse unrelated customers. Removed the obsolete Messages placeholder.
+- Optional name-based decorative icons use a local dictionary of 16,589 Latin names from 45 Faker locales,
+  pinned to MIT-licensed FakerPHP v1.24.1. Unknown/conflicting names remain neutral; automatic, neutral,
+  man and woman choices are saved per customer. Business customers use a business icon. No customer names
+  are sent to a third-party guessing service. This is an icon suggestion, not a gender record.
+- Company-configured estimate follow-ups: blank disables them, 1–90 days enables one attempt per explicitly
+  sent estimate. Only unanswered, unexpired estimates on open jobs qualify. Local reminder hour, SMS opt-out,
+  quiet hours and email fallback apply. Row locking prevents duplicate enqueueing; blocked attempts are visible
+  in message history. A new explicit send resets the delay; revisions start without an old reminder stamp.
+- Calendar Map shows the selected local day's visits in order, filtered by person, with numbered markers and
+  links to visit details. Visits without saved coordinates remain in the list. Company/brand permissions apply.
+  Maps and Places share one bounded loader. Directions remain available without an embedded map; long map
+  routes are split into mobile-compatible sections. The optional GOOGLE_MAPS_MAP_ID selects a production
+  Google map style (the demo map ID is the default for testing).
+- New migration adds avatar_style, estimate_followup_days and followup_processed_at. Existing customers
+  default to automatic icons; existing companies keep follow-ups disabled.
+- Build, PHP style, frontend formatting/lint, TypeScript, deployment script syntax and all 655 backend tests
+  (5,049 assertions) passed on code commit `39e560e`: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37086077377.
+- First-server preparation adds app:deployment-check, serialized deployments, pinned commit selection,
+  maintenance retained on failure, HTTPS health/login probes and docs/SERVER_HANDOFF.md. Web and queue processes
+  must share a runtime user for private files; the setup also documents receipt upload limits.
+- Physical-device/visual, Google map, outbound mail/SMS, payment callbacks, backup restore and server checks
+  remain pending. No SSH credential is attached to this workspace and no deployment has occurred.
+
+### Item taxes and employee expense view — CI passed
+
+- Unlimited named company taxes, active/default switches and independent subsets per estimate/invoice item.
+  Null inherits document taxes, an empty list is exempt. Existing documents retain their calculations and snapshots.
+- Discounts, compound rates and inclusive pricing use each item's selected taxes; edits, conversion, revisions
+  and online optional-item approval preserve the selections. Item tax names appear in the app, public page and PDF.
+- Expenses select named receipt taxes with calculated suggestions and editable actual amounts. The server sums
+  selected amounts and retains historical names/rates; old undivided taxes remain editable. CSV includes a breakdown.
+- Office employee filter and price/tax/total rows cover all matching expenses across pages, split by currency.
+  Former employees remain available in the ledger filter and CSV after their team membership is removed.
+  Technician lists, receipts, exports and category totals remain limited to their own entries; no global counter.
+- Migration adds nullable item tax selections and receipt tax snapshots. No new environment variables.
+- Manual check: create six named rates; invoice labor with one and a part with two; disable one; compare saved totals,
+  PDF, online optional approval, conversion and revision. Add an expense with multiple taxes and override one amount;
+  filter and export by employee; check technician access and narrow-screen layout.
+- Build, PHP style, frontend lint/format, TypeScript and all 637 tests (4,882 assertions) passed on commit
+  `aa0d364`: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37072738948.
+- Manual narrow-screen, receipt picker and end-to-end visual validation remains pending. PHP/dependencies are
+  unavailable locally; server verification ran in GitHub Actions.
+
+### Business expenses — CI passed
+
+- Separate Business expenses navigation for Owners/Admins and technicians. Custom shared categories can be
+  created from the ledger or inline while adding an expense; creators/the office can rename or archive them.
+- Expense date, description, merchant, price before tax, actual tax amount, notes and receipt photo/PDF. Live total
+  on the form; price/tax/total columns beside each category for the selected period, with no global counter.
+- Dates and search filters, a paginated ledger and CSV export. Category sums cover all pages and keep currencies
+  separate. New entries use the company currency; edits preserve their original currency and decimal precision.
+- Saving an expense opens the month of its date, so backdated receipts are immediately visible.
+- Office sees company expenses; technicians see/manage/export only their own records. Uploads and receipt routes
+  are private, tenant-scoped and permission-checked. No job/invoice relationship or effect on job profit.
+- Edits/removal/category changes are audited. Removal is a soft delete; receipt originals remain on private
+  storage after removal or replacement. Receipt upload limit is 15 MB, images/PDF only.
+- Tests cover amounts/taxes, zero/three-decimal currencies, category creation/archival, history, uploads, retention,
+  tenant/role access, pagination, dates/search and CSV. Migration adds business_expenses and
+  business_expense_categories; no environment settings required.
+- Build, PHP style, frontend lint/format, TypeScript and all 623 tests (4,697 assertions) passed on commit
+  `0ef332a`: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37069134254.
+- Manual check: create Fuel/Lunches/Tools, enter a price and tax with a receipt, compare category columns, change
+  the period, export CSV and check as a technician. Narrow-screen and camera/file-picker validation is pending.
+
+### Unfinished jobs queue — CI passed
+
+- Persistent compact "Not completed jobs" bar on tenant application screens, including a zero counter and a
+  direct overdue shortcut. The count refreshes with every Inertia response, including partial navigation.
+- Date-independent paginated queue: overdue visits and work needing scheduling first, then waiting for
+  parts/customer, on hold and scheduled/in-progress jobs. One reason and one count per job; oldest jobs first
+  within a group. Search and reason filters do not change the global counter.
+- Future appointments remain in the total. An upcoming return visit takes precedence over a stale old visit
+  for the scheduled reason and displayed arrival window. Completed/cancelled visits cannot keep a job scheduled.
+- New logged "Waiting for customer" status, available in the office status selector. It pauses visit work;
+  scheduling a new visit resumes the job. Closing/cancelling removes jobs; reopening brings them back.
+- Both the queue and counter enforce company/brand access and technician assignment. Unsupported roles and
+  public/platform pages receive no queue data. Closed/billed/paid/cancelled/deleted jobs are excluded.
+- Tests cover old dates, waiting after diagnosis, multiple visits, future returns, closure/reopening, pagination,
+  partial reloads, role/brand permissions and company switching. No database migration needed for this feature.
+- Build, PHP style, frontend lint/format, TypeScript and all 596 backend tests (4,458 assertions) passed on
+  commit `54d222f`: https://github.com/alikdn25/Doctor-Appliance-App-/actions/runs/37066318784.
+- Manual check: leave yesterday's visit unfinished; open the top bar from My Jobs or the calendar; try each
+  filter, schedule a return, set Waiting for customer, close and reopen a job, then check as a technician and
+  after switching companies. Mobile visual validation remains pending.
+
+### Bolt technician UI — draft, validation pending
+
+- My Jobs: rounded cards, larger touch targets, active-tab accessibility, wrapping time/status rows,
+  and full-width contact actions when only one contact method is available.
+- Job Detail: centered mobile layout, larger customer summary, rounded action buttons, and safe-area spacing
+  for the fixed visit action bar.
+- These changes are in the `chatgpt/bolt-ui` draft branch. They are not released or marked complete.
+- Local runtime checks remain unavailable (PHP missing; sandbox network access blocks dependency installation).
+  Build, formatting, lint, TypeScript and backend tests passed in GitHub Actions on commit `0f538d1`.
+- Manual validation still required: narrow mobile screens, long names/addresses, every visit state,
+  iPhone home-indicator spacing, navigation/call links, dark mode and keyboard focus.
+- Categories and business reports are implemented below. Stage 2, Stage 3 and platform subscription billing
+  are not complete.
+
+| #   | Task                                                                         | Status  |
+| --- | ---------------------------------------------------------------------------- | ------- |
+| 1   | Customers, properties (manual address), appliances (§6, §7.1)                | ✅ Done |
+| 2   | Jobs & statuses, visits, My jobs (§6, §7.3 w/o calendar, §7.4)               | ✅ Done |
+| 3   | Calendar & dispatch                                                          | ✅ Done |
+| 4   | Technician PWA view, photos, signatures                                      | ✅ Done |
+| 5   | Estimates, invoices, manual payments (§7.5, §7.6)                            | ✅ Done |
+| 6   | International groundwork, payment terms, Square payments (§1.1, §1.2, §7.6)  | ✅ Done |
+| 7   | PDF + email sending of documents, price book on lines, Square tips/refunds   | ✅ Done |
+| 8   | SMS (3 modes, Twilio, A2P 10DLC, STOP, quiet hours) + Google review requests | ✅ Done |
+| 9   | Online estimate approval (signature, options, expiry, deposit) + Places      | ✅ Done |
+| 10A | Estimate revisions, deleting jobs, outcomes, visit types, strict arrival     | ✅ Done |
+| 10B | Warranty & callbacks, refunds, costs & profit, no charge, cash               | ✅ Done |
+| —   | Price book: categories (parts/materials with cost and markup done in 10B)    | ✅ Done |
+| —   | Basic reports (profit, callbacks, no charge, revenue and conversion)         | ✅ Done |
+
+### Price book categories and business reports — CI passed
+
+- Price book: optional category on every service, part and material; suggestions from the company's current
+  catalogue; grouped choices on estimate and invoice lines. Blank categories remain uncategorized.
+- Per-brand price-book availability: no selection means all brands. New document choices and submitted service
+  IDs enforce availability. Existing document references remain valid when availability changes later. Brand
+  IDs from another company are rejected. Existing price-book items remain available to all brands after migration.
+- Revenue: invoices issued in the selected period, excluding void invoices, taxes and tips; settled refunds
+  reduce net revenue proportionally. Totals, average invoice, brand, technician, job type and source breakdowns
+  keep each document currency separate. The first assignee on the last started visit identifies the technician
+  (last scheduled visit when none started); people with the same name are kept separate.
+- Conversion: current estimate versions issued in the period, with a sent timestamp or customer decision.
+  Approved and invoiced count as converted; unsent drafts and superseded versions do not count.
+- Reports enforce company and office brand access, validate real calendar dates and reject reversed ranges.
+  Removed silent truncation after 5,000 closed jobs; receipt ZIP names include only accessible jobs.
+- Profit/cost reports use only the company's current currency, explicitly labeled, so legacy document currencies
+  are never added together. The new revenue section reports every document currency separately.
+- CI runs frontend checks, TypeScript and backend tests independently, keeping failed checks visible. Suggested
+  formatting diffs are printed after tests on failures; CI never writes fixes back to the repository.
+- Tests added for categories, currency separation, refunds, periods, conversion, role/brand access and tenant
+  isolation. Build, PHP style, frontend lint/format, TypeScript and 581 backend tests (4,180 assertions) passed on commit `0f538d1`. Manual validation is still pending.
+- Manual check: set categories in Company → Services; select grouped items on an invoice; open Reports, choose a
+  period and compare invoice totals and currencies, average invoices and estimate decisions with the documents.
+- Still left: the remaining Stage 2/3/billing specification tasks and manual mobile/release validation.
 
 ### Task 1 — Customers, properties, appliances ✅
 
@@ -672,7 +832,7 @@ Decisions made without asking (change if needed):
 - Markup tiers are stored in major units of the company currency; prices from markup are suggestions only.
 
 Ideas for later: **stock / inventory of materials** (van stock, reorder levels, consumption per job) — out of scope
-now; automatic supplier price import; categories in the price book; cash refunds tied to cash on hand.
+now; automatic supplier price import; cash refunds tied to cash on hand.
 
 ## Stage 2 — ⏳ Not started
 
@@ -680,6 +840,9 @@ now; automatic supplier price import; categories in the price book; cash refunds
 
 ## Next
 
-Stage 1 — remaining reports (revenue by brand/job type/lead source, average ticket, estimate conversion), price book
-categories, estimate follow-up reminders, map of the day from property coordinates. Stripe as the second payment
-provider. Then Stage 2 (parts orders, warranty claims, online booking, payment reminders, shared SMS inbox).
+Stage 1 code is ready for the first testing installation. Connect the server agent/SSH environment and
+install the tested code commit from SERVER_HANDOFF.md. No deployment has occurred in this workspace.
+Verify mobile layouts, receipt camera uploads, Google map credentials, mail/SMS delivery, payment callbacks
+and backup restore using LAUNCH_TESTING.md.
+Stripe remains the second payment provider. Then Stage 2 (parts orders, warranty claims, online booking,
+payment reminders), Stage 3 and subscription billing.

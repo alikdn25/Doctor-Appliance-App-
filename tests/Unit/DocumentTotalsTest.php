@@ -162,3 +162,49 @@ test('optional lines that are not picked keep their line total but are not count
         ->and($totals['tax_total'])->toBe(900)
         ->and($totals['total'])->toBe(11700);
 });
+
+test('each line chooses its own taxes and shares discounts with exempt and excluded lines', function () {
+    $totals = DocumentTotals::calculate([
+        ['quantity' => 1, 'unit_price' => 10000, 'taxable' => true, 'tax_rate_ids' => [1]],
+        ['quantity' => 1, 'unit_price' => 20000, 'taxable' => true, 'tax_rate_ids' => [1, 2]],
+        ['quantity' => 1, 'unit_price' => 10000, 'taxable' => true, 'tax_rate_ids' => []],
+        ['quantity' => 1, 'unit_price' => 99999, 'taxable' => true, 'tax_rate_ids' => [2], 'included' => false],
+    ], 'percent', 10, [
+        ['tax_rate_id' => 1, 'name' => 'Federal', 'rate' => 5],
+        ['tax_rate_id' => 2, 'name' => 'Regional', 'rate' => 7],
+    ]);
+    expect($totals['subtotal'])->toBe(40000)->and($totals['discount_total'])->toBe(4000)
+        ->and(array_column($totals['taxes'], 'amount'))->toBe([1350, 1260])->and($totals['total'])->toBe(38610);
+});
+
+test('a compound tax uses only the other taxes selected on the same lines', function () {
+    $totals = DocumentTotals::calculate([
+        ['quantity' => 1, 'unit_price' => 10000, 'taxable' => true, 'tax_rate_ids' => [1, 2]],
+        ['quantity' => 1, 'unit_price' => 10000, 'taxable' => true, 'tax_rate_ids' => [2]],
+        ['quantity' => 1, 'unit_price' => 10000, 'taxable' => false, 'tax_rate_ids' => [1, 2]],
+    ], null, 0, [
+        ['tax_rate_id' => 1, 'name' => 'Base tax', 'rate' => 5],
+        ['tax_rate_id' => 2, 'name' => 'Compound', 'rate' => 10, 'compound' => true],
+    ]);
+    expect(array_column($totals['taxes'], 'amount'))->toBe([500, 2050])->and($totals['total'])->toBe(32550);
+});
+
+test('inclusive prices extract each line combination independently', function () {
+    $totals = DocumentTotals::calculate([
+        ['quantity' => 1, 'unit_price' => 11550, 'taxable' => true, 'tax_rate_ids' => [1, 2]],
+        ['quantity' => 1, 'unit_price' => 11000, 'taxable' => true, 'tax_rate_ids' => [2]],
+        ['quantity' => 1, 'unit_price' => 1000, 'taxable' => true, 'tax_rate_ids' => []],
+    ], null, 0, [
+        ['tax_rate_id' => 1, 'name' => 'Base tax', 'rate' => 5],
+        ['tax_rate_id' => 2, 'name' => 'Compound', 'rate' => 10, 'compound' => true],
+    ], pricesIncludeTax: true);
+    expect(array_column($totals['taxes'], 'amount'))->toBe([500, 2050])->and($totals['total'])->toBe(23550);
+});
+
+test('matching selections aggregate before rounding and null inherits document taxes', function () {
+    $totals = DocumentTotals::calculate([
+        ['quantity' => 1, 'unit_price' => 5, 'taxable' => true, 'tax_rate_ids' => [1]],
+        ['quantity' => 1, 'unit_price' => 5, 'taxable' => true, 'tax_rate_ids' => null],
+    ], null, 0, [['tax_rate_id' => 1, 'name' => 'Tax', 'rate' => 5]], minorFactor: 1);
+    expect($totals['tax_total'])->toBe(1)->and($totals['total'])->toBe(11);
+});
