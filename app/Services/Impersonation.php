@@ -60,12 +60,12 @@ class Impersonation
             'company_id' => $company->id,
         ]);
 
+        Auth::guard('web')->login($target);
+        $this->session->regenerate();
+
         app(AuditLogger::class)->record('impersonation.started', $target, [
             'reason' => $reason,
         ], $company->id);
-
-        Auth::guard('web')->login($target);
-        $this->session->regenerate();
 
         return $log;
     }
@@ -82,11 +82,7 @@ class Impersonation
 
         $data = $this->session->get(self::KEY);
 
-        app(AuditLogger::class)->record('impersonation.stopped', Auth::user(), [], $data['company_id']);
-
-        ImpersonationLog::whereKey($data['log_id'])->update(['ended_at' => now()]);
-
-        $this->session->forget(self::KEY);
+        $this->finish();
 
         $superAdmin = User::find($data['impersonator_id']);
 
@@ -101,5 +97,18 @@ class Impersonation
         $this->session->regenerate();
 
         return $superAdmin;
+    }
+
+    /** Close recorded support access on Return to admin or an ordinary logout. */
+    public function finish(): void
+    {
+        if (! $this->isActive()) {
+            return;
+        }
+
+        $data = $this->session->get(self::KEY);
+        app(AuditLogger::class)->record('impersonation.stopped', Auth::user(), [], $data['company_id']);
+        ImpersonationLog::whereKey($data['log_id'])->whereNull('ended_at')->update(['ended_at' => now()]);
+        $this->session->forget(self::KEY);
     }
 }

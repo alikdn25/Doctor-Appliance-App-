@@ -19,11 +19,13 @@ type Filters = { search: string; status: string };
 
 export default function InvoicesIndex({
     invoices,
+    hasInvoices,
     filters,
     statuses,
     outstandingTotals,
 }: {
     invoices: Paginated<DocumentRow>;
+    hasInvoices: boolean;
     filters: Filters;
     statuses: Option[];
     outstandingTotals: { currency: string; amount: number }[];
@@ -107,7 +109,7 @@ export default function InvoicesIndex({
 
                 {invoices.data.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                        {t('invoices.empty')}
+                        {t(hasInvoices ? 'invoices.empty' : 'invoices.first_invoice')}
                     </p>
                 ) : (
                     <DocumentList documents={invoices.data} showCustomer />

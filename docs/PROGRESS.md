@@ -1,3 +1,9 @@
+# October 3 mail/admin supplement — validation in progress
+
+- Operator-managed mail readiness removes confirmation walls while delivery is unavailable, without verifying emails or changing tenant/role permissions. Password recovery and resend stop promising unavailable mail; new staff/Owners can receive manual initial credentials. Enabling tested mail restores confirmation.
+- Empty invoice states distinguish no invoices from filtered results. Administration explains access versus billing and unassigned plans, uses singular counts, separates direct login from support access and labels support/audit times in the company zone. Logout closes support access; unknown historical ends remain explicitly unknown.
+- New comments are recorded in FEEDBACK_MAIL_ADMIN_2026_10_03.md. Automated validation is in progress; PR #12 is still unmerged and server acceptance remains pending.
+
 # October 3 follow-up — code validated; server acceptance pending
 
 - Short Book customer form: name/phone/time, optional address/details, existing-customer search and visible customer preferences; saves customer/job/visit atomically. Calendar empty days and dashboard link to booking.

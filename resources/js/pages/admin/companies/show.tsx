@@ -27,6 +27,8 @@ type Props = {
         plan: string | null;
         subscription_status: string | null;
         timezone: string;
+        timezone_label: string;
+        locale: string;
         currency: string;
         brands_count: number;
         created_at: string;
@@ -38,6 +40,7 @@ type Props = {
         role: string;
         is_active: boolean;
         last_login_at: string | null;
+        last_support_at: string | null;
     }[];
     impersonations: {
         id: number;
@@ -69,6 +72,12 @@ export default function AdminCompanyShow({
     sms,
 }: Props) {
     const t = useTrans();
+    const dates = new Intl.DateTimeFormat(company.locale.replace('_', '-'), {
+        dateStyle: 'medium',
+        timeStyle: 'long',
+        timeZone: company.timezone,
+    });
+    const date = (value: string) => dates.format(new Date(value));
     const form = useForm({
         name: company.name,
         status: company.status,
@@ -102,7 +111,7 @@ export default function AdminCompanyShow({
                             {t('admin.open_workspace')}
                         </Button>
                     }
-                    description={`${company.slug} · ${company.timezone} · ${company.currency} · ${t('admin.companies.brands_count', { count: company.brands_count })}`}
+                    description={`${company.slug} · ${company.timezone_label} · ${company.currency} · ${t(company.brands_count === 1 ? 'admin.companies.brand_count' : 'admin.companies.brands_count', { count: company.brands_count })}`}
                 />
 
                 <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
@@ -123,6 +132,7 @@ export default function AdminCompanyShow({
                         id="status"
                         label={t('admin.fields.status')}
                         error={form.errors.status}
+                        hint={t('admin.access_hint')}
                     >
                         <NativeSelect
                             id="status"
@@ -142,9 +152,11 @@ export default function AdminCompanyShow({
                         id="plan"
                         label={t('admin.fields.plan')}
                         error={form.errors.plan}
+                        hint={t('admin.plan_hint')}
                     >
                         <Input
                             id="plan"
+                            placeholder={t('admin.plan_unassigned')}
                             value={form.data.plan}
                             onChange={(e) =>
                                 form.setData('plan', e.target.value)
@@ -155,6 +167,7 @@ export default function AdminCompanyShow({
                         id="subscription_status"
                         label={t('admin.fields.subscription_status')}
                         error={form.errors.subscription_status}
+                        hint={t('admin.subscription_hint')}
                     >
                         <NativeSelect
                             id="subscription_status"
@@ -166,7 +179,7 @@ export default function AdminCompanyShow({
                                 )
                             }
                         >
-                            <option value="">—</option>
+                            <option value="">{t('admin.subscription_unassigned')}</option>
                             {subscriptionStatuses.map((s) => (
                                 <option key={s.value} value={s.value}>
                                     {s.label}
@@ -213,10 +226,15 @@ export default function AdminCompanyShow({
                                         {m.email} ·{' '}
                                         {m.last_login_at
                                             ? t('admin.last_login', {
-                                                  date: m.last_login_at,
+                                                  date: date(m.last_login_at),
                                               })
                                             : t('admin.never_logged_in')}
                                     </div>
+                                    {m.last_support_at && (
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('admin.last_support', { date: date(m.last_support_at) })}
+                                        </p>
+                                    )}
                                 </div>
                                 <Button
                                     variant="outline"
@@ -236,6 +254,9 @@ export default function AdminCompanyShow({
                     <h2 className="mb-3 text-base font-medium">
                         {t('admin.impersonation_log')}
                     </h2>
+                    <p className="mb-3 text-sm text-muted-foreground">
+                        {t('admin.support_log_hint')} {t('admin.log_timezone', { timezone: company.timezone_label })}
+                    </p>
                     {impersonations.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             {t('admin.none')}
@@ -251,10 +272,10 @@ export default function AdminCompanyShow({
                                         })}
                                     </div>
                                     <div className="text-xs text-muted-foreground">
-                                        {log.started_at} →{' '}
-                                        {log.ended_at ?? t('admin.active')}
-                                        {log.reason && ` · ${log.reason}`}
+                                        {date(log.started_at)} →{' '}
+                                        {log.ended_at ? date(log.ended_at) : t('admin.end_not_recorded')}
                                     </div>
+                                    {log.reason && <p className="mt-1 break-words whitespace-pre-wrap text-xs text-muted-foreground">{t('admin.support_note', { reason: log.reason })}</p>}
                                 </li>
                             ))}
                         </ul>
@@ -265,6 +286,7 @@ export default function AdminCompanyShow({
                     <h2 className="mb-3 text-base font-medium">
                         {t('admin.audit_log')}
                     </h2>
+                    <p className="mb-3 text-xs text-muted-foreground">{t('admin.log_timezone', { timezone: company.timezone_label })}</p>
                     {auditLogs.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             {t('admin.none')}
@@ -283,7 +305,7 @@ export default function AdminCompanyShow({
                                         {log.user ?? '—'}
                                         {log.impersonator &&
                                             ` (${t('admin.via', { name: log.impersonator })})`}
-                                        {` · ${log.created_at}`}
+                                        {` · ${date(log.created_at)}`}
                                     </span>
                                 </li>
                             ))}

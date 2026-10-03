@@ -108,3 +108,41 @@ test('company users cannot impersonate', function () {
 test('stopping without an active impersonation is refused', function () {
     $this->actingAs($this->owner)->delete(route('impersonation.stop'))->assertForbidden();
 });
+
+test('support start records the target and real administrator rather than the administrator twice', function () {
+    $this->actingAs($this->admin)->post(route('admin.companies.impersonate', [$this->company, $this->owner]));
+    $log = AuditLog::where('action', 'impersonation.started')->sole();
+    expect($log->user_id)->toBe($this->owner->id)->and($log->impersonator_id)->toBe($this->admin->id);
+});
+
+test('ordinary logout closes the support record and records its end', function () {
+    $this->actingAs($this->admin)->post(route('admin.companies.impersonate', [$this->company, $this->owner]));
+    $this->post(route('logout'))->assertRedirect(route('home'));
+    $this->assertGuest();
+    expect(ImpersonationLog::sole()->ended_at)->not->toBeNull()
+        ->and(AuditLog::where('action', 'impersonation.stopped')->count())->toBe(1);
+});
+
+test('admin support history distinguishes support access from direct sign-in with unambiguous timestamps', function () {
+    $this->company->update(['timezone' => 'America/Vancouver', 'locale' => 'en-CA']);
+    $support = ImpersonationLog::create([
+        'company_id' => $this->company->id, 'super_admin_id' => $this->admin->id,
+        'impersonated_user_id' => $this->owner->id, 'started_at' => '2026-10-03 15:22:12',
+        'reason' => 'Historical note',
+    ]);
+    AuditLog::create([
+        'company_id' => $this->company->id, 'user_id' => $this->admin->id,
+        'impersonator_id' => $this->admin->id, 'action' => 'impersonation.started',
+    ]);
+    $this->actingAs($this->admin)->get(route('admin.companies.show', $this->company))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('company.timezone', 'America/Vancouver')
+            ->where('company.timezone_label', fn (string $value) => str_contains($value, 'Vancouver, Canada'))
+            ->where('company.locale', 'en-CA')
+            ->where('members.0.last_login_at', null)
+            ->where('members.0.last_support_at', '2026-10-03T15:22:12+00:00')
+            ->where('impersonations.0.started_at', '2026-10-03T15:22:12+00:00')
+            ->where('impersonations.0.ended_at', null)
+            ->where('auditLogs.0.impersonator', null));
+    expect($support->fresh()->ended_at)->toBeNull();
+});

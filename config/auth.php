@@ -3,6 +3,9 @@
 use App\Models\User;
 
 return [
+    // Keep email-dependent entry disabled until the operator has tested delivery.
+    'email_delivery_enabled' => env('AUTH_EMAIL_DELIVERY_ENABLED', false),
+    'email_verification_required' => env('AUTH_EMAIL_VERIFICATION_REQUIRED', true),
 
     /*
     |--------------------------------------------------------------------------

@@ -9,6 +9,7 @@ use App\Models\Membership;
 use App\Models\User;
 use App\Notifications\MemberInvited;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -111,4 +112,29 @@ test('the company page shows members, impersonations and audit log', function ()
             ->where('members.0.name', 'Olive Owner')
             ->has('impersonations', 0)
             ->has('auditLogs'));
+});
+
+test('an administrator can give a new owner usable access without an email provider', function () {
+    config(['auth.email_delivery_enabled' => false]);
+    Notification::fake();
+    $this->actingAs($this->admin)->get(route('admin.companies.create'))->assertInertia(fn (Assert $page) => $page->where('emailAvailable', false));
+    $data = [
+        'name' => 'Manual Company', 'country' => 'CA', 'currency' => 'CAD',
+        'owner_name' => 'Manual Owner', 'owner_email' => 'manual-owner@example.com',
+    ];
+    $this->post(route('admin.companies.store'), $data)->assertSessionHasErrors('owner_password');
+    $this->post(route('admin.companies.store'), [...$data,
+        'owner_password' => 'Owner-password-123!', 'owner_password_confirmation' => 'Owner-password-123!',
+    ])->assertSessionHasNoErrors()->assertRedirect();
+    $owner = User::where('email', $data['owner_email'])->sole();
+    expect(Hash::check('Owner-password-123!', $owner->password))->toBeTrue()
+        ->and($owner->hasVerifiedEmail())->toBeFalse();
+    Notification::assertNothingSent();
+});
+
+test('new owner passwords are not stored in validation old input', function () {
+    config(['auth.email_delivery_enabled' => false]);
+    $this->actingAs($this->admin)->post(route('admin.companies.store'), [
+        'owner_password' => 'Private-password-123!', 'owner_password_confirmation' => 'Private-password-123!',
+    ])->assertSessionHasErrors('name')->assertSessionMissing('_old_input.owner_password')->assertSessionMissing('_old_input.owner_password_confirmation');
 });

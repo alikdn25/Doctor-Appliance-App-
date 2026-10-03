@@ -28,7 +28,7 @@ class CreateCompany
      * Country defaults (currency, regional format, time zone) apply to whatever is not given.
      *
      * @param  array{name: string, country?: string, vertical?: string, timezone?: string|null, currency?: string, locale?: string, plan?: string|null, subscription_status?: string|null}  $data
-     * @param  array{name: string, email: string}  $owner
+     * @param  array{name: string, email: string, password?: string|null}  $owner
      */
     public function handle(array $data, array $owner): Company
     {
@@ -51,7 +51,7 @@ class CreateCompany
             $this->currentCompany->runAs($company, function () use ($company, $owner) {
                 ChecklistTemplate::createDefaults();
                 Service::createDefaults();
-                $this->addMember->handle($company, $owner['name'], $owner['email'], UserRole::Owner);
+                $this->addMember->handle($company, $owner['name'], $owner['email'], UserRole::Owner, initialPassword: $owner['password'] ?? null);
             });
 
             return $company;

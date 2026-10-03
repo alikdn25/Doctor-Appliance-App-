@@ -11,6 +11,7 @@ use App\Http\Requests\Company\MemberRequest;
 use App\Models\Brand;
 use App\Models\Membership;
 use App\Notifications\MemberInvited;
+use App\Support\AccountEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Password;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Validation\ValidationException;
 
 class TeamController extends Controller
 {
@@ -62,6 +64,7 @@ class TeamController extends Controller
             'members' => $members,
             'roles' => $request->user()->hasRole(UserRole::Owner) ? UserRole::assignableOptions() : [['value' => UserRole::Technician->value, 'label' => UserRole::Technician->label()]],
             'brands' => Brand::query()->orderBy('name')->get(['id', 'name']),
+            'emailAvailable' => AccountEmail::deliveryEnabled(),
         ]);
     }
 
@@ -73,6 +76,7 @@ class TeamController extends Controller
             $request->validated('email'),
             $request->role(),
             $request->brandIds(),
+            $request->validated('password'),
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('team.added')]);
@@ -103,6 +107,10 @@ class TeamController extends Controller
     public function resendInvitation(Membership $membership): RedirectResponse
     {
         Gate::authorize('update', $membership);
+
+        if (! AccountEmail::deliveryEnabled()) {
+            throw ValidationException::withMessages(['member' => __('auth.email_unavailable')]);
+        }
 
         $user = $membership->user;
 

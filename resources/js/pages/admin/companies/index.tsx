@@ -62,7 +62,7 @@ export default function AdminCompaniesIndex({
             <div className="p-4">
                 <PageHeader
                     title={t('admin.companies.title')}
-                    description={t('admin.companies.description', {
+                    description={t(companies.total === 1 ? 'admin.companies.description_one' : 'admin.companies.description', {
                         count: companies.total,
                     })}
                     actions={
@@ -131,10 +131,9 @@ export default function AdminCompaniesIndex({
                                         )}
                                     </div>
                                     <div className="text-xs text-muted-foreground">
-                                        {t('admin.companies.usage', {
-                                            brands: company.brands_count,
-                                            members: company.members_count,
-                                        })}
+                                        {t(company.brands_count === 1 ? 'admin.companies.brand_count' : 'admin.companies.brands_count', { count: company.brands_count })}
+                                        {' · '}
+                                        {t(company.members_count === 1 ? 'admin.companies.member_count' : 'admin.companies.members_count', { count: company.members_count })}
                                         {company.subscription_status &&
                                             ` · ${company.subscription_status}`}
                                         {` · ${company.created_at}`}

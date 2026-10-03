@@ -25,6 +25,7 @@ return [
     'outstanding_total' => 'Outstanding: :amount',
     'all_statuses' => 'All invoices',
     'empty' => 'No invoices match your filters.',
+    'first_invoice' => 'No invoices yet. Create your first invoice.',
     'customer' => 'Customer',
     'paid_in_full' => 'Paid in full',
 

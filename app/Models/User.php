@@ -6,6 +6,7 @@ use App\Enums\CompanyStatus;
 use App\Enums\UserRole;
 use App\Models\Scopes\CompanyScope;
 use App\Notifications\VerifyEmail;
+use App\Support\AccountEmail;
 use App\Support\Tenancy\CurrentCompany;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -21,6 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
@@ -58,7 +60,17 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function sendEmailVerificationNotification(): void
     {
+        if (! AccountEmail::deliveryEnabled()) {
+            return;
+        }
+
         $this->notify(new VerifyEmail);
+        Cache::put($this->verificationDeliveryKey(), true, now()->addMinutes(15));
+    }
+
+    public function verificationDeliveryKey(): string
+    {
+        return 'account-verification-sent:'.$this->id.':'.sha1($this->email);
     }
 
     /**

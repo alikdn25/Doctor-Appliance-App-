@@ -6,6 +6,7 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\WorkLoginResponse;
 use App\Models\User;
+use App\Support\AccountEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -67,11 +68,12 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
             'canRegister' => Features::enabled(Features::registration()),
-            'canResetPassword' => Features::enabled(Features::resetPasswords()),
+            'canResetPassword' => AccountEmail::deliveryEnabled() && Features::enabled(Features::resetPasswords()),
             'status' => $request->session()->get('status'),
         ]));
 
         Fortify::registerView(fn () => Inertia::render('auth/register', [
+            'confirmationRequired' => AccountEmail::verificationRequired(),
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
         ]));
 
@@ -88,6 +90,7 @@ class FortifyServiceProvider extends ServiceProvider
         ]));
 
         Fortify::requestPasswordResetLinkView(fn (Request $request) => Inertia::render('auth/forgot-password', [
+            'emailAvailable' => AccountEmail::deliveryEnabled(),
             'status' => $request->session()->get('status'),
         ]));
 

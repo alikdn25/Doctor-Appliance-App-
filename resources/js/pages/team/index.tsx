@@ -40,6 +40,7 @@ type Props = {
     members: Member[];
     roles: Option[];
     brands: { id: number; name: string }[];
+    emailAvailable: boolean;
 };
 
 type MemberForm = {
@@ -48,9 +49,11 @@ type MemberForm = {
     role: string;
     is_active: boolean;
     brand_ids: number[];
+    password: string;
+    password_confirmation: string;
 };
 
-export default function TeamIndex({ members, roles, brands }: Props) {
+export default function TeamIndex({ members, roles, brands, emailAvailable }: Props) {
     const t = useTrans();
     const [editing, setEditing] = useState<Member | null>(null);
     const [open, setOpen] = useState(false);
@@ -61,6 +64,8 @@ export default function TeamIndex({ members, roles, brands }: Props) {
         role: 'technician',
         is_active: true,
         brand_ids: [],
+        password: '',
+        password_confirmation: '',
     });
     const errors = form.errors as Record<string, string | undefined>;
 
@@ -80,6 +85,8 @@ export default function TeamIndex({ members, roles, brands }: Props) {
             role: member.role,
             is_active: member.is_active,
             brand_ids: member.brand_ids,
+            password: '',
+            password_confirmation: '',
         });
         setOpen(true);
     };
@@ -88,7 +95,7 @@ export default function TeamIndex({ members, roles, brands }: Props) {
         e.preventDefault();
         const options = {
             preserveScroll: true,
-            onSuccess: () => setOpen(false),
+            onSuccess: () => { form.reset('password', 'password_confirmation'); setOpen(false); },
         };
 
         if (editing) {
@@ -156,7 +163,7 @@ export default function TeamIndex({ members, roles, brands }: Props) {
                                             {t('common.inactive')}
                                         </Badge>
                                     )}
-                                    {member.invitation_pending && (
+                                    {member.invitation_pending && emailAvailable && (
                                         <Badge variant="secondary">
                                             {t('team.invited')}
                                         </Badge>
@@ -230,7 +237,7 @@ export default function TeamIndex({ members, roles, brands }: Props) {
                         <DialogDescription>
                             {editing
                                 ? editing.email
-                                : t('team.add_description')}
+                                : t(emailAvailable ? 'team.add_description' : 'team.manual_access')}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -269,6 +276,14 @@ export default function TeamIndex({ members, roles, brands }: Props) {
                                         required
                                     />
                                 </FormField>
+                                {!emailAvailable && <>
+                                    <FormField id="password" label={t('team.initial_password')} error={errors.password}>
+                                        <Input id="password" type="password" autoComplete="new-password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} />
+                                    </FormField>
+                                    <FormField id="password_confirmation" label={t('team.confirm_password')} error={errors.password_confirmation}>
+                                        <Input id="password_confirmation" type="password" autoComplete="new-password" value={form.data.password_confirmation} onChange={(e) => form.setData('password_confirmation', e.target.value)} />
+                                    </FormField>
+                                </>}
                             </>
                         )}
 
@@ -337,7 +352,7 @@ export default function TeamIndex({ members, roles, brands }: Props) {
                         <Button type="submit" disabled={form.processing}>
                             {editing
                                 ? t('common.save')
-                                : t('team.send_invitation')}
+                                : t(emailAvailable ? 'team.send_invitation' : 'team.add_without_email')}
                         </Button>
                     </form>
                 </DialogContent>

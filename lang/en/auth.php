@@ -15,6 +15,7 @@ return [
 
     'failed' => 'These credentials do not match our records.',
     'password' => 'The provided password is incorrect.',
+    'email_unavailable' => 'Email delivery is not available yet. Contact your company owner or platform support for help with your account.',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
 
     'fields' => [
@@ -39,7 +40,7 @@ return [
     'register' => [
         'title' => 'Create account',
         'heading' => 'Start with your account',
-        'description' => 'Create your login, confirm your email, then set up your company.',
+        'description' => 'Create your login, then set up your company.',
         'submit' => 'Create account',
         'already_registered' => 'Already have an account?',
     ],
@@ -56,7 +57,7 @@ return [
 
     'forgot' => [
         'title' => 'Forgot password',
-        'description' => 'Enter your email to receive a password reset link',
+        'description' => 'Recover access to your account',
         'submit' => 'Email password reset link',
         'return_to' => 'Or, return to',
         'log_in' => 'log in',

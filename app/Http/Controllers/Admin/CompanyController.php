@@ -16,11 +16,13 @@ use App\Models\Membership;
 use App\Models\SmsAccount;
 use App\Models\SmsRegistration;
 use App\Services\AuditLogger;
+use App\Support\AccountEmail;
 use App\Support\Locale\Countries;
 use App\Support\Locale\Currencies;
 use App\Support\Locale\Timezones;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\TimezoneDatabase;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -71,6 +73,7 @@ class CompanyController extends Controller
     public function create(): Response
     {
         return Inertia::render('admin/companies/create', [
+            'emailAvailable' => AccountEmail::deliveryEnabled(),
             'timezones' => Timezones::options(),
             'countries' => Countries::options(),
             // Currency and regional format each country starts with (both can be changed).
@@ -97,7 +100,7 @@ class CompanyController extends Controller
 
         $company = $createCompany->handle(
             collect($data)->only(['name', 'country', 'vertical', 'timezone', 'currency', 'locale', 'plan', 'subscription_status'])->all(),
-            ['name' => $data['owner_name'], 'email' => $data['owner_email']],
+            ['name' => $data['owner_name'], 'email' => $data['owner_email'], 'password' => $data['owner_password'] ?? null],
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('admin.company_created')]);
@@ -108,6 +111,9 @@ class CompanyController extends Controller
     public function show(Company $company): Response
     {
         $company->loadCount(['brands']);
+        $supportAccess = $company->impersonationLogs()->select('impersonated_user_id')
+            ->selectRaw('max(started_at) as last_support_at')->groupBy('impersonated_user_id')
+            ->pluck('last_support_at', 'impersonated_user_id');
 
         return Inertia::render('admin/companies/show', [
             'company' => [
@@ -118,6 +124,8 @@ class CompanyController extends Controller
                 'plan' => $company->plan,
                 'subscription_status' => $company->subscription_status?->value,
                 'timezone' => $company->timezone,
+                'timezone_label' => collect(Timezones::options())->firstWhere('value', $company->timezone)['label'] ?? $company->timezone,
+                'locale' => $company->locale,
                 'currency' => $company->currency,
                 'country' => $company->country,
                 'vertical' => $company->vertical->label(),
@@ -133,7 +141,8 @@ class CompanyController extends Controller
                     'email' => $m->user->email,
                     'role' => $m->role->label(),
                     'is_active' => $m->is_active,
-                    'last_login_at' => $m->user->last_login_at?->toDateTimeString(),
+                    'last_login_at' => $m->user->last_login_at?->toIso8601String(),
+                    'last_support_at' => $supportAccess->has($m->user_id) ? CarbonImmutable::parse($supportAccess->get($m->user_id), 'UTC')->toIso8601String() : null,
                 ]),
             'impersonations' => $company->impersonationLogs()
                 ->with(['superAdmin', 'impersonatedUser'])
@@ -145,8 +154,8 @@ class CompanyController extends Controller
                     'super_admin' => $log->superAdmin->name,
                     'user' => $log->impersonatedUser->name,
                     'reason' => $log->reason,
-                    'started_at' => $log->started_at->toDateTimeString(),
-                    'ended_at' => $log->ended_at?->toDateTimeString(),
+                    'started_at' => $log->started_at->toIso8601String(),
+                    'ended_at' => $log->ended_at?->toIso8601String(),
                 ]),
             'auditLogs' => $company->auditLogs()
                 ->with(['user', 'impersonator'])
@@ -157,8 +166,8 @@ class CompanyController extends Controller
                     'id' => $log->id,
                     'action' => $log->action,
                     'user' => $log->user?->name,
-                    'impersonator' => $log->impersonator?->name,
-                    'created_at' => $log->created_at->toDateTimeString(),
+                    'impersonator' => $log->impersonator_id !== $log->user_id ? $log->impersonator?->name : null,
+                    'created_at' => $log->created_at->toIso8601String(),
                 ]),
             'statuses' => array_map(
                 fn (CompanyStatus $s) => ['value' => $s->value, 'label' => $s->label()],

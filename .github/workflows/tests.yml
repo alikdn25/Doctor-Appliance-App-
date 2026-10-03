@@ -103,6 +103,8 @@ jobs:
           SESSION_DRIVER: database
           SESSION_SECURE_COOKIE: false
           MAIL_MAILER: log
+          # Browser tests read the logged confirmation link; this is a test-only mail fixture.
+          AUTH_EMAIL_DELIVERY_ENABLED: true
           TWILIO_ACCOUNT_SID: ACbrowser-master
           TWILIO_AUTH_TOKEN: browser-test-token
           TWILIO_BASE_URL: http://127.0.0.1:9001
@@ -112,6 +114,7 @@ jobs:
           php artisan migrate:fresh --force
           php artisan db:seed --class=BrowserSmokeSeeder --force
           npx playwright test
+          AUTH_EMAIL_DELIVERY_ENABLED=false PLAYWRIGHT_HTML_OUTPUT_DIR=playwright-report/mail-unavailable npx playwright test mail-unavailable.spec.ts --output=test-results/mail-unavailable
 
       - name: Upload browser results and screenshots
         if: ${{ !cancelled() && steps.browser.outcome != 'skipped' }}
@@ -136,4 +139,4 @@ jobs:
         run: |
           npm run check:fix || true
           vendor/bin/pint || true
-          git diff -- app config database tests resources routes lang docs vite.config.ts playwright.config.ts
+          git diff -- app bootstrap config database tests resources routes lang docs vite.config.ts playwright.config.ts

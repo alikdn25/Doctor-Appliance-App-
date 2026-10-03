@@ -88,6 +88,7 @@ class InvoiceController extends Controller
 
         return Inertia::render('invoices/index', [
             'invoices' => $invoices,
+            'hasInvoices' => (clone $base)->exists(),
             'filters' => $filters,
             'statuses' => InvoiceStatus::options(),
             // One sum per currency: documents keep the currency they were created in.

@@ -10,7 +10,7 @@ import { login } from '@/routes';
 import { useTrans } from '@/lib/i18n';
 import { email } from '@/routes/password';
 
-export default function ForgotPassword({ status }: { status?: string }) {
+export default function ForgotPassword({ status, emailAvailable }: { status?: string; emailAvailable: boolean }) {
     const t = useTrans();
 
     return (
@@ -24,7 +24,8 @@ export default function ForgotPassword({ status }: { status?: string }) {
             )}
 
             <div className="space-y-6">
-                <Form {...email.form()}>
+                {!emailAvailable && <p className="rounded-xl border bg-muted p-4 text-sm">{t('auth.email_unavailable')}</p>}
+                {emailAvailable && <Form {...email.form()}>
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-2">
@@ -57,7 +58,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                             </div>
                         </>
                     )}
-                </Form>
+                </Form>}
 
                 <div className="space-x-1 text-center text-sm text-muted-foreground">
                     <span>{t('auth.forgot.return_to')}</span>

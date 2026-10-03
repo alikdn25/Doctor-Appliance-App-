@@ -8,6 +8,7 @@ use App\Enums\Vertical;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Onboarding\CompanyRequest;
 use App\Models\User;
+use App\Support\AccountEmail;
 use App\Support\Locale\Countries;
 use App\Support\Locale\Currencies;
 use App\Support\Locale\Timezones;
@@ -30,6 +31,7 @@ class CompanyController extends Controller
         $country = (string) config('fieldservice.default_country');
 
         return Inertia::render('onboarding/company', [
+            'confirmationRequired' => AccountEmail::verificationRequired(),
             'countries' => Countries::options(),
             'currencies' => Currencies::options(),
             'locales' => Countries::localeOptions(),
@@ -55,7 +57,7 @@ class CompanyController extends Controller
         DB::transaction(function () use ($request, $createCompany, $currentCompany, $saveBrand) {
             // Serialize setup for this account; repeated or concurrent submissions cannot create two companies.
             $user = User::query()->whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
-            abort_unless($user->hasVerifiedEmail(), 403);
+            abort_if(AccountEmail::verificationRequired() && ! $user->hasVerifiedEmail(), 403);
             if ($user->memberships()->exists()) {
                 return;
             }

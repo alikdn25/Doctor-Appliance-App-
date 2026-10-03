@@ -9,10 +9,12 @@ use App\Models\User;
 use App\Notifications\AddedToCompany;
 use App\Notifications\MemberInvited;
 use App\Services\AuditLogger;
+use App\Support\AccountEmail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 
 /**
  * Adds a person to a company. Emails are unique platform-wide: an existing user
@@ -29,11 +31,11 @@ class AddMember
     /**
      * @param  list<int>  $brandIds
      */
-    public function handle(Company $company, string $name, string $email, UserRole $role, array $brandIds = []): Membership
+    public function handle(Company $company, string $name, string $email, UserRole $role, array $brandIds = [], ?string $initialPassword = null): Membership
     {
         $email = Str::lower(trim($email));
 
-        return DB::transaction(function () use ($company, $name, $email, $role, $brandIds) {
+        return DB::transaction(function () use ($company, $name, $email, $role, $brandIds, $initialPassword) {
             $user = User::withTrashed()->where('email', $email)->first();
 
             if ($user?->isSuperAdmin() && ! ($user->id === auth()->id() && $role === UserRole::Owner)) {
@@ -47,10 +49,13 @@ class AddMember
             $isNew = $user === null;
 
             if ($isNew) {
+                if (! AccountEmail::deliveryEnabled()) {
+                    validator(['password' => $initialPassword], ['password' => ['required', 'string', PasswordRule::defaults()]])->validate();
+                }
                 $user = User::create([
                     'name' => $name,
                     'email' => $email,
-                    'password' => Str::password(32),
+                    'password' => AccountEmail::deliveryEnabled() ? Str::password(32) : $initialPassword,
                 ]);
             } elseif ($user->trashed()) {
                 $user->restore();
@@ -72,6 +77,9 @@ class AddMember
             ], $company->id);
 
             DB::afterCommit(function () use ($user, $company, $isNew) {
+                if (! AccountEmail::deliveryEnabled()) {
+                    return;
+                }
                 $isNew
                     ? $user->notify(new MemberInvited($company->name, Password::broker()->createToken($user)))
                     : $user->notify(new AddedToCompany($company->name));

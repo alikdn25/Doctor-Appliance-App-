@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ThrottleRegistration;
+use App\Http\Middleware\HandleAccountEmail;
 use Laravel\Fortify\Features;
 
 return [
@@ -102,7 +103,7 @@ return [
     |
     */
 
-    'middleware' => ['web', ThrottleRegistration::class],
+    'middleware' => ['web', ThrottleRegistration::class, HandleAccountEmail::class],
 
     /*
     |--------------------------------------------------------------------------

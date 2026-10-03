@@ -11,6 +11,7 @@ import { index, store } from '@/routes/admin/companies';
 import type { Option } from '@/types';
 
 type Props = {
+    emailAvailable: boolean;
     timezones: Option[];
     countries: Option[];
     countryDefaults: Record<string, { currency: string; locale: string }>;
@@ -28,6 +29,7 @@ type Props = {
 };
 
 export default function AdminCompanyCreate({
+    emailAvailable,
     timezones,
     countries,
     countryDefaults,
@@ -49,11 +51,13 @@ export default function AdminCompanyCreate({
         subscription_status: 'trialing',
         owner_name: '',
         owner_email: '',
+        owner_password: '',
+        owner_password_confirmation: '',
     });
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
-        form.post(store().url);
+        form.post(store().url, { onSuccess: () => form.reset('owner_password', 'owner_password_confirmation') });
     };
 
     return (
@@ -252,6 +256,16 @@ export default function AdminCompanyCreate({
                         required
                     />
                 </FormField>
+
+                {!emailAvailable && <>
+                    <p className="text-sm text-muted-foreground">{t('team.manual_access')}</p>
+                    <FormField id="owner_password" label={t('team.initial_password')} error={form.errors.owner_password}>
+                        <Input id="owner_password" type="password" autoComplete="new-password" value={form.data.owner_password} onChange={(e) => form.setData('owner_password', e.target.value)} />
+                    </FormField>
+                    <FormField id="owner_password_confirmation" label={t('team.confirm_password')} error={form.errors.owner_password_confirmation}>
+                        <Input id="owner_password_confirmation" type="password" autoComplete="new-password" value={form.data.owner_password_confirmation} onChange={(e) => form.setData('owner_password_confirmation', e.target.value)} />
+                    </FormField>
+                </>}
 
                 <Button
                     type="submit"
