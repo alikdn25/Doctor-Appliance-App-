@@ -36,6 +36,8 @@ class WorkspaceController extends Controller
             if ($membership) {
                 abort_unless($membership->is_active, 403);
             } else {
+                // A workspace is chosen once. Other companies' data is reached only through audited support access.
+                abort_if($user->memberships()->exists(), 403);
                 $context->runAs($company, fn () => Membership::create(['company_id' => $company->id, 'user_id' => $user->id, 'role' => UserRole::Owner, 'is_active' => true]));
                 $audit->record('workspace.joined', $company, ['user_id' => $user->id], $company->id);
             }

@@ -38,6 +38,15 @@ test('ordinary accounts cannot self-grant a company workspace and suspended work
     $this->actingAs(User::factory()->superAdmin()->create())->post(route('admin.companies.workspace', Company::factory()->suspended()->create()))->assertForbidden();
 });
 
+test('a platform admin with a workspace cannot join another tenant as its owner', function () {
+    $admin = User::factory()->superAdmin()->create();
+    $own = Company::factory()->create();
+    $other = Company::factory()->create();
+    $this->actingAs($admin)->post(route('admin.companies.workspace', $own))->assertRedirect(route('dashboard'));
+    $this->post(route('admin.companies.workspace', $other))->assertForbidden();
+    expect($admin->memberships()->pluck('company_id')->all())->toBe([$own->id]);
+});
+
 test('an office admin can open Members and manage technicians without promoting themselves or editing owners', function () {
     $company = Company::factory()->create();
     $admin = memberOf($company, UserRole::Admin);

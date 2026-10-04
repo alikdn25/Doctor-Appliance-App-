@@ -1,3 +1,10 @@
+# October 4 review of the October 2–3 changes — one fix
+
+- Reviewed everything merged since 5a54896 (PRs #11 and #12): tenant scoping of new models, policies, private purchase costs, per-line taxes, signup/onboarding, mail readiness, member transfer/replacement, SMS inbox, expenses. No hard-coded country/currency in application code; every frontend translation key exists in lang/en.
+- Fixed: a platform admin who already had a working company could still POST to `admin/companies/{company}/workspace` and become Owner of any other active tenant. Workspace selection is now one-time on the server too; other tenants are reached only through audited support access. Regression test added in WorkEntryTest.
+- Local run: build, PHP style, frontend lint/format, TypeScript clean; 740 of 741 backend tests pass. The one local failure is DeploymentCheckTest because this container lacks the bcmath PHP extension (CI and the server have it).
+- Next: unchanged — install main on the VPS per SERVER_HANDOFF.md and verify login and mail there.
+
 # October 3 login unblock — merged; VPS installation pending
 
 - PR #12 is merged into main at b3a96c2ad0009a591466e1b9c18f9c122b6b8a07. Its tree matches validated head 3fc1682d327be0f3fe191592e9487d400c647f64; that full workflow passed 740 backend tests and 40 desktop/mobile browser scenarios. No application code changed during this integration.
