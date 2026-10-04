@@ -12,13 +12,13 @@ class PropertyPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->managesCustomers($user);
+        return $this->seesCustomers($user);
     }
 
     public function view(User $user, Property $property): bool
     {
         return $this->inCurrentCompany($property)
-            && ($this->managesCustomers($user) || $this->seesThroughJobs($user, fn ($q) => $q->where('property_id', $property->id)));
+            && ($this->seesCustomers($user) || $this->seesThroughJobs($user, fn ($q) => $q->where('property_id', $property->id)));
     }
 
     public function create(User $user): bool

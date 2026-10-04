@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Accounting;
 
 use App\Actions\Accounting\SaveBusinessExpense;
-use App\Enums\UserRole;
+use App\Enums\OfficePermission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Accounting\BusinessExpenseRequest;
 use App\Models\BusinessExpense;
@@ -40,7 +40,7 @@ class BusinessExpenseController extends Controller
                 'tax' => (int) $total->tax, 'total' => (int) $total->total,
             ])->sortBy('currency')->values(),
         ]);
-        $companyView = $request->user()->hasRole(UserRole::Owner, UserRole::Admin);
+        $companyView = $request->user()->canOffice(OfficePermission::Expenses);
         $employees = $companyView ? Membership::query()->with('user')->get()
             ->filter(fn (Membership $member) => $member->user !== null)
             ->map(fn (Membership $member) => ['id' => $member->user_id, 'name' => $member->user->name])
@@ -199,7 +199,7 @@ class BusinessExpenseController extends Controller
         validator(['from' => $from, 'to' => $to], ['to' => ['after_or_equal:from']])->validate();
 
         return ['from' => $from, 'to' => $to, 'category' => (string) ($data['category'] ?? ''), 'search' => trim($data['search'] ?? ''),
-            'employee' => $request->user()->hasRole(UserRole::Owner, UserRole::Admin) ? (string) ($data['employee'] ?? '') : '',
+            'employee' => $request->user()->canOffice(OfficePermission::Expenses) ? (string) ($data['employee'] ?? '') : '',
         ];
     }
 

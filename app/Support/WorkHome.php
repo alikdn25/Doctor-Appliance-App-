@@ -2,12 +2,14 @@
 
 namespace App\Support;
 
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Models\Company;
 use App\Models\User;
 
 /**
- * Where work opens: the office goes straight to the calendar to look and book, technicians to My jobs.
+ * Where work opens: whoever schedules goes straight to the calendar to look and book, technicians to My jobs,
+ * an Office member without scheduling to the dashboard.
  */
 class WorkHome
 {
@@ -15,9 +17,11 @@ class WorkHome
     {
         $company ??= $user->accessibleCompanies()->firstWhere('id', $user->current_company_id) ?? $user->accessibleCompanies()->first();
 
-        return match ($company ? $user->membershipFor($company)?->role : null) {
-            UserRole::Owner, UserRole::Admin => route('calendar', absolute: false),
-            UserRole::Technician => route('jobs.mine', absolute: false),
+        $membership = $company ? $user->membershipFor($company) : null;
+
+        return match (true) {
+            $membership?->role === UserRole::Technician => route('jobs.mine', absolute: false),
+            (bool) $membership?->allows(OfficePermission::Schedule) => route('calendar', absolute: false),
             default => route('dashboard', absolute: false),
         };
     }

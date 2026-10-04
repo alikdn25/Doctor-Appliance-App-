@@ -140,6 +140,8 @@ type Props = {
         update: boolean;
         delete: boolean;
         work: boolean;
+        estimate: boolean;
+        invoice: boolean;
         close: boolean;
         viewCustomer: boolean;
     };
@@ -797,18 +799,22 @@ export default function JobShow({
                             <Receipt className="size-4" />
                             {t('billing.section')}
                         </h2>
-                        {can.work && (
+                        {(can.estimate || can.invoice) && (
                             <div className="flex gap-2">
-                                <Button variant="outline" size="sm" asChild>
-                                    <Link href={createEstimate(job.id)}>
-                                        <Plus /> {t('billing.new_estimate')}
-                                    </Link>
-                                </Button>
-                                <Button size="sm" asChild>
-                                    <Link href={createInvoice(job.id)}>
-                                        <Plus /> {t('billing.new_invoice')}
-                                    </Link>
-                                </Button>
+                                {can.estimate && (
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link href={createEstimate(job.id)}>
+                                            <Plus /> {t('billing.new_estimate')}
+                                        </Link>
+                                    </Button>
+                                )}
+                                {can.invoice && (
+                                    <Button size="sm" asChild>
+                                        <Link href={createInvoice(job.id)}>
+                                            <Plus /> {t('billing.new_invoice')}
+                                        </Link>
+                                    </Button>
+                                )}
                             </div>
                         )}
                     </div>

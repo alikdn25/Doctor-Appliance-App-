@@ -28,6 +28,7 @@ export default function Reports({
     from,
     to,
     currency,
+    showProfit,
     totals,
     byTechnician,
     byAppliance,
@@ -38,7 +39,8 @@ export default function Reports({
     from: string;
     to: string;
     currency: string;
-    totals: Profit;
+    showProfit: boolean;
+    totals: Profit | null;
     business: BusinessReportData;
     byTechnician: (Profit & { name: string })[];
     byAppliance: (Profit & { name: string })[];
@@ -179,63 +181,68 @@ export default function Reports({
 
                 <BusinessReport data={business} />
 
-                <section className="space-y-3">
-                    <h2 className="text-base font-medium">
-                        {t('reports.profit_title')}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                        {t('reports.profit_currency_hint', { currency })}
-                    </p>
-                    {totals.jobs === 0 ? (
+                {showProfit && totals && (
+                    <section className="space-y-3">
+                        <h2 className="text-base font-medium">
+                            {t('reports.profit_title')}
+                        </h2>
                         <p className="text-sm text-muted-foreground">
-                            {t('reports.empty')}
+                            {t('reports.profit_currency_hint', { currency })}
                         </p>
-                    ) : (
-                        <>
-                            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                {(
-                                    [
+                        {totals.jobs === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                {t('reports.empty')}
+                            </p>
+                        ) : (
+                            <>
+                                <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    {(
                                         [
-                                            'reports.revenue',
-                                            money(totals.revenue),
-                                        ],
-                                        [
-                                            'reports.cost',
-                                            totals.cost === null
-                                                ? t('billing.private_cost')
-                                                : money(totals.cost),
-                                        ],
-                                        ['reports.fees', money(totals.fees)],
-                                        [
-                                            'reports.profit',
-                                            `${totals.profit === null ? t('billing.private_cost') : money(totals.profit)} · ${pct(totals.margin)}`,
-                                        ],
-                                    ] as const
-                                ).map(([label, value]) => (
-                                    <div
-                                        key={label}
-                                        className="rounded-lg border p-3"
-                                    >
-                                        <dt className="text-xs text-muted-foreground">
-                                            {t(label)}
-                                        </dt>
-                                        <dd className="text-lg font-semibold tabular-nums">
-                                            {value}
-                                        </dd>
-                                    </div>
-                                ))}
-                            </dl>
-                            {profitTable(
-                                t('reports.by_technician'),
-                                byTechnician,
-                            )}
-                            {profitTable(
-                                t('reports.by_appliance'),
-                                byAppliance,
-                            )}
-                        </>
-                    )}
-                </section>
+                                            [
+                                                'reports.revenue',
+                                                money(totals.revenue),
+                                            ],
+                                            [
+                                                'reports.cost',
+                                                totals.cost === null
+                                                    ? t('billing.private_cost')
+                                                    : money(totals.cost),
+                                            ],
+                                            [
+                                                'reports.fees',
+                                                money(totals.fees),
+                                            ],
+                                            [
+                                                'reports.profit',
+                                                `${totals.profit === null ? t('billing.private_cost') : money(totals.profit)} · ${pct(totals.margin)}`,
+                                            ],
+                                        ] as const
+                                    ).map(([label, value]) => (
+                                        <div
+                                            key={label}
+                                            className="rounded-lg border p-3"
+                                        >
+                                            <dt className="text-xs text-muted-foreground">
+                                                {t(label)}
+                                            </dt>
+                                            <dd className="text-lg font-semibold tabular-nums">
+                                                {value}
+                                            </dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                                {profitTable(
+                                    t('reports.by_technician'),
+                                    byTechnician,
+                                )}
+                                {profitTable(
+                                    t('reports.by_appliance'),
+                                    byAppliance,
+                                )}
+                            </>
+                        )}
+                    </section>
+                )}
 
                 <section className="space-y-3">
                     <h2 className="text-base font-medium">
@@ -266,11 +273,16 @@ export default function Reports({
                         {t('reports.no_charge_title')}
                     </h2>
                     <p className="text-sm">
-                        {t('reports.count')}: {noCharge.count} ·{' '}
-                        {t('reports.loss')}:{' '}
-                        {noCharge.loss === null
-                            ? t('billing.private_cost')
-                            : money(noCharge.loss)}
+                        {t('reports.count')}: {noCharge.count}
+                        {showProfit && (
+                            <>
+                                {' '}
+                                · {t('reports.loss')}:{' '}
+                                {noCharge.loss === null
+                                    ? t('billing.private_cost')
+                                    : money(noCharge.loss)}
+                            </>
+                        )}
                     </p>
                     <ul className="divide-y rounded-lg border text-sm">
                         {noCharge.byTechnician.map((r) => (
@@ -280,51 +292,52 @@ export default function Reports({
                             >
                                 <span>{r.name}</span>
                                 <span className="tabular-nums">
-                                    {r.count} ·{' '}
-                                    {r.loss === null
-                                        ? t('billing.private_cost')
-                                        : money(r.loss)}
+                                    {r.count}
+                                    {showProfit &&
+                                        ` · ${r.loss === null ? t('billing.private_cost') : money(r.loss)}`}
                                 </span>
                             </li>
                         ))}
                     </ul>
                 </section>
 
-                <section className="space-y-2">
-                    <h2 className="text-base font-medium">
-                        {t('reports.exports')}
-                    </h2>
-                    <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" asChild>
-                            <a
-                                href={
-                                    expenses({
-                                        query: {
-                                            from: period.from,
-                                            to: period.to,
-                                        },
-                                    }).url
-                                }
-                            >
-                                <Download /> {t('reports.expenses_csv')}
-                            </a>
-                        </Button>
-                        <Button variant="outline" asChild>
-                            <a
-                                href={
-                                    receipts({
-                                        query: {
-                                            from: period.from,
-                                            to: period.to,
-                                        },
-                                    }).url
-                                }
-                            >
-                                <Download /> {t('reports.receipts_zip')}
-                            </a>
-                        </Button>
-                    </div>
-                </section>
+                {showProfit && (
+                    <section className="space-y-2">
+                        <h2 className="text-base font-medium">
+                            {t('reports.exports')}
+                        </h2>
+                        <div className="flex flex-wrap gap-2">
+                            <Button variant="outline" asChild>
+                                <a
+                                    href={
+                                        expenses({
+                                            query: {
+                                                from: period.from,
+                                                to: period.to,
+                                            },
+                                        }).url
+                                    }
+                                >
+                                    <Download /> {t('reports.expenses_csv')}
+                                </a>
+                            </Button>
+                            <Button variant="outline" asChild>
+                                <a
+                                    href={
+                                        receipts({
+                                            query: {
+                                                from: period.from,
+                                                to: period.to,
+                                            },
+                                        }).url
+                                    }
+                                >
+                                    <Download /> {t('reports.receipts_zip')}
+                                </a>
+                            </Button>
+                        </div>
+                    </section>
+                )}
             </div>
         </>
     );

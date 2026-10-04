@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Models\BusinessExpense;
 use App\Models\User;
@@ -24,7 +25,7 @@ class BusinessExpensePolicy
     public function view(User $user, BusinessExpense $expense): bool
     {
         return $this->inCurrentCompany($expense) && $this->viewAny($user)
-            && ($user->hasRole(UserRole::Owner, UserRole::Admin) || $expense->created_by === $user->id);
+            && ($user->canOffice(OfficePermission::Expenses) || $expense->created_by === $user->id);
     }
 
     public function update(User $user, BusinessExpense $expense): bool

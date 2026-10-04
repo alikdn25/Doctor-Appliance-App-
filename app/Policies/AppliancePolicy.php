@@ -12,13 +12,13 @@ class AppliancePolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->managesCustomers($user);
+        return $this->seesCustomers($user);
     }
 
     public function view(User $user, Appliance $appliance): bool
     {
         return $this->inCurrentCompany($appliance)
-            && ($this->managesCustomers($user) || $this->seesThroughJobs($user, fn ($q) => $q->where('property_id', $appliance->property_id)));
+            && ($this->seesCustomers($user) || $this->seesThroughJobs($user, fn ($q) => $q->where('property_id', $appliance->property_id)));
     }
 
     public function create(User $user): bool

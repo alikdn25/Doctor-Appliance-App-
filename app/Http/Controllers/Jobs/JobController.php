@@ -333,6 +333,8 @@ class JobController extends Controller
                 'update' => $canUpdate,
                 'delete' => Gate::allows('delete', $job),
                 'work' => Gate::allows('work', $job),
+                'estimate' => Gate::allows('estimate', $job),
+                'invoice' => Gate::allows('invoice', $job),
                 'close' => Gate::allows('work', $job) && $job->status !== JobStatus::Cancelled && ! $job->trashed(),
                 'viewCustomer' => Gate::allows('view', $job->customer),
             ],

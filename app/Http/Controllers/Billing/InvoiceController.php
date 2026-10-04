@@ -42,7 +42,7 @@ class InvoiceController extends Controller
         return Inertia::render('invoices/start', [
             'search' => $search,
             'jobs' => $base->search($search)->with('customer')->orderByDesc('id')->limit(25)->get()
-                ->filter(fn (ServiceJob $job) => Gate::allows('work', $job))
+                ->filter(fn (ServiceJob $job) => Gate::allows('invoice', $job))
                 ->map(fn (ServiceJob $job) => [
                     'id' => $job->id,
                     'number' => $job->number,
@@ -104,7 +104,7 @@ class InvoiceController extends Controller
 
     public function create(Request $request, ServiceJob $job): Response
     {
-        Gate::authorize('work', $job);
+        Gate::authorize('invoice', $job);
 
         // Due date from the customer's payment terms (or the company default), editable on the form.
         $terms = $job->customer()->withTrashed()->first()?->paymentTerms() ?? currentCompany()->default_payment_terms;
@@ -171,7 +171,7 @@ class InvoiceController extends Controller
 
     public function store(DocumentRequest $request, ServiceJob $job, SaveBillingDocument $save): RedirectResponse
     {
-        Gate::authorize('work', $job);
+        Gate::authorize('invoice', $job);
 
         $invoice = $save->createInvoice($job, $request->document(), $request->user());
 

@@ -104,12 +104,12 @@ export function AppSidebar() {
                   icon: MessageSquare,
                   badge: unreadMessages ?? 0,
               },
-              can.viewInvoices && {
+              can.viewReports && {
                   title: 'nav.reports',
                   href: reports(),
                   icon: BarChart3,
               },
-              can.viewInvoices && {
+              can.viewReports && {
                   title: 'nav.cash',
                   href: cash(),
                   icon: Banknote,

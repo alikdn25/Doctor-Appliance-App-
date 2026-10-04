@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\OfficePermission;
 use App\Models\Payment;
 use App\Models\User;
 use App\Policies\Concerns\AccessesJobs;
@@ -18,6 +19,6 @@ class PaymentPolicy
         return $this->inCurrentCompany($payment)
             && ! $payment->isVoid()
             && $payment->provider === null
-            && $this->managesJob($user, $payment->invoice->job);
+            && $this->managesJob($user, $payment->invoice->job, OfficePermission::Invoices);
     }
 }

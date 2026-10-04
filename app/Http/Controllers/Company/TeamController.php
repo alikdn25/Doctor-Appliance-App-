@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Company;
 use App\Actions\Members\AddMember;
 use App\Actions\Members\RemoveMember;
 use App\Actions\Members\UpdateMember;
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\MemberRequest;
@@ -55,6 +56,7 @@ class TeamController extends Controller
                 'role_label' => $m->role->label(),
                 'is_active' => $m->is_active,
                 'brand_ids' => $brandLinks->get($m->user_id, []),
+                'permissions' => $m->officePermissions(),
                 'invitation_pending' => $m->user->last_login_at === null && in_array($m->user->email, $pendingEmails, true),
                 'is_self' => $m->user_id === $request->user()->id,
                 'can_manage' => $request->user()->can('update', $m),
@@ -64,13 +66,14 @@ class TeamController extends Controller
             'members' => $members,
             'roles' => $request->user()->hasRole(UserRole::Owner) ? UserRole::assignableOptions() : [['value' => UserRole::Technician->value, 'label' => UserRole::Technician->label()]],
             'brands' => Brand::query()->orderBy('name')->get(['id', 'name']),
+            'permissions' => $request->user()->hasRole(UserRole::Owner) ? OfficePermission::options() : [],
             'emailAvailable' => AccountEmail::deliveryEnabled(),
         ]);
     }
 
     public function store(MemberRequest $request, AddMember $addMember): RedirectResponse
     {
-        $addMember->handle(
+        $membership = $addMember->handle(
             currentCompany(),
             $request->validated('name'),
             $request->validated('email'),
@@ -78,6 +81,9 @@ class TeamController extends Controller
             $request->brandIds(),
             $request->validated('password'),
         );
+        if ($membership->role === UserRole::Admin && $request->permissions() !== null) {
+            $membership->update(['permissions' => $request->permissions()]);
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('team.added')]);
 
@@ -86,7 +92,8 @@ class TeamController extends Controller
 
     public function update(MemberRequest $request, Membership $membership, UpdateMember $update): RedirectResponse
     {
-        $update->handle($membership, $request->role(), $request->boolean('is_active'), $request->brandIds());
+        $update->handle($membership, $request->role(), $request->boolean('is_active'), $request->brandIds(),
+            $request->role() === UserRole::Admin ? ($request->has('permissions') ? $request->permissions() : $membership->permissions) : null);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('team.updated')]);
 

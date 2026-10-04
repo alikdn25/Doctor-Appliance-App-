@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\UserRole;
+use App\Enums\OfficePermission;
 use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -44,7 +44,7 @@ class BusinessExpense extends Model
     /** @param Builder<self> $query */
     public function scopeVisibleTo(Builder $query, User $user): void
     {
-        if (! $user->hasRole(UserRole::Owner, UserRole::Admin)) {
+        if (! $user->canOffice(OfficePermission::Expenses)) {
             $query->where('created_by', $user->id);
         }
     }

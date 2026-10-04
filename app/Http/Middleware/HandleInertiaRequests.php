@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\OfficePermission;
+use App\Enums\UserRole;
 use App\Messaging\SmsInbox;
 use App\Models\Brand;
 use App\Models\BusinessExpense;
@@ -109,6 +111,7 @@ class HandleInertiaRequests extends Middleware
                 'viewBusinessExpenses' => $user->can('viewAny', BusinessExpense::class),
                 'viewJobs' => $user->can('viewAny', ServiceJob::class),
                 'viewInvoices' => $user->can('viewAny', Invoice::class),
+                'viewReports' => $user->hasRole(UserRole::Owner, UserRole::Admin) && $user->canOffice(OfficePermission::Reports),
                 'viewMyJobs' => $user->can('viewMine', ServiceJob::class),
                 'viewCalendar' => $user->can('dispatch', ServiceJob::class),
                 'manageChecklists' => $user->can('manage', ChecklistTemplate::class),

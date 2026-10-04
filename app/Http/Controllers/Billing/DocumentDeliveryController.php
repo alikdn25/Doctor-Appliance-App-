@@ -70,7 +70,7 @@ class DocumentDeliveryController extends Controller
      */
     private function sms(Request $request, Estimate|Invoice $document, Messenger $messenger): RedirectResponse
     {
-        Gate::authorize('view', $document);
+        Gate::authorize('send', $document);
         abort_unless(currentCompany()->sms_mode === SmsMode::Automatic, 404);
 
         $document->loadMissing(['customer', 'job']);
@@ -107,7 +107,7 @@ class DocumentDeliveryController extends Controller
 
     private function send(Request $request, Estimate|Invoice $document, SendDocument $send): RedirectResponse
     {
-        Gate::authorize('view', $document);
+        Gate::authorize('send', $document);
 
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255'],

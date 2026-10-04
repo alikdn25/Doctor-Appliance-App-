@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Models\ServiceJob;
 use App\Models\User;
@@ -32,7 +33,7 @@ class ServiceJobPolicy
      */
     public function dispatch(User $user): bool
     {
-        return $this->isOffice($user);
+        return $this->isOffice($user) && $user->canOffice(OfficePermission::Schedule);
     }
 
     public function view(User $user, ServiceJob $job): bool
@@ -42,7 +43,7 @@ class ServiceJobPolicy
 
     public function create(User $user): bool
     {
-        return $this->isOffice($user);
+        return $this->isOffice($user) && $user->canOffice(OfficePermission::Schedule);
     }
 
     public function update(User $user, ServiceJob $job): bool
@@ -76,7 +77,19 @@ class ServiceJobPolicy
 
     public function viewTrash(User $user): bool
     {
-        return $this->isOffice($user);
+        return $this->isOffice($user) && $user->canOffice(OfficePermission::Schedule);
+    }
+
+    /** New estimates on the job. */
+    public function estimate(User $user, ServiceJob $job): bool
+    {
+        return $this->billsJob($user, $job, OfficePermission::Estimates);
+    }
+
+    /** New invoices on the job. */
+    public function invoice(User $user, ServiceJob $job): bool
+    {
+        return $this->billsJob($user, $job, OfficePermission::Invoices);
     }
 
     /**

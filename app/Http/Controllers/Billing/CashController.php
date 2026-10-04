@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Billing;
 
 use App\Actions\Billing\CashLedger;
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
@@ -100,6 +101,6 @@ class CashController extends Controller
 
     private function authorizeOffice(User $user): void
     {
-        abort_unless($user->hasRole(UserRole::Owner, UserRole::Admin), 403);
+        abort_unless($user->hasRole(UserRole::Owner, UserRole::Admin) && $user->canOffice(OfficePermission::Reports), 403);
     }
 }
