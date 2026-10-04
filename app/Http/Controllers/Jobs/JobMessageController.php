@@ -40,7 +40,14 @@ class JobMessageController extends Controller
      */
     public function opened(Request $request, ServiceJob $job, Messenger $messenger, ReviewRequests $reviews, MarkEstimateSent $markSent): RedirectResponse
     {
-        Gate::authorize('work', $job);
+        // Document links and review requests go with the right to send those documents (e.g. an Office member who
+        // only invoices); every other text needs field work on the job.
+        $ability = match ($request->input('kind')) {
+            MessageKind::EstimateLink->value => 'estimate',
+            MessageKind::InvoiceLink->value, MessageKind::ReviewRequest->value => 'invoice',
+            default => 'work',
+        };
+        abort_unless(Gate::allows($ability, $job) || Gate::allows('work', $job), 403);
 
         $data = $request->validate([
             'kind' => ['required', Rule::in(array_map(fn (MessageKind $k) => $k->value, MessageKind::templated()))],
@@ -66,7 +73,7 @@ class JobMessageController extends Controller
      */
     public function reviewRequest(Request $request, ServiceJob $job, ReviewRequests $reviews): RedirectResponse
     {
-        Gate::authorize('work', $job);
+        abort_unless(Gate::allows('invoice', $job) || Gate::allows('work', $job), 403);
         abort_if(currentCompany()->sms_mode === SmsMode::TechnicianPhone, 404);
 
         $id = $request->validate(['location_id' => ['required', 'integer']])['location_id'];

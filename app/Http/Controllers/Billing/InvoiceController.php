@@ -200,7 +200,7 @@ class InvoiceController extends Controller
             'delivery' => BillingPresenter::delivery($invoice),
             'sms' => $invoice->isVoid() ? null : app(MessagingPresenter::class)->forDocument($invoice),
             // The review request belongs to the end of the work: after payment, with the receipt.
-            'review' => $invoice->status === InvoiceStatus::Paid && $invoice->job && Gate::allows('work', $invoice->job)
+            'review' => $invoice->status === InvoiceStatus::Paid && $invoice->job && (Gate::allows('invoice', $invoice->job) || Gate::allows('work', $invoice->job))
                 ? app(MessagingPresenter::class)->review($invoice->job) : null,
         ]);
     }

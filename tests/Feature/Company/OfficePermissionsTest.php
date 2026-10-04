@@ -176,3 +176,10 @@ test('a new Office member can be added with chosen areas', function () {
         ->and($membership->allows(OfficePermission::Invoices))->toBeFalse();
     expect(User::where('email', 'dispatch@example.com')->exists())->toBeTrue();
 });
+
+test('an Office member who only invoices can text the invoice link and the review request from a phone', function () {
+    allowOnly([OfficePermission::Invoices]);
+    $this->post(route('jobs.messages.opened', $this->job), ['kind' => 'invoice_link', 'to' => '+16045550142', 'body' => 'Your invoice'])->assertRedirect();
+    $this->post(route('jobs.messages.opened', $this->job), ['kind' => 'general', 'to' => '+16045550142', 'body' => 'Hi'])->assertForbidden();
+    $this->post(route('jobs.messages.opened', $this->job), ['kind' => 'estimate_link', 'to' => '+16045550142', 'body' => 'Estimate'])->assertForbidden();
+});

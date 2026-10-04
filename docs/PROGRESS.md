@@ -4,9 +4,10 @@
 - Server policies, the menu and buttons follow the permissions: e.g. without Estimates an Office member can read a job's estimates but cannot create, change or send them; without Schedule they open on the dashboard and cannot book, edit or dispatch jobs. Technicians on a job keep estimating, invoicing and taking payment on site.
 - Purchase costs and profit are Owner-only: the Office no longer sees job costs/profit, cannot enter purchase prices, sees reports without profit, and bookkeeper exports (expenses CSV, supplier receipts ZIP) are Owner-only. Technicians keep their own private purchase prices.
 - View only: every Office member can open and read the calendar, jobs, customers, estimates and invoices; the permissions only control changes. A View only button in Team clears all areas (e.g. a salesperson who calls customers, then gets Invoices and payments ticked to invoice). Job field work (statuses, photos, closing) needs Schedule for the office; technicians on the job are unaffected.
+- An Office member who only invoices can still text the invoice link and the Google review request (from the phone or by SMS) and sees the review card on paid invoices.
 - Only the Owner sets permissions (validated, tenant-scoped, audited when an Office member's areas change).
 - Migration: company_user.permissions (json, nullable).
-- Validation: 753 backend tests (new OfficePermissionsTest), 40 browser scenarios, lint, types, style.
+- Validation: 754 backend tests (new OfficePermissionsTest), 40 browser scenarios, lint, types, style.
 
 # October 4 owner feedback round — bar circles, colors, review locations
 
