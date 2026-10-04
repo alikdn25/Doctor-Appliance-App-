@@ -6,22 +6,40 @@ import { avatar } from '@/routes/customers';
 export type AvatarStyle = 'auto' | 'neutral' | 'man' | 'woman';
 export type AvatarIcon = Exclude<AvatarStyle, 'auto'> | 'business';
 
-export function CustomerAvatar({ icon }: { icon: AvatarIcon }) {
+const sizes = { md: 'size-11', lg: 'size-[60px]' } as const;
+
+/**
+ * Cartoon 3D face (man / woman), or an icon for a business or an unknown person.
+ * White outline and soft shadow; 60 px in work lists (docs/DESIGN.md).
+ */
+export function CustomerAvatar({
+    icon,
+    size = 'md',
+}: {
+    icon: AvatarIcon;
+    size?: keyof typeof sizes;
+}) {
     const t = useTrans();
+    const label = t(`customers.icons.${icon}`);
+    if (icon === 'man' || icon === 'woman') {
+        return (
+            <img
+                src={`/images/avatars/${icon}.png`}
+                alt={label}
+                className={`da-avatar ${sizes[size]} shrink-0 rounded-full object-cover`}
+            />
+        );
+    }
     return (
         <span
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-muted"
+            className={`da-avatar ${sizes[size]} flex shrink-0 items-center justify-center rounded-full bg-[linear-gradient(90deg,#F1F7FF,#B3D4FF)] text-[#1E3A8A]`}
             role="img"
-            aria-label={t(`customers.icons.${icon}`)}
+            aria-label={label}
         >
-            {icon === 'man' || icon === 'woman' ? (
-                <span aria-hidden="true" className="text-2xl">
-                    {icon === 'man' ? '👨' : '👩'}
-                </span>
-            ) : icon === 'business' ? (
-                <Building2 aria-hidden="true" className="size-5" />
+            {icon === 'business' ? (
+                <Building2 aria-hidden="true" className="size-1/2" />
             ) : (
-                <UserRound aria-hidden="true" className="size-5" />
+                <UserRound aria-hidden="true" className="size-1/2" />
             )}
         </span>
     );

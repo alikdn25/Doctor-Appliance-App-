@@ -149,6 +149,7 @@ type Props = {
     warrantyLines: WarrantyLine[];
     warrantyUnits: Option[];
     openWarranty: boolean;
+    openFinish?: boolean;
     costs: JobCosts | null;
     assignableUsers: Assignable[];
     otherAppliances: ApplianceItem[];
@@ -195,6 +196,7 @@ export default function JobShow({
     warrantyLines,
     warrantyUnits,
     openWarranty,
+    openFinish = false,
     costs,
 }: Props) {
     const t = useTrans();
@@ -205,7 +207,12 @@ export default function JobShow({
         (auth.company?.tracks_appliances ?? true) || job.appliances.length > 0;
     const time = useCompanyTime();
     const [statusOpen, setStatusOpen] = useState(false);
-    const [finishOpen, setFinishOpen] = useState(false);
+    const [finishOpen, setFinishOpen] = useState(
+        () =>
+            openFinish &&
+            job.visits.find((v) => v.id === myVisitId)?.status ===
+                'in_progress',
+    );
     const [closeOpen, setCloseOpen] = useState(false);
     const [warrantyOpen, setWarrantyOpen] = useState(openWarranty);
     const visitUnderWay = job.visits.some((v) =>

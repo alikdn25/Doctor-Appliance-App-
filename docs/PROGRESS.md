@@ -1,3 +1,18 @@
+# October 4 — volumetric design in the app, My jobs as home, visible booking address
+
+- Owner, Admin and Technician land on My jobs after sign-in and from `/`; My jobs is first in the menu and the logo link.
+- Volumetric style from DESIGN.md applied app-wide through the shared components: raised gradient buttons
+  (primary blue, secondary, soft blue, danger), cards, sunken inputs/selects, dark gradient header with a light rounded
+  sheet, status badges with colour + icon + text, cartoon customer avatars (man/woman images, icons otherwise).
+- Phones get the bottom tabs Today · Calendar · Messages · More (only the sections the member may open).
+- My jobs cards follow the mockup: 60 px avatar, number + status, name, time, address, appliance; buttons Go, Call and
+  the next step (On my way → Start → Finish visit). On my way also opens the technician's messages app in
+  technician's-phone SMS mode; Finish visit opens the finish dialog on the job page.
+- Book customer: phone first, name, address with Google suggestions, unit, city and customer note are always visible;
+  a separate "What needs fixing" block; one-tap day and arrival-window chips and technician chips; exact times stay.
+- Not yet done from the mockups: Job page, Finish visit 4 options, appliance image tiles, invoice/payment/calendar
+  restyle (product decisions 1–5 below). The server must install the new main to show these changes.
+
 # October 3 login unblock — merged; VPS installation pending
 
 - PR #12 is merged into main at b3a96c2ad0009a591466e1b9c18f9c122b6b8a07. Its tree matches validated head 3fc1682d327be0f3fe191592e9487d400c647f64; that full workflow passed 740 backend tests and 40 desktop/mobile browser scenarios. No application code changed during this integration.

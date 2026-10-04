@@ -2,7 +2,16 @@
 
 return [
     'quick' => [
-        'hint' => 'Name, phone and time — save the booking now and add details later.',
+        'hint' => 'Phone, name and time are enough. Address and problem help the technician.',
+        'address' => 'Address',
+        'unit' => 'Unit / buzzer',
+        'problem_title' => 'What needs fixing',
+        'problem' => 'Problem',
+        'problem_hint' => 'E.g. washer not draining, fridge not cooling',
+        'today' => 'Today',
+        'tomorrow' => 'Tomorrow',
+        'arrival_window' => 'Arrival window',
+        'exact_time' => 'Exact time',
         'invoice_hint' => 'Choose a customer or enter their name and phone, then add invoice prices.',
         'name' => 'Customer name',
         'new_customer' => 'New customer',
@@ -85,6 +94,9 @@ return [
     'minutes' => ':count min',
     'hours_minutes' => ':hours h :minutes min',
     'navigate' => 'Navigate',
+    'go' => 'Go',
+    'start_short' => 'Start',
+    'finish_short' => 'Finish visit',
     'call' => 'Call',
     'text' => 'Text',
     'open_customer' => 'Open customer',

@@ -59,6 +59,27 @@ class MessagingPresenter
     }
 
     /**
+     * The "On my way" text to open in the technician's own messages app, or null when the company
+     * texts automatically (or not at all) or the customer has no mobile that accepts texts.
+     *
+     * @return array{to: string, body: string}|null
+     */
+    public function onMyWayOnPhone(ServiceJob $job, User $user, JobVisit $visit): ?array
+    {
+        $company = currentCompany();
+        $phone = $this->messenger->mobile($job->customer);
+
+        if ($company->sms_mode !== SmsMode::TechnicianPhone || $phone === null || $phone->sms_opted_out_at !== null) {
+            return null;
+        }
+
+        return [
+            'to' => $phone->number,
+            'body' => MessageTemplates::render($company, MessageKind::OnMyWay, MessageContext::for($job->customer, $job, $visit, $user)),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function forCustomer(Customer $customer, User $user): array

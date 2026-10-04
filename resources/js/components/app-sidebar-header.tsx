@@ -1,7 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { Menu, Plus } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
-import { Button } from '@/components/ui/button';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useTrans } from '@/lib/i18n';
 import { create } from '@/routes/jobs';
@@ -16,29 +15,30 @@ export function AppSidebarHeader({
     const { auth } = usePage().props;
     const t = useTrans();
     return (
-        <header className="sticky top-0 z-20 flex min-h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-3 py-2 md:px-4">
+        <header className="da-header sticky top-0 z-20 flex min-h-16 shrink-0 items-center justify-between gap-2 px-3 pt-2 pb-6 md:px-4">
             <div className="flex min-w-0 items-center gap-3">
-                <Button
+                <button
                     type="button"
-                    variant="outline"
-                    className="h-11 shrink-0 px-4"
+                    className="da-header-btn da-press flex h-11 shrink-0 items-center gap-2 px-4 text-sm font-semibold"
                     onClick={toggleSidebar}
                     aria-label={t('nav.menu')}
                     aria-expanded={isMobile ? openMobile : state === 'expanded'}
                 >
-                    <Menu aria-hidden="true" /> {t('nav.menu')}
-                </Button>
-                <div className="hidden min-w-0 sm:block">
+                    <Menu className="size-5" aria-hidden="true" />{' '}
+                    {t('nav.menu')}
+                </button>
+                <div className="hidden min-w-0 text-white/80 sm:block [&_a]:text-white/80 [&_a:hover]:text-white [&_span]:text-white">
                     <Breadcrumbs breadcrumbs={breadcrumbs} />
                 </div>
             </div>
             {auth.company && auth.can.createJobs && (
-                <Button asChild className="h-11 shrink-0">
-                    <Link href={create({ query: { book: 1 } })}>
-                        <Plus aria-hidden="true" />
-                        {t('nav.book_customer')}
-                    </Link>
-                </Button>
+                <Link
+                    href={create({ query: { book: 1 } })}
+                    className="da-raised da-press flex h-11 shrink-0 items-center gap-2 rounded-2xl px-4 text-sm font-semibold text-[#0E2A4F]"
+                >
+                    <Plus className="size-4" aria-hidden="true" />
+                    {t('nav.book_customer')}
+                </Link>
             )}
         </header>
     );
