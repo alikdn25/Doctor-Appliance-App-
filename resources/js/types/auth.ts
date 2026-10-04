@@ -35,6 +35,7 @@ export type Permissions = {
     viewJobs?: boolean;
     createJobs?: boolean;
     viewInvoices?: boolean;
+    viewReports?: boolean;
     viewMyJobs?: boolean;
     viewCalendar?: boolean;
     manageChecklists?: boolean;

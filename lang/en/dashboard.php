@@ -3,8 +3,8 @@
 return [
     'welcome' => 'Welcome, :name',
     'subtitle' => 'You are working in :company',
-    'active_brands' => 'Active brands',
-    'active_members' => 'Active team members',
+    'today_visits' => 'Visits today',
+    'unpaid' => 'Unpaid invoices (:count)',
     'next_steps' => 'Start here',
     'next_steps_hint' => 'Your workspace is ready. Choose what you want to do next.',
     'add_customer' => 'Add a customer',

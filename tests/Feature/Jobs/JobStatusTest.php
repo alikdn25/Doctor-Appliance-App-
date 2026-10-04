@@ -6,6 +6,7 @@ use App\Enums\VisitStatus;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\Estimate;
 use App\Models\JobStatusChange;
 use App\Models\JobVisit;
 use App\Models\Property;
@@ -227,7 +228,20 @@ test('the job page offers the status buttons to whoever is assigned', function (
         ->assertInertia(fn ($page) => $page
             ->where('myVisitId', $this->visit->id)
             ->where('job.visits.0.is_mine', true)
-            ->where('statusOptions', [])
+            // The technician on the job marks only what it is waiting for.
+            ->where('statusOptions', fn ($options) => collect($options)->pluck('value')->all() === ['parts_to_order', 'estimate_to_send', 'waiting_for_parts', 'waiting_for_customer'])
             ->where('can.update', false)
             ->where('can.work', true));
+});
+
+test('the technician on the job sets a waiting reason, and sending the estimate moves it to waiting for the customer', function () {
+    $this->actingAs($this->tech)->put(route('jobs.status', $this->job), ['status' => 'estimate_to_send'])->assertSessionHasNoErrors();
+    expect($this->job->fresh()->status)->toBe(JobStatus::EstimateToSend);
+    $this->put(route('jobs.status', $this->job), ['status' => 'cancelled', 'reason' => 'x'])->assertForbidden();
+
+    $this->post(route('estimates.store', $this->job), documentPayload())->assertSessionHasNoErrors();
+    $estimate = inCompany($this->company, fn () => Estimate::latest('id')->first());
+    $this->post(route('estimates.send', $estimate), ['email' => 'jane@example.com', 'message' => 'Your estimate'])->assertSessionHasNoErrors();
+
+    expect($this->job->fresh()->status)->toBe(JobStatus::WaitingForCustomer);
 });

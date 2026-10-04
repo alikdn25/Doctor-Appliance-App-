@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\CompanyStatus;
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Models\Scopes\CompanyScope;
 use App\Notifications\VerifyEmail;
@@ -202,6 +203,14 @@ class User extends Authenticatable implements MustVerifyEmail
         $role = $this->currentRole();
 
         return $role !== null && in_array($role, $roles, true);
+    }
+
+    /**
+     * Office work the person may do in the current company (Owner: all; Office: what the Owner allowed).
+     */
+    public function canOffice(OfficePermission $permission): bool
+    {
+        return $this->currentMembership()?->allows($permission) ?? false;
     }
 
     public function isSuperAdmin(): bool

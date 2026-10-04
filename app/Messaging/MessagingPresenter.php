@@ -6,6 +6,7 @@ use App\Enums\MessageKind;
 use App\Enums\SmsMode;
 use App\Models\Customer;
 use App\Models\Estimate;
+use App\Models\GoogleProfile;
 use App\Models\Invoice;
 use App\Models\JobVisit;
 use App\Models\Message;
@@ -37,7 +38,6 @@ class MessagingPresenter
         $customer = $job->customer;
         $phone = $this->messenger->mobile($customer);
         $context = MessageContext::for($customer, $job, $myVisit ?? $job->visits->sortBy('scheduled_start')->last(), $user);
-        $review = ReviewRequest::query()->where('service_job_id', $job->id)->first();
 
         return [
             'mode' => $company->sms_mode->value,
@@ -47,14 +47,35 @@ class MessagingPresenter
             'texts' => [
                 'general' => MessageTemplates::render($company, MessageKind::General, $context),
                 'on_my_way' => MessageTemplates::render($company, MessageKind::OnMyWay, $context),
-                'review_request' => $this->reviews->text($job, $this->reviews->profile($job)),
-            ],
-            'review' => [
-                'ask' => $job->ask_for_review,
-                'status' => $review ? $this->reviewStatus($review) : null,
-                'has_profile' => $this->reviews->profile($job) !== null,
             ],
             'messages' => $this->history(Message::query()->where('service_job_id', $job->id)),
+        ];
+    }
+
+    /**
+     * The Google review request at the end of the work: shown on the paid invoice, next to sending the receipt.
+     * The technician always chooses the location (Google profile); those of the job's brand and brand-free ones are offered.
+     *
+     * @return array<string, mixed>
+     */
+    public function review(ServiceJob $job): array
+    {
+        $review = ReviewRequest::query()->where('service_job_id', $job->id)->first();
+        $phone = $this->messenger->mobile($job->customer);
+
+        return [
+            'job_id' => $job->id,
+            'mode' => currentCompany()->sms_mode->value,
+            'status' => $review ? $this->reviewStatus($review) : null,
+            'sent' => $review?->status === ReviewRequest::SENT,
+            'phone' => $phone?->sms_opted_out_at === null ? $phone?->number : null,
+            'can_email' => $job->customer->emails()->exists(),
+            // {review_link} is replaced with the chosen link before sending.
+            'text' => $this->reviews->text($job, null),
+            'locations' => GoogleProfile::query()
+                ->where(fn ($query) => $query->whereNull('brand_id')->orWhere('brand_id', $job->brand_id))
+                ->orderBy('label')->get(['id', 'label', 'review_url'])
+                ->map(fn (GoogleProfile $profile) => ['id' => $profile->id, 'label' => $profile->label, 'url' => $profile->review_url])->values(),
         ];
     }
 
@@ -64,17 +85,26 @@ class MessagingPresenter
     public function forCustomer(Customer $customer, User $user): array
     {
         $query = Message::query()->where('customer_id', $customer->id)
-            ->where(function (Builder $query) use ($customer, $user) {
+            ->where(function (Builder $query) use ($user) {
                 $query->whereIn('service_job_id', ServiceJob::query()->visibleTo($user)->select('id'));
-                // Customer-level correspondence is office-only; technicians see assigned-job messages.
-                if ($user->can('update', $customer)) {
+                // Customer-level correspondence is for the office (including view-only); technicians see job messages.
+                if ($user->can('viewAny', Customer::class)) {
                     $query->orWhereNull('service_job_id');
                 }
             });
+        $mode = currentCompany()->sms_mode;
+        $canText = $mode !== SmsMode::Off && $user->can('create', Message::class);
 
         return [
-            'mode' => currentCompany()->sms_mode->value,
+            'mode' => $mode->value,
             'messages' => $this->history($query),
+            // "Send SMS" on the customer profile, to a number the customer has not opted out of.
+            'can_text' => $canText,
+            'phones' => $canText ? $customer->phones()->get()
+                ->map(fn ($phone) => ['id' => $phone->id, 'number' => $phone->number, 'opted_out' => $phone->sms_opted_out_at !== null])
+                ->values() : [],
+            'blocked' => $canText && $mode === SmsMode::Automatic ? $this->messenger->smsBlockedReason($customer) : null,
+            'text' => MessageTemplates::render(currentCompany(), MessageKind::General, MessageContext::for($customer, null, null, $user)),
         ];
     }
 

@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { JobList } from '@/components/jobs/job-list';
@@ -71,6 +71,11 @@ export default function JobsIndex({
     };
 
     const filtered = Object.values(filters).some((v) => v !== '');
+    const activeFilters = Object.entries(filters).filter(
+        ([key, value]) => key !== 'search' && value !== '',
+    ).length;
+    // On a phone the list comes first; the filters open on demand.
+    const [showFilters, setShowFilters] = useState(activeFilters > 0);
 
     return (
         <>
@@ -81,22 +86,13 @@ export default function JobsIndex({
                     title={t('jobs.title')}
                     description={t('jobs.count', { count: jobs.total })}
                     actions={
-                        <div className="flex gap-2">
-                            {canViewTrash && (
-                                <Button variant="ghost" asChild>
-                                    <Link href={trash()}>
-                                        <Trash2 /> {t('jobs.trash.title')}
-                                    </Link>
-                                </Button>
-                            )}
-                            {canCreate && (
-                                <Button asChild>
-                                    <Link href={create()}>
-                                        <Plus /> {t('jobs.add')}
-                                    </Link>
-                                </Button>
-                            )}
-                        </div>
+                        canCreate && (
+                            <Button asChild>
+                                <Link href={create()}>
+                                    <Plus /> {t('jobs.add')}
+                                </Link>
+                            </Button>
+                        )
                     }
                 />
 
@@ -111,9 +107,22 @@ export default function JobsIndex({
                     <Button type="submit" variant="outline">
                         {t('common.search')}
                     </Button>
+                    <Button
+                        type="button"
+                        variant={activeFilters > 0 ? 'secondary' : 'outline'}
+                        className="md:hidden"
+                        aria-expanded={showFilters}
+                        aria-label={t('jobs.filters')}
+                        onClick={() => setShowFilters((open) => !open)}
+                    >
+                        <SlidersHorizontal />
+                        {activeFilters > 0 && activeFilters}
+                    </Button>
                 </form>
 
-                <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
+                <div
+                    className={`mb-4 grid-cols-2 gap-2 md:grid md:grid-cols-4 xl:grid-cols-7 ${showFilters ? 'grid' : 'hidden'}`}
+                >
                     <NativeSelect
                         aria-label={t('jobs.change_status')}
                         value={filters.status}
@@ -234,6 +243,14 @@ export default function JobsIndex({
                 />
 
                 <PaginationLinks links={jobs.links} />
+
+                {canViewTrash && (
+                    <Button variant="ghost" size="sm" className="mt-4" asChild>
+                        <Link href={trash()}>
+                            <Trash2 /> {t('jobs.trash.title')}
+                        </Link>
+                    </Button>
+                )}
             </div>
         </>
     );

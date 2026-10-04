@@ -34,11 +34,13 @@ export default function CustomersIndex({
     filters,
     types,
     tags,
+    canCreate,
 }: {
     customers: Paginated<CustomerRow>;
     filters: Filters;
     types: Option[];
     tags: string[];
+    canCreate: boolean;
 }) {
     const t = useTrans();
     const phoneText = usePhone();
@@ -74,11 +76,13 @@ export default function CustomersIndex({
                         count: customers.total,
                     })}
                     actions={
-                        <Button asChild>
-                            <Link href={create()}>
-                                <Plus /> {t('customers.add')}
-                            </Link>
-                        </Button>
+                        canCreate && (
+                            <Button asChild>
+                                <Link href={create()}>
+                                    <Plus /> {t('customers.add')}
+                                </Link>
+                            </Button>
+                        )
                     }
                 />
 

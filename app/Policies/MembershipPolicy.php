@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Models\Membership;
 use App\Models\User;
@@ -13,12 +14,12 @@ class MembershipPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasRole(UserRole::Owner, UserRole::Admin);
+        return $user->hasRole(UserRole::Owner) || ($user->hasRole(UserRole::Admin) && $user->canOffice(OfficePermission::Team));
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRole(UserRole::Owner, UserRole::Admin);
+        return $this->viewAny($user);
     }
 
     /**
@@ -27,7 +28,7 @@ class MembershipPolicy
     public function update(User $user, Membership $membership): bool
     {
         return $this->inCurrentCompany($membership)
-            && ($user->hasRole(UserRole::Owner) || ($user->hasRole(UserRole::Admin) && $membership->role === UserRole::Technician))
+            && ($user->hasRole(UserRole::Owner) || ($this->viewAny($user) && $membership->role === UserRole::Technician))
             && $membership->user_id !== $user->id;
     }
 

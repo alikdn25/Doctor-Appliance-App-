@@ -83,7 +83,9 @@ test('reports respect office brand restrictions', function () {
     $this->actingAs($restricted)->get(route('reports.index', ['from' => '2026-10-01', 'to' => '2026-10-31']))
         ->assertInertia(fn (Assert $page) => $page
             ->has('business.totals', 0)
-            ->where('totals.jobs', 0)
+            // Costs and profit are for the Owner only.
+            ->where('showProfit', false)
+            ->where('totals', null)
             ->where('business.conversion.estimates', 0));
 });
 

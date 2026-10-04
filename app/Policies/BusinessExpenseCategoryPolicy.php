@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Models\BusinessExpenseCategory;
 use App\Models\User;
@@ -19,6 +20,6 @@ class BusinessExpenseCategoryPolicy
     public function update(User $user, BusinessExpenseCategory $category): bool
     {
         return $this->inCurrentCompany($category) && $this->create($user)
-            && ($user->hasRole(UserRole::Owner, UserRole::Admin) || $category->created_by === $user->id);
+            && ($user->canOffice(OfficePermission::Expenses) || $category->created_by === $user->id);
     }
 }

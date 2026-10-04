@@ -1,3 +1,61 @@
+# October 4 Send SMS from the customer profile — code validated locally
+
+- Customer profile: Send SMS for the Owner and Office members with the SMS inbox area (e.g. a view-only salesperson). Automatic mode sends from the company number to a chosen customer phone; technician's-phone mode opens the phone's messages app and records it; hidden when SMS is off or every number opted out. The text starts from the company's general template.
+- Customer-level correspondence is now visible to every Office member (including view-only), so the salesperson sees their own texts.
+- Validation: 757 backend tests (new CustomerSmsTest), 40 browser scenarios, lint, types, style.
+
+# October 4 Office permissions — code validated locally
+
+- The Admin role is shown as Office. The Owner switches each area on or off per Office member in Team: calendar and scheduling, customers, estimates, invoices and payments, SMS inbox, reports and cash, company expenses, services and checklists, technicians. New and existing Office members start with everything on (stored as null).
+- Server policies, the menu and buttons follow the permissions: e.g. without Estimates an Office member can read a job's estimates but cannot create, change or send them; without Schedule they open on the dashboard and cannot book, edit or dispatch jobs. Technicians on a job keep estimating, invoicing and taking payment on site.
+- Purchase costs and profit are Owner-only: the Office no longer sees job costs/profit, cannot enter purchase prices, sees reports without profit, and bookkeeper exports (expenses CSV, supplier receipts ZIP) are Owner-only. Technicians keep their own private purchase prices.
+- View only: every Office member can open and read the calendar, jobs, customers, estimates and invoices; the permissions only control changes. A View only button in Team clears all areas (e.g. a salesperson who calls customers, then gets Invoices and payments ticked to invoice). Job field work (statuses, photos, closing) needs Schedule for the office; technicians on the job are unaffected.
+- An Office member who only invoices can still text the invoice link and the Google review request (from the phone or by SMS) and sees the review card on paid invoices.
+- Only the Owner sets permissions (validated, tenant-scoped, audited when an Office member's areas change).
+- Migration: company_user.permissions (json, nullable).
+- Validation: 754 backend tests (new OfficePermissionsTest), 40 browser scenarios, lint, types, style.
+
+# October 4 owner feedback round — bar circles, colors, review locations
+
+- Top bar: only numbers in colored circles, no labels or total; tapping the bar expands it into bigger named circles, each opening the filtered list.
+- Colors: Parts to order red, Estimate to send orange, Waiting for parts purple, Waiting for customer yellow, On hold bronze (badges, bar and calendar); On the way moved to cyan to stay distinct from purple.
+- Google review locations: tied to a brand optionally, added and removed by the Owner only. On the paid invoice the technician always chooses the location (job's brand and brand-free ones); nothing is preselected or remembered, and no free link is pasted. The server only sends links of company locations allowed for the job's brand.
+- Validation: all 744 backend tests (bcmath installed locally, so DeploymentCheckTest passes too), all 40 browser scenarios, lint, types, style.
+- Work opens on the Calendar for Owners/Admins (login, home address, company switch, workspace choice); technicians still open My jobs; a new company still lands on its setup steps. Calendar is first in the menu.
+- Next: merge the PR, then deploy on the VPS via Grok.
+
+# October 4 waiting-reason colors and free review links — code validated locally
+
+- Status colors, one palette for badges, the top bar and the calendar: customer waiting on us in two reds (Parts to order, new Estimate to send), Waiting for parts orange, Waiting for customer yellow. Calendar visit blocks and To schedule cards are tinted by job status; To schedule now also lists jobs waiting on us or on the customer.
+- The top bar shows only per-reason colored counters, without a grand total.
+- Technicians on a job can set the four waiting statuses themselves; finishing a diagnosis offers Parts to order, Parts already ordered and Estimate to send. Sending the estimate (email, SMS or from the phone) moves Estimate to send to Waiting for customer.
+- Google review requests are no longer bound to a profile or brand and are no longer scheduled on payment. On the paid invoice the technician taps a saved link or pastes any link and sends it (phone, SMS or email by SMS mode). Brand default profile and automatic review settings removed from the UI; requests already scheduled by earlier versions are still delivered. SPEC §6 and §8 updated.
+- Validation: 743 of 744 backend tests (DeploymentCheckTest needs bcmath, absent locally); all 40 browser scenarios; lint, types, style.
+
+# October 4 unfinished-jobs bar by reason — code validated locally
+
+- The thin bar on every working screen now shows one colored counter per reason that needs attention (Late, Order parts, To book, Parts, Client, On hold), each opening Not completed jobs filtered by that reason. Scheduled work is not counted as needing attention. The same colors are used on the Not completed jobs page.
+- New job status Parts to order, separate from Waiting for parts: a technician finishing a diagnosis picks Parts to order (the office still has to order) or Parts already ordered. It is a manual status too, reschedulable like Waiting for parts. Not a parts-order module (that stays in Stage 2).
+- Waiting reasons show how long the job has been in that state (e.g. "Waiting for parts · 23 days"), counted from its last status change.
+- Validation: 745 of 746 backend tests (DeploymentCheckTest needs bcmath, absent locally); all 40 browser scenarios; lint, types, style.
+
+# October 4 field-flow usability pass — code validated locally; server deployment pending
+
+- Server: Grok installed main 5c5f4b2 on the VPS (backup in /root/fieldservice-backups/20261004T113615Z); the manual walkthrough there is still pending.
+- Google review request moved to the end of the work (SPEC §7.6/§8): it is no longer on the job screen. A paid invoice shows "Ask for a Google review" next to sending the receipt: in technician-phone mode a Send review request button opens the text; in Automatic/Off mode a switch, with scheduled/sent/skipped status. Switching it on after payment schedules the request. Without a Google profile the card says so instead of offering a useless switch.
+- Job screen follows the field order: appliances, checklist, photos, work done, estimates & invoices, signature, visits, messages, costs, history.
+- Dashboard shows the working day (visits today, unpaid invoices per currency for office roles) instead of brand/member counts; first-run steps appear only until the company's first job. Unfinished jobs stay in the persistent bar.
+- Calendar no longer repeats Book customer under the header; it offers Book on this day for the viewed date. Jobs list on a phone shows search and the list first, filters behind a Filters button; Deleted jobs moved below the list.
+- Validation: PHP style, frontend lint/format, TypeScript, build; 744 of 745 backend tests (only DeploymentCheckTest fails locally: no bcmath in this container); all 40 desktop/mobile browser scenarios pass locally. New DashboardTest and review-placement tests.
+- Next: merge, deploy to the VPS, then the manual walkthrough in SERVER_HANDOFF.md.
+
+# October 4 review of the October 2–3 changes — one fix
+
+- Reviewed everything merged since 5a54896 (PRs #11 and #12): tenant scoping of new models, policies, private purchase costs, per-line taxes, signup/onboarding, mail readiness, member transfer/replacement, SMS inbox, expenses. No hard-coded country/currency in application code; every frontend translation key exists in lang/en.
+- Fixed: a platform admin who already had a working company could still POST to `admin/companies/{company}/workspace` and become Owner of any other active tenant. Workspace selection is now one-time on the server too; other tenants are reached only through audited support access. Regression test added in WorkEntryTest.
+- Local run: build, PHP style, frontend lint/format, TypeScript clean; 740 of 741 backend tests pass. The one local failure is DeploymentCheckTest because this container lacks the bcmath PHP extension (CI and the server have it).
+- Next: unchanged — install main on the VPS per SERVER_HANDOFF.md and verify login and mail there.
+
 # October 3 login unblock — merged; VPS installation pending
 
 - PR #12 is merged into main at b3a96c2ad0009a591466e1b9c18f9c122b6b8a07. Its tree matches validated head 3fc1682d327be0f3fe191592e9487d400c647f64; that full workflow passed 740 backend tests and 40 desktop/mobile browser scenarios. No application code changed during this integration.

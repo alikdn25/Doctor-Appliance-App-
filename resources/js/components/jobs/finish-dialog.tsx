@@ -3,7 +3,9 @@ import {
     Ban,
     CheckCircle2,
     HandCoins,
+    FileText,
     PackageSearch,
+    ShoppingCart,
     ShieldCheck,
     ThumbsDown,
 } from 'lucide-react';
@@ -151,16 +153,41 @@ export function FinishDialog({
                                 </Button>
                             )}
                             {visitId !== null && (
-                                <Button
-                                    size="lg"
-                                    variant="outline"
-                                    className="h-12"
-                                    disabled={form.processing}
-                                    onClick={() => send('waiting_for_parts')}
-                                >
-                                    <PackageSearch />{' '}
-                                    {t('jobs.actions.waiting_for_parts')}
-                                </Button>
+                                // Waiting on us: parts to order (or already ordered), or an estimate to send.
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="h-12 whitespace-normal"
+                                        disabled={form.processing}
+                                        onClick={() => send('parts_to_order')}
+                                    >
+                                        <ShoppingCart />{' '}
+                                        {t('jobs.actions.parts_to_order')}
+                                    </Button>
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="h-12 whitespace-normal"
+                                        disabled={form.processing}
+                                        onClick={() =>
+                                            send('waiting_for_parts')
+                                        }
+                                    >
+                                        <PackageSearch />{' '}
+                                        {t('jobs.actions.waiting_for_parts')}
+                                    </Button>
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="col-span-2 h-12 whitespace-normal"
+                                        disabled={form.processing}
+                                        onClick={() => send('estimate_to_send')}
+                                    >
+                                        <FileText />{' '}
+                                        {t('jobs.actions.estimate_to_send')}
+                                    </Button>
+                                </div>
                             )}
                             <div className="grid grid-cols-2 gap-2">
                                 <Button

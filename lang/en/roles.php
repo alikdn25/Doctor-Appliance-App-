@@ -2,7 +2,7 @@
 
 return [
     'owner' => 'Owner',
-    'admin' => 'Office / Admin',
+    'admin' => 'Office',
     'technician' => 'Technician',
     'subcontractor' => 'Subcontractor',
     'collector' => 'Collector',

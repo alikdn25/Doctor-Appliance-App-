@@ -4,6 +4,7 @@ import type { CalendarVisit, Lane } from '@/components/calendar/types';
 import { inLane } from '@/components/calendar/types';
 import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
+import { calendarBlock } from '@/lib/job-colors';
 import { cn } from '@/lib/utils';
 
 /** Pixels per hour on the day grid (15 minutes = 14 px). */
@@ -226,10 +227,13 @@ export function DayGrid({
                                                 }
                                                 onClick={() => onOpen(visit)}
                                                 className={cn(
-                                                    'flex w-full flex-col justify-start overflow-hidden rounded-md border bg-card px-1.5 py-1 text-left text-xs shadow-sm select-none [-webkit-touch-callout:none]',
+                                                    'flex w-full flex-col justify-start overflow-hidden rounded-md border px-1.5 py-1 text-left text-xs shadow-sm select-none [-webkit-touch-callout:none]',
+                                                    calendarBlock(
+                                                        visit.job.status,
+                                                    ),
                                                     visit.movable
-                                                        ? 'cursor-grab border-l-4 border-l-primary active:cursor-grabbing'
-                                                        : 'border-l-4 border-l-muted-foreground/40 opacity-80',
+                                                        ? 'cursor-grab active:cursor-grabbing'
+                                                        : 'opacity-80',
                                                     visit.conflict &&
                                                         'border-destructive ring-1 ring-destructive',
                                                 )}

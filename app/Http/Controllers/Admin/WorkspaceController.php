@@ -12,6 +12,7 @@ use App\Models\Membership;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Support\Tenancy\CurrentCompany;
+use App\Support\WorkHome;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -36,6 +37,8 @@ class WorkspaceController extends Controller
             if ($membership) {
                 abort_unless($membership->is_active, 403);
             } else {
+                // A workspace is chosen once. Other companies' data is reached only through audited support access.
+                abort_if($user->memberships()->exists(), 403);
                 $context->runAs($company, fn () => Membership::create(['company_id' => $company->id, 'user_id' => $user->id, 'role' => UserRole::Owner, 'is_active' => true]));
                 $audit->record('workspace.joined', $company, ['user_id' => $user->id], $company->id);
             }
@@ -47,6 +50,6 @@ class WorkspaceController extends Controller
             });
         });
 
-        return to_route('dashboard');
+        return redirect(WorkHome::url($request->user()->fresh(), $company));
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Policies\Concerns;
 
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Models\ServiceJob;
 use App\Models\User;
@@ -9,16 +10,23 @@ use Closure;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Customers, properties and appliances are managed by the office (Owner, Admin).
+ * Customers, properties and appliances are read by the office and managed by the Owner or Office with Customers.
  * Other team members can only view the customers, properties and appliances of jobs they can see.
  */
 trait ManagesCustomers
 {
     use ChecksTenant;
 
-    protected function managesCustomers(User $user): bool
+    /** The office reads every customer. */
+    protected function seesCustomers(User $user): bool
     {
         return $user->hasRole(UserRole::Owner, UserRole::Admin);
+    }
+
+    /** Adding and changing customers, properties and appliances: Owner, or Office with the Customers permission. */
+    protected function managesCustomers(User $user): bool
+    {
+        return $this->seesCustomers($user) && $user->canOffice(OfficePermission::Customers);
     }
 
     /**

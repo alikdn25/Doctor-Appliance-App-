@@ -21,7 +21,7 @@ type Row = {
 let rowKey = 0;
 
 /**
- * Company → Google reviews: profiles with their review links, edited as one list.
+ * Company → Google reviews: the Owner's list of locations with their review links, optionally tied to a brand.
  */
 export default function GoogleProfiles({
     profiles,

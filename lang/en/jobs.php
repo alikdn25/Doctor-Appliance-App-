@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'filters' => 'Filters',
     'quick' => [
         'hint' => 'Name, phone and time — save the booking now and add details later.',
         'invoice_hint' => 'Choose a customer or enter their name and phone, then add invoice prices.',
@@ -32,8 +33,11 @@ return [
         'all' => 'All unfinished',
         'empty' => 'All caught up. No unfinished jobs.',
         'overdue_count' => ':count overdue',
+        'waiting_days' => ':reason · :days days',
         'reasons' => [
             'overdue' => 'Overdue visit',
+            'parts_to_order' => 'Parts to order',
+            'estimate_to_send' => 'Estimate to send',
             'needs_schedule' => 'Needs scheduling',
             'waiting_for_parts' => 'Waiting for parts',
             'waiting_for_customer' => 'Waiting for customer',
@@ -173,7 +177,9 @@ return [
     'actions' => [
         'on_my_way' => 'On my way',
         'start' => 'Start job',
-        'waiting_for_parts' => 'Waiting for parts',
+        'parts_to_order' => 'Parts to order',
+        'estimate_to_send' => 'Estimate to send',
+        'waiting_for_parts' => 'Parts already ordered',
         'complete' => 'Complete',
         'finish_title' => 'Finish this visit',
         'finish_hint' => 'Add a short note if needed, e.g. which part is needed.',
@@ -321,6 +327,8 @@ return [
         'scheduled' => 'Scheduled',
         'on_the_way' => 'On the way',
         'in_progress' => 'In progress',
+        'parts_to_order' => 'Parts to order',
+        'estimate_to_send' => 'Estimate to send',
         'waiting_for_parts' => 'Waiting for parts',
         'waiting_for_customer' => 'Waiting for customer',
         'completed' => 'Completed',

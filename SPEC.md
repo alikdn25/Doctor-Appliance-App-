@@ -82,7 +82,7 @@ Every customer-facing document and message uses the brand of the job.
 | Role          | Access                                                                                                                     |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Owner         | Everything in the company, billing, settings                                                                               |
-| Office/Admin  | Customers, jobs, scheduling, estimates, invoices, messaging, reports                                                       |
+| Office        | What the Owner switches on per person: calendar and scheduling, customers, estimates, invoices and payments, SMS inbox, reports and cash (no costs/profit), company expenses, services and checklists, technicians. All on by default. With every area off the member is **view only**: opens the calendar, jobs, customers, estimates and invoices without changing anything. Never purchase costs or profit. |
 | Technician    | Own assigned jobs, customers/appliances on those jobs, create estimates/invoices on site, take payments                    |
 | Subcontractor | Only jobs explicitly passed to them; no prices/margins unless allowed; their payout share is recorded                      |
 | Collector     | Unpaid invoices list, customer contact info for those invoices, messaging and calling from the brand number. Nothing else. |
@@ -102,12 +102,28 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 
 ### Job statuses
 
-`new` → `scheduled` → `on_the_way` → `in_progress` → `waiting_for_parts` → `completed` → `invoiced` → `paid`, plus `waiting_for_customer`, `cancelled` and `on_hold`. Every status change is logged with user and time.
+`new` → `scheduled` → `on_the_way` → `in_progress` → `waiting_for_parts` → `completed` → `invoiced` → `paid`, plus
+`parts_to_order`, `estimate_to_send`, `waiting_for_customer`, `cancelled` and `on_hold`. Every status change is logged
+with user and time.
 
-All unfinished jobs remain in a date-independent queue, reached from a compact persistent top bar with a job
-counter. It includes overdue visits, work needing scheduling, waiting for parts/customer, on-hold work and future
-scheduled work. Completed, invoiced, paid, cancelled, outcome-closed and deleted jobs are excluded. Reopened jobs
-return. Each job counts once; access follows company, brand and technician assignment permissions.
+Waiting reasons and their colors, the same on badges, the top bar and the calendar:
+
+- The customer is waiting on us: `parts_to_order` (parts still to order) — red; `estimate_to_send` (quote still to
+  send) — orange.
+- `waiting_for_parts` (parts ordered, on the way) — purple.
+- `waiting_for_customer` (we wait for the customer's answer) — yellow.
+- `on_hold` — bronze.
+
+A technician finishing a diagnosis picks Parts to order, Parts already ordered or Estimate to send; the technician on
+the job can also set these four waiting statuses by hand (the office sets any status). Sending the estimate moves an
+Estimate to send job to Waiting for customer. Waiting jobs show how many days they have been waiting.
+
+All unfinished jobs remain in a date-independent queue, reached from a thin persistent top bar that shows only numbers
+in colored circles, one per reason, without labels or a grand total. Tapping the bar opens it: bigger circles with
+their names, each opening the list filtered by that reason. Reasons: overdue visits, parts to order, estimate to send, work needing scheduling,
+waiting for parts, waiting for customer and on-hold work. Future scheduled work is in the queue but not on the bar.
+Completed, invoiced, paid, cancelled, outcome-closed and deleted jobs are excluded. Reopened jobs return. Each job
+counts once; access follows company, brand and technician assignment permissions.
 
 ## 7. Feature list
 
@@ -135,7 +151,7 @@ return. Each job counts once; access follows company, brand and technician assig
 
 - Today's jobs list: customer, address, appliance, status, ticket size.
 - One-tap navigation (opens Google Maps).
-- Status buttons: On my way (sends SMS with ETA), Started, Waiting for parts, Completed. Time on job is tracked automatically.
+- Status buttons: On my way (sends SMS with ETA), Started, Parts to order / Parts already ordered / Estimate to send, Completed. Time on job is tracked automatically.
 - Photos before/after with upload retry when signal is weak.
 - Scan/photograph rating plate → store model & serial (manual entry in v1; OCR later).
 - Checklists per job type.
@@ -180,7 +196,7 @@ return. Each job counts once; access follows company, brand and technician assig
   own terminal (with transaction reference), other (with note). Available in every company regardless of provider.
 - Marking an invoice paid manually is a normal flow, not an exception.
 - Automatic reminders for unpaid invoices; aging report.
-- **Review request toggle on invoice sending** (see §8).
+- **Google review request on the paid invoice**, with the location chosen by the technician (see §8).
 
 ### 7.7 Customer communication
 
@@ -194,6 +210,9 @@ return. Each job counts once; access follows company, brand and technician assig
   history records "SMS opened from technician's phone". No automatic texts: day-before reminders and review requests
   go by email.
 - **Off** — everything that would be a text goes by email.
+- **Send SMS on the customer profile** texts a customer outside any job (customers often ignore calls from unknown
+  numbers): Owner, and Office members with the SMS inbox area. Automatic mode sends from the company number;
+  technician's-phone mode opens the phone's messages app and records it.
 
 Messages: reminder the day before the visit, "On my way" with the arrival window (when the technician taps the
 button), estimate/invoice link ("Send by SMS" next to "Send by email"), Google review request (§8), a free text from
@@ -278,23 +297,22 @@ from the company number (Twilio voice).
 
 ## 8. Google review requests
 
-- A company can have **several Google profiles** (e.g. per brand or city). Each profile: label, direct review link,
-  optional brand. Each brand picks its **default profile**.
-- Every job has **"Ask for a review"**; its default comes from the company setting.
-- The request goes out **after the job is paid in full**, after a configurable delay (default 2 hours), by SMS in
-  Automatic mode, otherwise by email. In *From technician's phone* mode the job also has a **"Send review request"**
-  button that opens the text on the technician's phone.
+- A company can have **several locations** (Google profiles, e.g. per city), each with its review link and optionally
+  tied to a brand. Only the Owner adds and removes them.
+- The request is the **last step of the work**: on the paid invoice, next to sending the receipt, the technician
+  **always chooses the location** (those of the job's brand and brand-free ones; nothing preselected or remembered)
+  and sends its link. In *From technician's phone* mode it opens
+  the text on the phone; in Automatic mode it goes by SMS (email if SMS is blocked); in Off mode by email.
+  Nothing is sent or scheduled automatically on payment (requests scheduled by earlier versions are still delivered).
 - Each company writes its own request text (template with `{customer_first_name}`, `{brand}`, `{review_link}`, …).
-- **At most one request per customer** within a configurable period (default 180 days); later jobs are skipped with
-  the reason shown on the job.
-- Track: scheduled / sent (when, channel, profile) / skipped (why).
+- Track: sent (when, channel) on the job; the invoice shows that a request was already sent.
 - **Forbidden by Google's and the FTC's rules, and not supported by the app:** no discounts, gifts or any reward for a
   review; no review gating — never ask "were you happy?" first and send only happy customers to Google. The same
   request goes to every customer.
 
 ## 9. Non-functional requirements
 
-- Mobile-first UI; technician screens usable with one hand. Visible Menu and permanent Book customer actions lead directly to booking, including from Calendar. Login opens the working company for Owners/Admins and My jobs for technicians. Platform administration/support are separate; persistent sign-in is enabled by default.
+- Mobile-first UI; technician screens usable with one hand. Visible Menu and permanent Book customer actions lead directly to booking, including from Calendar. Login opens the Calendar of the working company for Owners/Admins (straight to looking and booking) and My jobs for technicians; a brand-new company first sees its setup steps on the dashboard. Platform administration/support are separate; persistent sign-in is enabled by default.
 - Quick office booking: name, phone and arrival window create the customer, job and visit atomically; an existing customer can be found by name/phone. Address and details can be supplied later, with a visible pending-address state and no directions until an address exists. Empty calendar days offer booking. New invoice is available from the invoice list and leads to an existing job or short customer entry, then prices. Full job creation cannot save without a customer/property.
 - English UI in v1; all text strings kept in translation files for future languages.
 - Localization per company as in §1.1 (currency, taxes, time zone, regional format, address format, E.164 phones).

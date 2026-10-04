@@ -23,7 +23,7 @@ class EstimateController extends Controller
 {
     public function create(ServiceJob $job): Response
     {
-        Gate::authorize('work', $job);
+        Gate::authorize('estimate', $job);
 
         $days = currentCompany()->estimate_valid_days;
 
@@ -42,7 +42,7 @@ class EstimateController extends Controller
 
     public function store(DocumentRequest $request, ServiceJob $job, SaveBillingDocument $save): RedirectResponse
     {
-        Gate::authorize('work', $job);
+        Gate::authorize('estimate', $job);
 
         $estimate = $save->createEstimate($job, $request->document(), $request->user());
 

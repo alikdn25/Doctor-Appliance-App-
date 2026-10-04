@@ -59,9 +59,9 @@ test('the shared permissions match the role', function (UserRole $role, array $c
         ->get(route('dashboard'))
         ->assertInertia(fn ($page) => $page->where('auth.can', $can));
 })->with([
-    'owner' => [UserRole::Owner, ['createJobs' => true, 'viewCustomers' => true, 'viewMessageInbox' => true, 'viewBusinessExpenses' => true, 'viewJobs' => true, 'viewInvoices' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageChecklists' => true, 'manageCompany' => true, 'viewBrands' => true, 'manageTeam' => true, 'viewTaxes' => true]],
-    'admin' => [UserRole::Admin, ['createJobs' => true, 'viewCustomers' => true, 'viewMessageInbox' => true, 'viewBusinessExpenses' => true, 'viewJobs' => true, 'viewInvoices' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageChecklists' => true, 'manageCompany' => false, 'viewBrands' => true, 'manageTeam' => true, 'viewTaxes' => true]],
-    'technician' => [UserRole::Technician, ['createJobs' => false, 'viewCustomers' => false, 'viewMessageInbox' => false, 'viewBusinessExpenses' => true, 'viewJobs' => false, 'viewInvoices' => false, 'viewMyJobs' => true, 'viewCalendar' => false, 'manageChecklists' => false, 'manageCompany' => false, 'viewBrands' => false, 'manageTeam' => false, 'viewTaxes' => false]],
+    'owner' => [UserRole::Owner, ['createJobs' => true, 'viewCustomers' => true, 'viewMessageInbox' => true, 'viewBusinessExpenses' => true, 'viewJobs' => true, 'viewInvoices' => true, 'viewReports' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageChecklists' => true, 'manageCompany' => true, 'viewBrands' => true, 'manageTeam' => true, 'viewTaxes' => true]],
+    'admin' => [UserRole::Admin, ['createJobs' => true, 'viewCustomers' => true, 'viewMessageInbox' => true, 'viewBusinessExpenses' => true, 'viewJobs' => true, 'viewInvoices' => true, 'viewReports' => true, 'viewMyJobs' => true, 'viewCalendar' => true, 'manageChecklists' => true, 'manageCompany' => false, 'viewBrands' => true, 'manageTeam' => true, 'viewTaxes' => true]],
+    'technician' => [UserRole::Technician, ['createJobs' => false, 'viewCustomers' => false, 'viewMessageInbox' => false, 'viewBusinessExpenses' => true, 'viewJobs' => false, 'viewInvoices' => false, 'viewReports' => false, 'viewMyJobs' => true, 'viewCalendar' => false, 'manageChecklists' => false, 'manageCompany' => false, 'viewBrands' => false, 'manageTeam' => false, 'viewTaxes' => false]],
 ]);
 
 test('guests are sent to the login page', function () {

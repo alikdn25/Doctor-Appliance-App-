@@ -3,52 +3,24 @@
 namespace App\Messaging;
 
 use App\Enums\MessageKind;
-use App\Enums\SmsMode;
 use App\Models\GoogleProfile;
+use App\Models\Message;
 use App\Models\ReviewRequest;
 use App\Models\ServiceJob;
 use App\Models\User;
 
 /**
- * Google review requests (SPEC §8). When a job with "Ask for a review" is paid in full, a request is scheduled after
- * the company's delay and sent by SMS (Automatic mode) or email. One request per job; none if the customer already
- * got one within the company's cooldown period. Every customer gets the same request: no incentive, no
- * "are you happy?" filter. Must run in a tenant context.
+ * Google review requests (SPEC §8). At the end of the work the technician picks or pastes the review link of whichever
+ * Google profile fits (a company may have several) and sends it: from their phone, by SMS (Automatic mode) or by
+ * email. No profile is bound to a brand or job. Every customer gets the same request: no incentive, no
+ * "are you happy?" filter. Requests scheduled by earlier versions are still delivered. Must run in a tenant context.
  */
 class ReviewRequests
 {
     public function __construct(private readonly Messenger $messenger) {}
 
     /**
-     * Called when the job becomes paid.
-     */
-    public function schedule(ServiceJob $job): ?ReviewRequest
-    {
-        if (! $job->ask_for_review || ReviewRequest::query()->where('service_job_id', $job->id)->exists()) {
-            return null;
-        }
-
-        $company = currentCompany();
-        $request = new ReviewRequest([
-            'customer_id' => $job->customer_id,
-            'service_job_id' => $job->id,
-            'google_profile_id' => $this->profile($job)?->id,
-            'status' => ReviewRequest::SCHEDULED,
-            'send_after' => now()->addHours($company->review_request_delay_hours),
-        ]);
-
-        $skip = $this->skipReason($request);
-        if ($skip !== null) {
-            $request->fill(['status' => ReviewRequest::SKIPPED, 'skip_reason' => $skip, 'send_after' => null]);
-        }
-
-        $request->save();
-
-        return $request;
-    }
-
-    /**
-     * Sends a scheduled request that is due (minute command).
+     * Sends a request scheduled by an earlier version that is now due (minute command).
      */
     public function deliver(ReviewRequest $request): void
     {
@@ -64,7 +36,7 @@ class ReviewRequests
         }
 
         $job = $request->job;
-        $message = $this->messenger->send(MessageKind::ReviewRequest, $job->customer, $job, $this->text($job, $request->profile));
+        $message = $this->messenger->send(MessageKind::ReviewRequest, $job->customer, $job, $this->text($job, $request->profile?->review_url ?? $this->profile($job)?->review_url));
 
         $request->update([
             'status' => $message->status === 'blocked' ? ReviewRequest::SKIPPED : ReviewRequest::SENT,
@@ -76,29 +48,47 @@ class ReviewRequests
     }
 
     /**
-     * From technician's phone: the request is sent by the technician (sms: link) and recorded as sent.
+     * From technician's phone: the text with the chosen link was opened on the phone (sms: link); record it as sent.
      */
-    public function sentFromPhone(ServiceJob $job, string $to, User $user): void
+    public function sentFromPhone(ServiceJob $job, string $to, string $body, User $user): void
     {
-        $profile = $this->profile($job);
-        $message = $this->messenger->openedOnPhone(MessageKind::ReviewRequest, $job->customer, $job, $to, $this->text($job, $profile), $user);
+        $this->record($job, $this->messenger->openedOnPhone(MessageKind::ReviewRequest, $job->customer, $job, $to, $body, $user));
+    }
 
+    /**
+     * Automatic or Off mode: the app sends the request with the chosen link by SMS, or by email.
+     */
+    public function sendWithLink(ServiceJob $job, string $link, User $user): Message
+    {
+        $message = $this->messenger->send(MessageKind::ReviewRequest, $job->customer, $job, $this->text($job, $link), $user);
+        if ($message->status !== 'blocked') {
+            $this->record($job, $message);
+        }
+
+        return $message;
+    }
+
+    /**
+     * The request text with the given review link; null keeps the {review_link} placeholder for the phone to fill.
+     */
+    public function text(ServiceJob $job, ?string $link): string
+    {
+        return MessageTemplates::render(currentCompany(), MessageKind::ReviewRequest, [
+            ...MessageContext::for($job->customer, $job),
+            'review_link' => $link ?? '{review_link}',
+        ]);
+    }
+
+    private function record(ServiceJob $job, Message $message): void
+    {
         ReviewRequest::query()->updateOrCreate(['service_job_id' => $job->id], [
             'customer_id' => $job->customer_id,
-            'google_profile_id' => $profile?->id,
+            'google_profile_id' => null,
             'status' => ReviewRequest::SENT,
             'channel' => $message->channel,
             'skip_reason' => null,
             'sent_at' => now(),
             'message_id' => $message->id,
-        ]);
-    }
-
-    public function text(ServiceJob $job, ?GoogleProfile $profile): string
-    {
-        return MessageTemplates::render(currentCompany(), MessageKind::ReviewRequest, [
-            ...MessageContext::for($job->customer, $job),
-            'review_link' => $profile?->review_url,
         ]);
     }
 
@@ -140,13 +130,5 @@ class ReviewRequests
             ->exists();
 
         return $recent ? __('reviews.skipped.recent', ['days' => $company->review_request_cooldown_days]) : null;
-    }
-
-    /**
-     * Whether the technician's "Send review request" button is offered on the job.
-     */
-    public static function phoneButton(ServiceJob $job): bool
-    {
-        return currentCompany()->sms_mode === SmsMode::TechnicianPhone;
     }
 }

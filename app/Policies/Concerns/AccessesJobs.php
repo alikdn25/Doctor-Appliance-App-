@@ -2,14 +2,15 @@
 
 namespace App\Policies\Concerns;
 
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Models\ServiceJob;
 use App\Models\User;
 
 /**
- * Jobs are managed by the office (Owner, Admin) within the brands they work for.
- * Anyone assigned to a visit of a job (technicians, and Owners/Admins who go on calls)
- * can see the job and work on it.
+ * Jobs are seen by the office (Owner, Office) within the brands they work for; each kind of office work
+ * (scheduling, estimates, invoices) needs the matching permission the Owner gave. Anyone assigned to a visit of
+ * a job (technicians, and Owners/Office members who go on calls) can see the job and work on it.
  */
 trait AccessesJobs
 {
@@ -25,7 +26,8 @@ trait AccessesJobs
         return $user->hasRole(UserRole::Owner, UserRole::Admin, UserRole::Technician);
     }
 
-    protected function managesJob(User $user, ServiceJob $job): bool
+    /** The office sees every job of its brands, whatever its permissions. */
+    protected function officeSeesJob(User $user, ServiceJob $job): bool
     {
         if (! $this->inCurrentCompany($job) || ! $this->isOffice($user)) {
             return false;
@@ -36,9 +38,24 @@ trait AccessesJobs
         return $brandIds === [] || in_array($job->brand_id, $brandIds, true);
     }
 
+    protected function managesJob(User $user, ServiceJob $job, OfficePermission $permission = OfficePermission::Schedule): bool
+    {
+        return $this->officeSeesJob($user, $job) && $user->canOffice($permission);
+    }
+
+    protected function assignedTo(User $user, ServiceJob $job): bool
+    {
+        return $this->inCurrentCompany($job) && $this->isFieldMember($user) && $job->isAssigned($user);
+    }
+
     protected function seesJob(User $user, ServiceJob $job): bool
     {
-        return $this->managesJob($user, $job)
-            || ($this->inCurrentCompany($job) && $this->isFieldMember($user) && $job->isAssigned($user));
+        return $this->officeSeesJob($user, $job) || $this->assignedTo($user, $job);
+    }
+
+    /** Estimates or invoices of a job: the people on the job, or the office with that permission. */
+    protected function billsJob(User $user, ServiceJob $job, OfficePermission $permission): bool
+    {
+        return $this->assignedTo($user, $job) || $this->managesJob($user, $job, $permission);
     }
 }

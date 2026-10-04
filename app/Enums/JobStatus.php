@@ -12,6 +12,8 @@ enum JobStatus: string
     case Scheduled = 'scheduled';
     case OnTheWay = 'on_the_way';
     case InProgress = 'in_progress';
+    case PartsToOrder = 'parts_to_order';
+    case EstimateToSend = 'estimate_to_send';
     case WaitingForParts = 'waiting_for_parts';
     case WaitingForCustomer = 'waiting_for_customer';
     case Completed = 'completed';
@@ -39,11 +41,22 @@ enum JobStatus: string
     }
 
     /**
+     * Waiting reasons the technician on the job can set: on us (parts, estimate), on parts, on the customer.
+     *
+     * @return list<self>
+     */
+    public static function waiting(): array
+    {
+        return [self::PartsToOrder, self::EstimateToSend, self::WaitingForParts, self::WaitingForCustomer];
+    }
+
+    /**
+     * @param  list<self>|null  $statuses
      * @return list<array{value: string, label: string}>
      */
-    public static function manualOptions(): array
+    public static function manualOptions(?array $statuses = null): array
     {
-        return array_map(fn (self $s) => ['value' => $s->value, 'label' => $s->label()], self::manual());
+        return array_map(fn (self $s) => ['value' => $s->value, 'label' => $s->label()], $statuses ?? self::manual());
     }
 
     /**
@@ -67,6 +80,6 @@ enum JobStatus: string
      */
     public function reschedulable(): bool
     {
-        return in_array($this, [self::New, self::WaitingForParts, self::WaitingForCustomer, self::OnHold, self::Completed], true);
+        return in_array($this, [self::New, self::PartsToOrder, self::EstimateToSend, self::WaitingForParts, self::WaitingForCustomer, self::OnHold, self::Completed], true);
     }
 }

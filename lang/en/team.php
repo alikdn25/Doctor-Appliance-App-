@@ -36,6 +36,7 @@ return [
         'role' => 'Role',
         'brands' => 'Brands',
         'is_active' => 'Active (can sign in to this company)',
+        'permissions' => 'Office access',
     ],
 
     'errors' => [
@@ -45,5 +46,30 @@ return [
         'already_member' => 'This person is already a member of the company.',
         'super_admin' => 'Platform administrators cannot be added to a company.',
         'last_owner' => 'The company must keep at least one active Owner.',
+    ],
+    'permissions_note' => 'What this Office member can change. Purchase costs and profit stay with the Owner.',
+    'view_only' => 'View only',
+    'view_only_note' => 'Can open and view the calendar, jobs, customers (to call them), estimates and invoices, but cannot change anything. Tick an area to allow changes there, e.g. Invoices and payments.',
+    'permissions' => [
+        'schedule' => 'Calendar and scheduling',
+        'customers' => 'Customers',
+        'estimates' => 'Estimates',
+        'invoices' => 'Invoices and payments',
+        'messages' => 'SMS inbox',
+        'reports' => 'Reports and cash on hand',
+        'expenses' => 'Company expenses',
+        'catalog' => 'Services and checklists',
+        'team' => 'Technicians',
+    ],
+    'permissions_hints' => [
+        'schedule' => 'Book customers, create and edit jobs, assign and move visits.',
+        'customers' => 'Add and edit customers, properties and appliances.',
+        'estimates' => 'Create, change and send estimates.',
+        'invoices' => 'Create and send invoices, record payments, refunds and voids.',
+        'messages' => 'Read and answer customer texts in the shared inbox.',
+        'reports' => 'Revenue, callbacks and estimate conversion (without costs or profit); cash on hand.',
+        'expenses' => 'See and manage everyone\'s business expenses.',
+        'catalog' => 'Edit the price book and job checklists.',
+        'team' => 'Add, change and replace technicians.',
     ],
 ];

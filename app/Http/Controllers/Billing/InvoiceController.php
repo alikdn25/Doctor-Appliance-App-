@@ -30,7 +30,7 @@ class InvoiceController extends Controller
 {
     public function start(Request $request): Response|RedirectResponse
     {
-        Gate::authorize('viewAny', Invoice::class);
+        Gate::authorize('create', Invoice::class);
 
         $search = trim((string) $request->query('search', ''));
         $base = ServiceJob::query()->visibleTo($request->user());
@@ -42,7 +42,7 @@ class InvoiceController extends Controller
         return Inertia::render('invoices/start', [
             'search' => $search,
             'jobs' => $base->search($search)->with('customer')->orderByDesc('id')->limit(25)->get()
-                ->filter(fn (ServiceJob $job) => Gate::allows('work', $job))
+                ->filter(fn (ServiceJob $job) => Gate::allows('invoice', $job))
                 ->map(fn (ServiceJob $job) => [
                     'id' => $job->id,
                     'number' => $job->number,
@@ -89,6 +89,7 @@ class InvoiceController extends Controller
         return Inertia::render('invoices/index', [
             'invoices' => $invoices,
             'hasInvoices' => (clone $base)->exists(),
+            'canCreate' => Gate::allows('create', Invoice::class),
             'filters' => $filters,
             'statuses' => InvoiceStatus::options(),
             // One sum per currency: documents keep the currency they were created in.
@@ -104,7 +105,7 @@ class InvoiceController extends Controller
 
     public function create(Request $request, ServiceJob $job): Response
     {
-        Gate::authorize('work', $job);
+        Gate::authorize('invoice', $job);
 
         // Due date from the customer's payment terms (or the company default), editable on the form.
         $terms = $job->customer()->withTrashed()->first()?->paymentTerms() ?? currentCompany()->default_payment_terms;
@@ -171,7 +172,7 @@ class InvoiceController extends Controller
 
     public function store(DocumentRequest $request, ServiceJob $job, SaveBillingDocument $save): RedirectResponse
     {
-        Gate::authorize('work', $job);
+        Gate::authorize('invoice', $job);
 
         $invoice = $save->createInvoice($job, $request->document(), $request->user());
 
@@ -198,6 +199,9 @@ class InvoiceController extends Controller
             'online' => $this->online($invoice, $providers, $links),
             'delivery' => BillingPresenter::delivery($invoice),
             'sms' => $invoice->isVoid() ? null : app(MessagingPresenter::class)->forDocument($invoice),
+            // The review request belongs to the end of the work: after payment, with the receipt.
+            'review' => $invoice->status === InvoiceStatus::Paid && $invoice->job && (Gate::allows('invoice', $invoice->job) || Gate::allows('work', $invoice->job))
+                ? app(MessagingPresenter::class)->review($invoice->job) : null,
         ]);
     }
 

@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Mail, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Eye, Mail, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { FormField } from '@/components/form-field';
@@ -31,6 +31,7 @@ type Member = {
     role_label: string;
     is_active: boolean;
     brand_ids: number[];
+    permissions: string[];
     invitation_pending: boolean;
     is_self: boolean;
     can_manage: boolean;
@@ -40,6 +41,8 @@ type Props = {
     members: Member[];
     roles: Option[];
     brands: { id: number; name: string }[];
+    /** Office permissions the Owner can switch on or off (empty for anyone else). */
+    permissions: { value: string; label: string; hint: string }[];
     emailAvailable: boolean;
 };
 
@@ -49,6 +52,7 @@ type MemberForm = {
     role: string;
     is_active: boolean;
     brand_ids: number[];
+    permissions: string[];
     password: string;
     password_confirmation: string;
 };
@@ -57,6 +61,7 @@ export default function TeamIndex({
     members,
     roles,
     brands,
+    permissions: permissionOptions,
     emailAvailable,
 }: Props) {
     const t = useTrans();
@@ -69,8 +74,17 @@ export default function TeamIndex({
         role: 'technician',
         is_active: true,
         brand_ids: [],
+        permissions: permissionOptions.map((p) => p.value),
         password: '',
         password_confirmation: '',
+    });
+    // Only the Owner sends Office permissions, and only for an Office member.
+    form.transform((data) => {
+        const { permissions, ...rest } = data;
+
+        return permissionOptions.length > 0 && data.role === 'admin'
+            ? { ...rest, permissions }
+            : rest;
     });
     const errors = form.errors as Record<string, string | undefined>;
 
@@ -90,6 +104,10 @@ export default function TeamIndex({
             role: member.role,
             is_active: member.is_active,
             brand_ids: member.brand_ids,
+            permissions:
+                member.role === 'admin'
+                    ? member.permissions
+                    : permissionOptions.map((p) => p.value),
             password: '',
             password_confirmation: '',
         });
@@ -384,6 +402,78 @@ export default function TeamIndex({
                                 ))}
                             </fieldset>
                         )}
+
+                        {permissionOptions.length > 0 &&
+                            form.data.role === 'admin' && (
+                                <fieldset className="grid gap-2">
+                                    <legend className="mb-1 text-sm font-medium">
+                                        {t('team.fields.permissions')}
+                                    </legend>
+                                    <p className="text-xs text-muted-foreground">
+                                        {t('team.permissions_note')}
+                                    </p>
+                                    <Button
+                                        type="button"
+                                        variant={
+                                            form.data.permissions.length === 0
+                                                ? 'default'
+                                                : 'outline'
+                                        }
+                                        className="min-h-11 justify-start"
+                                        aria-pressed={
+                                            form.data.permissions.length === 0
+                                        }
+                                        onClick={() =>
+                                            form.setData('permissions', [])
+                                        }
+                                    >
+                                        <Eye /> {t('team.view_only')}
+                                    </Button>
+                                    {form.data.permissions.length === 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('team.view_only_note')}
+                                        </p>
+                                    )}
+                                    {permissionOptions.map((permission) => (
+                                        <label
+                                            key={permission.value}
+                                            className="flex min-h-11 items-start gap-2 text-sm"
+                                        >
+                                            <Checkbox
+                                                className="mt-0.5"
+                                                checked={form.data.permissions.includes(
+                                                    permission.value,
+                                                )}
+                                                onCheckedChange={(c) =>
+                                                    form.setData(
+                                                        'permissions',
+                                                        c === true
+                                                            ? [
+                                                                  ...form.data
+                                                                      .permissions,
+                                                                  permission.value,
+                                                              ]
+                                                            : form.data.permissions.filter(
+                                                                  (v) =>
+                                                                      v !==
+                                                                      permission.value,
+                                                              ),
+                                                    )
+                                                }
+                                            />
+                                            <span>
+                                                <span className="font-medium">
+                                                    {permission.label}
+                                                </span>
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {permission.hint}
+                                                </span>
+                                            </span>
+                                        </label>
+                                    ))}
+                                    <InputError message={errors.permissions} />
+                                </fieldset>
+                            )}
 
                         {editing && (
                             <label className="flex min-h-9 items-center gap-2 text-sm">

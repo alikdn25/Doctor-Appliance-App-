@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Reports;
 
 use App\Enums\InvoiceStatus;
 use App\Enums\JobOutcome;
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Enums\VisitType;
 use App\Http\Controllers\Controller;
@@ -55,15 +56,18 @@ class ReportController extends Controller
             ->pluck('previous_job_id')
             ->countBy();
         $noCharge = $rows->filter(fn (array $r) => $r['job']->outcome === JobOutcome::NoCharge);
+        // Costs, profit and losses are for the Owner only; the office sees revenue, callbacks and counts.
+        $owner = $request->user()->hasRole(UserRole::Owner);
 
         return Inertia::render('reports/index', [
+            'showProfit' => $owner,
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'currency' => currentCompany()->currency,
             'business' => BusinessReport::for($from, $to, $request->user()),
-            'totals' => $this->sum($billable),
-            'byTechnician' => $this->groupProfit($billable, 'technician'),
-            'byAppliance' => $this->groupProfit($billable, 'appliance'),
+            'totals' => $owner ? $this->sum($billable) : null,
+            'byTechnician' => $owner ? $this->groupProfit($billable, 'technician') : [],
+            'byAppliance' => $owner ? $this->groupProfit($billable, 'appliance') : [],
             'callbacks' => [
                 'total' => $this->rate($originals, $callbacks),
                 'byTechnician' => $this->groupRate($originals, $callbacks, 'technician'),
@@ -72,9 +76,9 @@ class ReportController extends Controller
             ],
             'noCharge' => [
                 'count' => $noCharge->count(),
-                'loss' => $noCharge->contains(fn ($r) => $r['profit'] === null) ? null : -$noCharge->sum('profit'),
+                'loss' => ! $owner || $noCharge->contains(fn ($r) => $r['profit'] === null) ? null : -$noCharge->sum('profit'),
                 'byTechnician' => $noCharge->groupBy('technician')->map(fn (Collection $g, string $name) => [
-                    'name' => $name, 'count' => $g->count(), 'loss' => $g->contains(fn ($r) => $r['profit'] === null) ? null : -$g->sum('profit'),
+                    'name' => $name, 'count' => $g->count(), 'loss' => ! $owner || $g->contains(fn ($r) => $r['profit'] === null) ? null : -$g->sum('profit'),
                 ])->values(),
             ],
         ]);
@@ -85,7 +89,7 @@ class ReportController extends Controller
      */
     public function expenses(Request $request): StreamedResponse
     {
-        $this->authorizeOffice($request);
+        $this->authorizeOwner($request);
         [$from, $to] = $this->period($request);
         $jobs = $this->closedJobs($from, $to)->keyBy('id');
 
@@ -140,7 +144,7 @@ class ReportController extends Controller
      */
     public function receipts(Request $request): BinaryFileResponse
     {
-        $this->authorizeOffice($request);
+        $this->authorizeOwner($request);
         [$from, $to] = $this->period($request);
         $jobIds = $this->closedJobs($from, $to)->pluck('id');
 
@@ -272,8 +276,14 @@ class ReportController extends Controller
         return [$from, $to];
     }
 
+    /** Bookkeeper exports carry purchase costs: Owner only. */
+    private function authorizeOwner(Request $request): void
+    {
+        abort_unless($request->user()->hasRole(UserRole::Owner), 403);
+    }
+
     private function authorizeOffice(Request $request): void
     {
-        abort_unless($request->user()->hasRole(UserRole::Owner, UserRole::Admin), 403);
+        abort_unless($request->user()->hasRole(UserRole::Owner, UserRole::Admin) && $request->user()->canOffice(OfficePermission::Reports), 403);
     }
 }

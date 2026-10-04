@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Models\ServiceJob;
 use App\Models\User;
@@ -30,9 +31,15 @@ class ServiceJobPolicy
     /**
      * The dispatch calendar (office).
      */
-    public function dispatch(User $user): bool
+    /** Looking at the calendar (read-only without the Schedule permission). */
+    public function viewCalendar(User $user): bool
     {
         return $this->isOffice($user);
+    }
+
+    public function dispatch(User $user): bool
+    {
+        return $this->isOffice($user) && $user->canOffice(OfficePermission::Schedule);
     }
 
     public function view(User $user, ServiceJob $job): bool
@@ -42,7 +49,7 @@ class ServiceJobPolicy
 
     public function create(User $user): bool
     {
-        return $this->isOffice($user);
+        return $this->isOffice($user) && $user->canOffice(OfficePermission::Schedule);
     }
 
     public function update(User $user, ServiceJob $job): bool
@@ -76,7 +83,19 @@ class ServiceJobPolicy
 
     public function viewTrash(User $user): bool
     {
-        return $this->isOffice($user);
+        return $this->isOffice($user) && $user->canOffice(OfficePermission::Schedule);
+    }
+
+    /** New estimates on the job. */
+    public function estimate(User $user, ServiceJob $job): bool
+    {
+        return $this->billsJob($user, $job, OfficePermission::Estimates);
+    }
+
+    /** New invoices on the job. */
+    public function invoice(User $user, ServiceJob $job): bool
+    {
+        return $this->billsJob($user, $job, OfficePermission::Invoices);
     }
 
     /**
@@ -84,6 +103,8 @@ class ServiceJobPolicy
      */
     public function work(User $user, ServiceJob $job): bool
     {
-        return $this->seesJob($user, $job);
+        // Field work on the job (photos, notes, statuses, closing): the people on it, or the office that schedules.
+        // A view-only Office member opens the job but changes nothing.
+        return $this->assignedTo($user, $job) || $this->managesJob($user, $job);
     }
 }

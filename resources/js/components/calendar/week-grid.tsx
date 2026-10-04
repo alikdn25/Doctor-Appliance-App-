@@ -5,6 +5,7 @@ import type { CalendarVisit, Lane } from '@/components/calendar/types';
 import { dayLabel, inLane } from '@/components/calendar/types';
 import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
+import { calendarBlock } from '@/lib/job-colors';
 import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
 
@@ -144,10 +145,13 @@ export function WeekGrid({
                                                         onOpen(visit)
                                                     }
                                                     className={cn(
-                                                        'block w-full rounded border bg-card px-1.5 py-1 text-left shadow-sm select-none [-webkit-touch-callout:none]',
+                                                        'block w-full rounded border px-1.5 py-1 text-left shadow-sm select-none [-webkit-touch-callout:none]',
+                                                        calendarBlock(
+                                                            visit.job.status,
+                                                        ),
                                                         visit.movable
-                                                            ? 'cursor-grab border-l-4 border-l-primary'
-                                                            : 'border-l-4 border-l-muted-foreground/40 opacity-80',
+                                                            ? 'cursor-grab'
+                                                            : 'opacity-80',
                                                         visit.conflict &&
                                                             'border-destructive ring-1 ring-destructive',
                                                     )}

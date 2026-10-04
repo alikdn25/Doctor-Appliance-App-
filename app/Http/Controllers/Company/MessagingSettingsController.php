@@ -80,16 +80,12 @@ class MessagingSettingsController extends Controller
             'sms_mode' => ['required', Rule::enum(SmsMode::class)],
             'quiet_hours_start' => ['required', 'date_format:H:i'],
             'quiet_hours_end' => ['required', 'date_format:H:i'],
-            'review_requests_default' => ['boolean'],
-            'review_request_delay_hours' => ['required', 'integer', 'min:0', 'max:720'],
-            'review_request_cooldown_days' => ['required', 'integer', 'min:0', 'max:3650'],
             'templates' => ['array:'.implode(',', $kinds)],
             'templates.*' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $company->fill([
             ...collect($data)->except('templates')->all(),
-            'review_requests_default' => (bool) ($data['review_requests_default'] ?? false),
             'message_templates' => array_filter(array_map(fn ($t) => trim((string) $t), $data['templates'] ?? []), fn ($t) => $t !== ''),
         ]);
         $changes = array_keys($company->getDirty());

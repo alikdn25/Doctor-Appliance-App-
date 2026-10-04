@@ -26,6 +26,8 @@ import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { CustomerNotes } from '@/components/customers/customer-notes';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
+import type { CustomerTexting } from '@/components/messaging/customer-sms';
+import { CustomerSms } from '@/components/messaging/customer-sms';
 import { MessageHistory } from '@/components/messaging/message-history';
 import type { MessageItem } from '@/components/messaging/types';
 import { Button } from '@/components/ui/button';
@@ -93,7 +95,7 @@ type Props = {
     canDelete: boolean;
     applianceTypes: Option[];
     manufacturers: string[];
-    messaging: { mode: string; messages: MessageItem[] };
+    messaging: CustomerTexting & { messages: MessageItem[] };
 };
 
 export default function CustomerShow({
@@ -485,6 +487,7 @@ export default function CustomerShow({
                     <h2 className="text-base font-medium">
                         {t('messages.title')}
                     </h2>
+                    <CustomerSms customerId={customer.id} texting={messaging} />
                     <MessageHistory
                         messages={messaging.messages}
                         showJobLinks

@@ -87,10 +87,19 @@ test('an old unfinished repair remains in the backlog and map fallback keeps vis
     page,
 }, info) => {
     await page.goto('/dashboard');
-    await expect(
-        page.getByRole('link', { name: /Not completed jobs/ }),
-    ).toBeVisible();
-    await page.getByRole('link', { name: /Not completed jobs/ }).click();
+    // The bar shows numbers in colored circles; tapping it opens the named circles.
+    const bar = page.getByRole('button', {
+        name: 'Not completed jobs',
+        exact: true,
+    });
+    await expect(bar).toHaveAttribute('aria-expanded', 'false');
+    await bar.click();
+    await expect(bar).toHaveAttribute('aria-expanded', 'true');
+    await page
+        .locator('#unfinished-jobs-panel')
+        .getByRole('link', { name: /Waiting for parts/ })
+        .click();
+    await expect(page).toHaveURL(/reason=waiting_for_parts/);
     await expect(
         page.locator(`a[href="/jobs/${fixture.waiting_job_id}"]`).first(),
     ).toBeVisible();

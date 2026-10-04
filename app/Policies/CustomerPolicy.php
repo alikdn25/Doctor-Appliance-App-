@@ -12,13 +12,13 @@ class CustomerPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->managesCustomers($user);
+        return $this->seesCustomers($user);
     }
 
     public function view(User $user, Customer $customer): bool
     {
         return $this->inCurrentCompany($customer)
-            && ($this->managesCustomers($user) || $this->seesThroughJobs($user, fn ($q) => $q->where('customer_id', $customer->id)));
+            && ($this->seesCustomers($user) || $this->seesThroughJobs($user, fn ($q) => $q->where('customer_id', $customer->id)));
     }
 
     public function create(User $user): bool

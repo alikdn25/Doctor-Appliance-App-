@@ -140,6 +140,8 @@ type Props = {
         update: boolean;
         delete: boolean;
         work: boolean;
+        estimate: boolean;
+        invoice: boolean;
         close: boolean;
         viewCustomer: boolean;
     };
@@ -737,12 +739,6 @@ export default function JobShow({
                     </>
                 )}
 
-                <JobMessagingSection
-                    jobId={job.id}
-                    messaging={messaging}
-                    canWork={can.work}
-                />
-
                 <ChecklistSection
                     jobId={job.id}
                     items={job.checklist}
@@ -793,6 +789,43 @@ export default function JobShow({
                         <p className="text-sm whitespace-pre-line text-muted-foreground">
                             {job.tech_notes ?? '—'}
                         </p>
+                    )}
+                </section>
+
+                {/* Estimates and invoices */}
+                <section className="space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h2 className="flex items-center gap-2 text-base font-medium">
+                            <Receipt className="size-4" />
+                            {t('billing.section')}
+                        </h2>
+                        {(can.estimate || can.invoice) && (
+                            <div className="flex gap-2">
+                                {can.estimate && (
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link href={createEstimate(job.id)}>
+                                            <Plus /> {t('billing.new_estimate')}
+                                        </Link>
+                                    </Button>
+                                )}
+                                {can.invoice && (
+                                    <Button size="sm" asChild>
+                                        <Link href={createInvoice(job.id)}>
+                                            <Plus /> {t('billing.new_invoice')}
+                                        </Link>
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    {job.estimates.length + job.invoices.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            {t('billing.empty')}
+                        </p>
+                    ) : (
+                        <DocumentList
+                            documents={[...job.invoices, ...job.estimates]}
+                        />
                     )}
                 </section>
 
@@ -936,38 +969,11 @@ export default function JobShow({
                     )}
                 </section>
 
-                {/* Estimates and invoices */}
-                <section className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h2 className="flex items-center gap-2 text-base font-medium">
-                            <Receipt className="size-4" />
-                            {t('billing.section')}
-                        </h2>
-                        {can.work && (
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="sm" asChild>
-                                    <Link href={createEstimate(job.id)}>
-                                        <Plus /> {t('billing.new_estimate')}
-                                    </Link>
-                                </Button>
-                                <Button size="sm" asChild>
-                                    <Link href={createInvoice(job.id)}>
-                                        <Plus /> {t('billing.new_invoice')}
-                                    </Link>
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                    {job.estimates.length + job.invoices.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            {t('billing.empty')}
-                        </p>
-                    ) : (
-                        <DocumentList
-                            documents={[...job.invoices, ...job.estimates]}
-                        />
-                    )}
-                </section>
+                <JobMessagingSection
+                    jobId={job.id}
+                    messaging={messaging}
+                    canWork={can.work}
+                />
 
                 {costs && <JobCostsSection jobId={job.id} costs={costs} />}
 

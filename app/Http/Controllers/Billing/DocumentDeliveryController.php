@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Billing;
 
 use App\Actions\Billing\SendDocument;
+use App\Actions\Jobs\MarkEstimateSent;
 use App\Enums\EstimateStatus;
 use App\Enums\MessageKind;
 use App\Enums\SmsMode;
@@ -69,7 +70,7 @@ class DocumentDeliveryController extends Controller
      */
     private function sms(Request $request, Estimate|Invoice $document, Messenger $messenger): RedirectResponse
     {
-        Gate::authorize('view', $document);
+        Gate::authorize('send', $document);
         abort_unless(currentCompany()->sms_mode === SmsMode::Automatic, 404);
 
         $document->loadMissing(['customer', 'job']);
@@ -85,6 +86,9 @@ class DocumentDeliveryController extends Controller
             $document->forceFill(['sent_at' => now(), 'sent_to' => $message->to,
                 ...($document instanceof Estimate ? ['followup_processed_at' => null] : []),
             ])->saveQuietly();
+            if ($document instanceof Estimate) {
+                app(MarkEstimateSent::class)->handle($document->job, $request->user());
+            }
         }
 
         return JobMessageController::result($message->status, $message->status_reason, $message->send_after);
@@ -103,7 +107,7 @@ class DocumentDeliveryController extends Controller
 
     private function send(Request $request, Estimate|Invoice $document, SendDocument $send): RedirectResponse
     {
-        Gate::authorize('view', $document);
+        Gate::authorize('send', $document);
 
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255'],
@@ -111,6 +115,9 @@ class DocumentDeliveryController extends Controller
         ], [], ['email' => __('documents.to'), 'message' => __('documents.message')]);
 
         $send->handle($document, $data['email'], $data['message'], $request->user());
+        if ($document instanceof Estimate) {
+            app(MarkEstimateSent::class)->handle($document->job, $request->user());
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('documents.sent', [
             'kind' => __($document instanceof Invoice ? 'documents.invoice' : 'documents.estimate'),

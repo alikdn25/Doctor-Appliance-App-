@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OfficePermission;
 use App\Enums\UserRole;
 use App\Models\Concerns\BelongsToCompany;
 use Database\Factories\MembershipFactory;
@@ -33,7 +34,7 @@ class Membership extends Model
 
     protected $table = 'company_user';
 
-    protected $fillable = ['company_id', 'user_id', 'role', 'is_active'];
+    protected $fillable = ['company_id', 'user_id', 'role', 'is_active', 'permissions'];
 
     protected $attributes = [
         'is_active' => true,
@@ -47,7 +48,28 @@ class Membership extends Model
         return [
             'role' => UserRole::class,
             'is_active' => 'boolean',
+            'permissions' => 'array',
         ];
+    }
+
+    /**
+     * Owners can do everything; Office members only what the Owner switched on (all when never set).
+     */
+    public function allows(OfficePermission $permission): bool
+    {
+        return match ($this->role) {
+            UserRole::Owner => true,
+            UserRole::Admin => $this->permissions === null || in_array($permission->value, $this->permissions, true),
+            default => false,
+        };
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function officePermissions(): array
+    {
+        return $this->role === UserRole::Admin ? ($this->permissions ?? OfficePermission::values()) : [];
     }
 
     /**

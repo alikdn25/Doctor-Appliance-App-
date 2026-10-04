@@ -27,6 +27,7 @@ use App\Http\Controllers\Company\TaxRateController;
 use App\Http\Controllers\Company\TeamController;
 use App\Http\Controllers\Customers\ApplianceController;
 use App\Http\Controllers\Customers\CustomerController;
+use App\Http\Controllers\Customers\CustomerMessageController;
 use App\Http\Controllers\Customers\PropertyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Jobs\CalendarController;
@@ -48,6 +49,7 @@ use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\SmsInboxController;
 use App\Http\Controllers\SmsWebhookController;
+use App\Support\WorkHome;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
@@ -73,7 +75,7 @@ Route::post('webhooks/payments/{provider}', PaymentWebhookController::class)
     ->middleware('throttle:120,1')
     ->name('webhooks.payments');
 
-Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'login'))->name('home');
+Route::get('/', fn () => auth()->check() ? redirect(WorkHome::url(auth()->user())) : redirect()->route('login'))->name('home');
 
 Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['verified', 'super-admin'])->group(function () {
@@ -99,6 +101,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('customers/avatar', [CustomerController::class, 'avatar'])->middleware('throttle:120,1')->name('customers.avatar');
         Route::get('customers/duplicates', [CustomerController::class, 'duplicates'])->name('customers.duplicates');
         Route::resource('customers', CustomerController::class);
+        Route::post('customers/{customer}/sms', [CustomerMessageController::class, 'sms'])->middleware('throttle:30,1')->name('customers.sms');
+        Route::post('customers/{customer}/messages/opened', [CustomerMessageController::class, 'opened'])->middleware('throttle:30,1')->name('customers.messages.opened');
         Route::post('customers/{customer}/properties', [PropertyController::class, 'store'])->name('properties.store');
         Route::put('properties/{property}', [PropertyController::class, 'update'])->name('properties.update');
         Route::delete('properties/{property}', [PropertyController::class, 'destroy'])->name('properties.destroy');
@@ -189,7 +193,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('invoices/{invoice}/sms', [DocumentDeliveryController::class, 'smsInvoice'])->middleware('throttle:30,1')->name('invoices.sms');
         Route::post('jobs/{job}/sms', [JobMessageController::class, 'sms'])->middleware('throttle:30,1')->name('jobs.sms');
         Route::post('jobs/{job}/messages/opened', [JobMessageController::class, 'opened'])->name('jobs.messages.opened');
-        Route::put('jobs/{job}/ask-for-review', [JobMessageController::class, 'askForReview'])->name('jobs.ask-for-review');
+        Route::post('jobs/{job}/review-request', [JobMessageController::class, 'reviewRequest'])->middleware('throttle:20,1')->name('jobs.review-request');
 
         // Connecting the company's own payment provider account (OAuth). The callback URL is registered at the provider.
         Route::get('payment-providers/{provider}/connect', [PaymentProviderController::class, 'connect'])->name('payment-providers.connect');

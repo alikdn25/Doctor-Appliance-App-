@@ -18,9 +18,12 @@ class UpdateMember
     /**
      * @param  list<int>  $brandIds
      */
-    public function handle(Membership $membership, UserRole $role, bool $isActive, array $brandIds): Membership
+    /**
+     * @param  list<string>|null  $permissions  Office permissions (null = all, and for other roles)
+     */
+    public function handle(Membership $membership, UserRole $role, bool $isActive, array $brandIds, ?array $permissions = null): Membership
     {
-        return DB::transaction(function () use ($membership, $role, $isActive, $brandIds) {
+        return DB::transaction(function () use ($membership, $role, $isActive, $brandIds, $permissions) {
             $losesOwner = $membership->role === UserRole::Owner
                 && $membership->is_active
                 && ($role !== UserRole::Owner || ! $isActive);
@@ -30,11 +33,19 @@ class UpdateMember
             }
 
             $before = ['role' => $membership->role->value, 'is_active' => $membership->is_active];
+            $beforePermissions = $membership->officePermissions();
+            $permissions = $role === UserRole::Admin ? $permissions : null;
 
-            $membership->update(['role' => $role, 'is_active' => $isActive]);
+            $membership->update(['role' => $role, 'is_active' => $isActive, 'permissions' => $permissions]);
             $this->syncBrands->handle($membership, $brandIds);
 
             $after = ['role' => $role->value, 'is_active' => $isActive];
+            // An Office member's access changes are logged too, as the list of areas before and after.
+            $afterPermissions = $membership->fresh()->officePermissions();
+            if ($before['role'] === UserRole::Admin->value && $role === UserRole::Admin && $beforePermissions !== $afterPermissions) {
+                $before['permissions'] = $beforePermissions;
+                $after['permissions'] = $afterPermissions;
+            }
 
             if ($before !== $after) {
                 $this->audit->record('member.updated', $membership, [

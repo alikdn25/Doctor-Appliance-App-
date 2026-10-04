@@ -7,13 +7,15 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Document purchase costs belong to their author. Shared job expenses use company role permissions.
+ * Document purchase costs belong to their author. Shared job costs and profit: the Owner (and technicians when the
+ * company allows it); the Office never sees them.
  */
 class CostAccess
 {
     public static function canEnterPrivate(?User $user): bool
     {
-        return $user !== null && $user->hasRole(UserRole::Owner, UserRole::Admin, UserRole::Technician);
+        // The Office never enters or sees purchase costs (Owner decision); technicians keep their own private costs.
+        return $user !== null && $user->hasRole(UserRole::Owner, UserRole::Technician);
     }
 
     public static function owns(?User $user, Model $line): bool
@@ -27,7 +29,7 @@ class CostAccess
             return false;
         }
 
-        return $user->hasRole(UserRole::Owner, UserRole::Admin)
+        return $user->hasRole(UserRole::Owner)
             || ($user->hasRole(UserRole::Technician) && currentCompany()->technicians_see_costs);
     }
 }

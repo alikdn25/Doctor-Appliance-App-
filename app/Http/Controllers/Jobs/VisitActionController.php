@@ -54,7 +54,7 @@ class VisitActionController extends Controller
     }
 
     /**
-     * Finish on site: completed (repaired / fixed under warranty), waiting for parts, or closed without a repair
+     * Finish on site: completed (repaired / fixed under warranty), parts to order, estimate to send, waiting for parts, or closed without a repair
      * (customer declined, unable to repair, no charge; with a reason). See JobCloseController for the rest.
      */
     public function finish(Request $request, JobVisit $visit, VisitWorkflow $workflow, CloseJob $close, RefundOriginalJob $refund): RedirectResponse
@@ -63,13 +63,13 @@ class VisitActionController extends Controller
 
         $job = JobCloseController::visitJob($visit);
         $data = JobCloseController::validateClose($request, $job, [
-            JobStatus::Completed->value, JobStatus::WaitingForParts->value,
+            JobStatus::Completed->value, JobStatus::PartsToOrder->value, JobStatus::EstimateToSend->value, JobStatus::WaitingForParts->value,
             ...array_map(fn (JobOutcome $o) => $o->value, JobOutcome::closing()),
         ]);
         $note = $data['note'] ?? null;
 
-        if ($data['outcome'] === JobStatus::WaitingForParts->value) {
-            $workflow->finish($visit, $request->user(), JobStatus::WaitingForParts, $note);
+        if (in_array($data['outcome'], [JobStatus::PartsToOrder->value, JobStatus::EstimateToSend->value, JobStatus::WaitingForParts->value], true)) {
+            $workflow->finish($visit, $request->user(), JobStatus::from($data['outcome']), $note);
 
             return back();
         }

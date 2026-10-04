@@ -333,10 +333,18 @@ class JobController extends Controller
                 'update' => $canUpdate,
                 'delete' => Gate::allows('delete', $job),
                 'work' => Gate::allows('work', $job),
+                'estimate' => Gate::allows('estimate', $job),
+                'invoice' => Gate::allows('invoice', $job),
                 'close' => Gate::allows('work', $job) && $job->status !== JobStatus::Cancelled && ! $job->trashed(),
                 'viewCustomer' => Gate::allows('view', $job->customer),
             ],
-            'statusOptions' => $canUpdate && ! $job->status->isLocked() ? JobStatus::manualOptions() : [],
+            'statusOptions' => match (true) {
+                $job->status->isLocked() => [],
+                $canUpdate => JobStatus::manualOptions(),
+                // The technician on the job marks what it is waiting for.
+                Gate::allows('work', $job) && $job->status !== JobStatus::Cancelled => JobStatus::manualOptions(JobStatus::waiting()),
+                default => [],
+            },
             'closureReasons' => [
                 'customer_declined' => currentCompany()->closureReasons(JobOutcome::CustomerDeclined),
                 'unable_to_repair' => currentCompany()->closureReasons(JobOutcome::UnableToRepair),
