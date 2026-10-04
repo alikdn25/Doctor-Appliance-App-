@@ -52,13 +52,13 @@ Everything pressable is a raised, soft, rounded shape:
 
 ## Colors
 
-| Token | Value |
-| --- | --- |
-| Page background | `#EEF3FA` |
-| Text | `#0F1B2D` |
-| Secondary text | `#5B6779` |
-| Link | `#0A6CF5` (hover `#0050D0`) |
-| Header | `linear-gradient(90deg, #3535FF 0%, #000000 100%)` (bright blue to black, as on the canvas) |
+| Token           | Value                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| Page background | `#EEF3FA`                                                                                   |
+| Text            | `#0F1B2D`                                                                                   |
+| Secondary text  | `#5B6779`                                                                                   |
+| Link            | `#0A6CF5` (hover `#0050D0`)                                                                 |
+| Header          | `linear-gradient(90deg, #3535FF 0%, #000000 100%)` (bright blue to black, as on the canvas) |
 
 The dark-blue header sits above a light "sheet" (page background) with rounded top corners.
 
@@ -68,17 +68,22 @@ The dark-blue header sits above a light "sheet" (page background) with rounded t
 
 ```css
 background:
-  linear-gradient(180deg, rgba(255,255,255,.30) 0%, rgba(255,255,255,0) 55%, rgba(0,20,80,.14) 100%),
-  linear-gradient(90deg, #4CBDFE 0%, #1E8CFD 35%, #0567F5 65%, #0046CC 100%);
+    linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.3) 0%,
+        rgba(255, 255, 255, 0) 55%,
+        rgba(0, 20, 80, 0.14) 100%
+    ),
+    linear-gradient(90deg, #4cbdfe 0%, #1e8cfd 35%, #0567f5 65%, #0046cc 100%);
 color: #fff;
-text-shadow: 0 1px 2px rgba(0,30,90,.45);
+text-shadow: 0 1px 2px rgba(0, 30, 90, 0.45);
 box-shadow:
-  inset 0 2px 2px rgba(255,255,255,.55),
-  inset 0 -4px 8px rgba(0,30,110,.38),
-  inset 4px 0 8px rgba(255,255,255,.22),
-  inset -5px 0 10px rgba(0,20,90,.30),
-  0 12px 20px -6px rgba(5,103,245,.60),
-  0 3px 6px rgba(0,50,140,.25);
+    inset 0 2px 2px rgba(255, 255, 255, 0.55),
+    inset 0 -4px 8px rgba(0, 30, 110, 0.38),
+    inset 4px 0 8px rgba(255, 255, 255, 0.22),
+    inset -5px 0 10px rgba(0, 20, 90, 0.3),
+    0 12px 20px -6px rgba(5, 103, 245, 0.6),
+    0 3px 6px rgba(0, 50, 140, 0.25);
 ```
 
 **Secondary button** — white to `#E1EAF6`:
@@ -87,16 +92,21 @@ box-shadow:
 border: 0;
 border-radius: 16px;
 background:
-  linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,0) 55%, rgba(0,36,73,.05) 100%),
-  linear-gradient(90deg, #FFFFFF 0%, #E1EAF6 100%);
+    linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(255, 255, 255, 0) 55%,
+        rgba(0, 36, 73, 0.05) 100%
+    ),
+    linear-gradient(90deg, #ffffff 0%, #e1eaf6 100%);
 box-shadow:
-  inset 0 2px 1px #fff,
-  inset 0 -3px 6px rgba(0,36,73,.13),
-  inset 3px 0 5px rgba(255,255,255,.9),
-  inset -4px 0 8px rgba(0,36,73,.09),
-  0 0 0 1px rgba(0,36,73,.07),
-  0 9px 16px -6px rgba(0,36,73,.32),
-  0 2px 4px rgba(0,36,73,.12);
+    inset 0 2px 1px #fff,
+    inset 0 -3px 6px rgba(0, 36, 73, 0.13),
+    inset 3px 0 5px rgba(255, 255, 255, 0.9),
+    inset -4px 0 8px rgba(0, 36, 73, 0.09),
+    0 0 0 1px rgba(0, 36, 73, 0.07),
+    0 9px 16px -6px rgba(0, 36, 73, 0.32),
+    0 2px 4px rgba(0, 36, 73, 0.12);
 ```
 
 **Soft blue button** (blue text `#0050D0`): `linear-gradient(90deg, #F2F9FF 0%, #C6DDFB 100%)` with the same highlight.
@@ -105,34 +115,50 @@ box-shadow:
 
 ```css
 background:
-  linear-gradient(180deg, rgba(255,255,255,.85) 0%, rgba(255,255,255,0) 55%, rgba(0,40,120,.06) 100%),
-  linear-gradient(90deg, #F4FAFF 0%, #CBE0FA 100%);
+    linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.85) 0%,
+        rgba(255, 255, 255, 0) 55%,
+        rgba(0, 40, 120, 0.06) 100%
+    ),
+    linear-gradient(90deg, #f4faff 0%, #cbe0fa 100%);
 box-shadow:
-  inset 0 2px 1px #fff,
-  inset 0 -3px 6px rgba(0,50,140,.14),
-  inset -3px 0 6px rgba(0,50,140,.08),
-  0 0 0 1px rgba(0,50,140,.08),
-  0 8px 14px -6px rgba(0,36,73,.35);
+    inset 0 2px 1px #fff,
+    inset 0 -3px 6px rgba(0, 50, 140, 0.14),
+    inset -3px 0 6px rgba(0, 50, 140, 0.08),
+    0 0 0 1px rgba(0, 50, 140, 0.08),
+    0 8px 14px -6px rgba(0, 36, 73, 0.35);
 ```
 
 **Header buttons** (on the dark header), radius 14 px, white:
 
 ```css
 background:
-  linear-gradient(180deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 60%),
-  linear-gradient(90deg, rgba(255,255,255,.26) 0%, rgba(255,255,255,.06) 100%);
+    linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.28) 0%,
+        rgba(255, 255, 255, 0) 60%
+    ),
+    linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.26) 0%,
+        rgba(255, 255, 255, 0.06) 100%
+    );
 box-shadow:
-  inset 0 2px 1px rgba(255,255,255,.35),
-  inset 0 -3px 6px rgba(0,0,0,.25),
-  inset -3px 0 6px rgba(0,0,0,.15),
-  0 8px 14px -4px rgba(0,0,0,.45);
+    inset 0 2px 1px rgba(255, 255, 255, 0.35),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.25),
+    inset -3px 0 6px rgba(0, 0, 0, 0.15),
+    0 8px 14px -4px rgba(0, 0, 0, 0.45);
 ```
 
 **Cards** — white with a light gradient and soft shadow, radius 18 px:
 
 ```css
-background: linear-gradient(90deg, #FFFFFF 0%, #F3F7FD 100%);
-box-shadow: inset 0 1px 0 #fff, 0 2px 4px rgba(0,36,73,.06), 0 14px 28px -8px rgba(0,36,73,.16);
+background: linear-gradient(90deg, #ffffff 0%, #f3f7fd 100%);
+box-shadow:
+    inset 0 1px 0 #fff,
+    0 2px 4px rgba(0, 36, 73, 0.06),
+    0 14px 28px -8px rgba(0, 36, 73, 0.16);
 ```
 
 **Inputs** are sunken, not raised (they are not pressed): white with a light top shade
@@ -165,28 +191,31 @@ A status is always **color + icon + text**. Names come from the code enums (tran
 left-to-right gradient and a soft raised shadow:
 
 ```css
-box-shadow: inset 0 1px 1px rgba(255,255,255,.7), inset 0 -1px 2px rgba(0,36,73,.10), 0 1px 3px rgba(0,36,73,.16);
+box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -1px 2px rgba(0, 36, 73, 0.1),
+    0 1px 3px rgba(0, 36, 73, 0.16);
 ```
 
-| Status | Gradient | Text | Icon |
-| --- | --- | --- | --- |
-| New | `#F3FAFF → #B7E0FF` | `#075985` | file-plus |
-| Scheduled | `#F3F5FF → #B7C6FF` | `#3730A3` | calendar |
-| On the way | `#FFFBE9 → #FFEC9F` | `#92400E` | car |
-| In progress | `#FFF8EE → #FFDCAC` | `#9A3412` | wrench |
-| Waiting for parts | `#FBF6FF → #DFC0FF` | `#6B21A8` | package |
-| Waiting for customer | `#EBFDFF → #A5F7FF` | `#155E75` | clock |
-| Completed / Done / Approved | `#ECFDF4 → #A3FFCF` | `#065F46` | check-circle (thumbs-up for Approved) |
-| Invoiced | `#EBFDFA → #9FFFED` | `#115E59` | receipt |
-| Paid | `#F1FEF5 → #B0FFCB` | `#166534` | banknote |
-| On hold / Declined | `#FFF4F5 → #FFBCC1` | `#9F1239` | pause-circle / x-circle |
-| Cancelled / Void | `#F4F4F5 → #CCCCD6` | `#3F3F46`, struck through | x-circle |
-| Unpaid | `#FFFBE9 → #FFEC9F` | `#92400E` | clock (not car) |
-| Partially paid | `#FFF8EE → #FFDCAC` | `#9A3412` | half-filled circle |
-| Refunded | `#F8F6FF → #CDC0FF` | `#5B21B6` | rotate-ccw |
-| Partially refunded | `#FBFBFF → #CBCBFF` | `#5B21B6`, outlined `#C4B5FD` | rotate-ccw |
-| Draft | `#FAFBFC → #D1DCF0` | `#334155` | pencil |
-| Revised | `#FAFBFC → #D1DCF0` | `#64748B`, struck through | rotate-ccw |
+| Status                      | Gradient            | Text                          | Icon                                  |
+| --------------------------- | ------------------- | ----------------------------- | ------------------------------------- |
+| New                         | `#F3FAFF → #B7E0FF` | `#075985`                     | file-plus                             |
+| Scheduled                   | `#F3F5FF → #B7C6FF` | `#3730A3`                     | calendar                              |
+| On the way                  | `#FFFBE9 → #FFEC9F` | `#92400E`                     | car                                   |
+| In progress                 | `#FFF8EE → #FFDCAC` | `#9A3412`                     | wrench                                |
+| Waiting for parts           | `#FBF6FF → #DFC0FF` | `#6B21A8`                     | package                               |
+| Waiting for customer        | `#EBFDFF → #A5F7FF` | `#155E75`                     | clock                                 |
+| Completed / Done / Approved | `#ECFDF4 → #A3FFCF` | `#065F46`                     | check-circle (thumbs-up for Approved) |
+| Invoiced                    | `#EBFDFA → #9FFFED` | `#115E59`                     | receipt                               |
+| Paid                        | `#F1FEF5 → #B0FFCB` | `#166534`                     | banknote                              |
+| On hold / Declined          | `#FFF4F5 → #FFBCC1` | `#9F1239`                     | pause-circle / x-circle               |
+| Cancelled / Void            | `#F4F4F5 → #CCCCD6` | `#3F3F46`, struck through     | x-circle                              |
+| Unpaid                      | `#FFFBE9 → #FFEC9F` | `#92400E`                     | clock (not car)                       |
+| Partially paid              | `#FFF8EE → #FFDCAC` | `#9A3412`                     | half-filled circle                    |
+| Refunded                    | `#F8F6FF → #CDC0FF` | `#5B21B6`                     | rotate-ccw                            |
+| Partially refunded          | `#FBFBFF → #CBCBFF` | `#5B21B6`, outlined `#C4B5FD` | rotate-ccw                            |
+| Draft                       | `#FAFBFC → #D1DCF0` | `#334155`                     | pencil                                |
+| Revised                     | `#FAFBFC → #D1DCF0` | `#64748B`, struck through     | rotate-ccw                            |
 
 Visit statuses use the same look as the matching job status.
 
