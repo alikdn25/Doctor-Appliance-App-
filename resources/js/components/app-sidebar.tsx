@@ -136,7 +136,7 @@ export function AppSidebar() {
             href: services(),
             icon: BookOpen,
         },
-        can.manageChecklists && {
+        can.manageCompany && {
             title: 'nav.google_reviews',
             href: googleProfiles(),
             icon: Star,

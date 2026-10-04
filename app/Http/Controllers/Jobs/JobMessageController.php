@@ -9,11 +9,13 @@ use App\Http\Controllers\Controller;
 use App\Messaging\MessageContext;
 use App\Messaging\Messenger;
 use App\Messaging\ReviewRequests;
+use App\Models\GoogleProfile;
 use App\Models\ServiceJob;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 /**
@@ -60,15 +62,20 @@ class JobMessageController extends Controller
     }
 
     /**
-     * Automatic or Off mode: send the Google review request with the link the technician chose or pasted.
+     * Automatic or Off mode: send the Google review request with the review link of the location the technician chose.
      */
     public function reviewRequest(Request $request, ServiceJob $job, ReviewRequests $reviews): RedirectResponse
     {
         Gate::authorize('work', $job);
         abort_if(currentCompany()->sms_mode === SmsMode::TechnicianPhone, 404);
 
-        $link = $request->validate(['link' => ['required', 'url:https', 'max:500']])['link'];
-        $message = $reviews->sendWithLink($job, $link, $request->user());
+        $id = $request->validate(['location_id' => ['required', 'integer']])['location_id'];
+        $location = GoogleProfile::query()->whereKey($id)
+            ->where(fn ($query) => $query->whereNull('brand_id')->orWhere('brand_id', $job->brand_id))->first();
+        if ($location === null) {
+            throw ValidationException::withMessages(['location_id' => __('reviews.choose_location')]);
+        }
+        $message = $reviews->sendWithLink($job, $location->review_url, $request->user());
 
         return $this->result($message->status, $message->status_reason, $message->send_after);
     }

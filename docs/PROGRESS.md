@@ -1,3 +1,11 @@
+# October 4 owner feedback round — bar circles, colors, review locations
+
+- Top bar: only numbers in colored circles, no labels or total; tapping the bar expands it into bigger named circles, each opening the filtered list.
+- Colors: Parts to order red, Estimate to send crimson, Waiting for parts orange, Waiting for customer yellow, On hold bronze (badges, bar and calendar).
+- Google review locations: tied to a brand optionally, added and removed by the Owner only. On the paid invoice the technician always chooses the location (job's brand and brand-free ones); nothing is preselected or remembered, and no free link is pasted. The server only sends links of company locations allowed for the job's brand.
+- Validation: all 744 backend tests (bcmath installed locally, so DeploymentCheckTest passes too), all 40 browser scenarios, lint, types, style.
+- Next: merge the PR, then deploy on the VPS via Grok.
+
 # October 4 waiting-reason colors and free review links — code validated locally
 
 - Status colors, one palette for badges, the top bar and the calendar: customer waiting on us in two reds (Parts to order, new Estimate to send), Waiting for parts orange, Waiting for customer yellow. Calendar visit blocks and To schedule cards are tinted by job status; To schedule now also lists jobs waiting on us or on the customer.

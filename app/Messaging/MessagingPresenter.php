@@ -54,7 +54,7 @@ class MessagingPresenter
 
     /**
      * The Google review request at the end of the work: shown on the paid invoice, next to sending the receipt.
-     * The technician picks one of the company's saved review links or pastes any link; nothing is bound to a brand.
+     * The technician always chooses the location (Google profile); those of the job's brand and brand-free ones are offered.
      *
      * @return array<string, mixed>
      */
@@ -72,8 +72,10 @@ class MessagingPresenter
             'can_email' => $job->customer->emails()->exists(),
             // {review_link} is replaced with the chosen link before sending.
             'text' => $this->reviews->text($job, null),
-            'links' => GoogleProfile::query()->orderBy('label')->get(['label', 'review_url'])
-                ->map(fn (GoogleProfile $profile) => ['label' => $profile->label, 'url' => $profile->review_url])->values(),
+            'locations' => GoogleProfile::query()
+                ->where(fn ($query) => $query->whereNull('brand_id')->orWhere('brand_id', $job->brand_id))
+                ->orderBy('label')->get(['id', 'label', 'review_url'])
+                ->map(fn (GoogleProfile $profile) => ['id' => $profile->id, 'label' => $profile->label, 'url' => $profile->review_url])->values(),
         ];
     }
 

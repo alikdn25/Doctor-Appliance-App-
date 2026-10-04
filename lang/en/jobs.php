@@ -34,16 +34,6 @@ return [
         'empty' => 'All caught up. No unfinished jobs.',
         'overdue_count' => ':count overdue',
         'waiting_days' => ':reason · :days days',
-        'short' => [
-            'overdue' => 'Late',
-            'parts_to_order' => 'Order',
-            'estimate_to_send' => 'Estimate',
-            'needs_schedule' => 'Book',
-            'waiting_for_parts' => 'Parts',
-            'waiting_for_customer' => 'Client',
-            'on_hold' => 'Hold',
-            'scheduled' => 'Scheduled',
-        ],
         'reasons' => [
             'overdue' => 'Overdue visit',
             'parts_to_order' => 'Parts to order',

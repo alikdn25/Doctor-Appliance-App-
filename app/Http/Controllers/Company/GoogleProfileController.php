@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
-use App\Models\ChecklistTemplate;
 use App\Models\GoogleProfile;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
@@ -16,14 +15,14 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Company → Google reviews: the company's Google Business Profiles and their review links (SPEC §8).
- * Each brand picks its default profile on the brand form. Edited as one list by the office.
+ * Company → Google reviews: the company's locations (Google Business Profiles) and their review links (SPEC §8),
+ * optionally tied to a brand. The Owner adds and removes them; the technician picks one when asking for a review.
  */
 class GoogleProfileController extends Controller
 {
     public function edit(): Response
     {
-        Gate::authorize('manage', ChecklistTemplate::class);
+        Gate::authorize('update', currentCompany());
 
         return Inertia::render('company/google-profiles', [
             'profiles' => GoogleProfile::query()->orderBy('id')->get(['id', 'label', 'review_url', 'brand_id']),
@@ -33,7 +32,7 @@ class GoogleProfileController extends Controller
 
     public function update(Request $request, AuditLogger $audit): RedirectResponse
     {
-        Gate::authorize('manage', ChecklistTemplate::class);
+        Gate::authorize('update', currentCompany());
 
         $validated = $request->validate([
             'profiles' => ['present', 'array', 'max:100'],

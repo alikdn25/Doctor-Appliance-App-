@@ -108,17 +108,19 @@ with user and time.
 
 Waiting reasons and their colors, the same on badges, the top bar and the calendar:
 
-- The customer is waiting on us — red, two shades: `parts_to_order` (parts still to order) and `estimate_to_send`
-  (quote still to send).
+- The customer is waiting on us: `parts_to_order` (parts still to order) — red; `estimate_to_send` (quote still to
+  send) — crimson.
 - `waiting_for_parts` (parts ordered, on the way) — orange.
 - `waiting_for_customer` (we wait for the customer's answer) — yellow.
+- `on_hold` — bronze.
 
 A technician finishing a diagnosis picks Parts to order, Parts already ordered or Estimate to send; the technician on
 the job can also set these four waiting statuses by hand (the office sets any status). Sending the estimate moves an
 Estimate to send job to Waiting for customer. Waiting jobs show how many days they have been waiting.
 
-All unfinished jobs remain in a date-independent queue, reached from a thin persistent top bar that shows one colored
-counter per reason (no grand total): overdue visits, parts to order, estimate to send, work needing scheduling,
+All unfinished jobs remain in a date-independent queue, reached from a thin persistent top bar that shows only numbers
+in colored circles, one per reason, without labels or a grand total. Tapping the bar opens it: bigger circles with
+their names, each opening the list filtered by that reason. Reasons: overdue visits, parts to order, estimate to send, work needing scheduling,
 waiting for parts, waiting for customer and on-hold work. Future scheduled work is in the queue but not on the bar.
 Completed, invoiced, paid, cancelled, outcome-closed and deleted jobs are excluded. Reopened jobs return. Each job
 counts once; access follows company, brand and technician assignment permissions.
@@ -194,7 +196,7 @@ counts once; access follows company, brand and technician assignment permissions
   own terminal (with transaction reference), other (with note). Available in every company regardless of provider.
 - Marking an invoice paid manually is a normal flow, not an exception.
 - Automatic reminders for unpaid invoices; aging report.
-- **Google review request on the paid invoice**, with the review link chosen or pasted by the technician (see §8).
+- **Google review request on the paid invoice**, with the location chosen by the technician (see §8).
 
 ### 7.7 Customer communication
 
@@ -292,10 +294,11 @@ from the company number (Twilio voice).
 
 ## 8. Google review requests
 
-- A company can have **several Google profiles** (e.g. per city). They are saved as **review links** (label + link)
-  for quick picking; **no profile is bound to a brand or a job**.
-- The request is the **last step of the work**: on the paid invoice, next to sending the receipt, the technician taps
-  a saved link or pastes the link of whichever profile fits, and sends it. In *From technician's phone* mode it opens
+- A company can have **several locations** (Google profiles, e.g. per city), each with its review link and optionally
+  tied to a brand. Only the Owner adds and removes them.
+- The request is the **last step of the work**: on the paid invoice, next to sending the receipt, the technician
+  **always chooses the location** (those of the job's brand and brand-free ones; nothing preselected or remembered)
+  and sends its link. In *From technician's phone* mode it opens
   the text on the phone; in Automatic mode it goes by SMS (email if SMS is blocked); in Off mode by email.
   Nothing is sent or scheduled automatically on payment (requests scheduled by earlier versions are still delivered).
 - Each company writes its own request text (template with `{customer_first_name}`, `{brand}`, `{review_link}`, …).
