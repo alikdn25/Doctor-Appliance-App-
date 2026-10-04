@@ -3,13 +3,39 @@
 Approved mockup (source of truth for look and layout):
 https://claude.ai/artifact/WWiBsi8bFjkdVkQqLMCYrv — canvas "Doctor Appliance — field screens".
 
-Approved screens:
+Screens on the canvas (phone = 390 px wide, desktop = 1440 px):
 
-1. My Jobs (phone, 390 px)
+Field screens (approved):
+
+1. My Jobs (phone)
 2. Job page
 3. Finish visit
 4. Select appliance
 5. Status sheet — every job, visit, invoice and estimate status
+
+Booking, invoice and payment (phone):
+
+6. Book customer — phone first (finds an existing customer), name, optional address, appliance tile, problem, day and
+   arrival window chips, technician, collapsed "More options" (manufacturer warranty, lead source, note), confirmation
+   text checkbox. One "Book job" button that repeats the chosen time.
+7. Invoice — bill to Customer or Manufacturer, item lines (price book or custom line), subtotal, company taxes, total,
+   balance due, repair warranty; pinned "Send" and "Take payment".
+8. Take payment — large balance, partial payment link, 5 methods (card via Square, cash with change, check, bank
+   transfer, payment link); tip chips only for card; one button that names the action and amount.
+9. Paid — green raised check, amount, tip, method, receipt sent, scheduled Google review request, back to My Jobs.
+10. Review request — recipient, Text / Email, message preview (same text for everyone, no incentives or gating), when:
+    in 2 hours (default) / now / don't ask this time.
+
+Calendar:
+
+11. Day (desktop) — one column per technician plus Unassigned, hour grid, red "now" line, "To schedule" queue to drag
+    from.
+12. Week (desktop) — 7 days, technician filter chips, closed days hatched, technician dot on each visit.
+13. Map (desktop) — route list per technician with numbered stops, map with numbered pins in technician colors.
+14. Day (phone) — 7-day strip, technician chips, visit cards in time order; free gaps of 1 h+ offer "Book".
+15. Map (phone) — map on top, route sheet below, "Navigate to next stop".
+
+Interactive states (selected option, tabs, filters) can be clicked on the canvas.
 
 All images (appliances, avatars) are stored inside that artifact.
 
@@ -32,7 +58,7 @@ Everything pressable is a raised, soft, rounded shape:
 | Text | `#0F1B2D` |
 | Secondary text | `#5B6779` |
 | Link | `#0A6CF5` (hover `#0050D0`) |
-| Header | `linear-gradient(90deg, #0B3D75, #00244A 55%, #001B3A)` |
+| Header | `linear-gradient(90deg, #3535FF 0%, #000000 100%)` (bright blue to black, as on the canvas) |
 
 The dark-blue header sits above a light "sheet" (page background) with rounded top corners.
 
@@ -109,6 +135,30 @@ background: linear-gradient(90deg, #FFFFFF 0%, #F3F7FD 100%);
 box-shadow: inset 0 1px 0 #fff, 0 2px 4px rgba(0,36,73,.06), 0 14px 28px -8px rgba(0,36,73,.16);
 ```
 
+**Inputs** are sunken, not raised (they are not pressed): white with a light top shade
+`linear-gradient(180deg, #F4F7FB 0%, #FFFFFF 40%)`, border `#D5DEEA`, radius 14 px, height 52 px,
+`box-shadow: inset 0 2px 4px rgba(16,42,79,.08)`, 16 px text (no zoom on Android). Label above in 13 px semibold.
+
+**Chips and segmented controls** (days, time windows, tips, filters, tabs): raised chips `#FFFFFF → #EAF0F8`; the selected
+one uses the primary blue gradient with white text. Segmented controls sit in a sunken track
+`linear-gradient(90deg, #E3EAF4 0%, #D3DDEB 100%)` with `inset 0 2px 4px rgba(16,42,79,.14)`.
+
+**Option rows** (outcome, payment method, review timing): 64 px raised rows, radius 18 px, colored icon tile on the left,
+title + one-line hint, radio dot on the right. Selected: blue border `#0A6CF5` and background
+`linear-gradient(90deg, #F2F8FF 0%, #CFE1FA 100%)`.
+
+**Switches:** sunken grey track, raised white knob; on = blue gradient track.
+
+**Pinned action bar** (inner screens): white, top border `#E1E8F2`, shadow `0 -6px 18px rgba(16,42,79,.08)`. The main
+button is 56–60 px high and says what will happen, with the amount or time ("Charge CA$388.34", "Book job · Fri Oct 3").
+
+**Calendar blocks:** a visit is a raised block in its status gradient (see below), radius 14 px, with status icon, time,
+customer and appliance. Technician colors: Alex blue `#4CBDFE → #0046CC`, Sam teal `#2DD4BF → #0F766E`, Unassigned grey
+`#A9B6C8 → #64748B` (assigned per technician in settings). The "now" line is `#E11D48`.
+
+**Big result medallion** (Paid): 96 px circle, green gradient `#6EE7A8 → #22C55E → #15803D` with the same highlight and
+inner shadows as the primary button.
+
 ## Statuses
 
 A status is always **color + icon + text**. Names come from the code enums (translated). Badges are pills with a light
@@ -144,6 +194,9 @@ Visit statuses use the same look as the matching job status.
 
 - **Customer avatars:** cartoon 3D faces, all the same size (60 px), white outline and shadow. If a customer has two
   contacts (e.g. husband and wife), both faces go into **one** circle.
+- **Team avatars** (technicians, office): same cartoon style in a blue polo; 40 px in compact places (headers,
+  columns, chips).
+- **No avatar yet:** a 60 px circle with initials on the light blue gradient `#F1F7FF → #B3D4FF`.
 - **Appliance images:** calm, light stainless steel without strong glare. Black parts (glass, cooktop) are dark but not
   harsh.
 - Icons: inline stroke SVG (stroke width 2, round caps), never emoji.
@@ -157,3 +210,5 @@ Visit statuses use the same look as the matching job status.
   the whole card opens the job.
 - Touch targets at least 44 px; screens designed for one-handed use on a phone.
 - Money is always formatted with the company currency (e.g. `CA$95.00`); never a hard-coded "$".
+- Tax lines show the names and rates configured by the company (the mockup uses the first customer's GST/PST as sample
+  data); nothing about taxes, phone formats or currency is hard-coded.

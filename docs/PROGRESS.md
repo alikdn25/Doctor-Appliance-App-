@@ -901,5 +901,6 @@ code has changed yet. Product decisions from the approved mockup:
 5. **Job page:** "Scan rating plate" button when model or serial is missing; a Manufacturer warranty block; invoices
    shown in the company currency (e.g. `CA$95.00`, never a hard-coded "$").
 
-Next design screens, in order: Book customer (phone) → Invoice → payment → Paid → review request (phone) → Calendar
-(desktop Day → Week → Map, plus mobile Day and Map).
+Design screens 6–15 are drawn on the same canvas: Book customer, Invoice, Take payment, Paid, Review request (phone) and
+Calendar Day / Week / Map (desktop) plus Day and Map (phone). They are listed in DESIGN.md. Next: owner review of the
+new screens, then restyle the app screen by screen to DESIGN.md (field screens first) and implement decisions 1–5.
