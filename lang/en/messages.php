@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'customer_sms_to' => 'Phone number',
+    'customer_sms_hint' => 'Sent from the company number. Customers who ignore calls from unknown numbers usually read a text.',
+    'customer_sms_phone_hint' => 'Opens the messages app on your phone with the text ready; it is saved in the customer history.',
     'inbox' => [
         'title' => 'SMS Inbox',
         'description' => 'Customer replies and company texts in one place.',

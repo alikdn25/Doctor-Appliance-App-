@@ -27,6 +27,7 @@ use App\Http\Controllers\Company\TaxRateController;
 use App\Http\Controllers\Company\TeamController;
 use App\Http\Controllers\Customers\ApplianceController;
 use App\Http\Controllers\Customers\CustomerController;
+use App\Http\Controllers\Customers\CustomerMessageController;
 use App\Http\Controllers\Customers\PropertyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Jobs\CalendarController;
@@ -100,6 +101,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('customers/avatar', [CustomerController::class, 'avatar'])->middleware('throttle:120,1')->name('customers.avatar');
         Route::get('customers/duplicates', [CustomerController::class, 'duplicates'])->name('customers.duplicates');
         Route::resource('customers', CustomerController::class);
+        Route::post('customers/{customer}/sms', [CustomerMessageController::class, 'sms'])->middleware('throttle:30,1')->name('customers.sms');
+        Route::post('customers/{customer}/messages/opened', [CustomerMessageController::class, 'opened'])->middleware('throttle:30,1')->name('customers.messages.opened');
         Route::post('customers/{customer}/properties', [PropertyController::class, 'store'])->name('properties.store');
         Route::put('properties/{property}', [PropertyController::class, 'update'])->name('properties.update');
         Route::delete('properties/{property}', [PropertyController::class, 'destroy'])->name('properties.destroy');

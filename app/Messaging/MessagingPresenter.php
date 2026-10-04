@@ -85,17 +85,26 @@ class MessagingPresenter
     public function forCustomer(Customer $customer, User $user): array
     {
         $query = Message::query()->where('customer_id', $customer->id)
-            ->where(function (Builder $query) use ($customer, $user) {
+            ->where(function (Builder $query) use ($user) {
                 $query->whereIn('service_job_id', ServiceJob::query()->visibleTo($user)->select('id'));
-                // Customer-level correspondence is office-only; technicians see assigned-job messages.
-                if ($user->can('update', $customer)) {
+                // Customer-level correspondence is for the office (including view-only); technicians see job messages.
+                if ($user->can('viewAny', Customer::class)) {
                     $query->orWhereNull('service_job_id');
                 }
             });
+        $mode = currentCompany()->sms_mode;
+        $canText = $mode !== SmsMode::Off && $user->can('create', Message::class);
 
         return [
-            'mode' => currentCompany()->sms_mode->value,
+            'mode' => $mode->value,
             'messages' => $this->history($query),
+            // "Send SMS" on the customer profile, to a number the customer has not opted out of.
+            'can_text' => $canText,
+            'phones' => $canText ? $customer->phones()->get()
+                ->map(fn ($phone) => ['id' => $phone->id, 'number' => $phone->number, 'opted_out' => $phone->sms_opted_out_at !== null])
+                ->values() : [],
+            'blocked' => $canText && $mode === SmsMode::Automatic ? $this->messenger->smsBlockedReason($customer) : null,
+            'text' => MessageTemplates::render(currentCompany(), MessageKind::General, MessageContext::for($customer, null, null, $user)),
         ];
     }
 
