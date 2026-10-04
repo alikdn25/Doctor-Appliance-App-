@@ -4,6 +4,7 @@ import {
     CheckCircle2,
     HandCoins,
     PackageSearch,
+    ShoppingCart,
     ShieldCheck,
     ThumbsDown,
 } from 'lucide-react';
@@ -151,16 +152,31 @@ export function FinishDialog({
                                 </Button>
                             )}
                             {visitId !== null && (
-                                <Button
-                                    size="lg"
-                                    variant="outline"
-                                    className="h-12"
-                                    disabled={form.processing}
-                                    onClick={() => send('waiting_for_parts')}
-                                >
-                                    <PackageSearch />{' '}
-                                    {t('jobs.actions.waiting_for_parts')}
-                                </Button>
+                                // Parts needed: either still to be ordered by the office, or already ordered.
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="h-12 whitespace-normal"
+                                        disabled={form.processing}
+                                        onClick={() => send('parts_to_order')}
+                                    >
+                                        <ShoppingCart />{' '}
+                                        {t('jobs.actions.parts_to_order')}
+                                    </Button>
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="h-12 whitespace-normal"
+                                        disabled={form.processing}
+                                        onClick={() =>
+                                            send('waiting_for_parts')
+                                        }
+                                    >
+                                        <PackageSearch />{' '}
+                                        {t('jobs.actions.waiting_for_parts')}
+                                    </Button>
+                                </div>
                             )}
                             <div className="grid grid-cols-2 gap-2">
                                 <Button

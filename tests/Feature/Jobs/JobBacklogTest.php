@@ -43,7 +43,7 @@ test('the queue keeps old, unscheduled and waiting jobs without any date cutoff'
         ->component('jobs/backlog')
         ->where('unfinishedJobs.total', 6)
         ->where('unfinishedJobs.counts', [
-            'overdue' => 1, 'needs_schedule' => 1, 'waiting_for_parts' => 1,
+            'overdue' => 1, 'parts_to_order' => 0, 'needs_schedule' => 1, 'waiting_for_parts' => 1,
             'waiting_for_customer' => 1, 'on_hold' => 1, 'scheduled' => 1,
         ])
         ->where('jobs.total', 6)
@@ -215,4 +215,28 @@ test('unauthenticated and platform pages do not query a tenant queue', function 
     $admin = User::factory()->create(['is_super_admin' => true]);
     $this->actingAs($admin)->get(route('admin.companies.index'))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs', null));
+});
+
+test('parts to order is its own reason, listed right after overdue work, with the days spent waiting', function () {
+    $visit = inCompany($this->company, fn () => JobVisit::query()->findOrFail(
+        $this->jobs->withVisit($this->tech, ['status' => VisitStatus::InProgress, 'started_at' => now()])->create()->visits()->first()->id,
+    ));
+    $this->jobs->create();
+
+    $this->actingAs($this->tech)->post(route('visits.finish', $visit), ['outcome' => 'parts_to_order'])->assertRedirect();
+    expect($visit->job->fresh()->status)->toBe(JobStatus::PartsToOrder);
+
+    $this->travel(23)->days();
+    $this->actingAs($this->owner)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+        ->where('unfinishedJobs.counts.parts_to_order', 1)
+        ->where('jobs.data.0.backlog_reason', 'parts_to_order')
+        ->where('jobs.data.0.backlog_reason_label', 'Parts to order · 23 days'));
+    $this->get(route('jobs.backlog', ['reason' => 'parts_to_order']))->assertInertia(fn (Assert $page) => $page->where('jobs.total', 1));
+
+    // Ordered: the job moves to waiting for parts and keeps counting from that change.
+    $this->put(route('jobs.status', $visit->job), ['status' => 'waiting_for_parts'])->assertSessionHasNoErrors();
+    $this->travel(5)->days();
+    $this->get(route('jobs.backlog', ['reason' => 'waiting_for_parts']))->assertInertia(fn (Assert $page) => $page
+        ->where('unfinishedJobs.counts.parts_to_order', 0)
+        ->where('jobs.data.0.backlog_reason_label', 'Waiting for parts · 5 days'));
 });

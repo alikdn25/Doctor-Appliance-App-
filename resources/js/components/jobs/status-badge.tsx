@@ -8,6 +8,8 @@ const tones: Record<string, string> = {
         'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
     in_progress:
         'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
+    parts_to_order:
+        'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200',
     waiting_for_parts:
         'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200',
     waiting_for_customer:

@@ -1,3 +1,10 @@
+# October 4 unfinished-jobs bar by reason — code validated locally
+
+- The thin bar on every working screen now shows one colored counter per reason that needs attention (Late, Order parts, To book, Parts, Client, On hold), each opening Not completed jobs filtered by that reason. Scheduled work is not counted as needing attention. The same colors are used on the Not completed jobs page.
+- New job status Parts to order, separate from Waiting for parts: a technician finishing a diagnosis picks Parts to order (the office still has to order) or Parts already ordered. It is a manual status too, reschedulable like Waiting for parts. Not a parts-order module (that stays in Stage 2).
+- Waiting reasons show how long the job has been in that state (e.g. "Waiting for parts · 23 days"), counted from its last status change.
+- Validation: 745 of 746 backend tests (DeploymentCheckTest needs bcmath, absent locally); all 40 browser scenarios; lint, types, style.
+
 # October 4 field-flow usability pass — code validated locally; server deployment pending
 
 - Server: Grok installed main 5c5f4b2 on the VPS (backup in /root/fieldservice-backups/20261004T113615Z); the manual walkthrough there is still pending.
