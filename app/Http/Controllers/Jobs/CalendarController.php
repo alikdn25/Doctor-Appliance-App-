@@ -28,7 +28,8 @@ class CalendarController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        Gate::authorize('dispatch', ServiceJob::class);
+        Gate::authorize('viewCalendar', ServiceJob::class);
+        $canSchedule = Gate::allows('dispatch', ServiceJob::class);
 
         $user = $request->user();
         $company = currentCompany();
@@ -68,11 +69,12 @@ class CalendarController extends Controller
             'visits' => $visits->map(fn (JobVisit $visit) => [
                 ...$this->visit($visit, $timezone),
                 'conflict' => in_array($visit->id, $conflicts, true),
-                'movable' => $visit->status === VisitStatus::Scheduled
+                'movable' => $canSchedule && $visit->status === VisitStatus::Scheduled
                     && $visit->job->status->allowsVisitWork()
                     && ($brandIds === [] || in_array($visit->job->brand_id, $brandIds, true)),
             ])->values(),
             'unscheduled' => $this->unscheduled($user),
+            'canSchedule' => $canSchedule,
             'assignableUsers' => Membership::query()->assignable()->with('user')->get()
                 ->filter(fn (Membership $m) => $m->user !== null)
                 ->sortBy(fn (Membership $m) => mb_strtolower($m->user->name))

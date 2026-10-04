@@ -67,6 +67,7 @@ class CustomerController extends Controller
             'filters' => ['search' => $search, 'type' => $type?->value ?? '', 'tag' => $tag],
             'types' => CustomerType::options(),
             'tags' => $this->tags(),
+            'canCreate' => Gate::allows('create', Customer::class),
         ]);
     }
 

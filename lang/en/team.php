@@ -47,7 +47,9 @@ return [
         'super_admin' => 'Platform administrators cannot be added to a company.',
         'last_owner' => 'The company must keep at least one active Owner.',
     ],
-    'permissions_note' => 'What this Office member can do. Purchase costs and profit stay with the Owner.',
+    'permissions_note' => 'What this Office member can change. Purchase costs and profit stay with the Owner.',
+    'view_only' => 'View only',
+    'view_only_note' => 'Can open and view the calendar, jobs, customers (to call them), estimates and invoices, but cannot change anything. Tick an area to allow changes there, e.g. Invoices and payments.',
     'permissions' => [
         'schedule' => 'Calendar and scheduling',
         'customers' => 'Customers',

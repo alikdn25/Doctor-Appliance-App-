@@ -31,6 +31,12 @@ class ServiceJobPolicy
     /**
      * The dispatch calendar (office).
      */
+    /** Looking at the calendar (read-only without the Schedule permission). */
+    public function viewCalendar(User $user): bool
+    {
+        return $this->isOffice($user);
+    }
+
     public function dispatch(User $user): bool
     {
         return $this->isOffice($user) && $user->canOffice(OfficePermission::Schedule);
@@ -97,6 +103,8 @@ class ServiceJobPolicy
      */
     public function work(User $user, ServiceJob $job): bool
     {
-        return $this->seesJob($user, $job);
+        // Field work on the job (photos, notes, statuses, closing): the people on it, or the office that schedules.
+        // A view-only Office member opens the job but changes nothing.
+        return $this->assignedTo($user, $job) || $this->managesJob($user, $job);
     }
 }

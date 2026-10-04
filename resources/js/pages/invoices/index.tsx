@@ -20,12 +20,14 @@ type Filters = { search: string; status: string };
 export default function InvoicesIndex({
     invoices,
     hasInvoices,
+    canCreate,
     filters,
     statuses,
     outstandingTotals,
 }: {
     invoices: Paginated<DocumentRow>;
     hasInvoices: boolean;
+    canCreate: boolean;
     filters: Filters;
     statuses: Option[];
     outstandingTotals: { currency: string; amount: number }[];
@@ -58,12 +60,14 @@ export default function InvoicesIndex({
                 <PageHeader
                     title={t('invoices.title')}
                     actions={
-                        <Button asChild className="min-h-11">
-                            <Link href={start()}>
-                                <Plus />
-                                {t('invoices.add')}
-                            </Link>
-                        </Button>
+                        canCreate && (
+                            <Button asChild className="min-h-11">
+                                <Link href={start()}>
+                                    <Plus />
+                                    {t('invoices.add')}
+                                </Link>
+                            </Button>
+                        )
                     }
                     description={t('invoices.outstanding_total', {
                         amount:

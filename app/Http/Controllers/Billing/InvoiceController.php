@@ -30,7 +30,7 @@ class InvoiceController extends Controller
 {
     public function start(Request $request): Response|RedirectResponse
     {
-        Gate::authorize('viewAny', Invoice::class);
+        Gate::authorize('create', Invoice::class);
 
         $search = trim((string) $request->query('search', ''));
         $base = ServiceJob::query()->visibleTo($request->user());
@@ -89,6 +89,7 @@ class InvoiceController extends Controller
         return Inertia::render('invoices/index', [
             'invoices' => $invoices,
             'hasInvoices' => (clone $base)->exists(),
+            'canCreate' => Gate::allows('create', Invoice::class),
             'filters' => $filters,
             'statuses' => InvoiceStatus::options(),
             // One sum per currency: documents keep the currency they were created in.

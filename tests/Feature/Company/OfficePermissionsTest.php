@@ -30,6 +30,8 @@ function allowOnly(array $permissions): void
     test()->actingAs(test()->owner)->put(route('team.update', test()->membership), [
         'role' => 'admin', 'is_active' => true, 'permissions' => array_map(fn (OfficePermission $p) => $p->value, $permissions),
     ])->assertSessionHasNoErrors();
+    // A fresh model, as on a real request: the membership is read again.
+    test()->office = test()->office->fresh();
     test()->actingAs(test()->office);
 }
 
@@ -47,16 +49,48 @@ test('a new Office member has every office area until the Owner changes it', fun
     $this->get(route('reports.index'))->assertOk();
 });
 
-test('without scheduling the Office member sees jobs but cannot book, edit or dispatch', function () {
+test('without scheduling the Office member views the calendar and jobs but cannot book, edit or dispatch', function () {
     allowOnly([OfficePermission::Invoices]);
 
-    $this->get(route('calendar'))->assertForbidden();
+    $this->get(route('calendar'))->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('canSchedule', false)
+        ->where('visits', fn ($visits) => collect($visits)->every(fn ($visit) => $visit['movable'] === false)));
     $this->get(route('jobs.create'))->assertForbidden();
     $this->get(route('jobs.index'))->assertOk();
     $this->get(route('jobs.show', $this->job))->assertOk()->assertInertia(fn (Assert $page) => $page
-        ->where('can.update', false)->where('can.estimate', false)->where('can.invoice', true)
-        ->where('auth.can.viewCalendar', false)->where('auth.can.createJobs', false));
-    $this->get(route('home'))->assertRedirect(route('dashboard', absolute: false));
+        ->where('can.update', false)->where('can.work', false)->where('can.estimate', false)->where('can.invoice', true)
+        ->where('auth.can.viewCalendar', true)->where('auth.can.createJobs', false));
+    $visit = $this->job->visits()->first();
+    $this->put(route('visits.move', $visit), ['date' => now()->addDay()->toDateString(), 'start_time' => '10:00'])->assertForbidden();
+    $this->get(route('home'))->assertRedirect(route('calendar', absolute: false));
+});
+
+test('a view-only Office member opens and reads everything but changes nothing; Invoices adds invoicing', function () {
+    allowOnly([]);
+    $invoice = inCompany($this->company, fn () => Invoice::factory()->create(['service_job_id' => $this->job->id, 'currency' => $this->company->currency, 'balance' => 10000, 'total' => 10000]));
+
+    // Opens and reads: calendar, jobs, customers (to call them), invoices.
+    $this->get(route('calendar'))->assertOk();
+    $this->get(route('jobs.index'))->assertOk()->assertInertia(fn (Assert $page) => $page->where('canCreate', false));
+    $this->get(route('jobs.show', $this->job))->assertOk();
+    $this->get(route('customers.index'))->assertOk()->assertInertia(fn (Assert $page) => $page->where('canCreate', false));
+    $this->get(route('customers.show', $this->customer))->assertOk()->assertInertia(fn (Assert $page) => $page->where('canUpdate', false));
+    $this->get(route('invoices.index'))->assertOk()->assertInertia(fn (Assert $page) => $page->where('canCreate', false));
+    $this->get(route('invoices.show', $invoice))->assertOk()->assertInertia(fn (Assert $page) => $page->where('can.update', false)->where('can.recordPayment', false));
+
+    // Changes nothing.
+    $this->put(route('jobs.status', $this->job), ['status' => 'on_hold'])->assertForbidden();
+    $this->put(route('customers.update', $this->customer), ['type' => 'residential', 'first_name' => 'Changed'])->assertForbidden();
+    $this->get(route('invoices.start'))->assertForbidden();
+    $this->post(route('invoices.store', $this->job), documentPayload())->assertForbidden();
+    $this->post(route('payments.store', $invoice), ['amount' => '100.00', 'method' => 'cash'])->assertForbidden();
+    expect($this->job->fresh()->status->value)->toBe('scheduled');
+
+    // The Owner ticks Invoices and payments: the same person now invoices and takes payment.
+    allowOnly([OfficePermission::Invoices]);
+    $this->get(route('invoices.start'))->assertOk();
+    $this->post(route('invoices.store', $this->job), documentPayload())->assertSessionHasNoErrors();
+    $this->post(route('payments.store', $invoice), ['amount' => '100.00', 'method' => 'cash'])->assertSessionHasNoErrors();
 });
 
 test('estimates and invoices each need their own permission', function () {
@@ -64,7 +98,7 @@ test('estimates and invoices each need their own permission', function () {
 
     $this->post(route('estimates.store', $this->job), documentPayload())->assertSessionHasNoErrors();
     $this->post(route('invoices.store', $this->job), documentPayload())->assertForbidden();
-    $this->get(route('invoices.index'))->assertForbidden();
+    $this->get(route('invoices.index'))->assertOk();
 
     $invoice = inCompany($this->company, fn () => Invoice::factory()->create(['service_job_id' => $this->job->id, 'currency' => $this->company->currency, 'balance' => 10000, 'total' => 10000]));
     $this->post(route('payments.store', $invoice), ['amount' => '100.00', 'method' => 'cash'])->assertForbidden();

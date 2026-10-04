@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Mail, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Eye, Mail, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { FormField } from '@/components/form-field';
@@ -412,6 +412,28 @@ export default function TeamIndex({
                                     <p className="text-xs text-muted-foreground">
                                         {t('team.permissions_note')}
                                     </p>
+                                    <Button
+                                        type="button"
+                                        variant={
+                                            form.data.permissions.length === 0
+                                                ? 'default'
+                                                : 'outline'
+                                        }
+                                        className="min-h-11 justify-start"
+                                        aria-pressed={
+                                            form.data.permissions.length === 0
+                                        }
+                                        onClick={() =>
+                                            form.setData('permissions', [])
+                                        }
+                                    >
+                                        <Eye /> {t('team.view_only')}
+                                    </Button>
+                                    {form.data.permissions.length === 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('team.view_only_note')}
+                                        </p>
+                                    )}
                                     {permissionOptions.map((permission) => (
                                         <label
                                             key={permission.value}

@@ -20,6 +20,12 @@ class InvoicePolicy
      */
     public function viewAny(User $user): bool
     {
+        return $this->isOffice($user);
+    }
+
+    /** Starting a new invoice from the invoice list. */
+    public function create(User $user): bool
+    {
         return $this->isOffice($user) && $user->canOffice(OfficePermission::Invoices);
     }
 

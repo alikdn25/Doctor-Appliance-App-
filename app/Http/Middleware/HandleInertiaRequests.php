@@ -113,7 +113,7 @@ class HandleInertiaRequests extends Middleware
                 'viewInvoices' => $user->can('viewAny', Invoice::class),
                 'viewReports' => $user->hasRole(UserRole::Owner, UserRole::Admin) && $user->canOffice(OfficePermission::Reports),
                 'viewMyJobs' => $user->can('viewMine', ServiceJob::class),
-                'viewCalendar' => $user->can('dispatch', ServiceJob::class),
+                'viewCalendar' => $user->can('viewCalendar', ServiceJob::class),
                 'manageChecklists' => $user->can('manage', ChecklistTemplate::class),
                 'manageCompany' => $user->can('update', $company),
                 'viewBrands' => $user->can('viewAny', Brand::class),

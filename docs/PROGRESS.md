@@ -3,9 +3,10 @@
 - The Admin role is shown as Office. The Owner switches each area on or off per Office member in Team: calendar and scheduling, customers, estimates, invoices and payments, SMS inbox, reports and cash, company expenses, services and checklists, technicians. New and existing Office members start with everything on (stored as null).
 - Server policies, the menu and buttons follow the permissions: e.g. without Estimates an Office member can read a job's estimates but cannot create, change or send them; without Schedule they open on the dashboard and cannot book, edit or dispatch jobs. Technicians on a job keep estimating, invoicing and taking payment on site.
 - Purchase costs and profit are Owner-only: the Office no longer sees job costs/profit, cannot enter purchase prices, sees reports without profit, and bookkeeper exports (expenses CSV, supplier receipts ZIP) are Owner-only. Technicians keep their own private purchase prices.
+- View only: every Office member can open and read the calendar, jobs, customers, estimates and invoices; the permissions only control changes. A View only button in Team clears all areas (e.g. a salesperson who calls customers, then gets Invoices and payments ticked to invoice). Job field work (statuses, photos, closing) needs Schedule for the office; technicians on the job are unaffected.
 - Only the Owner sets permissions (validated, tenant-scoped, audited when an Office member's areas change).
 - Migration: company_user.permissions (json, nullable).
-- Validation: 752 backend tests (new OfficePermissionsTest), 40 browser scenarios, lint, types, style.
+- Validation: 753 backend tests (new OfficePermissionsTest), 40 browser scenarios, lint, types, style.
 
 # October 4 owner feedback round — bar circles, colors, review locations
 

@@ -60,6 +60,8 @@ type Props = {
     lanes: Lane[];
     visits: CalendarVisit[];
     unscheduled: UnscheduledJob[];
+    /** False for a view-only Office member: nothing can be booked, dragged or moved. */
+    canSchedule: boolean;
     assignableUsers: Assignable[];
 };
 
@@ -79,6 +81,7 @@ export default function CalendarPage({
     lanes,
     visits,
     unscheduled,
+    canSchedule,
     assignableUsers,
 }: Props) {
     const t = useTrans();
@@ -121,6 +124,7 @@ export default function CalendarPage({
         const item = drag.current;
         drag.current = null;
         setDragging(false);
+        if (!canSchedule) return;
 
         if (!item) {
             return;
@@ -251,6 +255,7 @@ export default function CalendarPage({
                     description={title}
                     actions={
                         // The header already has Book customer; here it books the day being viewed.
+                        canSchedule &&
                         visits.some((visit) => visit.date === date) && (
                             <Button asChild variant="outline" className="h-11">
                                 <Link
@@ -266,23 +271,28 @@ export default function CalendarPage({
                     }
                 />
 
-                {!visits.some((visit) => visit.date === date) && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
-                        <p className="text-sm text-muted-foreground">
-                            {t('jobs.quick.empty_day')}
-                        </p>
-                        <Button asChild variant="outline" className="min-h-11">
-                            <Link
-                                href={bookCustomer({
-                                    query: { book: 1, date },
-                                })}
+                {canSchedule &&
+                    !visits.some((visit) => visit.date === date) && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+                            <p className="text-sm text-muted-foreground">
+                                {t('jobs.quick.empty_day')}
+                            </p>
+                            <Button
+                                asChild
+                                variant="outline"
+                                className="min-h-11"
                             >
-                                <Plus />
-                                {t('jobs.quick.book_day')}
-                            </Link>
-                        </Button>
-                    </div>
-                )}
+                                <Link
+                                    href={bookCustomer({
+                                        query: { book: 1, date },
+                                    })}
+                                >
+                                    <Plus />
+                                    {t('jobs.quick.book_day')}
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
 
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
@@ -401,7 +411,7 @@ export default function CalendarPage({
                                         <li key={job.id}>
                                             <button
                                                 type="button"
-                                                draggable
+                                                draggable={canSchedule}
                                                 onDragStart={(e) =>
                                                     startDrag(e, {
                                                         kind: 'job',
@@ -410,6 +420,7 @@ export default function CalendarPage({
                                                 }
                                                 onDragEnd={endDrag}
                                                 onTouchStart={(e) =>
+                                                    canSchedule &&
                                                     touch.begin(
                                                         e,
                                                         { kind: 'job', job },
@@ -419,10 +430,17 @@ export default function CalendarPage({
                                                 onContextMenu={(e) =>
                                                     e.preventDefault()
                                                 }
-                                                onClick={() =>
-                                                    !touch.consumeClick() &&
-                                                    setScheduling(job)
-                                                }
+                                                onClick={() => {
+                                                    if (touch.consumeClick())
+                                                        return;
+                                                    // View only: open the job instead of booking it.
+                                                    if (canSchedule)
+                                                        setScheduling(job);
+                                                    else
+                                                        router.visit(
+                                                            showJob(job.id).url,
+                                                        );
+                                                }}
                                                 className={cn(
                                                     'block w-full cursor-grab rounded-md border p-2 text-left text-xs shadow-sm select-none [-webkit-touch-callout:none] hover:opacity-90',
                                                     calendarBlock(job.status),

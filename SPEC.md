@@ -82,7 +82,7 @@ Every customer-facing document and message uses the brand of the job.
 | Role          | Access                                                                                                                     |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Owner         | Everything in the company, billing, settings                                                                               |
-| Office        | What the Owner switches on per person: calendar and scheduling, customers, estimates, invoices and payments, SMS inbox, reports and cash (no costs/profit), company expenses, services and checklists, technicians. All on by default. Never purchase costs or profit. |
+| Office        | What the Owner switches on per person: calendar and scheduling, customers, estimates, invoices and payments, SMS inbox, reports and cash (no costs/profit), company expenses, services and checklists, technicians. All on by default. With every area off the member is **view only**: opens the calendar, jobs, customers, estimates and invoices without changing anything. Never purchase costs or profit. |
 | Technician    | Own assigned jobs, customers/appliances on those jobs, create estimates/invoices on site, take payments                    |
 | Subcontractor | Only jobs explicitly passed to them; no prices/margins unless allowed; their payout share is recorded                      |
 | Collector     | Unpaid invoices list, customer contact info for those invoices, messaging and calling from the brand number. Nothing else. |
