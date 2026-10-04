@@ -881,3 +881,26 @@ Verify mobile layouts, receipt camera uploads, Google map credentials, mail/SMS 
 and backup restore using LAUNCH_TESTING.md.
 Stripe remains the second payment provider. Then Stage 2 (parts orders, warranty claims, online booking,
 payment reminders), Stage 3 and subscription billing.
+
+### Approved field-screen design — decisions not yet in code
+
+Style is recorded in [DESIGN.md](DESIGN.md) (mockup: https://claude.ai/artifact/WWiBsi8bFjkdVkQqLMCYrv). No application
+code has changed yet. Product decisions from the approved mockup:
+
+1. Rename the job outcome "Fixed under warranty" (`JobOutcome::FixedUnderWarranty`) to **Manufacturer warranty**:
+   repaired, invoice goes to the manufacturer.
+2. **Finish visit — 4 large options:** Repaired; Manufacturer warranty; Waiting for parts; Not completed (inside:
+   Customer declined / Unable to repair / No charge). Customer signature is optional and shown only for Repaired and
+   Manufacturer warranty. Photos are removed with a long press.
+3. **Appliance picker as image tiles:** Refrigerator, Freezer, Wine cooler; Washer, Dryer, Washer/dryer combo;
+   Dishwasher, Range, Wall oven (`oven` in code); Cooktop, Microwave, Range hood; Multiple, Installation, Other; plus a
+   "Not sure yet — tech adds it on site" button. `ApplianceType` has no Wine cooler or Multiple yet, and Installation
+   is a `JobType` in code — decide how to store them.
+4. **Two contacts per customer:** each phone has its own name (e.g. "Anna Kim · wife"), and the Job page shows Call and
+   SMS buttons for each. `customer_phones` has no name field yet. Needs a paired avatar (two faces in one circle).
+5. **Job page:** "Scan rating plate" button when model or serial is missing; a Manufacturer warranty block; invoices
+   shown in the company currency (e.g. `CA$95.00`, never a hard-coded "$").
+
+Design screens 6–15 are drawn on the same canvas: Book customer, Invoice, Take payment, Paid, Review request (phone) and
+Calendar Day / Week / Map (desktop) plus Day and Map (phone). They are listed in DESIGN.md. Next: owner review of the
+new screens, then restyle the app screen by screen to DESIGN.md (field screens first) and implement decisions 1–5.

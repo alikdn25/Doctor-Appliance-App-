@@ -8,6 +8,7 @@ Read `SPEC.md` before any task. It is the source of truth for scope and stages.
 - Multi-tenant: every tenant-owned table has `company_id`; all queries are tenant-scoped. Never break isolation. Add tests for it.
 - Work only on the stage/task requested. Do not build features from later stages.
 - Mobile-first UI. Technician screens must work well on a phone.
+- UI style is volumetric, never flat: follow docs/DESIGN.md.
 - Every feature ships with tests. Run tests before finishing.
 - Keep secrets in `.env`, never commit keys. Keep `.env.example` up to date.
 - UI text in English, stored in translation files.
