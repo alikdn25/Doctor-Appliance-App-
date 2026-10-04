@@ -3,6 +3,7 @@
 use App\Enums\UserRole;
 use App\Models\Company;
 use App\Models\ImpersonationLog;
+use App\Models\Membership;
 use App\Models\User;
 use App\Support\Locale\Timezones;
 use Illuminate\Support\Facades\Auth;
@@ -11,17 +12,17 @@ use Inertia\Testing\AssertableInertia as Assert;
 test('normal sign-in opens working screens and supports persistent login', function (UserRole $role) {
     $user = memberOf(role: $role);
     $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password', 'remember' => true])
-        ->assertRedirect(route($role === UserRole::Technician ? 'jobs.mine' : 'dashboard', absolute: false))
+        ->assertRedirect(route($role === UserRole::Technician ? 'jobs.mine' : 'calendar', absolute: false))
         ->assertCookie(Auth::guard('web')->getRecallerName());
     $this->assertAuthenticatedAs($user);
-    $this->get(route($role === UserRole::Technician ? 'jobs.mine' : 'dashboard'))->assertOk();
+    $this->get(route($role === UserRole::Technician ? 'jobs.mine' : 'calendar'))->assertOk();
     expect(ImpersonationLog::count())->toBe(0);
 })->with([UserRole::Owner, UserRole::Admin, UserRole::Technician]);
 
 test('a platform admin selects a real workspace once and can open Members without support access', function () {
     $admin = User::factory()->superAdmin()->create();
     $company = Company::factory()->create();
-    $this->actingAs($admin)->post(route('admin.companies.workspace', $company))->assertRedirect(route('dashboard'));
+    $this->actingAs($admin)->post(route('admin.companies.workspace', $company))->assertRedirect(route('calendar', absolute: false));
     $this->get(route('team.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
         ->where('auth.role.value', 'owner')->where('auth.company.id', $company->id)->where('impersonation', null));
     expect($admin->fresh()->current_company_id)->toBe($company->id)
@@ -42,7 +43,7 @@ test('a platform admin with a workspace cannot join another tenant as its owner'
     $admin = User::factory()->superAdmin()->create();
     $own = Company::factory()->create();
     $other = Company::factory()->create();
-    $this->actingAs($admin)->post(route('admin.companies.workspace', $own))->assertRedirect(route('dashboard'));
+    $this->actingAs($admin)->post(route('admin.companies.workspace', $own))->assertRedirect(route('calendar', absolute: false));
     $this->post(route('admin.companies.workspace', $other))->assertForbidden();
     expect($admin->memberships()->pluck('company_id')->all())->toBe([$own->id]);
 });
@@ -74,4 +75,15 @@ test('timezone choices show offsets cities and countries while keeping IANA iden
     expect($options['America/Vancouver']['label'])->toMatch('/^UTC-0[78]:00/')->toContain('Vancouver, Canada')
         ->and($options['Asia/Kolkata']['label'])->toContain('UTC+05:30', 'Kolkata, India')
         ->and($options['UTC']['label'])->toContain('UTC+00:00');
+});
+
+test('the home address and switching companies open the calendar for the office and My jobs for technicians', function () {
+    $owner = memberOf();
+    $tech = memberOf(role: UserRole::Technician);
+    $second = Company::factory()->create();
+    inCompany($second, fn () => Membership::create(['company_id' => $second->id, 'user_id' => $owner->id, 'role' => UserRole::Owner, 'is_active' => true]));
+    $this->actingAs($owner)->get(route('home'))->assertRedirect(route('calendar', absolute: false));
+    $this->post(route('companies.switch', $second))->assertRedirect(route('calendar', absolute: false));
+
+    $this->actingAs($tech)->get(route('home'))->assertRedirect(route('jobs.mine', absolute: false));
 });

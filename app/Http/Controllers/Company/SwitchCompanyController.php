@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Company;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Services\Impersonation;
+use App\Support\WorkHome;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -20,6 +21,6 @@ class SwitchCompanyController extends Controller
 
         $user->forceFill(['current_company_id' => $company->id])->save();
 
-        return redirect()->route('dashboard');
+        return redirect(WorkHome::url($user, $company));
     }
 }

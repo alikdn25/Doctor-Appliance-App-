@@ -38,7 +38,7 @@ export default async function setup() {
                 .click();
         }
         await expect(page).toHaveURL(
-            role === 'owner' ? /dashboard/ : /my-jobs/,
+            role === 'owner' ? /calendar/ : /my-jobs/,
         );
         await expect(page.locator('h1')).toBeVisible();
         await context.storageState({ path: `test-results/auth-${role}.json` });

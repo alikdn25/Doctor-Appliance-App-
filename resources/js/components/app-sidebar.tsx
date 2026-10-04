@@ -33,7 +33,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { calendar, dashboard } from '@/routes';
+import { calendar, dashboard, home } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as brands } from '@/routes/brands';
 import { index as cash } from '@/routes/cash';
@@ -72,16 +72,16 @@ export function AppSidebar() {
                   href: bookCustomer({ query: { book: 1 } }),
                   icon: Plus,
               },
+              can.viewCalendar && {
+                  title: 'nav.calendar',
+                  href: calendar(),
+                  icon: CalendarDays,
+              },
               { title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid },
               can.viewMyJobs && {
                   title: 'nav.my_jobs',
                   href: myJobs(),
                   icon: Wrench,
-              },
-              can.viewCalendar && {
-                  title: 'nav.calendar',
-                  href: calendar(),
-                  icon: CalendarDays,
               },
               can.viewJobs && {
                   title: 'nav.jobs',
@@ -163,7 +163,7 @@ export function AppSidebar() {
           ]
         : [];
 
-    const homeHref = dashboard();
+    const homeHref = home();
 
     return (
         <Sidebar collapsible="icon" variant="inset">

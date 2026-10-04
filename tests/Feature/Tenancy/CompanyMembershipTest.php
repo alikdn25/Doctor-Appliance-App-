@@ -24,7 +24,7 @@ test('a user in several companies works in their current company and can switch'
             ->has('auth.companies', 2)
             ->where('brands.0.name', 'First Brand'));
 
-    $this->post(route('companies.switch', $second))->assertRedirect(route('dashboard'));
+    $this->post(route('companies.switch', $second))->assertRedirect(route('calendar', absolute: false));
 
     expect($user->fresh()->current_company_id)->toBe($second->id);
 

@@ -12,6 +12,7 @@ use App\Models\Membership;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Support\Tenancy\CurrentCompany;
+use App\Support\WorkHome;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -49,6 +50,6 @@ class WorkspaceController extends Controller
             });
         });
 
-        return to_route('dashboard');
+        return redirect(WorkHome::url($request->user()->fresh(), $company));
     }
 }

@@ -17,7 +17,7 @@ beforeEach(function () {
 
 test('unverified company users can work before mail is connected without being marked verified', function (UserRole $role) {
     $user = User::factory()->unverified()->memberOf(role: $role)->create();
-    $screen = $role === UserRole::Technician ? 'jobs.mine' : 'dashboard';
+    $screen = $role === UserRole::Technician ? 'jobs.mine' : 'calendar';
     $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password', 'remember' => true])
         ->assertSessionHasNoErrors()->assertRedirect(route($screen, absolute: false));
     $this->get(route($screen))->assertOk()->assertInertia(fn (Assert $page) => $page->where('impersonation', null));

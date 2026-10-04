@@ -48,6 +48,7 @@ use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\SmsInboxController;
 use App\Http\Controllers\SmsWebhookController;
+use App\Support\WorkHome;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
@@ -73,7 +74,7 @@ Route::post('webhooks/payments/{provider}', PaymentWebhookController::class)
     ->middleware('throttle:120,1')
     ->name('webhooks.payments');
 
-Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'login'))->name('home');
+Route::get('/', fn () => auth()->check() ? redirect(WorkHome::url(auth()->user())) : redirect()->route('login'))->name('home');
 
 Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['verified', 'super-admin'])->group(function () {
