@@ -210,6 +210,9 @@ counts once; access follows company, brand and technician assignment permissions
   history records "SMS opened from technician's phone". No automatic texts: day-before reminders and review requests
   go by email.
 - **Off** — everything that would be a text goes by email.
+- **Send SMS on the customer profile** texts a customer outside any job (customers often ignore calls from unknown
+  numbers): Owner, and Office members with the SMS inbox area. Automatic mode sends from the company number;
+  technician's-phone mode opens the phone's messages app and records it.
 
 Messages: reminder the day before the visit, "On my way" with the arrival window (when the technician taps the
 button), estimate/invoice link ("Send by SMS" next to "Send by email"), Google review request (§8), a free text from

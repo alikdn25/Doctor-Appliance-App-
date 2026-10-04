@@ -1,3 +1,9 @@
+# October 4 Send SMS from the customer profile — code validated locally
+
+- Customer profile: Send SMS for the Owner and Office members with the SMS inbox area (e.g. a view-only salesperson). Automatic mode sends from the company number to a chosen customer phone; technician's-phone mode opens the phone's messages app and records it; hidden when SMS is off or every number opted out. The text starts from the company's general template.
+- Customer-level correspondence is now visible to every Office member (including view-only), so the salesperson sees their own texts.
+- Validation: 757 backend tests (new CustomerSmsTest), 40 browser scenarios, lint, types, style.
+
 # October 4 Office permissions — code validated locally
 
 - The Admin role is shown as Office. The Owner switches each area on or off per Office member in Team: calendar and scheduling, customers, estimates, invoices and payments, SMS inbox, reports and cash, company expenses, services and checklists, technicians. New and existing Office members start with everything on (stored as null).
