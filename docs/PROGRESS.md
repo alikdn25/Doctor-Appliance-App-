@@ -1,3 +1,11 @@
+# October 4 waiting-reason colors and free review links — code validated locally
+
+- Status colors, one palette for badges, the top bar and the calendar: customer waiting on us in two reds (Parts to order, new Estimate to send), Waiting for parts orange, Waiting for customer yellow. Calendar visit blocks and To schedule cards are tinted by job status; To schedule now also lists jobs waiting on us or on the customer.
+- The top bar shows only per-reason colored counters, without a grand total.
+- Technicians on a job can set the four waiting statuses themselves; finishing a diagnosis offers Parts to order, Parts already ordered and Estimate to send. Sending the estimate (email, SMS or from the phone) moves Estimate to send to Waiting for customer.
+- Google review requests are no longer bound to a profile or brand and are no longer scheduled on payment. On the paid invoice the technician taps a saved link or pastes any link and sends it (phone, SMS or email by SMS mode). Brand default profile and automatic review settings removed from the UI; requests already scheduled by earlier versions are still delivered. SPEC §6 and §8 updated.
+- Validation: 743 of 744 backend tests (DeploymentCheckTest needs bcmath, absent locally); all 40 browser scenarios; lint, types, style.
+
 # October 4 unfinished-jobs bar by reason — code validated locally
 
 - The thin bar on every working screen now shows one colored counter per reason that needs attention (Late, Order parts, To book, Parts, Client, On hold), each opening Not completed jobs filtered by that reason. Scheduled work is not counted as needing attention. The same colors are used on the Not completed jobs page.

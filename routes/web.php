@@ -189,7 +189,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('invoices/{invoice}/sms', [DocumentDeliveryController::class, 'smsInvoice'])->middleware('throttle:30,1')->name('invoices.sms');
         Route::post('jobs/{job}/sms', [JobMessageController::class, 'sms'])->middleware('throttle:30,1')->name('jobs.sms');
         Route::post('jobs/{job}/messages/opened', [JobMessageController::class, 'opened'])->name('jobs.messages.opened');
-        Route::put('jobs/{job}/ask-for-review', [JobMessageController::class, 'askForReview'])->name('jobs.ask-for-review');
+        Route::post('jobs/{job}/review-request', [JobMessageController::class, 'reviewRequest'])->middleware('throttle:20,1')->name('jobs.review-request');
 
         // Connecting the company's own payment provider account (OAuth). The callback URL is registered at the provider.
         Route::get('payment-providers/{provider}/connect', [PaymentProviderController::class, 'connect'])->name('payment-providers.connect');

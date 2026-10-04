@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Jobs;
 
-use App\Enums\JobStatus;
+use App\Actions\Jobs\MarkEstimateSent;
 use App\Enums\MessageKind;
 use App\Enums\SmsMode;
 use App\Http\Controllers\Controller;
@@ -18,7 +18,7 @@ use Inertia\Inertia;
 
 /**
  * Texts from a job: an SMS typed on the job (Automatic mode), the record that a text was opened on the
- * technician's phone (sms: link), and the "Ask for a review" switch.
+ * technician's phone (sms: link), and the Google review request with the link the technician chose.
  */
 class JobMessageController extends Controller
 {
@@ -36,7 +36,7 @@ class JobMessageController extends Controller
     /**
      * The technician tapped a button that opens the phone's messages app: keep a trace on the job.
      */
-    public function opened(Request $request, ServiceJob $job, Messenger $messenger, ReviewRequests $reviews): RedirectResponse
+    public function opened(Request $request, ServiceJob $job, Messenger $messenger, ReviewRequests $reviews, MarkEstimateSent $markSent): RedirectResponse
     {
         Gate::authorize('work', $job);
 
@@ -48,25 +48,29 @@ class JobMessageController extends Controller
         $kind = MessageKind::from($data['kind']);
 
         if ($kind === MessageKind::ReviewRequest) {
-            $reviews->sentFromPhone($job, $data['to'], $request->user());
+            $reviews->sentFromPhone($job, $data['to'], $data['body'], $request->user());
         } else {
             $messenger->openedOnPhone($kind, $job->customer, $job, $data['to'], $data['body'], $request->user());
+        }
+        if ($kind === MessageKind::EstimateLink) {
+            $markSent->handle($job, $request->user());
         }
 
         return back();
     }
 
-    public function askForReview(Request $request, ServiceJob $job, ReviewRequests $reviews): RedirectResponse
+    /**
+     * Automatic or Off mode: send the Google review request with the link the technician chose or pasted.
+     */
+    public function reviewRequest(Request $request, ServiceJob $job, ReviewRequests $reviews): RedirectResponse
     {
         Gate::authorize('work', $job);
+        abort_if(currentCompany()->sms_mode === SmsMode::TechnicianPhone, 404);
 
-        $job->update(['ask_for_review' => $request->validate(['ask' => ['required', 'boolean']])['ask']]);
-        // Switched on after the job was already paid: schedule it now, as payment would have.
-        if ($job->ask_for_review && $job->status === JobStatus::Paid) {
-            $reviews->schedule($job);
-        }
+        $link = $request->validate(['link' => ['required', 'url:https', 'max:500']])['link'];
+        $message = $reviews->sendWithLink($job, $link, $request->user());
 
-        return back();
+        return $this->result($message->status, $message->status_reason, $message->send_after);
     }
 
     public static function result(string $status, ?string $reason, mixed $sendAfter = null): RedirectResponse

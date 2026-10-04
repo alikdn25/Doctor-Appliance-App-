@@ -6,6 +6,7 @@ use App\Enums\MessageKind;
 use App\Enums\SmsMode;
 use App\Models\Customer;
 use App\Models\Estimate;
+use App\Models\GoogleProfile;
 use App\Models\Invoice;
 use App\Models\JobVisit;
 use App\Models\Message;
@@ -53,24 +54,26 @@ class MessagingPresenter
 
     /**
      * The Google review request at the end of the work: shown on the paid invoice, next to sending the receipt.
+     * The technician picks one of the company's saved review links or pastes any link; nothing is bound to a brand.
      *
      * @return array<string, mixed>
      */
     public function review(ServiceJob $job): array
     {
-        $profile = $this->reviews->profile($job);
         $review = ReviewRequest::query()->where('service_job_id', $job->id)->first();
         $phone = $this->messenger->mobile($job->customer);
 
         return [
             'job_id' => $job->id,
             'mode' => currentCompany()->sms_mode->value,
-            'ask' => $job->ask_for_review,
             'status' => $review ? $this->reviewStatus($review) : null,
             'sent' => $review?->status === ReviewRequest::SENT,
-            'has_profile' => $profile !== null,
             'phone' => $phone?->sms_opted_out_at === null ? $phone?->number : null,
-            'text' => $this->reviews->text($job, $profile),
+            'can_email' => $job->customer->emails()->exists(),
+            // {review_link} is replaced with the chosen link before sending.
+            'text' => $this->reviews->text($job, null),
+            'links' => GoogleProfile::query()->orderBy('label')->get(['label', 'review_url'])
+                ->map(fn (GoogleProfile $profile) => ['label' => $profile->label, 'url' => $profile->review_url])->values(),
         ];
     }
 

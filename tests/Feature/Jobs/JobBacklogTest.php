@@ -43,7 +43,7 @@ test('the queue keeps old, unscheduled and waiting jobs without any date cutoff'
         ->component('jobs/backlog')
         ->where('unfinishedJobs.total', 6)
         ->where('unfinishedJobs.counts', [
-            'overdue' => 1, 'parts_to_order' => 0, 'needs_schedule' => 1, 'waiting_for_parts' => 1,
+            'overdue' => 1, 'parts_to_order' => 0, 'estimate_to_send' => 0, 'needs_schedule' => 1, 'waiting_for_parts' => 1,
             'waiting_for_customer' => 1, 'on_hold' => 1, 'scheduled' => 1,
         ])
         ->where('jobs.total', 6)

@@ -5,10 +5,8 @@ import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
 import { edit, update } from '@/routes/company/google-profiles';
-import type { Option } from '@/types';
 
 type Row = {
     key: number;
@@ -21,11 +19,10 @@ type Row = {
 let rowKey = 0;
 
 /**
- * Company → Google reviews: profiles with their review links, edited as one list.
+ * Company → Google reviews: saved review links, edited as one list. Technicians pick one or paste another.
  */
 export default function GoogleProfiles({
     profiles,
-    brands,
 }: {
     profiles: {
         id: number;
@@ -33,7 +30,6 @@ export default function GoogleProfiles({
         review_url: string;
         brand_id: number | null;
     }[];
-    brands: Option[];
 }) {
     const t = useTrans();
     const form = useForm<{ profiles: Row[] }>({
@@ -135,24 +131,6 @@ export default function GoogleProfiles({
                             <InputError
                                 message={errors[`profiles.${i}.review_url`]}
                             />
-                            {brands.length > 1 && (
-                                <NativeSelect
-                                    aria-label={t('reviews.fields.brand')}
-                                    value={row.brand_id}
-                                    onChange={(e) =>
-                                        setRow(i, { brand_id: e.target.value })
-                                    }
-                                >
-                                    <option value="">
-                                        {t('reviews.any_brand')}
-                                    </option>
-                                    {brands.map((b) => (
-                                        <option key={b.value} value={b.value}>
-                                            {b.label}
-                                        </option>
-                                    ))}
-                                </NativeSelect>
-                            )}
                         </li>
                     ))}
                 </ul>

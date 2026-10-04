@@ -1,12 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ListTodo } from 'lucide-react';
 import { useTrans } from '@/lib/i18n';
+import { statusColor } from '@/lib/job-colors';
 import { cn } from '@/lib/utils';
 import { backlog } from '@/routes/jobs';
-import { attentionReasons, reasonColors } from '@/types/job-backlog';
+import { attentionReasons } from '@/types/job-backlog';
 
 /**
- * Thin bar on every working screen: unfinished jobs by reason, each a colored counter
+ * Thin bar on every working screen: unfinished jobs by reason (no grand total), each a colored counter
  * that opens the list filtered by that reason. Jobs waiting weeks for parts are never forgotten.
  */
 export function UnfinishedJobsBar() {
@@ -26,16 +27,10 @@ export function UnfinishedJobsBar() {
         >
             <Link
                 href={backlog()}
-                className="flex min-h-10 shrink-0 items-center gap-1.5 px-2 font-medium hover:underline"
-                aria-label={`${t('jobs.backlog.title')}: ${unfinishedJobs.total}`}
+                className="flex min-h-10 shrink-0 items-center px-2"
+                aria-label={t('jobs.backlog.title')}
             >
                 <ListTodo className="size-4" aria-hidden="true" />
-                <span className="hidden sm:inline">
-                    {t('jobs.backlog.title')}
-                </span>
-                <span className="rounded-full bg-background px-1.5 tabular-nums">
-                    {unfinishedJobs.total}
-                </span>
             </Link>
             {reasons.map((reason) => (
                 <Link
@@ -47,7 +42,7 @@ export function UnfinishedJobsBar() {
                     <span
                         className={cn(
                             'flex size-5 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums',
-                            reasonColors[reason],
+                            statusColor(reason).dot,
                         )}
                     >
                         {unfinishedJobs.counts[reason]}

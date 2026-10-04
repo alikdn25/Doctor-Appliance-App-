@@ -5,7 +5,6 @@ import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
@@ -166,51 +165,9 @@ export default function MessagingSettings({
                         <p className="text-sm text-muted-foreground">
                             {t('reviews.rules')}
                         </p>
-                        <label className="flex min-h-10 items-center gap-2 text-sm">
-                            <Checkbox
-                                checked={form.data.review_requests_default}
-                                onCheckedChange={(c) =>
-                                    form.setData(
-                                        'review_requests_default',
-                                        c === true,
-                                    )
-                                }
-                            />
-                            {t(
-                                'reviews.fields_settings.review_requests_default',
-                            )}
-                        </label>
-                        <div className="grid grid-cols-2 gap-4">
-                            {(
-                                [
-                                    'review_request_delay_hours',
-                                    'review_request_cooldown_days',
-                                ] as const
-                            ).map((field) => (
-                                <FormField
-                                    key={field}
-                                    id={field}
-                                    label={t(
-                                        `reviews.fields_settings.${field}`,
-                                    )}
-                                    error={errors[field]}
-                                >
-                                    <Input
-                                        id={field}
-                                        type="number"
-                                        inputMode="numeric"
-                                        min={0}
-                                        value={form.data[field]}
-                                        onChange={(e) =>
-                                            form.setData(
-                                                field,
-                                                Number(e.target.value),
-                                            )
-                                        }
-                                    />
-                                </FormField>
-                            ))}
-                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            {t('reviews.manual_hint')}
+                        </p>
                     </section>
 
                     <section className="grid gap-4">

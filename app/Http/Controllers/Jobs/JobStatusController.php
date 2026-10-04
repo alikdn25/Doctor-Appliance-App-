@@ -14,16 +14,20 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 /**
- * Manual status change by the office.
+ * Manual status change: the office sets any status; the technician on the job sets a waiting reason.
  */
 class JobStatusController extends Controller
 {
     public function __invoke(Request $request, ServiceJob $job, SetJobStatus $setStatus): RedirectResponse
     {
-        Gate::authorize('update', $job);
+        $office = Gate::allows('update', $job);
+        abort_unless($office || Gate::allows('work', $job), 403);
+        // Beyond the waiting reasons, status changes stay with the office.
+        abort_if(! $office && ($job->status->isLocked()
+            || ! in_array(JobStatus::tryFrom((string) $request->input('status')), JobStatus::waiting(), true)), 403);
 
         $validated = $request->validate([
-            'status' => ['required', Rule::enum(JobStatus::class)->only(JobStatus::manual())],
+            'status' => ['required', Rule::enum(JobStatus::class)->only($office ? JobStatus::manual() : JobStatus::waiting())],
             'note' => ['nullable', 'string', 'max:500'],
             'reason' => [
                 'nullable', 'required_if:status,'.JobStatus::Cancelled->value,

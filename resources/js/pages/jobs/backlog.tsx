@@ -11,15 +11,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTrans } from '@/lib/i18n';
 import { backlog } from '@/routes/jobs';
+import { statusColor } from '@/lib/job-colors';
 import { cn } from '@/lib/utils';
 import type { BacklogReason } from '@/types/job-backlog';
-import { reasonColors } from '@/types/job-backlog';
 
 type Filters = { search: string; reason: BacklogReason | '' };
 
 const reasons: BacklogReason[] = [
     'overdue',
     'parts_to_order',
+    'estimate_to_send',
     'needs_schedule',
     'waiting_for_parts',
     'waiting_for_customer',
@@ -90,7 +91,7 @@ export default function JobsBacklog({
                                     className={cn(
                                         'flex min-w-5 items-center justify-center rounded-full px-1 text-xs tabular-nums',
                                         reason
-                                            ? reasonColors[reason]
+                                            ? statusColor(reason).dot
                                             : 'bg-muted text-foreground',
                                     )}
                                 >

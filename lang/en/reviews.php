@@ -2,10 +2,10 @@
 
 return [
     'title' => 'Google reviews',
-    'description' => 'Google Business Profiles and their review links. Each brand picks its default profile.',
+    'description' => 'Saved review links of your Google Business Profiles. When asking for a review, the technician taps one or pastes any other link.',
     'add' => 'Add profile',
     'remove' => 'Remove profile',
-    'empty' => 'No Google profiles yet. Add the "Ask for a review" link of each profile.',
+    'empty' => 'No saved links yet. Add the "Ask for a review" link of each profile, or paste a link when sending.',
     'saved' => 'Google profiles saved.',
     'link_hint' => 'In Google Business Profile: Ask for reviews → copy the link.',
     'fields' => [
@@ -18,6 +18,7 @@ return [
     'none' => 'None',
 
     'settings' => 'Review requests',
+    'manual_hint' => 'Technicians send the request at the end of the work, from the paid invoice, with the review link of whichever Google profile fits.',
     'rules' => 'Google and the FTC do not allow rewards or discounts for reviews, or asking only happy customers to post. Every customer gets the same request.',
     'fields_settings' => [
         'review_requests_default' => 'Ask for a review on new jobs',
@@ -27,8 +28,9 @@ return [
 
     'ask_for_review' => 'Ask for a review',
     'ask_hint' => 'A Google review request goes out after the job is paid in full.',
-    'paid_hint' => 'Switch on to send the customer the Google review link.',
-    'phone_hint' => 'Opens the text on your phone with the Google review link.',
+    'link_label' => 'Google review link (pick one or paste)',
+    'send_again' => 'Send review request again',
+    'no_contact' => 'The customer has no mobile number or email to send the request to.',
     'finish_title' => 'Ask for a Google review',
     'send_request' => 'Send review request',
     'statuses' => [

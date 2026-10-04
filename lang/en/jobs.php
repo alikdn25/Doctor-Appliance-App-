@@ -37,6 +37,7 @@ return [
         'short' => [
             'overdue' => 'Late',
             'parts_to_order' => 'Order',
+            'estimate_to_send' => 'Estimate',
             'needs_schedule' => 'Book',
             'waiting_for_parts' => 'Parts',
             'waiting_for_customer' => 'Client',
@@ -46,6 +47,7 @@ return [
         'reasons' => [
             'overdue' => 'Overdue visit',
             'parts_to_order' => 'Parts to order',
+            'estimate_to_send' => 'Estimate to send',
             'needs_schedule' => 'Needs scheduling',
             'waiting_for_parts' => 'Waiting for parts',
             'waiting_for_customer' => 'Waiting for customer',
@@ -186,6 +188,7 @@ return [
         'on_my_way' => 'On my way',
         'start' => 'Start job',
         'parts_to_order' => 'Parts to order',
+        'estimate_to_send' => 'Estimate to send',
         'waiting_for_parts' => 'Parts already ordered',
         'complete' => 'Complete',
         'finish_title' => 'Finish this visit',
@@ -335,6 +338,7 @@ return [
         'on_the_way' => 'On the way',
         'in_progress' => 'In progress',
         'parts_to_order' => 'Parts to order',
+        'estimate_to_send' => 'Estimate to send',
         'waiting_for_parts' => 'Waiting for parts',
         'waiting_for_customer' => 'Waiting for customer',
         'completed' => 'Completed',

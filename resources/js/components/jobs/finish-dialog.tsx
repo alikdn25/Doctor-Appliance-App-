@@ -3,6 +3,7 @@ import {
     Ban,
     CheckCircle2,
     HandCoins,
+    FileText,
     PackageSearch,
     ShoppingCart,
     ShieldCheck,
@@ -152,7 +153,7 @@ export function FinishDialog({
                                 </Button>
                             )}
                             {visitId !== null && (
-                                // Parts needed: either still to be ordered by the office, or already ordered.
+                                // Waiting on us: parts to order (or already ordered), or an estimate to send.
                                 <div className="grid grid-cols-2 gap-2">
                                     <Button
                                         size="lg"
@@ -175,6 +176,16 @@ export function FinishDialog({
                                     >
                                         <PackageSearch />{' '}
                                         {t('jobs.actions.waiting_for_parts')}
+                                    </Button>
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="col-span-2 h-12 whitespace-normal"
+                                        disabled={form.processing}
+                                        onClick={() => send('estimate_to_send')}
+                                    >
+                                        <FileText />{' '}
+                                        {t('jobs.actions.estimate_to_send')}
                                     </Button>
                                 </div>
                             )}

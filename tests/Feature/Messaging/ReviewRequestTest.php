@@ -33,7 +33,7 @@ beforeEach(function () {
 function paidJob(): ServiceJob
 {
     $job = ServiceJob::factory()->for(Property::factory()->for(test()->customer))
-        ->create(['brand_id' => test()->brand->id, 'status' => 'completed', 'ask_for_review' => true]);
+        ->create(['brand_id' => test()->brand->id, 'status' => 'completed']);
     test()->post(route('invoices.store', $job), documentPayload());
     $invoice = inCompany(test()->company, fn () => Invoice::latest('id')->first());
     test()->post(route('payments.store', $invoice), ['amount' => '280.50', 'method' => 'cash'])->assertSessionHasNoErrors();
@@ -41,24 +41,35 @@ function paidJob(): ServiceJob
     return $job->fresh();
 }
 
-test('a review request is scheduled when the job is paid in full and sent after the delay', function () {
+test('the review request is offered at the end, on the paid invoice, with the saved links and no bound profile', function () {
+    $job = ServiceJob::factory()->for(Property::factory()->for($this->customer))->create(['brand_id' => $this->brand->id, 'status' => 'completed']);
+    $this->post(route('invoices.store', $job), documentPayload());
+    $invoice = inCompany($this->company, fn () => Invoice::latest('id')->first());
+
+    $this->get(route('jobs.show', $job))->assertInertia(fn (Assert $page) => $page->missing('messaging.review'));
+    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page->where('review', null));
+
+    $this->post(route('payments.store', $invoice), ['amount' => '280.50', 'method' => 'cash'])->assertSessionHasNoErrors();
+    // Payment alone never sends or schedules anything: the technician sends it with the link they choose.
+    expect(inCompany($this->company, fn () => ReviewRequest::count()))->toBe(0);
+
+    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
+        ->where('review.job_id', $job->id)
+        ->where('review.links', [['label' => 'Surrey', 'url' => 'https://g.page/r/surrey/review']])
+        ->where('review.text', fn (string $text) => str_contains($text, '{review_link}') && ! str_contains($text, 'surrey')));
+});
+
+test('in Off mode the pasted link goes by email and is recorded', function () {
+    $this->company->update(['sms_mode' => 'off']);
     $job = paidJob();
 
-    $request = inCompany($this->company, fn () => ReviewRequest::sole());
-    expect($request)->status->toBe('scheduled')->google_profile_id->toBe($this->profile->id)
-        ->and($request->send_after->equalTo(now()->addHours(2)))->toBeTrue();
+    $this->post(route('jobs.review-request', $job), ['link' => 'http://insecure.example.com'])->assertSessionHasErrors('link');
+    $this->post(route('jobs.review-request', $job), ['link' => 'https://g.page/r/burnaby-other/review'])->assertSessionHasNoErrors();
 
-    $this->artisan('messages:deliver-due');
-    expect($request->fresh()->status)->toBe('scheduled');
-
-    $this->travel(2)->hours();
-    $this->artisan('messages:deliver-due');
-
-    // Technician's phone mode (the default): automated messages go by email.
     $message = inCompany($this->company, fn () => Message::sole());
-    expect($request->fresh())->status->toBe('sent')->channel->toBe('email')
-        ->and($message->kind->value)->toBe('review_request')
-        ->and($message->body)->toBe('Hi Jane, thank you for choosing Doctor Appliance! Would you take a moment to review us on Google? https://g.page/r/surrey/review');
+    expect($message->kind->value)->toBe('review_request')->and($message->channel)->toBe('email')
+        ->and($message->body)->toBe('Hi Jane, thank you for choosing Doctor Appliance! Would you take a moment to review us on Google? https://g.page/r/burnaby-other/review')
+        ->and(inCompany($this->company, fn () => ReviewRequest::sole()))->status->toBe('sent')->google_profile_id->toBeNull();
     Mail::assertQueued(CustomerMessageMail::class, fn ($mail) => $mail->hasTo('jane@example.com'));
 
     $invoice = inCompany($this->company, fn () => Invoice::where('service_job_id', $job->id)->sole());
@@ -67,91 +78,42 @@ test('a review request is scheduled when the job is paid in full and sent after 
         ->where('review.sent', true));
 });
 
-test('in Automatic mode the request goes by SMS', function () {
+test('in Automatic mode the request goes by SMS with the chosen link', function () {
     config(['services.twilio.account_sid' => 'ACmaster', 'services.twilio.auth_token' => 't']);
     Http::fake(['*/Messages.json' => Http::response(['sid' => 'SMr'], 201)]);
-    $this->company->update(['sms_mode' => 'automatic']);
+    $this->company->update(['sms_mode' => 'automatic', 'quiet_hours_start' => '00:00', 'quiet_hours_end' => '00:00']);
     inCompany($this->company, fn () => SmsAccount::create(['provider' => 'twilio', 'account_sid' => 'ACsub', 'auth_token' => 's', 'phone_number' => '+16045550100']));
 
-    paidJob();
-    $this->travel(3)->hours();
-    $this->artisan('messages:deliver-due');
+    $job = paidJob();
+    $this->post(route('jobs.review-request', $job), ['link' => 'https://g.page/r/surrey/review'])->assertSessionHasNoErrors();
 
     expect(inCompany($this->company, fn () => ReviewRequest::sole()))->status->toBe('sent')->channel->toBe('sms');
     Http::assertSent(fn ($r) => str_contains($r['Body'] ?? '', 'https://g.page/r/surrey/review'));
 });
 
-test('a customer gets at most one request in the cooldown period', function () {
-    paidJob();
-    $this->travel(3)->hours();
+test('from the technician\'s phone the text with the chosen link is opened and recorded', function () {
+    $job = paidJob();
+    $this->post(route('jobs.review-request', $job), ['link' => 'https://g.page/r/surrey/review'])->assertNotFound();
+
+    $this->post(route('jobs.messages.opened', $job), [
+        'kind' => 'review_request', 'to' => '+16045550142', 'body' => 'Please review us: https://g.page/r/any/review',
+    ])->assertRedirect();
+
+    expect(inCompany($this->company, fn () => ReviewRequest::sole()))->status->toBe('sent')->channel->toBe('technician_phone')
+        ->and(inCompany($this->company, fn () => Message::sole())->body)->toBe('Please review us: https://g.page/r/any/review');
+});
+
+test('a request scheduled by an earlier version is still delivered when due', function () {
+    $job = ServiceJob::factory()->for(Property::factory()->for($this->customer))->create(['brand_id' => $this->brand->id, 'status' => 'paid', 'ask_for_review' => true]);
+    $request = inCompany($this->company, fn () => ReviewRequest::create([
+        'customer_id' => $this->customer->id, 'service_job_id' => $job->id, 'google_profile_id' => $this->profile->id,
+        'status' => ReviewRequest::SCHEDULED, 'send_after' => now()->subMinute(),
+    ]));
+
     $this->artisan('messages:deliver-due');
 
-    $second = paidJob();
-    $request = inCompany($this->company, fn () => ReviewRequest::where('service_job_id', $second->id)->sole());
-
-    expect($request)->status->toBe('skipped')->skip_reason->toContain('180 days');
-});
-
-test('no request when the job is not asked for one, or there is no Google profile', function () {
-    $job = ServiceJob::factory()->for(Property::factory()->for($this->customer))
-        ->create(['brand_id' => $this->brand->id, 'status' => 'completed', 'ask_for_review' => false]);
-    $this->post(route('invoices.store', $job), documentPayload());
-    $this->post(route('payments.store', inCompany($this->company, fn () => Invoice::sole())), ['amount' => '280.50', 'method' => 'cash']);
-    expect(inCompany($this->company, fn () => ReviewRequest::count()))->toBe(0);
-
-    inCompany($this->company, fn () => GoogleProfile::query()->delete());
-    $job = paidJob();
-    expect(inCompany($this->company, fn () => ReviewRequest::where('service_job_id', $job->id)->sole()))
-        ->status->toBe('skipped')->skip_reason->toBe('No Google profile is set up.');
-});
-
-test('"Ask for a review" defaults from the company and can be switched on the job', function () {
-    $this->company->update(['review_requests_default' => false]);
-    $property = Property::factory()->for($this->customer)->create();
-
-    $this->post(route('jobs.store'), [
-        'brand_id' => $this->brand->id, 'job_type' => 'repair', 'customer_id' => $this->customer->id, 'property_id' => $property->id,
-    ])->assertSessionHasNoErrors();
-    $job = inCompany($this->company, fn () => ServiceJob::latest('id')->first());
-    expect($job->ask_for_review)->toBeFalse();
-
-    $this->put(route('jobs.ask-for-review', $job), ['ask' => true])->assertRedirect();
-    expect($job->fresh()->ask_for_review)->toBeTrue();
-});
-
-test('the review request is offered at the end, on the paid invoice, not on the job screen', function () {
-    $job = ServiceJob::factory()->for(Property::factory()->for($this->customer))
-        ->create(['brand_id' => $this->brand->id, 'status' => 'completed', 'ask_for_review' => true]);
-    $this->post(route('invoices.store', $job), documentPayload());
-    $invoice = inCompany($this->company, fn () => Invoice::latest('id')->first());
-
-    $this->get(route('jobs.show', $job))->assertInertia(fn (Assert $page) => $page->missing('messaging.review'));
-    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page->where('review', null));
-
-    $this->post(route('payments.store', $invoice), ['amount' => '280.50', 'method' => 'cash'])->assertSessionHasNoErrors();
-    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
-        ->where('review.job_id', $job->id)
-        ->where('review.has_profile', true)
-        ->where('review.text', fn (string $text) => str_contains($text, 'https://g.page/r/surrey/review')));
-});
-
-test('switching "Ask for a review" on after payment schedules the request', function () {
-    $job = ServiceJob::factory()->for(Property::factory()->for($this->customer))
-        ->create(['brand_id' => $this->brand->id, 'status' => 'completed', 'ask_for_review' => false]);
-    $this->post(route('invoices.store', $job), documentPayload());
-    $this->post(route('payments.store', inCompany($this->company, fn () => Invoice::sole())), ['amount' => '280.50', 'method' => 'cash']);
-    expect(inCompany($this->company, fn () => ReviewRequest::count()))->toBe(0);
-
-    $this->put(route('jobs.ask-for-review', $job), ['ask' => true])->assertRedirect();
-    expect(inCompany($this->company, fn () => ReviewRequest::sole()))->status->toBe('scheduled');
-});
-
-test('from the technician\'s phone the request is sent with the button and recorded', function () {
-    $job = ServiceJob::factory()->for(Property::factory()->for($this->customer))->create(['brand_id' => $this->brand->id, 'ask_for_review' => true]);
-
-    $this->post(route('jobs.messages.opened', $job), ['kind' => 'review_request', 'to' => '+16045550142', 'body' => 'x'])->assertRedirect();
-
-    expect(inCompany($this->company, fn () => ReviewRequest::sole()))->status->toBe('sent')->channel->toBe('technician_phone');
+    expect($request->fresh()->status)->toBe('sent')
+        ->and(inCompany($this->company, fn () => Message::sole())->body)->toContain('https://g.page/r/surrey/review');
 });
 
 test('Google profiles are edited by the office; the brand picks its default', function () {

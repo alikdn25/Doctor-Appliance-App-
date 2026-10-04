@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Billing;
 
 use App\Actions\Billing\SendDocument;
+use App\Actions\Jobs\MarkEstimateSent;
 use App\Enums\EstimateStatus;
 use App\Enums\MessageKind;
 use App\Enums\SmsMode;
@@ -85,6 +86,9 @@ class DocumentDeliveryController extends Controller
             $document->forceFill(['sent_at' => now(), 'sent_to' => $message->to,
                 ...($document instanceof Estimate ? ['followup_processed_at' => null] : []),
             ])->saveQuietly();
+            if ($document instanceof Estimate) {
+                app(MarkEstimateSent::class)->handle($document->job, $request->user());
+            }
         }
 
         return JobMessageController::result($message->status, $message->status_reason, $message->send_after);
@@ -111,6 +115,9 @@ class DocumentDeliveryController extends Controller
         ], [], ['email' => __('documents.to'), 'message' => __('documents.message')]);
 
         $send->handle($document, $data['email'], $data['message'], $request->user());
+        if ($document instanceof Estimate) {
+            app(MarkEstimateSent::class)->handle($document->job, $request->user());
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('documents.sent', [
             'kind' => __($document instanceof Invoice ? 'documents.invoice' : 'documents.estimate'),

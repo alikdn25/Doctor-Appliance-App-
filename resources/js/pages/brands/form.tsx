@@ -1,5 +1,4 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import type { Option } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { FormField } from '@/components/form-field';
@@ -7,7 +6,6 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
 import { formatPhone } from '@/lib/phone';
@@ -85,11 +83,9 @@ const emptyAddress = (primary: boolean, country: string): Address => ({
 export default function BrandForm({
     brand,
     canUpdate = true,
-    googleProfiles = [],
 }: {
     brand: Brand | null;
     canUpdate?: boolean;
-    googleProfiles?: Option[];
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -420,33 +416,6 @@ export default function BrandForm({
                         ),
                     )}
                 </section>
-
-                {googleProfiles.length > 0 && (
-                    <FormField
-                        id="google_profile_id"
-                        label={t('reviews.fields.default_profile')}
-                        error={errors.google_profile_id}
-                    >
-                        <NativeSelect
-                            id="google_profile_id"
-                            value={form.data.google_profile_id}
-                            disabled={readOnly}
-                            onChange={(e) =>
-                                form.setData(
-                                    'google_profile_id',
-                                    e.target.value,
-                                )
-                            }
-                        >
-                            <option value="">{t('reviews.none')}</option>
-                            {googleProfiles.map((p) => (
-                                <option key={p.value} value={p.value}>
-                                    {p.label}
-                                </option>
-                            ))}
-                        </NativeSelect>
-                    </FormField>
-                )}
 
                 <label className="flex items-center gap-2 text-sm">
                     <Checkbox

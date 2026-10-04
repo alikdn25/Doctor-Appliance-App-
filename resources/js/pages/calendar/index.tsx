@@ -42,6 +42,7 @@ import { Input } from '@/components/ui/input';
 import { useTouchDrag } from '@/hooks/use-touch-drag';
 import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
+import { calendarBlock } from '@/lib/job-colors';
 import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
 import { create as bookCustomer, show as showJob } from '@/routes/jobs';
@@ -422,7 +423,10 @@ export default function CalendarPage({
                                                     !touch.consumeClick() &&
                                                     setScheduling(job)
                                                 }
-                                                className="block w-full cursor-grab rounded-md border bg-card p-2 text-left text-xs shadow-sm select-none [-webkit-touch-callout:none] hover:bg-muted/50"
+                                                className={cn(
+                                                    'block w-full cursor-grab rounded-md border p-2 text-left text-xs shadow-sm select-none [-webkit-touch-callout:none] hover:opacity-90',
+                                                    calendarBlock(job.status),
+                                                )}
                                             >
                                                 <span className="flex items-center justify-between gap-2">
                                                     <span className="font-medium">

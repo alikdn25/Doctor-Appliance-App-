@@ -31,7 +31,7 @@ class JobBacklogController extends Controller
             ->with(['customer', 'property', 'brand', 'appliances', 'visits.assignees'])
             ->addSelect(['status_since' => JobStatusChange::query()->select('created_at')
                 ->whereColumn('service_job_id', 'service_jobs.id')->latest('created_at')->limit(1)])
-            ->orderByRaw("CASE backlog_reason WHEN 'overdue' THEN 0 WHEN 'parts_to_order' THEN 1 WHEN 'needs_schedule' THEN 2 WHEN 'waiting_for_parts' THEN 3 WHEN 'waiting_for_customer' THEN 4 WHEN 'on_hold' THEN 5 ELSE 6 END")
+            ->orderByRaw("CASE backlog_reason WHEN 'overdue' THEN 0 WHEN 'parts_to_order' THEN 1 WHEN 'estimate_to_send' THEN 2 WHEN 'needs_schedule' THEN 3 WHEN 'waiting_for_parts' THEN 4 WHEN 'waiting_for_customer' THEN 5 WHEN 'on_hold' THEN 6 ELSE 7 END")
             ->orderBy('created_at')
             ->orderBy('id')
             ->paginate(25)
@@ -50,7 +50,7 @@ class JobBacklogController extends Controller
     {
         $label = __('jobs.backlog.reasons.'.$job->backlog_reason);
         $since = $job->status_since ?? $job->created_at;
-        if (! in_array($job->backlog_reason, ['parts_to_order', 'waiting_for_parts', 'waiting_for_customer', 'on_hold'], true) || $since === null) {
+        if (! in_array($job->backlog_reason, ['parts_to_order', 'estimate_to_send', 'waiting_for_parts', 'waiting_for_customer', 'on_hold'], true) || $since === null) {
             return $label;
         }
 
