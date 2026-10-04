@@ -22,8 +22,7 @@ export type JobMessaging = {
     phone: string | null;
     opted_out: boolean;
     sms_blocked: string | null;
-    texts: { general: string; on_my_way: string; review_request: string };
-    review: { ask: boolean; status: string | null; has_profile: boolean };
+    texts: { general: string; on_my_way: string };
     messages: MessageItem[];
 };
 

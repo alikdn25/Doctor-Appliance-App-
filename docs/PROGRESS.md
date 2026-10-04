@@ -1,3 +1,13 @@
+# October 4 field-flow usability pass — code validated locally; server deployment pending
+
+- Server: Grok installed main 5c5f4b2 on the VPS (backup in /root/fieldservice-backups/20261004T113615Z); the manual walkthrough there is still pending.
+- Google review request moved to the end of the work (SPEC §7.6/§8): it is no longer on the job screen. A paid invoice shows "Ask for a Google review" next to sending the receipt: in technician-phone mode a Send review request button opens the text; in Automatic/Off mode a switch, with scheduled/sent/skipped status. Switching it on after payment schedules the request. Without a Google profile the card says so instead of offering a useless switch.
+- Job screen follows the field order: appliances, checklist, photos, work done, estimates & invoices, signature, visits, messages, costs, history.
+- Dashboard shows the working day (visits today, unpaid invoices per currency for office roles) instead of brand/member counts; first-run steps appear only until the company's first job. Unfinished jobs stay in the persistent bar.
+- Calendar no longer repeats Book customer under the header; it offers Book on this day for the viewed date. Jobs list on a phone shows search and the list first, filters behind a Filters button; Deleted jobs moved below the list.
+- Validation: PHP style, frontend lint/format, TypeScript, build; 744 of 745 backend tests (only DeploymentCheckTest fails locally: no bcmath in this container); all 40 desktop/mobile browser scenarios pass locally. New DashboardTest and review-placement tests.
+- Next: merge, deploy to the VPS, then the manual walkthrough in SERVER_HANDOFF.md.
+
 # October 4 review of the October 2–3 changes — one fix
 
 - Reviewed everything merged since 5a54896 (PRs #11 and #12): tenant scoping of new models, policies, private purchase costs, per-line taxes, signup/onboarding, mail readiness, member transfer/replacement, SMS inbox, expenses. No hard-coded country/currency in application code; every frontend translation key exists in lang/en.

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Jobs;
 
+use App\Enums\JobStatus;
 use App\Enums\MessageKind;
 use App\Enums\SmsMode;
 use App\Http\Controllers\Controller;
@@ -55,11 +56,15 @@ class JobMessageController extends Controller
         return back();
     }
 
-    public function askForReview(Request $request, ServiceJob $job): RedirectResponse
+    public function askForReview(Request $request, ServiceJob $job, ReviewRequests $reviews): RedirectResponse
     {
         Gate::authorize('work', $job);
 
         $job->update(['ask_for_review' => $request->validate(['ask' => ['required', 'boolean']])['ask']]);
+        // Switched on after the job was already paid: schedule it now, as payment would have.
+        if ($job->ask_for_review && $job->status === JobStatus::Paid) {
+            $reviews->schedule($job);
+        }
 
         return back();
     }

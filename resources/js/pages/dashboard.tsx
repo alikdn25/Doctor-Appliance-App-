@@ -4,44 +4,70 @@ import {
     CalendarDays,
     Contact,
     Percent,
-    Tags,
+    Receipt,
     Users,
     Wrench,
 } from 'lucide-react';
+import { useMoney } from '@/components/billing/money';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useTrans } from '@/lib/i18n';
-import { dashboard } from '@/routes';
+import { calendar, dashboard } from '@/routes';
 import { index as brands } from '@/routes/brands';
 import { index as team } from '@/routes/team';
 import { create as createCustomer } from '@/routes/customers';
+import { index as invoices } from '@/routes/invoices';
 import { create as createJob, mine as myJobs } from '@/routes/jobs';
 import { index as taxes } from '@/routes/taxes';
 
 type Props = {
     companyName: string;
-    stats: { brands: number; members: number };
+    hasBrand: boolean;
+    isNew: boolean;
+    today: {
+        date: string;
+        visits: number;
+        unpaid: {
+            count: number;
+            totals: { currency: string; amount: number }[];
+        } | null;
+    };
 };
 
-export default function Dashboard({ companyName, stats }: Props) {
+export default function Dashboard({
+    companyName,
+    hasBrand,
+    isNew,
+    today,
+}: Props) {
     const { auth } = usePage().props;
     const t = useTrans();
+    const money = useMoney();
 
     const tiles = [
         {
-            label: t('dashboard.active_brands'),
-            value: stats.brands,
-            icon: Tags,
-            href: auth.can.viewBrands ? brands() : null,
+            label: t('dashboard.today_visits'),
+            value: String(today.visits),
+            icon: CalendarDays,
+            href: auth.can.viewCalendar
+                ? calendar()
+                : auth.can.viewMyJobs
+                  ? myJobs()
+                  : null,
         },
-        {
-            label: t('dashboard.active_members'),
-            value: stats.members,
-            icon: Users,
-            href: auth.can.manageTeam ? team() : null,
+        today.unpaid && {
+            label: t('dashboard.unpaid', { count: today.unpaid.count }),
+            value:
+                today.unpaid.totals.length > 0
+                    ? today.unpaid.totals
+                          .map((row) => money(row.amount, row.currency))
+                          .join(' · ')
+                    : money(0),
+            icon: Receipt,
+            href: auth.can.viewInvoices ? invoices() : null,
         },
-    ];
+    ].flatMap((tile) => (tile ? [tile] : []));
 
     const actions = [
         auth.can.viewCustomers === true && {
@@ -88,7 +114,7 @@ export default function Dashboard({ companyName, stats }: Props) {
                     })}
                 />
 
-                {stats.brands === 0 && (
+                {!hasBrand && (
                     <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
                         <h2 className="font-semibold">
                             {t('dashboard.brand_needed')}
@@ -110,14 +136,14 @@ export default function Dashboard({ companyName, stats }: Props) {
                     </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-3 md:max-w-xl">
+                <div className="grid gap-3 sm:grid-cols-2">
                     {tiles.map((tile) => {
                         const body = (
                             <Card className="py-4">
                                 <CardContent className="flex items-center gap-3 px-4">
                                     <tile.icon className="size-5 text-muted-foreground" />
                                     <div>
-                                        <div className="text-2xl font-semibold">
+                                        <div className="text-2xl font-semibold break-words">
                                             {tile.value}
                                         </div>
                                         <div className="text-xs text-muted-foreground">
@@ -138,48 +164,53 @@ export default function Dashboard({ companyName, stats }: Props) {
                     })}
                 </div>
 
-                <section aria-labelledby="next-steps" className="space-y-4">
-                    <div>
-                        <h2 id="next-steps" className="text-lg font-semibold">
-                            {t('dashboard.next_steps')}
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            {t(
-                                stats.brands === 0
-                                    ? 'dashboard.brand_needed_hint'
-                                    : 'dashboard.next_steps_hint',
-                            )}
-                        </p>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        {actions.map((action) => (
-                            <Link
-                                key={action.title}
-                                href={action.href}
-                                className="flex min-h-28 items-center gap-4 rounded-2xl border bg-card p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                {(isNew || !hasBrand) && (
+                    <section aria-labelledby="next-steps" className="space-y-4">
+                        <div>
+                            <h2
+                                id="next-steps"
+                                className="text-lg font-semibold"
                             >
-                                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                                    <action.icon
-                                        className="size-5"
+                                {t('dashboard.next_steps')}
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                                {t(
+                                    !hasBrand
+                                        ? 'dashboard.brand_needed_hint'
+                                        : 'dashboard.next_steps_hint',
+                                )}
+                            </p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {actions.map((action) => (
+                                <Link
+                                    key={action.title}
+                                    href={action.href}
+                                    className="flex min-h-28 items-center gap-4 rounded-2xl border bg-card p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                >
+                                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                        <action.icon
+                                            className="size-5"
+                                            aria-hidden="true"
+                                        />
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="font-semibold">
+                                            {action.title}
+                                        </h3>
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            {action.description}
+                                        </p>
+                                    </div>
+                                    <ArrowRight
+                                        className="size-4 shrink-0 text-muted-foreground"
                                         aria-hidden="true"
                                     />
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                    <h3 className="font-semibold">
-                                        {action.title}
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        {action.description}
-                                    </p>
-                                </div>
-                                <ArrowRight
-                                    className="size-4 shrink-0 text-muted-foreground"
-                                    aria-hidden="true"
-                                />
-                            </Link>
-                        ))}
-                    </div>
-                </section>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
             </div>
         </>
     );

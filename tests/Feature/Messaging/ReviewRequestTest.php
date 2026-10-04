@@ -61,8 +61,10 @@ test('a review request is scheduled when the job is paid in full and sent after 
         ->and($message->body)->toBe('Hi Jane, thank you for choosing Doctor Appliance! Would you take a moment to review us on Google? https://g.page/r/surrey/review');
     Mail::assertQueued(CustomerMessageMail::class, fn ($mail) => $mail->hasTo('jane@example.com'));
 
-    $this->get(route('jobs.show', $job))->assertInertia(fn (Assert $page) => $page
-        ->where('messaging.review.status', fn (string $s) => str_starts_with($s, 'Review request sent')));
+    $invoice = inCompany($this->company, fn () => Invoice::where('service_job_id', $job->id)->sole());
+    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
+        ->where('review.status', fn (string $s) => str_starts_with($s, 'Review request sent'))
+        ->where('review.sent', true));
 });
 
 test('in Automatic mode the request goes by SMS', function () {
@@ -117,12 +119,35 @@ test('"Ask for a review" defaults from the company and can be switched on the jo
     expect($job->fresh()->ask_for_review)->toBeTrue();
 });
 
+test('the review request is offered at the end, on the paid invoice, not on the job screen', function () {
+    $job = ServiceJob::factory()->for(Property::factory()->for($this->customer))
+        ->create(['brand_id' => $this->brand->id, 'status' => 'completed', 'ask_for_review' => true]);
+    $this->post(route('invoices.store', $job), documentPayload());
+    $invoice = inCompany($this->company, fn () => Invoice::latest('id')->first());
+
+    $this->get(route('jobs.show', $job))->assertInertia(fn (Assert $page) => $page->missing('messaging.review'));
+    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page->where('review', null));
+
+    $this->post(route('payments.store', $invoice), ['amount' => '280.50', 'method' => 'cash'])->assertSessionHasNoErrors();
+    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
+        ->where('review.job_id', $job->id)
+        ->where('review.has_profile', true)
+        ->where('review.text', fn (string $text) => str_contains($text, 'https://g.page/r/surrey/review')));
+});
+
+test('switching "Ask for a review" on after payment schedules the request', function () {
+    $job = ServiceJob::factory()->for(Property::factory()->for($this->customer))
+        ->create(['brand_id' => $this->brand->id, 'status' => 'completed', 'ask_for_review' => false]);
+    $this->post(route('invoices.store', $job), documentPayload());
+    $this->post(route('payments.store', inCompany($this->company, fn () => Invoice::sole())), ['amount' => '280.50', 'method' => 'cash']);
+    expect(inCompany($this->company, fn () => ReviewRequest::count()))->toBe(0);
+
+    $this->put(route('jobs.ask-for-review', $job), ['ask' => true])->assertRedirect();
+    expect(inCompany($this->company, fn () => ReviewRequest::sole()))->status->toBe('scheduled');
+});
+
 test('from the technician\'s phone the request is sent with the button and recorded', function () {
     $job = ServiceJob::factory()->for(Property::factory()->for($this->customer))->create(['brand_id' => $this->brand->id, 'ask_for_review' => true]);
-
-    $this->get(route('jobs.show', $job))->assertInertia(fn (Assert $page) => $page
-        ->where('messaging.review.has_profile', true)
-        ->where('messaging.texts.review_request', fn (string $text) => str_contains($text, 'https://g.page/r/surrey/review')));
 
     $this->post(route('jobs.messages.opened', $job), ['kind' => 'review_request', 'to' => '+16045550142', 'body' => 'x'])->assertRedirect();
 

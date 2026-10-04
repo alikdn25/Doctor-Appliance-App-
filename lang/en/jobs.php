@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'filters' => 'Filters',
     'quick' => [
         'hint' => 'Name, phone and time — save the booking now and add details later.',
         'invoice_hint' => 'Choose a customer or enter their name and phone, then add invoice prices.',

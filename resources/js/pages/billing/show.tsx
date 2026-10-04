@@ -19,6 +19,8 @@ import type { Delivery } from '@/components/billing/document-delivery';
 import { DocumentDelivery } from '@/components/billing/document-delivery';
 import type { OnlinePayment } from '@/components/billing/online-payment';
 import { OnlinePaymentSection } from '@/components/billing/online-payment';
+import type { ReviewRequestData } from '@/components/billing/review-request';
+import { ReviewRequestSection } from '@/components/billing/review-request';
 import type { DocumentSms } from '@/components/messaging/types';
 import { PaymentDialog } from '@/components/billing/payment-dialog';
 import type { BillingDocument, PaymentData } from '@/components/billing/types';
@@ -76,6 +78,7 @@ export default function BillingShow({
     online = null,
     delivery,
     sms = null,
+    review = null,
 }: {
     document: BillingDocument;
     can: Can;
@@ -84,6 +87,7 @@ export default function BillingShow({
     online?: OnlinePayment;
     delivery?: Delivery;
     sms?: DocumentSms;
+    review?: ReviewRequestData | null;
 }) {
     const t = useTrans();
     const phoneText = usePhone();
@@ -605,6 +609,8 @@ export default function BillingShow({
                         sms={sms}
                     />
                 )}
+
+                {review && <ReviewRequestSection review={review} />}
 
                 {isInvoice && online && balance > 0 && (
                     <OnlinePaymentSection

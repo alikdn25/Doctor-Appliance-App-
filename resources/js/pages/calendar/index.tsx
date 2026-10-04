@@ -249,16 +249,19 @@ export default function CalendarPage({
                     title={t('calendar.title')}
                     description={title}
                     actions={
-                        <Button asChild className="h-11">
-                            <Link
-                                href={bookCustomer({
-                                    query: { book: 1, date },
-                                })}
-                            >
-                                <Plus />
-                                {t('nav.book_customer')}
-                            </Link>
-                        </Button>
+                        // The header already has Book customer; here it books the day being viewed.
+                        visits.some((visit) => visit.date === date) && (
+                            <Button asChild variant="outline" className="h-11">
+                                <Link
+                                    href={bookCustomer({
+                                        query: { book: 1, date },
+                                    })}
+                                >
+                                    <Plus />
+                                    {t('jobs.quick.book_day')}
+                                </Link>
+                            </Button>
+                        )
                     }
                 />
 

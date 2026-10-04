@@ -37,7 +37,6 @@ class MessagingPresenter
         $customer = $job->customer;
         $phone = $this->messenger->mobile($customer);
         $context = MessageContext::for($customer, $job, $myVisit ?? $job->visits->sortBy('scheduled_start')->last(), $user);
-        $review = ReviewRequest::query()->where('service_job_id', $job->id)->first();
 
         return [
             'mode' => $company->sms_mode->value,
@@ -47,14 +46,31 @@ class MessagingPresenter
             'texts' => [
                 'general' => MessageTemplates::render($company, MessageKind::General, $context),
                 'on_my_way' => MessageTemplates::render($company, MessageKind::OnMyWay, $context),
-                'review_request' => $this->reviews->text($job, $this->reviews->profile($job)),
-            ],
-            'review' => [
-                'ask' => $job->ask_for_review,
-                'status' => $review ? $this->reviewStatus($review) : null,
-                'has_profile' => $this->reviews->profile($job) !== null,
             ],
             'messages' => $this->history(Message::query()->where('service_job_id', $job->id)),
+        ];
+    }
+
+    /**
+     * The Google review request at the end of the work: shown on the paid invoice, next to sending the receipt.
+     *
+     * @return array<string, mixed>
+     */
+    public function review(ServiceJob $job): array
+    {
+        $profile = $this->reviews->profile($job);
+        $review = ReviewRequest::query()->where('service_job_id', $job->id)->first();
+        $phone = $this->messenger->mobile($job->customer);
+
+        return [
+            'job_id' => $job->id,
+            'mode' => currentCompany()->sms_mode->value,
+            'ask' => $job->ask_for_review,
+            'status' => $review ? $this->reviewStatus($review) : null,
+            'sent' => $review?->status === ReviewRequest::SENT,
+            'has_profile' => $profile !== null,
+            'phone' => $phone?->sms_opted_out_at === null ? $phone?->number : null,
+            'text' => $this->reviews->text($job, $profile),
         ];
     }
 

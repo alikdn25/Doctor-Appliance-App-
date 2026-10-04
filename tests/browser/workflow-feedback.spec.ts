@@ -33,9 +33,9 @@ test('visible menu and booking open the first visit directly from any working sc
         page.getByRole('button', { name: 'Save booking', exact: true }),
     ).toBeDisabled();
     await page.goto('/calendar?date=2026-10-12');
+    // Book customer stays in the header; the calendar itself books the viewed day.
     await page
-        .getByRole('link', { name: 'Book customer', exact: true })
-        .last()
+        .getByRole('link', { name: 'Book on this day', exact: true })
         .click();
     await expect(page).toHaveURL(/book=1.*date=2026-10-12/);
     await expect(page.locator('input[type="date"]').first()).toHaveValue(

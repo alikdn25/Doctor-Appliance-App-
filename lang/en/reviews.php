@@ -27,6 +27,9 @@ return [
 
     'ask_for_review' => 'Ask for a review',
     'ask_hint' => 'A Google review request goes out after the job is paid in full.',
+    'paid_hint' => 'Switch on to send the customer the Google review link.',
+    'phone_hint' => 'Opens the text on your phone with the Google review link.',
+    'finish_title' => 'Ask for a Google review',
     'send_request' => 'Send review request',
     'statuses' => [
         'scheduled' => 'Review request scheduled for :date',
