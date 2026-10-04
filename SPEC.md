@@ -109,8 +109,8 @@ with user and time.
 Waiting reasons and their colors, the same on badges, the top bar and the calendar:
 
 - The customer is waiting on us: `parts_to_order` (parts still to order) — red; `estimate_to_send` (quote still to
-  send) — crimson.
-- `waiting_for_parts` (parts ordered, on the way) — orange.
+  send) — orange.
+- `waiting_for_parts` (parts ordered, on the way) — purple.
 - `waiting_for_customer` (we wait for the customer's answer) — yellow.
 - `on_hold` — bronze.
 

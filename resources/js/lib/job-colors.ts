@@ -1,7 +1,7 @@
 /**
  * One palette for job statuses, used by badges, the unfinished-jobs bar and the calendar.
- * The customer is waiting on us: red (parts to order) and crimson (estimate to send).
- * Orange: parts are ordered and on the way. Yellow: we are waiting on the customer. Bronze: on hold.
+ * Parts to order: red. Estimate to send: orange. Parts ordered and on the way: purple.
+ * Waiting on the customer: yellow. On hold: bronze.
  */
 type StatusColor = { badge: string; dot: string; border: string };
 
@@ -17,9 +17,9 @@ const palette: Record<string, StatusColor> = {
         border: 'border-l-primary',
     },
     on_the_way: {
-        badge: 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200',
-        dot: 'bg-violet-600 text-white',
-        border: 'border-l-violet-500',
+        badge: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200',
+        dot: 'bg-cyan-600 text-white',
+        border: 'border-l-cyan-500',
     },
     in_progress: {
         badge: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
@@ -32,14 +32,14 @@ const palette: Record<string, StatusColor> = {
         border: 'border-l-red-600',
     },
     estimate_to_send: {
-        badge: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
-        dot: 'bg-rose-600 text-white',
-        border: 'border-l-rose-600',
-    },
-    waiting_for_parts: {
         badge: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
         dot: 'bg-orange-500 text-white',
         border: 'border-l-orange-500',
+    },
+    waiting_for_parts: {
+        badge: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200',
+        dot: 'bg-purple-600 text-white',
+        border: 'border-l-purple-600',
     },
     waiting_for_customer: {
         badge: 'bg-yellow-100 text-yellow-900 dark:bg-yellow-950 dark:text-yellow-200',
