@@ -1,7 +1,17 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { CalendarPlus, Search, UserPlus } from 'lucide-react';
+import {
+    CalendarPlus,
+    Search,
+    UserPlus,
+    UserRound,
+    Wrench,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import {
+    AddressAutocomplete,
+    clearedPlace,
+} from '@/components/customers/address-autocomplete';
 import { CustomerNotes } from '@/components/customers/customer-notes';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
@@ -12,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { index as brandsPage } from '@/routes/brands';
 import { create, index, lookup, store } from '@/routes/jobs';
 import type { Option } from '@/types';
@@ -72,8 +83,12 @@ export default function QuickBook({
             notes: '',
             property: {
                 line1: '',
+                unit: '',
                 city: '',
+                region: '',
+                postal_code: '',
                 country: auth.company?.country ?? '',
+                ...clearedPlace,
             },
         },
         description: '',
@@ -164,6 +179,55 @@ export default function QuickBook({
     };
     const title = t(booking ? 'nav.book_customer' : 'invoices.add');
     const errors = form.errors as Record<string, string | undefined>;
+    const locale = auth.company?.locale;
+    const setProperty = (
+        changes: Partial<typeof form.data.new_customer.property>,
+    ) =>
+        form.setData('new_customer', {
+            ...form.data.new_customer,
+            property: { ...form.data.new_customer.property, ...changes },
+        });
+    // One tap for the day and one for the arrival window; exact times stay editable below.
+    const dayChoices = [0, 1, 2, 3].map((offset) => {
+        const date = new Date(`${today}T00:00:00Z`);
+        date.setUTCDate(date.getUTCDate() + offset);
+        const ymd = date.toISOString().slice(0, 10);
+        return {
+            ymd,
+            label:
+                offset === 0
+                    ? t('jobs.quick.today')
+                    : offset === 1
+                      ? t('jobs.quick.tomorrow')
+                      : new Intl.DateTimeFormat(locale, {
+                            weekday: 'short',
+                            timeZone: 'UTC',
+                        }).format(date),
+            day: new Intl.DateTimeFormat(locale, {
+                month: 'short',
+                day: 'numeric',
+                timeZone: 'UTC',
+            }).format(date),
+        };
+    });
+    // Short range labels in the company's own time format, e.g. "9 – 11 a.m.".
+    const hourRange = new Intl.DateTimeFormat(locale, {
+        hour: 'numeric',
+        timeZone: 'UTC',
+    });
+    const windows = [9, 11, 13, 15].map((from) => ({
+        start: `${String(from).padStart(2, '0')}:00`,
+        end: `${String(from + 2).padStart(2, '0')}:00`,
+        label: hourRange.formatRange(
+            new Date(Date.UTC(1970, 0, 1, from)),
+            new Date(Date.UTC(1970, 0, 1, from + 2)),
+        ),
+    }));
+    const setVisit = (changes: Partial<typeof form.data.visit>) =>
+        form.setData('visit', { ...form.data.visit, ...changes });
+    const assigneeError = Object.entries(errors).find(([key]) =>
+        key.startsWith('visit.assignee_ids'),
+    )?.[1];
 
     return (
         <>
@@ -194,9 +258,10 @@ export default function QuickBook({
                     </div>
                 )}
                 <form onSubmit={submit} className="space-y-5">
-                    <section className="space-y-4 rounded-2xl border bg-card p-4 sm:p-5">
+                    <section className="da-card space-y-4 p-4 sm:p-5">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h2 className="font-semibold">
+                            <h2 className="flex items-center gap-2 font-semibold">
+                                <UserRound className="size-5 text-primary" />
                                 {t('jobs.fields.customer')}
                             </h2>
                             <Button
@@ -340,6 +405,27 @@ export default function QuickBook({
                         ) : (
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <FormField
+                                    id="booking-phone"
+                                    label={t('customers.fields.phone')}
+                                    error={errors['new_customer.phone']}
+                                >
+                                    <Input
+                                        id="booking-phone"
+                                        type="tel"
+                                        inputMode="tel"
+                                        autoComplete="tel"
+                                        required
+                                        maxLength={32}
+                                        value={form.data.new_customer.phone}
+                                        onChange={(event) =>
+                                            form.setData('new_customer', {
+                                                ...form.data.new_customer,
+                                                phone: event.target.value,
+                                            })
+                                        }
+                                    />
+                                </FormField>
+                                <FormField
                                     id="booking-name"
                                     label={t('jobs.quick.name')}
                                     error={errors['new_customer.first_name']}
@@ -361,21 +447,95 @@ export default function QuickBook({
                                     />
                                 </FormField>
                                 <FormField
-                                    id="booking-phone"
-                                    label={t('customers.fields.phone')}
-                                    error={errors['new_customer.phone']}
+                                    id="booking-address"
+                                    label={t('jobs.quick.address')}
+                                    className="sm:col-span-2"
+                                    error={
+                                        errors['new_customer.property.line1']
+                                    }
+                                >
+                                    <AddressAutocomplete
+                                        id="booking-address"
+                                        autoComplete="street-address"
+                                        value={
+                                            form.data.new_customer.property
+                                                .line1
+                                        }
+                                        country={
+                                            form.data.new_customer.property
+                                                .country ||
+                                            auth.company?.country ||
+                                            'US'
+                                        }
+                                        onChange={(value) =>
+                                            setProperty({
+                                                line1: value,
+                                                ...clearedPlace,
+                                            })
+                                        }
+                                        onPick={(address) =>
+                                            setProperty({
+                                                ...address,
+                                                unit:
+                                                    address.unit ??
+                                                    form.data.new_customer
+                                                        .property.unit,
+                                            })
+                                        }
+                                    />
+                                </FormField>
+                                <FormField
+                                    id="booking-unit"
+                                    label={t('jobs.quick.unit')}
+                                    error={errors['new_customer.property.unit']}
                                 >
                                     <Input
-                                        id="booking-phone"
-                                        type="tel"
-                                        autoComplete="tel"
-                                        required
-                                        maxLength={32}
-                                        value={form.data.new_customer.phone}
+                                        id="booking-unit"
+                                        autoComplete="address-line2"
+                                        maxLength={50}
+                                        value={
+                                            form.data.new_customer.property.unit
+                                        }
+                                        onChange={(event) =>
+                                            setProperty({
+                                                unit: event.target.value,
+                                            })
+                                        }
+                                    />
+                                </FormField>
+                                <FormField
+                                    id="booking-city"
+                                    label={t('properties.fields.city')}
+                                    error={errors['new_customer.property.city']}
+                                >
+                                    <Input
+                                        id="booking-city"
+                                        autoComplete="address-level2"
+                                        maxLength={100}
+                                        value={
+                                            form.data.new_customer.property.city
+                                        }
+                                        onChange={(event) =>
+                                            setProperty({
+                                                city: event.target.value,
+                                                ...clearedPlace,
+                                            })
+                                        }
+                                    />
+                                </FormField>
+                                <FormField
+                                    id="booking-notes"
+                                    label={t('jobs.quick.customer_notes')}
+                                    className="sm:col-span-2"
+                                    error={errors['new_customer.notes']}
+                                >
+                                    <Input
+                                        id="booking-notes"
+                                        value={form.data.new_customer.notes}
                                         onChange={(event) =>
                                             form.setData('new_customer', {
                                                 ...form.data.new_customer,
-                                                phone: event.target.value,
+                                                notes: event.target.value,
                                             })
                                         }
                                     />
@@ -413,12 +573,86 @@ export default function QuickBook({
                             <InputError message={errors.brand_id} />
                         )}
                     </section>
+                    <section className="da-card space-y-3 p-4 sm:p-5">
+                        <h2 className="flex items-center gap-2 font-semibold">
+                            <Wrench className="size-5 text-primary" />
+                            {t('jobs.quick.problem_title')}
+                        </h2>
+                        <FormField
+                            id="booking-problem"
+                            label={t('jobs.quick.problem')}
+                            error={errors.description}
+                        >
+                            <Textarea
+                                id="booking-problem"
+                                rows={2}
+                                placeholder={t('jobs.quick.problem_hint')}
+                                value={form.data.description}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'description',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                        </FormField>
+                    </section>
                     {booking && (
-                        <section className="space-y-4 rounded-2xl border bg-card p-4 sm:p-5">
+                        <section className="da-card space-y-4 p-4 sm:p-5">
                             <h2 className="flex items-center gap-2 font-semibold">
                                 <CalendarPlus className="size-5 text-primary" />
                                 {t('jobs.quick.appointment')}
                             </h2>
+                            <div className="grid grid-cols-4 gap-1.5">
+                                {dayChoices.map((choice) => (
+                                    <button
+                                        key={choice.ymd}
+                                        type="button"
+                                        aria-pressed={
+                                            form.data.visit.date === choice.ymd
+                                        }
+                                        onClick={() =>
+                                            setVisit({ date: choice.ymd })
+                                        }
+                                        className="da-chip da-press flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 leading-tight"
+                                    >
+                                        <span className="text-xs font-semibold opacity-85">
+                                            {choice.label}
+                                        </span>
+                                        <span className="text-sm font-bold">
+                                            {choice.day}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                            <div>
+                                <p className="mb-1.5 text-sm font-medium">
+                                    {t('jobs.quick.arrival_window')}
+                                </p>
+                                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                                    {windows.map((w) => (
+                                        <button
+                                            key={w.start}
+                                            type="button"
+                                            aria-pressed={
+                                                form.data.visit.start_time ===
+                                                    w.start &&
+                                                form.data.visit.end_time ===
+                                                    w.end
+                                            }
+                                            onClick={() =>
+                                                setVisit({
+                                                    start_time: w.start,
+                                                    end_time: w.end,
+                                                })
+                                            }
+                                            className="da-chip da-press min-h-12 rounded-2xl px-1 text-sm font-semibold"
+                                        >
+                                            {w.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <FormField
                                     id="booking-date"
@@ -477,173 +711,50 @@ export default function QuickBook({
                                 </FormField>
                             </div>
                             {assignableUsers.length > 1 && (
-                                <FormField
-                                    id="booking-assignee"
-                                    label={t('jobs.quick.technician')}
-                                    error={
-                                        Object.entries(errors).find(([key]) =>
-                                            key.startsWith(
-                                                'visit.assignee_ids',
-                                            ),
-                                        )?.[1]
-                                    }
-                                >
-                                    <NativeSelect
-                                        id="booking-assignee"
-                                        value={
-                                            form.data.visit.assignee_ids[0] ??
-                                            ''
-                                        }
-                                        onChange={(event) =>
-                                            form.setData('visit', {
-                                                ...form.data.visit,
-                                                assignee_ids: event.target.value
-                                                    ? [
-                                                          Number(
-                                                              event.target
-                                                                  .value,
-                                                          ),
-                                                      ]
-                                                    : [],
-                                            })
-                                        }
-                                    >
-                                        <option value="">
-                                            {t('calendar.unassigned')}
-                                        </option>
-                                        {assignableUsers.map((user) => (
-                                            <option
-                                                key={user.id}
-                                                value={user.id}
+                                <div>
+                                    <p className="mb-1.5 text-sm font-medium">
+                                        {t('jobs.quick.technician')}
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {[
+                                            ...assignableUsers.map((user) => ({
+                                                id: user.id as number | null,
+                                                name: user.name,
+                                            })),
+                                            {
+                                                id: null,
+                                                name: t('calendar.unassigned'),
+                                            },
+                                        ].map((choice) => (
+                                            <button
+                                                key={choice.id ?? 'none'}
+                                                type="button"
+                                                aria-pressed={
+                                                    (form.data.visit
+                                                        .assignee_ids[0] ??
+                                                        null) === choice.id
+                                                }
+                                                onClick={() =>
+                                                    setVisit({
+                                                        assignee_ids:
+                                                            choice.id === null
+                                                                ? []
+                                                                : [choice.id],
+                                                    })
+                                                }
+                                                className={cn(
+                                                    'da-chip da-press min-h-12 rounded-2xl px-4 text-sm font-semibold',
+                                                )}
                                             >
-                                                {user.name}
-                                            </option>
+                                                {choice.name}
+                                            </button>
                                         ))}
-                                    </NativeSelect>
-                                </FormField>
+                                    </div>
+                                </div>
                             )}
-                            {assignableUsers.length <= 1 && (
-                                <InputError
-                                    message={
-                                        Object.entries(errors).find(([key]) =>
-                                            key.startsWith(
-                                                'visit.assignee_ids',
-                                            ),
-                                        )?.[1]
-                                    }
-                                />
-                            )}
+                            <InputError message={assigneeError} />
                         </section>
                     )}
-                    <details
-                        open={
-                            !!errors['new_customer.property.line1'] ||
-                            !!errors['new_customer.property.city'] ||
-                            !!errors['new_customer.notes'] ||
-                            !!errors.description
-                        }
-                        className="rounded-2xl border bg-card p-4 sm:p-5"
-                    >
-                        <summary className="cursor-pointer font-medium">
-                            {t('jobs.quick.more')}
-                        </summary>
-                        <div className="mt-4 space-y-4">
-                            {!existing && (
-                                <>
-                                    <FormField
-                                        id="booking-address"
-                                        label={t('properties.fields.line1')}
-                                        error={
-                                            errors[
-                                                'new_customer.property.line1'
-                                            ]
-                                        }
-                                    >
-                                        <Input
-                                            id="booking-address"
-                                            autoComplete="street-address"
-                                            value={
-                                                form.data.new_customer.property
-                                                    .line1
-                                            }
-                                            onChange={(event) =>
-                                                form.setData('new_customer', {
-                                                    ...form.data.new_customer,
-                                                    property: {
-                                                        ...form.data
-                                                            .new_customer
-                                                            .property,
-                                                        line1: event.target
-                                                            .value,
-                                                    },
-                                                })
-                                            }
-                                        />
-                                    </FormField>
-                                    <FormField
-                                        id="booking-city"
-                                        label={t('properties.fields.city')}
-                                        error={
-                                            errors['new_customer.property.city']
-                                        }
-                                    >
-                                        <Input
-                                            id="booking-city"
-                                            autoComplete="address-level2"
-                                            value={
-                                                form.data.new_customer.property
-                                                    .city
-                                            }
-                                            onChange={(event) =>
-                                                form.setData('new_customer', {
-                                                    ...form.data.new_customer,
-                                                    property: {
-                                                        ...form.data
-                                                            .new_customer
-                                                            .property,
-                                                        city: event.target
-                                                            .value,
-                                                    },
-                                                })
-                                            }
-                                        />
-                                    </FormField>
-                                    <FormField
-                                        id="booking-notes"
-                                        label={t('jobs.quick.customer_notes')}
-                                        error={errors['new_customer.notes']}
-                                    >
-                                        <Textarea
-                                            id="booking-notes"
-                                            value={form.data.new_customer.notes}
-                                            onChange={(event) =>
-                                                form.setData('new_customer', {
-                                                    ...form.data.new_customer,
-                                                    notes: event.target.value,
-                                                })
-                                            }
-                                        />
-                                    </FormField>
-                                </>
-                            )}
-                            <FormField
-                                id="booking-problem"
-                                label={t('jobs.fields.description')}
-                                error={errors.description}
-                            >
-                                <Textarea
-                                    id="booking-problem"
-                                    value={form.data.description}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'description',
-                                            event.target.value,
-                                        )
-                                    }
-                                />
-                            </FormField>
-                        </div>
-                    </details>
                     {Object.entries(errors)
                         .filter(
                             ([key]) =>
@@ -657,6 +768,7 @@ export default function QuickBook({
                                     'new_customer.notes',
                                     'new_customer.property.line1',
                                     'new_customer.property.city',
+                                    'new_customer.property.unit',
                                     'visit.date',
                                     'visit.start_time',
                                     'visit.end_time',
@@ -670,7 +782,7 @@ export default function QuickBook({
                         <Button
                             type="submit"
                             size="lg"
-                            className="min-h-11 flex-1"
+                            className="min-h-14 flex-1 text-base"
                             disabled={!canSave || form.processing}
                         >
                             {t(

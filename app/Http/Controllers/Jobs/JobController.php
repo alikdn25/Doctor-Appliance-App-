@@ -158,15 +158,20 @@ class JobController extends Controller
             ->limit(100)
             ->get();
 
+        $messaging = app(MessagingPresenter::class);
+
         return Inertia::render('jobs/mine', [
             'tab' => $tab,
             // Cash this person collected and has not handed in yet.
             'cashOnHand' => CashLedger::balances()[$user->id] ?? [],
-            'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone) {
+            'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging) {
                 $job = $visit->job;
 
                 return [
                     ...JobPresenter::visit($visit, $user, $timezone),
+                    // The card's main button: On my way / Start / Finish visit, while field work is allowed.
+                    'can_work' => $job->status->allowsVisitWork() && Gate::allows('work', $job),
+                    'on_my_way_sms' => $visit->status === VisitStatus::Scheduled ? $messaging->onMyWayOnPhone($job, $user, $visit) : null,
                     'job' => [
                         'id' => $job->id,
                         'number' => $job->number,
@@ -395,6 +400,8 @@ class JobController extends Controller
                 'units' => BillingPresenter::lineSetup()['units'],
             ] : null,
             'openWarranty' => $request->boolean('warranty'),
+            // "Finish visit" on My Jobs opens the finish dialog straight away.
+            'openFinish' => $request->boolean('finish'),
             'assignableUsers' => $canUpdate ? $this->assignableUsers() : [],
             'otherAppliances' => Appliance::query()
                 ->where('property_id', $property->id)

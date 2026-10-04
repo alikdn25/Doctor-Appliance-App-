@@ -26,7 +26,7 @@ test('login records the last login time and is case-insensitive on email', funct
     expect($user->email)->toBe('person@example.com');
 
     $this->post(route('login.store'), ['email' => 'PERSON@example.com', 'password' => 'password'])
-        ->assertRedirect(route('dashboard', absolute: false));
+        ->assertRedirect(route('jobs.mine', absolute: false));
 
     expect($user->fresh()->last_login_at)->not->toBeNull();
 });

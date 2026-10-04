@@ -37,9 +37,8 @@ export default async function setup() {
                 .getByRole('button', { name: 'Continue', exact: true })
                 .click();
         }
-        await expect(page).toHaveURL(
-            role === 'owner' ? /dashboard/ : /my-jobs/,
-        );
+        // Every field member (Owner and Technician) starts on My jobs.
+        await expect(page).toHaveURL(/my-jobs/);
         await expect(page.locator('h1')).toBeVisible();
         await context.storageState({ path: `test-results/auth-${role}.json` });
         await context.close();

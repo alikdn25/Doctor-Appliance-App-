@@ -72,12 +72,12 @@ export function AppSidebar() {
                   href: bookCustomer({ query: { book: 1 } }),
                   icon: Plus,
               },
-              { title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid },
               can.viewMyJobs && {
                   title: 'nav.my_jobs',
                   href: myJobs(),
                   icon: Wrench,
               },
+              { title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid },
               can.viewCalendar && {
                   title: 'nav.calendar',
                   href: calendar(),
@@ -163,7 +163,7 @@ export function AppSidebar() {
           ]
         : [];
 
-    const homeHref = dashboard();
+    const homeHref = can.viewMyJobs ? myJobs() : dashboard();
 
     return (
         <Sidebar collapsible="icon" variant="inset">

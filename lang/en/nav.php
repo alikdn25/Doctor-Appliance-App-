@@ -2,6 +2,11 @@
 
 return [
     'menu' => 'Menu',
+    'tabs' => 'Main sections',
+    'tab_today' => 'Today',
+    'tab_calendar' => 'Calendar',
+    'tab_messages' => 'Messages',
+    'tab_more' => 'More',
     'book_customer' => 'Book customer',
     'workspace' => 'My workspace',
     'sms_inbox' => 'SMS Inbox',

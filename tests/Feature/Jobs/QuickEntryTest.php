@@ -135,3 +135,18 @@ test('invoice entry lists only visible jobs and rejects non-office access', func
         ->has('jobs', 1)->where('jobs.0.id', $job->id));
     $this->actingAs(memberOf($this->company, UserRole::Technician))->get(route('invoices.start'))->assertForbidden();
 });
+
+test('an address picked on the booking form is saved with unit, place and problem', function () {
+    $this->post(route('jobs.store'), quickEntryPayload([
+        'description' => 'Washer not draining',
+        'new_customer' => ['property' => [
+            'line1' => '295 Guildford Way', 'unit' => '1204', 'city' => 'Port Moody', 'region' => 'BC',
+            'postal_code' => 'V3H 0A1', 'google_place_id' => 'place-123', 'latitude' => '49.28', 'longitude' => '-122.83',
+        ]],
+    ]))->assertSessionHasNoErrors();
+
+    $job = inCompany($this->company, fn () => ServiceJob::with('property')->sole());
+    expect($job->description)->toBe('Washer not draining')
+        ->and($job->property->only(['line1', 'unit', 'city', 'google_place_id']))
+        ->toBe(['line1' => '295 Guildford Way', 'unit' => '1204', 'city' => 'Port Moody', 'google_place_id' => 'place-123']);
+});
