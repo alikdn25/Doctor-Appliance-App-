@@ -52,12 +52,12 @@ Everything pressable is a raised, soft, rounded shape:
 
 ## Colors
 
-| Token           | Value                                                                                       |
-| --------------- | ------------------------------------------------------------------------------------------- |
-| Page background | `#EEF3FA`                                                                                   |
-| Text            | `#0F1B2D`                                                                                   |
-| Secondary text  | `#5B6779`                                                                                   |
-| Link            | `#0A6CF5` (hover `#0050D0`)                                                                 |
+| Token           | Value                                                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Page background | `#EEF3FA`                                                                                                                                  |
+| Text            | `#0F1B2D`                                                                                                                                  |
+| Secondary text  | `#5B6779`                                                                                                                                  |
+| Link            | `#0A6CF5` (hover `#0050D0`)                                                                                                                |
 | Header          | `linear-gradient(180deg, #0F3270 0%, #0A2453 100%)` (deep navy, as on the approved phone mockups); header buttons blue `#2B6EE6 → #1A4FB8` |
 
 The dark-blue header sits above a light "sheet" (page background) with rounded top corners.
