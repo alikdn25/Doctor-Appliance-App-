@@ -31,6 +31,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarRail,
 } from '@/components/ui/sidebar';
 import { calendar, dashboard } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
@@ -107,7 +108,6 @@ export function AppSidebar() {
 
     const moneyItems: NavItem[] = auth.company
         ? ([
-              { title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid },
               can.viewInvoices && {
                   title: 'nav.reports',
                   href: reports(),
@@ -127,6 +127,11 @@ export function AppSidebar() {
         : [];
 
     const companyItems: NavItem[] = [
+        auth.company && {
+            title: 'nav.getting_started',
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
         can.viewBrands && { title: 'nav.brands', href: brands(), icon: Tags },
         can.manageTeam && { title: 'nav.team', href: team(), icon: Users },
         can.viewTaxes && { title: 'nav.taxes', href: taxes(), icon: Percent },
@@ -200,6 +205,8 @@ export function AppSidebar() {
             <SidebarFooter>
                 <NavUser />
             </SidebarFooter>
+            {/* Desktop: the sidebar folds from its edge; the header has no second menu button. */}
+            <SidebarRail />
         </Sidebar>
     );
 }

@@ -1,6 +1,12 @@
 import { Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { CalendarCheck, Ellipsis, MapPin, MessageSquare } from 'lucide-react';
+import {
+    CalendarCheck,
+    CalendarDays,
+    Ellipsis,
+    MapPin,
+    MessageSquare,
+} from 'lucide-react';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -35,6 +41,11 @@ export function MobileTabBar() {
             icon: CalendarCheck,
         },
         can.viewCalendar && {
+            key: 'calendar',
+            href: calendar().url,
+            icon: CalendarDays,
+        },
+        can.viewCalendar && {
             key: 'map',
             href: calendar({ query: { view: 'map' } }).url,
             icon: MapPin,
@@ -47,7 +58,8 @@ export function MobileTabBar() {
         },
     ].filter(Boolean) as Tab[];
 
-    const path = url.split('?')[0];
+    const [path, query = ''] = url.split('?');
+    const onMap = new URLSearchParams(query).get('view') === 'map';
 
     return (
         <nav
@@ -55,7 +67,14 @@ export function MobileTabBar() {
             className="da-tabbar sticky bottom-0 z-20 flex gap-1 border-t border-[#E1E8F2] bg-white px-2 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(16,42,79,.08)] md:hidden"
         >
             {tabs.map((tab) => {
-                const active = path === new URL(tab.href, 'http://x').pathname;
+                // Calendar and Map share a page: the view in the address decides which tab is lit.
+                const active =
+                    path === new URL(tab.href, 'http://x').pathname &&
+                    (tab.key === 'map'
+                        ? onMap
+                        : tab.key === 'calendar'
+                          ? !onMap
+                          : true);
                 const Icon = tab.icon;
                 return (
                     <Link

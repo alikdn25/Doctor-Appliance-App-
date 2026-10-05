@@ -1,3 +1,4 @@
+import { Camera } from 'lucide-react';
 import { useForm, usePage } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { useEffect } from 'react';
@@ -105,7 +106,8 @@ export function PaymentDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            {/* Anchored to the top: picking a method adds fields below without the window jumping. */}
+            <DialogContent className="top-4 translate-y-0 pb-0 sm:top-[8vh] sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>{t('payments.record')}</DialogTitle>
                     <DialogDescription>
@@ -236,18 +238,32 @@ export function PaymentDialog({
                                 (form.errors as Record<string, string>).receipt
                             }
                         >
-                            <Input
-                                id="payment-receipt"
-                                type="file"
-                                accept="image/*"
-                                capture="environment"
-                                onChange={(e) =>
-                                    form.setData(
-                                        'receipt',
-                                        e.target.files?.[0] ?? null,
-                                    )
-                                }
-                            />
+                            <Button
+                                asChild
+                                variant="outline"
+                                className="cursor-pointer justify-start"
+                            >
+                                <label>
+                                    <Camera />
+                                    <span className="truncate">
+                                        {form.data.receipt?.name ??
+                                            t('payments.take_receipt_photo')}
+                                    </span>
+                                    <input
+                                        id="payment-receipt"
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        className="sr-only"
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'receipt',
+                                                e.target.files?.[0] ?? null,
+                                            )
+                                        }
+                                    />
+                                </label>
+                            </Button>
                         </FormField>
                     )}
 
@@ -267,13 +283,15 @@ export function PaymentDialog({
                         />
                     </FormField>
 
-                    <Button
-                        type="submit"
-                        className="h-12 w-full text-base"
-                        disabled={form.processing || !method || amount <= 0}
-                    >
-                        {t('payments.record')} · {money(amount)}
-                    </Button>
+                    <div className="sticky bottom-0 -mx-6 border-t bg-background px-6 py-3">
+                        <Button
+                            type="submit"
+                            className="h-12 w-full text-base"
+                            disabled={form.processing || !method || amount <= 0}
+                        >
+                            {t('payments.record')} · {money(amount)}
+                        </Button>
+                    </div>
                 </form>
             </DialogContent>
         </Dialog>

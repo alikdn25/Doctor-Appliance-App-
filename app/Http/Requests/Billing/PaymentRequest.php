@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Billing;
 
 use App\Enums\PaymentMethod;
+use App\Support\Billing\MoneyInput;
 use App\Support\Locale\Currencies;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -18,6 +19,11 @@ class PaymentRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->user()->can('recordPayment', $this->route('invoice'));
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->replace(MoneyInput::cleanPaths($this->input(), ['amount', 'tip', 'cash_received']));
     }
 
     /**

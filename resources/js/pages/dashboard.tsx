@@ -18,13 +18,19 @@ import { index as team } from '@/routes/team';
 import { create as createCustomer } from '@/routes/customers';
 import { create as createJob, mine as myJobs } from '@/routes/jobs';
 import { index as taxes } from '@/routes/taxes';
+import { edit as googleProfiles } from '@/routes/company/google-profiles';
 
 type Props = {
     companyName: string;
     stats: { brands: number; members: number };
+    setup?: { taxes: boolean; reviewProfiles: boolean; reviewsOn: boolean };
 };
 
-export default function Dashboard({ companyName, stats }: Props) {
+export default function Dashboard({
+    companyName,
+    stats,
+    setup = { taxes: true, reviewProfiles: true, reviewsOn: false },
+}: Props) {
     const { auth } = usePage().props;
     const t = useTrans();
 
@@ -42,6 +48,20 @@ export default function Dashboard({ companyName, stats }: Props) {
             href: auth.can.manageTeam ? team() : null,
         },
     ];
+
+    const missing = [
+        !setup.taxes && {
+            text: t('dashboard.missing_taxes'),
+            action: t('dashboard.configure_taxes'),
+            href: auth.can.viewTaxes ? taxes() : null,
+        },
+        setup.reviewsOn &&
+            !setup.reviewProfiles && {
+                text: t('dashboard.missing_review_profile'),
+                action: t('dashboard.add_review_profile'),
+                href: auth.can.manageChecklists ? googleProfiles() : null,
+            },
+    ].filter((item) => item !== false);
 
     const actions = [
         auth.can.viewCustomers === true && {
@@ -78,7 +98,7 @@ export default function Dashboard({ companyName, stats }: Props) {
 
     return (
         <>
-            <Head title={t('nav.dashboard')} />
+            <Head title={t('nav.getting_started')} />
 
             <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-4 sm:p-6">
                 <PageHeader
@@ -108,6 +128,38 @@ export default function Dashboard({ companyName, stats }: Props) {
                             </Button>
                         )}
                     </div>
+                )}
+
+                {missing.length > 0 && (
+                    <section
+                        aria-labelledby="setup-missing"
+                        className="space-y-2 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950"
+                    >
+                        <h2 id="setup-missing" className="font-semibold">
+                            {t('dashboard.setup_missing')}
+                        </h2>
+                        <ul className="space-y-2">
+                            {missing.map((item) => (
+                                <li
+                                    key={item.text}
+                                    className="flex flex-wrap items-center justify-between gap-2 text-sm"
+                                >
+                                    <span>{item.text}</span>
+                                    {item.href && (
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            size="sm"
+                                        >
+                                            <Link href={item.href}>
+                                                {item.action}
+                                            </Link>
+                                        </Button>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
                 )}
 
                 <div className="grid grid-cols-2 gap-3 md:max-w-xl">
@@ -186,5 +238,5 @@ export default function Dashboard({ companyName, stats }: Props) {
 }
 
 Dashboard.layout = {
-    breadcrumbs: [{ title: 'nav.dashboard', href: dashboard() }],
+    breadcrumbs: [{ title: 'nav.getting_started', href: dashboard() }],
 };

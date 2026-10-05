@@ -40,9 +40,22 @@ class VisitActionController extends Controller
     {
         Gate::authorize('work', $visit);
 
+        $phoneText = $request->validate([
+            'phone_sms' => ['nullable', 'array'],
+            'phone_sms.to' => ['required_with:phone_sms', 'string', 'max:32'],
+            'phone_sms.body' => ['required_with:phone_sms', 'string', 'max:1600'],
+        ])['phone_sms'] ?? null;
+
         $workflow->onMyWay($visit, $request->user());
 
-        if (currentCompany()->sms_mode !== SmsMode::TechnicianPhone) {
+        if (currentCompany()->sms_mode === SmsMode::TechnicianPhone) {
+            // The text opened in the technician's messages app is recorded in the same request as the status
+            // change: two requests at once made the browser drop the status change.
+            if ($phoneText !== null) {
+                $job = $visit->job()->with('customer')->firstOrFail();
+                $messenger->openedOnPhone(MessageKind::OnMyWay, $job->customer, $job, $phoneText['to'], $phoneText['body'], $request->user());
+            }
+        } else {
             $job = $visit->job()->with(['customer', 'brand'])->firstOrFail();
             $body = MessageTemplates::render(currentCompany(), MessageKind::OnMyWay, MessageContext::for($job->customer, $job, $visit, $request->user()));
             $messenger->send(MessageKind::OnMyWay, $job->customer, $job, $body, $request->user(),

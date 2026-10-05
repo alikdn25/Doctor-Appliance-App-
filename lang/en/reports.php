@@ -2,7 +2,7 @@
 
 return [
     'title' => 'Reports',
-    'period_hint' => 'Jobs closed between these dates. Amounts without taxes.',
+    'period_hint' => 'Pick a period. Revenue counts invoices issued in it; profit, callbacks and no-charge jobs count jobs closed in it. Amounts without taxes.',
     'from' => 'From',
     'to' => 'To',
     'apply' => 'Show',

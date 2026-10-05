@@ -2,6 +2,7 @@ import { useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { useEffect } from 'react';
 import { ApplianceTypePicker } from '@/components/appliance-image';
+import { FilePicker } from '@/components/file-picker';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -185,16 +186,14 @@ export function ApplianceDialog({
                         hint={t('appliances.rating_plate_hint')}
                         className="sm:col-span-2"
                     >
-                        <Input
+                        <FilePicker
                             id="appliance-rating_plate"
-                            type="file"
                             accept="image/jpeg,image/png,image/webp"
                             capture="environment"
-                            onChange={(e) =>
-                                form.setData(
-                                    'rating_plate',
-                                    e.target.files?.[0] ?? null,
-                                )
+                            file={form.data.rating_plate}
+                            label={t('appliances.take_plate_photo')}
+                            onChange={(file) =>
+                                form.setData('rating_plate', file)
                             }
                         />
                     </FormField>

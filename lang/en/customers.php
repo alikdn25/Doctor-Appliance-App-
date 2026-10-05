@@ -10,7 +10,7 @@ return [
     'search' => 'Name, phone, email, address, model or serial number',
     'all_types' => 'All types',
     'all_tags' => 'All tags',
-    'count' => ':count customers',
+    'count' => ':count customer|:count customers',
     'created' => 'Customer created.',
     'updated' => 'Customer saved.',
     'deleted' => 'Customer deleted.',
@@ -51,8 +51,9 @@ return [
     ],
 
     'about_hint' => 'Preferences and details for your team, such as arrival expectations, children sleeping, or how to contact the customer. Visible during booking and on their jobs.',
-    'avatar_hint' => 'Automatic uses a suggestion from the first name. Uncertain names stay neutral. You can choose and save any icon.',
-    'icons' => ['auto' => 'Automatic', 'neutral' => 'Neutral icon', 'man' => 'Man icon', 'woman' => 'Woman icon', 'business' => 'Business icon'],
+    'avatar_hint' => 'Automatic picks a face from the first name; names that fit both (like Sasha) stay neutral. Choose Man or Woman to keep it. You can also tap the icon on the customer or job page.',
+    'change_icon' => 'Customer icon',
+    'icons' => ['auto' => 'Automatic (from first name)', 'neutral' => 'Neutral', 'man' => 'Man', 'woman' => 'Woman', 'business' => 'Business'],
     'fields' => [
         'avatar_style' => 'Customer icon',
         'type' => 'Customer type',

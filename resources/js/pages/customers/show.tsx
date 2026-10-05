@@ -21,8 +21,14 @@ import { JobList } from '@/components/jobs/job-list';
 import type { JobRow } from '@/components/jobs/types';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
-import { CustomerAvatar } from '@/components/customers/customer-avatar';
-import type { AvatarIcon } from '@/components/customers/customer-avatar';
+import {
+    CustomerAvatar,
+    CustomerAvatarPicker,
+} from '@/components/customers/customer-avatar';
+import type {
+    AvatarIcon,
+    AvatarStyle,
+} from '@/components/customers/customer-avatar';
 import { CustomerNotes } from '@/components/customers/customer-notes';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -59,6 +65,7 @@ type Customer = {
     type_label: string;
     display_name: string;
     avatar_icon: AvatarIcon;
+    avatar_style: AvatarStyle;
     first_name: string | null;
     last_name: string | null;
     company_name: string | null;
@@ -147,11 +154,21 @@ export default function CustomerShow({
 
             <div className="max-w-3xl space-y-6 p-4">
                 <div className="flex items-start gap-3">
-                    <CustomerAvatar
-                        icon={customer.avatar_icon}
-                        name={customer.display_name}
-                        size="lg"
-                    />
+                    {canUpdate ? (
+                        <CustomerAvatarPicker
+                            customerId={customer.id}
+                            icon={customer.avatar_icon}
+                            style={customer.avatar_style}
+                            name={customer.display_name}
+                            size="lg"
+                        />
+                    ) : (
+                        <CustomerAvatar
+                            icon={customer.avatar_icon}
+                            name={customer.display_name}
+                            size="lg"
+                        />
+                    )}
                     <div className="min-w-0 flex-1">
                         <PageHeader
                             title={customer.display_name}
@@ -258,7 +275,7 @@ export default function CustomerShow({
                     {customer.created_at && (
                         <p className="pt-1 text-xs text-muted-foreground">
                             {t('customers.customer_since', {
-                                date: customer.created_at,
+                                date: time.dateOnly(customer.created_at),
                             })}
                         </p>
                     )}

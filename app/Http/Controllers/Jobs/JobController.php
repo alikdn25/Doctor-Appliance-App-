@@ -148,15 +148,18 @@ class JobController extends Controller
         $timezone = currentCompany()->timezone;
         $todayStart = CarbonImmutable::now($timezone)->startOfDay()->utc();
         $todayEnd = CarbonImmutable::now($timezone)->endOfDay()->utc();
+        $search = trim((string) $request->query('search', ''));
+        $active = [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value];
 
-        // One query per tab; the counts are shown on the tabs.
+        // One query per tab; the counts are shown on the tabs. A search applies to every tab (and its count).
+        // A visit started on an earlier day and still open stays in Today only, not also in Recent.
         $tabQuery = fn (string $name) => JobVisit::query()
             ->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
-            ->whereHas('job', fn (Builder $q) => $q->visibleTo($user))
+            ->whereHas('job', fn (Builder $q) => $q->visibleTo($user)->when($search !== '', fn (Builder $j) => $j->search($search)))
             ->when($name === 'today', fn ($q) => $q
                 ->where(fn ($w) => $w
                     ->whereBetween('scheduled_start', [$todayStart, $todayEnd])
-                    ->orWhereIn('status', [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value]))
+                    ->orWhereIn('status', $active))
                 ->orderBy('scheduled_start'))
             ->when($name === 'upcoming', fn ($q) => $q
                 ->where('scheduled_start', '>', $todayEnd)
@@ -165,6 +168,7 @@ class JobController extends Controller
             ->when($name === 'recent', fn ($q) => $q
                 ->where('scheduled_start', '<', $todayStart)
                 ->where('scheduled_start', '>=', $todayStart->subDays(30))
+                ->whereNotIn('status', $active)
                 ->orderByDesc('scheduled_start'));
 
         $visits = $tabQuery($tab)
@@ -178,6 +182,7 @@ class JobController extends Controller
 
         return Inertia::render('jobs/mine', [
             'tab' => $tab,
+            'search' => $search,
             'counts' => $counts,
             // Cash this person collected and has not handed in yet.
             'cashOnHand' => CashLedger::balances()[$user->id] ?? [],
@@ -234,6 +239,8 @@ class JobController extends Controller
             'bookingDate' => $request->input('date'),
             'customer' => $customer ? self::customerOption($customer) : null,
             'today' => CarbonImmutable::now(currentCompany()->timezone)->format('Y-m-d'),
+            // Company clock, so the booking form never suggests a window that has already passed.
+            'nowTime' => CarbonImmutable::now(currentCompany()->timezone)->format('H:i'),
             ...$this->formOptions($request->user()),
         ]);
     }
@@ -319,6 +326,7 @@ class JobController extends Controller
                     'id' => $job->customer->id,
                     'display_name' => $job->customer->display_name,
                     'avatar_icon' => $job->customer->avatarIcon(),
+                    'avatar_style' => $job->customer->avatar_style,
                     'notes' => $job->customer->notes,
                     'phones' => $job->customer->phones->map(fn ($p) => [
                         'id' => $p->id,
@@ -361,6 +369,7 @@ class JobController extends Controller
                 'work' => Gate::allows('work', $job),
                 'close' => Gate::allows('work', $job) && $job->status !== JobStatus::Cancelled && ! $job->trashed(),
                 'viewCustomer' => Gate::allows('view', $job->customer),
+                'updateCustomer' => Gate::allows('update', $job->customer),
             ],
             'statusOptions' => $canUpdate && ! $job->status->isLocked() ? JobStatus::manualOptions() : [],
             'closureReasons' => [
@@ -400,6 +409,7 @@ class JobController extends Controller
                         'supplier' => $item->supplier,
                         'quantity' => rtrim(rtrim((string) $item->quantity, '0'), '.'),
                         'unit' => $item->unit,
+                        'unit_cost' => $item->unit_cost,
                         'total_cost' => $item->totalCost(),
                     ])->values(),
                 'receipts' => SupplierReceipt::query()

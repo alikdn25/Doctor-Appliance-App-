@@ -40,16 +40,18 @@ test('customer context and a manual icon persist and follow a newly booked job',
     page,
 }, info) => {
     await page.goto(`/customers/${fixture.customer_id}/edit`);
-    await page.locator('#avatar_style').selectOption('auto');
+    await page
+        .getByRole('radio', { name: 'Automatic (from first name)' })
+        .click();
     await page.locator('#first_name').fill('Zzyxunknown');
     await expect(
-        page.getByRole('img', { name: 'Neutral icon', exact: true }),
+        page.getByRole('img', { name: 'Neutral', exact: true }),
     ).toBeVisible();
     await page.locator('#first_name').fill('Jane');
     await page
         .locator('#notes')
         .fill(`${notes} Updated from ${info.project.name}.`);
-    await page.locator('#avatar_style').selectOption('woman');
+    await page.getByRole('radio', { name: 'Woman', exact: true }).click();
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page).toHaveURL(
         new RegExp(`/customers/${fixture.customer_id}$`),
@@ -61,7 +63,9 @@ test('customer context and a manual icon persist and follow a newly booked job',
     ).toBeVisible();
     await screenshot(page, info, 'customer-context');
     await page.goto(`/customers/${fixture.customer_id}/edit`);
-    await expect(page.locator('#avatar_style')).toHaveValue('woman');
+    await expect(
+        page.getByRole('radio', { name: 'Woman', exact: true }),
+    ).toHaveAttribute('aria-checked', 'true');
     await expect(page.locator('#notes')).toHaveValue(
         `${notes} Updated from ${info.project.name}.`,
     );
@@ -97,18 +101,20 @@ test('an old unfinished repair remains in the backlog and map fallback keeps vis
     await screenshot(page, info, 'unfinished-jobs');
     await page.goto(`/calendar?view=map&date=${fixture.today}`);
     await expect(
-        page.getByText(
-            'The map is unavailable. Visit details and directions are below.',
-        ),
+        page.getByText(/The map is off: no Google Maps key is set/),
     ).toBeVisible();
     await expect(
-        page.getByRole('button', { name: /13:00–15:00.*Jane Browser/ }),
+        page.getByRole('button', {
+            name: /1:00 p\.m\. – 3:00 p\.m\..*Jane Browser/,
+        }),
     ).toBeVisible();
     await page
         .getByRole('combobox', { name: 'Visits to show' })
         .selectOption({ label: 'Browser Technician' });
     await expect(
-        page.getByRole('button', { name: /13:00–15:00.*Jane Browser/ }),
+        page.getByRole('button', {
+            name: /1:00 p\.m\. – 3:00 p\.m\..*Jane Browser/,
+        }),
     ).toBeVisible();
     await screenshot(page, info, 'calendar-map');
 });

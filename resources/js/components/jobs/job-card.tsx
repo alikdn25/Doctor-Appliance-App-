@@ -206,21 +206,28 @@ export function StatusCircles({
             <div className="flex items-center gap-2">
                 <div className="-mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 py-1">
                     {statuses.map((status) => (
+                        // A count circle with its status written next to it, so the colors need no legend.
                         <button
                             key={status}
                             type="button"
                             aria-pressed={selected === status}
                             aria-label={`${labels[status] ?? status}: ${counts[status]}`}
-                            title={labels[status]}
                             onClick={() => pick(status)}
                             className={cn(
-                                'da-press flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white shadow-[inset_0_2px_2px_rgba(255,255,255,.45),inset_0_-4px_8px_rgba(0,0,0,.25),0_6px_12px_-4px_rgba(0,0,0,.4)] [text-shadow:0_1px_2px_rgba(0,0,0,.35)]',
+                                'da-press flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-white py-1 pr-3 pl-1 text-sm font-semibold text-[#0F1B2D] shadow-[0_4px_10px_-4px_rgba(0,36,73,.35)]',
                                 selected === status &&
                                     'ring-3 ring-[#0A6CF5] ring-offset-2',
                             )}
-                            style={{ background: STATUS_CIRCLES[status] }}
                         >
-                            {counts[status]}
+                            <span
+                                className="flex size-10 items-center justify-center rounded-full text-base font-bold text-white shadow-[inset_0_2px_2px_rgba(255,255,255,.45),inset_0_-4px_8px_rgba(0,0,0,.25)] [text-shadow:0_1px_2px_rgba(0,0,0,.35)]"
+                                style={{ background: STATUS_CIRCLES[status] }}
+                            >
+                                {counts[status]}
+                            </span>
+                            <span className="whitespace-nowrap">
+                                {labels[status] ?? status}
+                            </span>
                         </button>
                     ))}
                 </div>

@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Banknote,
     Download,
@@ -7,7 +7,7 @@ import {
     Search,
     SlidersHorizontal,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatMoney } from '@/components/billing/money';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { StrictBadge } from '@/components/jobs/job-outcome';
@@ -54,11 +54,13 @@ const tabs = ['today', 'upcoming', 'recent'] as const;
  */
 export default function MyJobs({
     tab,
+    search: initialSearch = '',
     counts = { today: 0, upcoming: 0, recent: 0 },
     visits,
     cashOnHand = {},
 }: {
     tab: (typeof tabs)[number];
+    search?: string;
     counts?: Record<(typeof tabs)[number], number>;
     visits: MyVisit[];
     cashOnHand?: Record<string, number>;
@@ -68,9 +70,26 @@ export default function MyJobs({
     const install = useInstallPrompt();
     const { auth } = usePage().props;
     const canBook = auth.can?.createJobs ?? false;
-    const [searchOpen, setSearchOpen] = useState(false);
+    // The search runs on the server over all tabs (and their counts); it stays open while switching tabs.
+    const [searchOpen, setSearchOpen] = useState(initialSearch !== '');
     const [legendOpen, setLegendOpen] = useState(false);
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(initialSearch);
+    const firstRender = useRef(true);
+    useEffect(() => {
+        if (firstRender.current) {
+            firstRender.current = false;
+            return;
+        }
+        const timer = setTimeout(() => {
+            router.get(
+                mine().url,
+                { tab, ...(search.trim() ? { search: search.trim() } : {}) },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
+        }, 350);
+        return () => clearTimeout(timer);
+    }, [search]);
+    const term = search.trim();
     const [status, setStatus] = useState('');
 
     // Count circles per status of this tab's jobs; tapping one shows only that status.
@@ -81,20 +100,8 @@ export default function MyJobs({
             (statusCounts[visit.job.status] ?? 0) + 1;
         statusLabels[visit.job.status] = visit.job.status_label;
     });
-    const term = search.trim().toLowerCase();
     const shown = visits.filter(
-        (visit) =>
-            (status === '' || visit.job.status === status) &&
-            (term === '' ||
-                [
-                    `#${visit.job.number}`,
-                    visit.job.customer,
-                    visit.job.address,
-                    visit.job.phone,
-                    ...visit.job.appliance_types,
-                ]
-                    .filter(Boolean)
-                    .some((value) => value!.toLowerCase().includes(term))),
+        (visit) => status === '' || visit.job.status === status,
     );
 
     return (
@@ -113,7 +120,10 @@ export default function MyJobs({
                             className={headerButtonClass}
                             aria-label={t('common.search')}
                             aria-expanded={searchOpen}
-                            onClick={() => setSearchOpen(!searchOpen)}
+                            onClick={() => {
+                                if (searchOpen) setSearch('');
+                                setSearchOpen(!searchOpen);
+                            }}
                         >
                             <Search className="size-6" />
                         </button>
@@ -182,7 +192,12 @@ export default function MyJobs({
                     {tabs.map((name) => (
                         <Link
                             key={name}
-                            href={mine({ query: { tab: name } })}
+                            href={mine({
+                                query: term
+                                    ? { tab: name, search: term }
+                                    : { tab: name },
+                            })}
+                            preserveState
                             preserveScroll
                             aria-current={tab === name ? 'page' : undefined}
                             className="da-chip da-press flex min-h-12 items-center justify-center gap-2 rounded-2xl px-2 text-center text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -208,7 +223,9 @@ export default function MyJobs({
 
                 {shown.length === 0 && (
                     <p className="da-card p-10 text-center text-sm text-muted-foreground">
-                        {t(`jobs.mine_empty.${tab}`)}
+                        {term
+                            ? t('jobs.search_empty', { search: term })
+                            : t(`jobs.mine_empty.${tab}`)}
                     </p>
                 )}
 
@@ -220,7 +237,8 @@ export default function MyJobs({
                             href={show(visit.job.id)}
                             highlight={visit.status === 'in_progress'}
                             time={
-                                tab === 'today'
+                                tab === 'today' &&
+                                time.isToday(visit.scheduled_start)
                                     ? time.timeRange(
                                           visit.scheduled_start,
                                           visit.scheduled_end,

@@ -269,29 +269,42 @@ export default function CustomerForm({
                                 hint={t('customers.avatar_hint')}
                                 error={errors.avatar_style}
                             >
-                                <NativeSelect
+                                <div
                                     id="avatar_style"
-                                    value={form.data.avatar_style}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'avatar_style',
-                                            event.target.value as AvatarStyle,
-                                        )
-                                    }
+                                    role="radiogroup"
+                                    className="flex flex-wrap gap-2"
                                 >
                                     {(
                                         [
-                                            'auto',
-                                            'neutral',
                                             'man',
                                             'woman',
+                                            'neutral',
+                                            'auto',
                                         ] as const
                                     ).map((style) => (
-                                        <option key={style} value={style}>
+                                        <button
+                                            key={style}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={
+                                                form.data.avatar_style === style
+                                            }
+                                            onClick={() =>
+                                                form.setData(
+                                                    'avatar_style',
+                                                    style as AvatarStyle,
+                                                )
+                                            }
+                                            className={`min-h-11 rounded-2xl px-4 text-sm font-semibold shadow-sm transition ${
+                                                form.data.avatar_style === style
+                                                    ? 'bg-primary text-primary-foreground'
+                                                    : 'bg-card text-foreground ring-1 ring-border'
+                                            }`}
+                                        >
                                             {t(`customers.icons.${style}`)}
-                                        </option>
+                                        </button>
                                     ))}
-                                </NativeSelect>
+                                </div>
                             </FormField>
                         )}
                     </div>

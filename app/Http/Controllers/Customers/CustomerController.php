@@ -131,7 +131,7 @@ class CustomerController extends Controller
                 'type_label' => $customer->type->label(),
                 'lead_source_label' => $customer->lead_source?->label(),
                 'payment_terms_label' => $customer->payment_terms?->label(),
-                'created_at' => $customer->created_at?->toDateString(),
+                'created_at' => $customer->created_at?->timezone(currentCompany()->timezone)->toDateString(),
                 'properties' => $customer->properties->map(fn (Property $property) => [
                     ...self::propertyData($property),
                     'full_address' => $property->fullAddress(),
@@ -196,6 +196,16 @@ class CustomerController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('customers.updated')]);
 
         return to_route('customers.show', $customer);
+    }
+
+    /** Quick icon choice from the avatar (man / woman / neutral / automatic). */
+    public function updateAvatar(Request $request, Customer $customer): RedirectResponse
+    {
+        Gate::authorize('update', $customer);
+        $data = $request->validate(['avatar_style' => ['required', 'in:auto,neutral,man,woman']]);
+        $customer->update(['avatar_style' => $data['avatar_style']]);
+
+        return back();
     }
 
     public function destroy(Customer $customer, AuditLogger $audit): RedirectResponse

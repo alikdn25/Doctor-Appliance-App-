@@ -978,6 +978,57 @@ Decisions made without asking (change if needed):
 Ideas for later: **stock / inventory of materials** (van stock, reorder levels, consumption per job) — out of scope
 now; automatic supplier price import; cash refunds tied to cash on hand.
 
+### October 5 site walkthrough — fixes ✅
+
+Built on the branch with the mockup screens (`claude/ui-buttons-avatars-appliances-gocqla`), which is what the
+walkthrough tested. The "On my way" text with another customer's name was not a bug (the name was changed after the
+text was sent).
+
+- **Customer icon:** tap the avatar on the customer or job page to pick Man / Woman / Neutral / Automatic; the customer
+  form has the same four buttons. Names that fit both (Sasha) stay neutral until someone picks.
+- **On my way** from the technician's phone now changes the status: the status change and the recorded text go in one
+  request (two requests at once made the browser drop the status change).
+- **Map:** the calendar says why there is no map (no key / key rejected by Google / addresses without a position).
+  Optional `GOOGLE_MAPS_SERVER_KEY` places addresses typed by hand in the background; `php artisan properties:geocode`
+  places addresses saved earlier.
+- **Booking:** the default arrival window is the first one with at least an hour left today (otherwise tomorrow 9–11);
+  past windows are disabled and a past time shows a warning. The phone field keeps only phone characters, checks the
+  number after leaving the field, clears the error when corrected and offers "Use this customer" when the number
+  belongs to an existing customer. A disabled Save button says what is missing.
+- **My jobs search** runs on the server over all tabs and updates the tab counts; finds phones in any format, appliance
+  brand and type, problem text; stays open while switching tabs; says "No jobs match …". Customer search also finds
+  the appliance brand. A visit started on an earlier day and still open is only in Today (with its date), not also in
+  Recent.
+- **Dates and times:** "Customer since" uses the company time zone and regional format; the calendar shows times in the
+  regional format (1:00 p.m.) and labels the first hour; visit length reads "about 1 h of work".
+- **Costs:** labelled fields with the error under each field and plain messages; "$15.5", "CA$ 1,250.00" and "15,50"
+  are accepted in all money fields (costs, invoices, payments, expenses); a cost line can be edited; removing asks
+  first; Cancel closes the form.
+- **Invoices and payment:** an unsent unpaid invoice is marked "Not sent yet — you can still edit it"; the job page
+  shows the invoice next to the job status while the work is not finished; toasts appear at the top for 3 s; date
+  fields line up; the payment window is anchored to the top, scrolls, and keeps the Record payment button visible.
+- **Navigation and headers:** every section shows its name in the dark header; the Menu button is only on phones
+  (desktop has the sidebar, which folds from its edge); the header has no Book customer button; Jobs has no "New job"
+  in the filters (the full form is linked from the booking screen); the calendar has one "Book on this day" button and
+  no layout jump. Phone tabs: My Jobs · Calendar · Map · Messages · More, with Map lit only on the map view.
+- **Texts:** status circles on Jobs and My jobs show their names; date filters are labelled From / To; "Change status"
+  is a button; "Set repair warranty" replaces "Review warranties"; Dashboard is "Getting started" under Company
+  settings and lists missing setup (no taxes; review requests on without a Google profile); the job page warns when a
+  review request cannot be sent; Reports explains which dates each figure uses; expenses and the SMS inbox use correct
+  empty/scope texts; plural forms ("1 job", "1 customer").
+- **Services:** one folded line per service (name, kind, price); labels above the fields; the Save bar appears when
+  something changed.
+- **File fields** (receipts, rating plate, logo, cash receipt photo) are buttons in English instead of the browser's
+  own field.
+
+Tests: `tests/Feature/Feedback/*` (icon, geocoding, My jobs search/tabs, booking clock, On my way, cost lines and money
+input); browser tests updated for the single menu, Book on this day, icon buttons and regional times.
+
+Not changed (data or decisions for the owner): the company name "Doctor Appliance." is typed with a period (Company
+settings); Team has two owner accounts (Alex and Oleksandr) — deactivate one if both are you; taxes and the Google
+review profile must be added in settings. An invoice "Draft" status was not added: invoices stay editable until paid,
+and "Not sent yet" marks them — say if a real draft step is wanted.
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started

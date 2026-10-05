@@ -99,6 +99,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 
         Route::get('customers/avatar', [CustomerController::class, 'avatar'])->middleware('throttle:120,1')->name('customers.avatar');
         Route::get('customers/duplicates', [CustomerController::class, 'duplicates'])->name('customers.duplicates');
+        Route::patch('customers/{customer}/icon', [CustomerController::class, 'updateAvatar'])->name('customers.icon');
         Route::resource('customers', CustomerController::class);
         Route::post('customers/{customer}/properties', [PropertyController::class, 'store'])->name('properties.store');
         Route::put('properties/{property}', [PropertyController::class, 'update'])->name('properties.update');
@@ -118,6 +119,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('jobs/{job}/status', JobStatusController::class)->name('jobs.status');
         Route::post('jobs/{job}/close', JobCloseController::class)->name('jobs.close');
         Route::post('jobs/{job}/costs', [JobCostController::class, 'storeCost'])->name('jobs.costs.store');
+        Route::put('jobs/{job}/costs/{cost}', [JobCostController::class, 'updateCost'])->name('jobs.costs.update');
         Route::delete('jobs/{job}/costs/{cost}', [JobCostController::class, 'destroyCost'])->name('jobs.costs.destroy');
         Route::post('jobs/{job}/receipts', [JobCostController::class, 'storeReceipt'])->name('jobs.receipts.store');
         Route::post('receipts/{receipt}/links', [JobCostController::class, 'linkReceipt'])->name('receipts.link');

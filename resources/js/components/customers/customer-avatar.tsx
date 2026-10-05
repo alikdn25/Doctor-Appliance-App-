@@ -1,7 +1,16 @@
+import { router } from '@inertiajs/react';
 import { Building2, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useTrans } from '@/lib/i18n';
-import { avatar } from '@/routes/customers';
+import { avatar, icon as iconRoute } from '@/routes/customers';
 
 export type AvatarStyle = 'auto' | 'neutral' | 'man' | 'woman';
 export type AvatarIcon = Exclude<AvatarStyle, 'auto'> | 'business';
@@ -87,4 +96,64 @@ export function useNameAvatar(name: string, style: AvatarStyle): AvatarIcon {
         };
     }, [name, style]);
     return style === 'auto' ? suggestion : style;
+}
+
+/**
+ * The avatar as a button: one tap opens Man / Woman / Neutral / Automatic and saves the choice.
+ * For names that fit both (e.g. Sasha) the office or technician picks the face once.
+ */
+export function CustomerAvatarPicker({
+    customerId,
+    icon,
+    style,
+    name,
+    size = 'md',
+}: {
+    customerId: number;
+    icon: AvatarIcon;
+    style: AvatarStyle;
+    name?: string;
+    size?: keyof typeof sizes;
+}) {
+    const t = useTrans();
+    if (icon === 'business')
+        return <CustomerAvatar icon={icon} name={name} size={size} />;
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger
+                className="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                aria-label={t('customers.change_icon')}
+                title={t('customers.change_icon')}
+            >
+                <CustomerAvatar icon={icon} name={name} size={size} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+                <DropdownMenuLabel>
+                    {t('customers.change_icon')}
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                    value={style}
+                    onValueChange={(value) =>
+                        router.patch(
+                            iconRoute(customerId).url,
+                            { avatar_style: value },
+                            { preserveScroll: true },
+                        )
+                    }
+                >
+                    {(['man', 'woman', 'neutral', 'auto'] as const).map(
+                        (option) => (
+                            <DropdownMenuRadioItem
+                                key={option}
+                                value={option}
+                                className="min-h-11"
+                            >
+                                {t(`customers.icons.${option}`)}
+                            </DropdownMenuRadioItem>
+                        ),
+                    )}
+                </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
 }

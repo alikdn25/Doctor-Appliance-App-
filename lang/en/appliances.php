@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'take_plate_photo' => 'Take a photo of the rating plate',
     'add' => 'Add appliance',
     'edit' => 'Edit appliance',
     'empty' => 'No appliances yet.',

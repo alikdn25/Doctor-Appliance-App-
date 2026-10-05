@@ -1,9 +1,11 @@
 <?php
 
 return [
+    'add_receipt' => 'Add receipt photo or PDF',
     'title' => 'Business expenses',
     'description' => 'Fuel, meals, tools and other expenses outside customer jobs.',
     'own_hint' => 'You see your own expenses. The office sees company expenses.',
+    'company_hint' => 'Expenses of the whole company. Pick a person to see only theirs.',
     'add' => 'New expense',
     'edit' => 'Edit expense',
     'saved' => 'Expense saved.',

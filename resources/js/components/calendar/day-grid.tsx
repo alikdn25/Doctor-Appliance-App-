@@ -2,6 +2,7 @@ import { AlarmClock, AlertTriangle } from 'lucide-react';
 import type { DragEvent, TouchEvent } from 'react';
 import type { CalendarVisit, Lane } from '@/components/calendar/types';
 import { inLane } from '@/components/calendar/types';
+import { useClock } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
 import { cn } from '@/lib/utils';
@@ -72,6 +73,7 @@ export function DayGrid({
     onOpen,
 }: Props) {
     const t = useTrans();
+    const clock = useClock();
     const locale = useLocale();
     const hourFormat = new Intl.DateTimeFormat(locale, {
         hour: 'numeric',
@@ -102,14 +104,12 @@ export function DayGrid({
                         {hourList.map((h) => (
                             <span
                                 key={h}
-                                className="absolute right-1 -translate-y-1/2 text-[11px] text-muted-foreground"
+                                className={`absolute right-1 text-[11px] text-muted-foreground ${h === hours.start ? 'translate-y-0.5' : '-translate-y-1/2'}`}
                                 style={{ top: y(h * 60) }}
                             >
-                                {h === hours.start
-                                    ? ''
-                                    : hourFormat.format(
-                                          new Date(Date.UTC(2000, 0, 1, h)),
-                                      )}
+                                {hourFormat.format(
+                                    new Date(Date.UTC(2000, 0, 1, h)),
+                                )}
                             </span>
                         ))}
                     </div>
@@ -257,8 +257,10 @@ export function DayGrid({
                                                         />
                                                     )}
                                                     <span className="truncate">
-                                                        {visit.start_time}–
-                                                        {visit.end_time}{' '}
+                                                        {clock.range(
+                                                            visit.start_time,
+                                                            visit.end_time,
+                                                        )}{' '}
                                                         {visit.job.customer}
                                                     </span>
                                                 </span>

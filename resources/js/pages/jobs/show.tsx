@@ -53,13 +53,20 @@ import { StatusDialog } from '@/components/jobs/status-dialog';
 import type { ApplianceItem, Assignable, Visit } from '@/components/jobs/types';
 import { applianceTitle } from '@/components/jobs/types';
 import { VisitDialog } from '@/components/jobs/visit-dialog';
-import { CustomerAvatar } from '@/components/customers/customer-avatar';
-import type { AvatarIcon } from '@/components/customers/customer-avatar';
+import {
+    CustomerAvatar,
+    CustomerAvatarPicker,
+} from '@/components/customers/customer-avatar';
+import type {
+    AvatarIcon,
+    AvatarStyle,
+} from '@/components/customers/customer-avatar';
 import { CustomerNotes } from '@/components/customers/customer-notes';
 import { PageHeader } from '@/components/page-header';
 import {
     JobMessagingSection,
     openOnPhone,
+    openSmsApp,
 } from '@/components/messaging/job-messaging';
 import type { JobMessaging } from '@/components/messaging/types';
 import { Button } from '@/components/ui/button';
@@ -114,6 +121,7 @@ type Job = {
         id: number;
         display_name: string;
         avatar_icon: AvatarIcon;
+        avatar_style: AvatarStyle;
         notes: string | null;
         phones: { id: number; number: string; label_text: string }[];
     };
@@ -145,6 +153,7 @@ type Props = {
         work: boolean;
         close: boolean;
         viewCustomer: boolean;
+        updateCustomer: boolean;
     };
     statusOptions: Option[];
     closureReasons: ClosureReasons;
@@ -237,17 +246,13 @@ export default function JobShow({
         notesForm.put(techNotes(job.id).url, { preserveScroll: true });
     };
 
-    const act = (url: string) =>
-        router.post(
-            url,
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: () => setActionError(undefined),
-                onError: (errors) =>
-                    setActionError(Object.values(errors)[0] as string),
-            },
-        );
+    const act = (url: string, data: Record<string, unknown> = {}) =>
+        router.post(url, data as never, {
+            preserveScroll: true,
+            onSuccess: () => setActionError(undefined),
+            onError: (errors) =>
+                setActionError(Object.values(errors)[0] as string),
+        });
 
     const remove = () => {
         if (
@@ -303,6 +308,22 @@ export default function JobShow({
                         label={job.status_label}
                         className="px-3 py-1 text-sm"
                     />
+                    {/* The job status follows the work; invoices still show next to it before the work is done. */}
+                    {!['invoiced', 'paid'].includes(job.status) &&
+                        job.invoices
+                            .filter((invoice) => invoice.status !== 'void')
+                            .map((invoice) => (
+                                <a
+                                    key={invoice.id}
+                                    href="#documents"
+                                    className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900"
+                                >
+                                    {t('jobs.invoice_chip', {
+                                        number: invoice.number,
+                                        status: invoice.status_label,
+                                    })}
+                                </a>
+                            ))}
                     {job.minutes_on_job > 0 && (
                         <span className="text-sm text-muted-foreground">
                             {t('jobs.time_on_job', {
@@ -312,7 +333,7 @@ export default function JobShow({
                     )}
                     {statusOptions.length > 0 && (
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => setStatusOpen(true)}
                         >
@@ -399,20 +420,29 @@ export default function JobShow({
                                         size="lg"
                                         className="min-h-14 rounded-2xl text-base"
                                         onClick={() => {
-                                            act(onMyWay(myVisit.id).url);
-
-                                            // From technician's phone: the messages app opens with the text ready.
-                                            if (
+                                            // From the technician's phone: the messages app opens with the
+                                            // text ready; the status change records the text in one request.
+                                            const phoneText =
                                                 messaging.mode ===
                                                     'technician_phone' &&
                                                 messaging.phone &&
                                                 !messaging.opted_out
-                                            ) {
-                                                openOnPhone(
-                                                    job.id,
-                                                    'on_my_way',
-                                                    messaging.phone,
-                                                    messaging.texts.on_my_way,
+                                                    ? {
+                                                          to: messaging.phone,
+                                                          body: messaging.texts
+                                                              .on_my_way,
+                                                      }
+                                                    : null;
+                                            act(
+                                                onMyWay(myVisit.id).url,
+                                                phoneText
+                                                    ? { phone_sms: phoneText }
+                                                    : {},
+                                            );
+                                            if (phoneText) {
+                                                openSmsApp(
+                                                    phoneText.to,
+                                                    phoneText.body,
                                                 );
                                             }
                                         }}
@@ -460,11 +490,21 @@ export default function JobShow({
                 {/* Customer and address */}
                 <section className="space-y-4 rounded-3xl border bg-card p-5 shadow-sm">
                     <div className="flex items-start gap-3">
-                        <CustomerAvatar
-                            icon={job.customer.avatar_icon}
-                            name={job.customer.display_name}
-                            size="lg"
-                        />
+                        {can.updateCustomer ? (
+                            <CustomerAvatarPicker
+                                customerId={job.customer.id}
+                                icon={job.customer.avatar_icon}
+                                style={job.customer.avatar_style}
+                                name={job.customer.display_name}
+                                size="lg"
+                            />
+                        ) : (
+                            <CustomerAvatar
+                                icon={job.customer.avatar_icon}
+                                name={job.customer.display_name}
+                                size="lg"
+                            />
+                        )}
                         <div className="min-w-0 flex-1">
                             <h2 className="text-xs text-muted-foreground">
                                 {t('jobs.sections.customer')}
@@ -860,7 +900,7 @@ export default function JobShow({
                                                           .join(', ')
                                                     : t('jobs.unassigned')}
                                                 {v.estimated_duration_minutes &&
-                                                    ` · ${formatMinutes(v.estimated_duration_minutes, t)}`}
+                                                    ` · ${t('jobs.estimated_on_site', { time: formatMinutes(v.estimated_duration_minutes, t) })}`}
                                             </div>
                                         </div>
                                         {can.update && (
@@ -946,7 +986,7 @@ export default function JobShow({
                 </section>
 
                 {/* Estimates and invoices */}
-                <section className="space-y-2">
+                <section id="documents" className="scroll-mt-24 space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <h2 className="flex items-center gap-2 text-base font-medium">
                             <Receipt className="size-4" />

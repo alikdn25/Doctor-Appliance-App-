@@ -18,10 +18,11 @@ test.afterEach(async ({ page }, info) => {
 test('New job really opens by clicking and cannot save without a customer', async ({
     page,
 }) => {
-    await page.goto('/jobs');
-    // The full job form sits with the folded filters; Book customer is the main button.
-    await page.getByRole('button', { name: 'Filters', exact: true }).click();
-    await page.getByRole('link', { name: 'New job', exact: true }).click();
+    // One way in: Book customer; the full job form is a link at the bottom of the booking screen.
+    await page.goto('/jobs/create?book=1');
+    await page
+        .getByRole('link', { name: 'Open full job form', exact: true })
+        .click();
     await expect(page).toHaveURL(/\/jobs\/create$/);
     await expect(
         page.getByRole('heading', { name: 'New job', exact: true }),
@@ -62,7 +63,9 @@ test('an empty calendar day books a new caller using only name phone and time', 
     ).toHaveCount(0);
     await page.goto(`/calendar?date=${date}`);
     await expect(
-        page.getByRole('button', { name: new RegExp(`10:00–12:00.*${name}`) }),
+        page.getByRole('button', {
+            name: new RegExp(`10:00 a\\.m\\. – 12:00 p\\.m\\..*${name}`),
+        }),
     ).toBeVisible();
     await page.screenshot({
         path: info.outputPath('quick-calendar-booking.png'),

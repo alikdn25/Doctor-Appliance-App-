@@ -149,7 +149,11 @@ export default function BusinessExpenses({
                     }
                 />
                 <p className="text-sm text-muted-foreground">
-                    {t('expenses.own_hint')}
+                    {t(
+                        companyView
+                            ? 'expenses.company_hint'
+                            : 'expenses.own_hint',
+                    )}
                 </p>
                 <form
                     onSubmit={apply}

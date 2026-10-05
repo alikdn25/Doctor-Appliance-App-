@@ -173,7 +173,7 @@ class Customer extends Model
     }
 
     /**
-     * Search by name, phone (any format), email, address, model or serial number.
+     * Search by name, phone (any format), email, address, appliance brand, model or serial number.
      *
      * @param  Builder<Customer>  $query
      */
@@ -201,9 +201,10 @@ class Customer extends Model
                     ->orWhere('city', 'ilike', $like)
                     ->orWhere('postal_code', 'ilike', $like)
                     ->orWhere('label', 'ilike', $like)))
-                ->orWhereHas('appliances', fn (Builder $a) => $a
+                ->orWhereHas('appliances', fn (Builder $a) => $a->where(fn (Builder $m) => $m
                     ->where('model_number', 'ilike', $like)
-                    ->orWhere('serial_number', 'ilike', $like));
+                    ->orWhere('serial_number', 'ilike', $like)
+                    ->orWhere('manufacturer', 'ilike', $like)));
 
             if (strlen($digits) >= 3) {
                 $q->orWhereHas('phones', fn (Builder $p) => $p->where('number_normalized', 'like', "%{$digits}%"));

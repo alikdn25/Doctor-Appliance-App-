@@ -27,4 +27,23 @@ enum ApplianceType: string
     {
         return __("appliances.types.{$this->value}");
     }
+
+    /**
+     * Types whose label contains the search term ("wash" → washer, washer/dryer combo, dishwasher).
+     *
+     * @return list<string>
+     */
+    public static function matching(string $term): array
+    {
+        $term = mb_strtolower(trim($term));
+
+        if (mb_strlen($term) < 3) {
+            return [];
+        }
+
+        return array_values(array_map(
+            fn (self $type) => $type->value,
+            array_filter(self::cases(), fn (self $type) => str_contains(mb_strtolower($type->label()), $term)),
+        ));
+    }
 }

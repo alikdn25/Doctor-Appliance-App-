@@ -23,11 +23,14 @@ export function ScreenHeader({
     subtitle,
     back,
     actions,
+    own = true,
 }: {
     title: string;
     subtitle?: string;
     back?: NonNullable<InertiaLinkProps['href']>;
     actions?: ReactNode;
+    /** Mockup screens with their own header also hide the unfinished-jobs bar. */
+    own?: boolean;
 }) {
     const slot = useContext(ScreenHeaderSlot);
     const { toggleSidebar } = useSidebar();
@@ -38,7 +41,9 @@ export function ScreenHeader({
     }
 
     return createPortal(
-        <div className="flex w-full items-center gap-3">
+        <div
+            className={`flex w-full items-center gap-3 ${own ? 'da-screen-own' : ''}`}
+        >
             {back ? (
                 <Link
                     href={back}
@@ -51,7 +56,7 @@ export function ScreenHeader({
                 <button
                     type="button"
                     aria-label={t('nav.menu')}
-                    className="flex size-12 shrink-0 items-center justify-center rounded-xl text-white"
+                    className="flex size-12 shrink-0 items-center justify-center rounded-xl text-white md:hidden"
                     onClick={toggleSidebar}
                 >
                     <Menu className="size-7" aria-hidden="true" />
@@ -62,7 +67,7 @@ export function ScreenHeader({
                     {title}
                 </h1>
                 {subtitle && (
-                    <p className="truncate text-[15px] text-white/80">
+                    <p className="line-clamp-2 text-[15px] text-white/80">
                         {subtitle}
                     </p>
                 )}
@@ -71,4 +76,9 @@ export function ScreenHeader({
         </div>,
         slot,
     );
+}
+
+/** Whether the page is drawn inside the app layout (with the dark header). */
+export function useHasScreenHeader(): boolean {
+    return useContext(ScreenHeaderSlot) !== null;
 }

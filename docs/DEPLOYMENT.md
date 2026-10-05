@@ -180,6 +180,13 @@ switch when the queue is empty (`php artisan queue:monitor database:default`).
 The key is sent to the browser (that is how the Maps JavaScript API works), which is why the referrer and API
 restrictions matter. Without a key, address fields are typed by hand.
 
+5. Optional, recommended: a second key for **Geocoding API**, restricted to the server's IP address, as
+   `GOOGLE_MAPS_SERVER_KEY`. Addresses typed by hand (no suggestion picked) then get a map position in the background.
+   Run `php artisan properties:geocode` once to place addresses saved before the key was set.
+
+If the calendar map says the key was rejected, the referrer restriction or the API list of the browser key does not
+match the site address (step 3).
+
 ## 7. `.env` reference
 
 Required in production:
@@ -202,6 +209,7 @@ Required for the features that use them (empty = the feature is off):
 | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
 | `SQUARE_ENVIRONMENT`, `SQUARE_APPLICATION_ID`, `SQUARE_APPLICATION_SECRET`, `SQUARE_WEBHOOK_SIGNATURE_KEY`, `SQUARE_WEBHOOK_URL`, `SQUARE_API_VERSION` | online payments, deposits, refunds (`production` + production app keys when live) |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`                                                                                                              | SMS in Automatic mode                                                             |
+| `GOOGLE_MAPS_SERVER_KEY`                                                                                                                               | optional: map positions for typed addresses (§6)                                  |
 | `GOOGLE_MAPS_BROWSER_KEY`                                                                                                                              | address suggestions (§6)                                                          |
 | `REDIS_HOST`, `REDIS_PASSWORD`, `REDIS_PORT`, `REDIS_CLIENT`                                                                                           | only with Redis (§5)                                                              |
 | `AWS_*`                                                                                                                                                | only when media move to S3-compatible storage                                     |

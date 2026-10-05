@@ -5,7 +5,12 @@ import type { CalendarVisit, Lane } from '@/components/calendar/types';
 import { inLane, routeUrl } from '@/components/calendar/types';
 import { Button } from '@/components/ui/button';
 import { NativeSelect } from '@/components/ui/native-select';
-import { loadGoogleMapsLibrary } from '@/lib/google-maps';
+import {
+    googleMapsKeyRejected,
+    loadGoogleMapsLibrary,
+    onGoogleMapsKeyRejected,
+} from '@/lib/google-maps';
+import { useClock } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 
 type Position = { lat: number; lng: number };
@@ -42,14 +47,16 @@ export function DayMap({
     onOpen: (visit: CalendarVisit) => void;
 }) {
     const t = useTrans();
+    const clock = useClock();
     const { auth } = usePage().props;
     const key = auth.company?.google_maps_key;
     const mapId = auth.company?.google_maps_map_id ?? 'DEMO_MAP_ID';
     const element = useRef<HTMLDivElement>(null);
     const [person, setPerson] = useState('all');
-    const [state, setState] = useState<'loading' | 'ready' | 'unavailable'>(
-        'loading',
-    );
+    const [state, setState] = useState<
+        'loading' | 'ready' | 'unavailable' | 'rejected'
+    >(googleMapsKeyRejected() ? 'rejected' : 'loading');
+    useEffect(() => onGoogleMapsKeyRejected(() => setState('rejected')), []);
     const stops = useMemo(() => {
         const lane = lanes.find((item) => String(item.id) === person);
         return visits
@@ -59,6 +66,21 @@ export function DayMap({
             .sort((a, b) => a.start_minutes - b.start_minutes || a.id - b.id);
     }, [visits, lanes, person]);
     const placed = stops.filter((visit) => visit.job.coordinates !== null);
+    const isOwner = auth.role?.value === 'owner';
+    // Say why there is no map, so the owner knows what to fix.
+    const mapProblem = !key
+        ? t(isOwner ? 'calendar.map_no_key_owner' : 'calendar.map_unavailable')
+        : state === 'rejected'
+          ? t(
+                isOwner
+                    ? 'calendar.map_key_rejected_owner'
+                    : 'calendar.map_unavailable',
+            )
+          : state === 'unavailable'
+            ? t('calendar.map_unavailable')
+            : placed.length === 0
+              ? t('calendar.map_no_positions')
+              : null;
     const addresses = stops
         .map((visit) => visit.job.address)
         .filter((address): address is string => !!address);
@@ -100,7 +122,7 @@ export function DayMap({
                     label.className =
                         'flex size-9 items-center justify-center rounded-full border-2 border-white bg-blue-700 font-bold text-white shadow-md';
                     label.textContent = String(index + 1);
-                    const title = `${index + 1}. ${visit.start_time} ${visit.job.customer ?? ''} · ${visit.job.address ?? ''}`;
+                    const title = `${index + 1}. ${clock.clock(visit.start_time)} ${visit.job.customer ?? ''} · ${visit.job.address ?? ''}`;
                     label.setAttribute('aria-label', title);
                     label.addEventListener('click', () => onOpen(visit));
                     markers.push(
@@ -128,7 +150,13 @@ export function DayMap({
                     );
                 setState('ready');
             })
-            .catch(() => !cancelled && setState('unavailable'));
+            .catch(
+                () =>
+                    !cancelled &&
+                    setState(
+                        googleMapsKeyRejected() ? 'rejected' : 'unavailable',
+                    ),
+            );
         return () => {
             cancelled = true;
             markers.forEach((marker) => {
@@ -160,7 +188,7 @@ export function DayMap({
                 </p>
             ) : (
                 <>
-                    {key && placed.length > 0 && (
+                    {key && placed.length > 0 && state !== 'rejected' && (
                         <div className="relative">
                             <div
                                 ref={element}
@@ -174,11 +202,12 @@ export function DayMap({
                             )}
                         </div>
                     )}
-                    {(!key ||
-                        state === 'unavailable' ||
-                        placed.length === 0) && (
-                        <p className="text-sm text-muted-foreground">
-                            {t('calendar.map_unavailable')}
+                    {mapProblem && (
+                        <p
+                            role="status"
+                            className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-900"
+                        >
+                            {mapProblem}
                         </p>
                     )}
                     {placed.length < stops.length && (
@@ -201,7 +230,10 @@ export function DayMap({
                                     </span>
                                     <span className="min-w-0">
                                         <span className="block text-sm font-semibold">
-                                            {visit.start_time}–{visit.end_time}{' '}
+                                            {clock.range(
+                                                visit.start_time,
+                                                visit.end_time,
+                                            )}{' '}
                                             · {visit.job.customer}
                                         </span>
                                         <span className="block text-sm text-muted-foreground">

@@ -197,6 +197,14 @@ export default function BillingShow({
                         status={doc.status}
                         label={doc.status_label}
                     />
+                    {/* Saved but not sent yet: the customer has not seen it and it can still be edited. */}
+                    {delivery &&
+                        !delivery.sent_at &&
+                        doc.status === 'unpaid' && (
+                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                                {t('billing.not_sent')}
+                            </span>
+                        )}
                     {doc.valid_until &&
                         (doc.expired ? (
                             <span className="font-medium text-amber-700 dark:text-amber-400">

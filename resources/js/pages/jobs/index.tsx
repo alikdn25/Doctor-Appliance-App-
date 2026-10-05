@@ -145,13 +145,6 @@ export default function JobsIndex({
 
                 {filtersOpen && (
                     <div className="da-card grid grid-cols-2 gap-2 p-3 md:grid-cols-3">
-                        {canCreate && (
-                            <Button asChild variant="outline">
-                                <Link href={create()}>
-                                    <Plus /> {t('jobs.add')}
-                                </Link>
-                            </Button>
-                        )}
                         {canViewTrash && (
                             <Button variant="outline" asChild>
                                 <Link href={trash()}>
@@ -256,20 +249,24 @@ export default function JobsIndex({
                                 </option>
                             ))}
                         </NativeSelect>
-                        <Input
-                            type="date"
-                            aria-label={t('jobs.from')}
-                            title={t('jobs.from')}
-                            value={filters.from}
-                            onChange={(e) => apply({ from: e.target.value })}
-                        />
-                        <Input
-                            type="date"
-                            aria-label={t('jobs.to')}
-                            title={t('jobs.to')}
-                            value={filters.to}
-                            onChange={(e) => apply({ to: e.target.value })}
-                        />
+                        <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
+                            {t('jobs.from')}
+                            <Input
+                                type="date"
+                                value={filters.from}
+                                onChange={(e) =>
+                                    apply({ from: e.target.value })
+                                }
+                            />
+                        </label>
+                        <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
+                            {t('jobs.to')}
+                            <Input
+                                type="date"
+                                value={filters.to}
+                                onChange={(e) => apply({ to: e.target.value })}
+                            />
+                        </label>
                         {filtered && (
                             <Button
                                 variant="ghost"

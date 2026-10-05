@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'choose_file' => 'Choose a file',
     'save' => 'Save',
     'cancel' => 'Cancel',
     'continue' => 'Continue',
