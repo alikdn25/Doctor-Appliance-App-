@@ -225,15 +225,21 @@ Visit statuses use the same look as the matching job status.
   contacts (e.g. husband and wife), both faces go into **one** circle.
 - **Team avatars** (technicians, office): same cartoon style in a blue polo; 40 px in compact places (headers,
   columns, chips).
-- **No avatar yet:** a 60 px circle with initials on the light blue gradient `#F1F7FF → #B3D4FF`.
+- **No avatar yet:** a 60 px circle with initials on the light blue gradient `#F1F7FF → #B3D4FF` (a name the name
+  dictionary does not know; a business gets a building icon).
 - **Appliance images:** calm, light stainless steel without strong glare. Black parts (glass, cooktop) are dark but not
   harsh.
+  Stored in `public/images/appliances/<type>.png` (one per `ApplianceType`).
 - Icons: inline stroke SVG (stroke width 2, round caps), never emoji.
 
 ## Navigation and layout
 
 - Bottom bar with 4 tabs: **Today · Calendar · Messages · More**.
-- Inner screens have no tab bar: a back button at the top and actions pinned to the bottom.
+- Inner screens have no tab bar: a back button at the top and actions pinned to the bottom. In code a pinned bar has
+  the class `da-pinned`; while one is on screen the tab bar (`da-tabbar`) is hidden so nothing covers the actions.
+- Menu: the everyday sections first (Book customer, My jobs, Calendar, Jobs, Customers, Invoices, Messages); "Money and
+  reports" and "Company settings" are collapsed groups.
+- The customer signs on the invoice (when the work is done), not on the job page.
 - **Book customer** button lives in the My Jobs header.
 - The third button in a job card changes with the status: **On my way / Start / Finish visit**. No "View job" button —
   the whole card opens the job.

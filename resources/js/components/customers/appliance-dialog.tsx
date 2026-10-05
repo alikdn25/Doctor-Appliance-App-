@@ -1,7 +1,9 @@
 import { useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { useEffect } from 'react';
+import { ApplianceTypePicker } from '@/components/appliance-image';
 import { FormField } from '@/components/form-field';
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -12,7 +14,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
 import { store, update } from '@/routes/appliances';
@@ -147,25 +148,18 @@ export function ApplianceDialog({
                 </DialogHeader>
 
                 <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-                    <FormField
-                        id="appliance-type"
-                        label={t('appliances.fields.type')}
-                        error={errors.type}
-                    >
-                        <NativeSelect
-                            id="appliance-type"
+                    <div className="space-y-2 sm:col-span-2">
+                        <span className="text-[13px] font-semibold">
+                            {t('appliances.fields.type')}
+                        </span>
+                        <ApplianceTypePicker
+                            label={t('appliances.fields.type')}
+                            options={applianceTypes}
                             value={form.data.type}
-                            onChange={(e) =>
-                                form.setData('type', e.target.value)
-                            }
-                        >
-                            {applianceTypes.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </NativeSelect>
-                    </FormField>
+                            onChange={(v) => form.setData('type', v)}
+                        />
+                        <InputError message={errors.type} />
+                    </div>
                     {field('manufacturer', 'text', {
                         list: 'appliance-manufacturers',
                         autoComplete: 'off',

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import { ApplianceImage } from '@/components/appliance-image';
 import { DocumentList } from '@/components/billing/document-list';
 import type { DocumentRow } from '@/components/billing/types';
 import { mapsUrl, telUrl } from '@/components/customers/types';
@@ -383,7 +384,7 @@ export default function JobShow({
 
                 {/* Field actions for the current user's visit */}
                 {myVisit && job.allows_visit_work && (
-                    <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:static md:rounded-2xl md:border md:p-4 md:shadow-none">
+                    <div className="da-pinned fixed inset-x-0 bottom-0 z-30 border-t border-[#E1E8F2] bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(16,42,79,.08)] md:static md:rounded-2xl md:border md:p-4 md:shadow-none dark:bg-background">
                         <div className="mx-auto flex max-w-3xl flex-col gap-2">
                             <div className="flex items-center justify-between text-sm">
                                 <span className="font-medium">
@@ -402,7 +403,7 @@ export default function JobShow({
                                 <div className="grid grid-cols-2 gap-2">
                                     <Button
                                         size="lg"
-                                        className="min-h-12 rounded-xl"
+                                        className="min-h-14 rounded-2xl text-base"
                                         onClick={() => {
                                             act(onMyWay(myVisit.id).url);
 
@@ -427,7 +428,7 @@ export default function JobShow({
                                     <Button
                                         size="lg"
                                         variant="outline"
-                                        className="min-h-12 rounded-xl"
+                                        className="min-h-14 rounded-2xl text-base"
                                         onClick={() =>
                                             act(start(myVisit.id).url)
                                         }
@@ -439,7 +440,7 @@ export default function JobShow({
                             {myVisit.status === 'on_the_way' && (
                                 <Button
                                     size="lg"
-                                    className="min-h-12 rounded-xl"
+                                    className="min-h-14 rounded-2xl text-base"
                                     onClick={() => act(start(myVisit.id).url)}
                                 >
                                     <Play /> {t('jobs.actions.start')}
@@ -448,7 +449,7 @@ export default function JobShow({
                             {myVisit.status === 'in_progress' && (
                                 <Button
                                     size="lg"
-                                    className="min-h-12 rounded-xl"
+                                    className="min-h-14 rounded-2xl text-base"
                                     onClick={() => setFinishOpen(true)}
                                 >
                                     <CheckCircle2 />{' '}
@@ -463,7 +464,11 @@ export default function JobShow({
                 {/* Customer and address */}
                 <section className="space-y-4 rounded-3xl border bg-card p-5 shadow-sm">
                     <div className="flex items-start gap-3">
-                        <CustomerAvatar icon={job.customer.avatar_icon} />
+                        <CustomerAvatar
+                            icon={job.customer.avatar_icon}
+                            name={job.customer.display_name}
+                            size="lg"
+                        />
                         <div className="min-w-0 flex-1">
                             <h2 className="text-xs text-muted-foreground">
                                 {t('jobs.sections.customer')}
@@ -663,8 +668,12 @@ export default function JobShow({
                                     {job.appliances.map((a) => (
                                         <li
                                             key={a.id}
-                                            className="flex min-h-14 items-center gap-2 px-3 py-2"
+                                            className="flex min-h-14 items-center gap-3 px-3 py-2"
                                         >
+                                            <ApplianceImage
+                                                type={a.type}
+                                                className="size-14"
+                                            />
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
                                                     {a.removed ? (
@@ -803,12 +812,15 @@ export default function JobShow({
                     )}
                 </section>
 
-                <SignatureSection
-                    jobId={job.id}
-                    signature={job.signature}
-                    customerName={job.customer.display_name}
-                    canSign={can.work}
-                />
+                {/* The signature is taken on the invoice; the job only shows it once signed. */}
+                {job.signature && (
+                    <SignatureSection
+                        jobId={job.id}
+                        signature={job.signature}
+                        customerName={job.customer.display_name}
+                        canSign={false}
+                    />
+                )}
 
                 {/* Visits */}
                 <section className="space-y-2">

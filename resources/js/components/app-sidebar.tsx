@@ -65,6 +65,7 @@ export function AppSidebar() {
         { autoStart: Boolean(can.viewMessageInbox) },
     );
 
+    // Everyday sections first; money, reports and settings sit in groups that open on tap.
     const mainItems: NavItem[] = auth.company
         ? ([
               can.createJobs && {
@@ -77,7 +78,6 @@ export function AppSidebar() {
                   href: myJobs(),
                   icon: Wrench,
               },
-              { title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid },
               can.viewCalendar && {
                   title: 'nav.calendar',
                   href: calendar(),
@@ -88,15 +88,15 @@ export function AppSidebar() {
                   href: jobs(),
                   icon: ClipboardList,
               },
-              can.viewInvoices && {
-                  title: 'nav.invoices',
-                  href: invoices(),
-                  icon: Receipt,
-              },
               can.viewCustomers && {
                   title: 'nav.customers',
                   href: customers(),
                   icon: Contact,
+              },
+              can.viewInvoices && {
+                  title: 'nav.invoices',
+                  href: invoices(),
+                  icon: Receipt,
               },
               can.viewMessageInbox && {
                   title: 'nav.sms_inbox',
@@ -104,6 +104,12 @@ export function AppSidebar() {
                   icon: MessageSquare,
                   badge: unreadMessages ?? 0,
               },
+          ].filter(Boolean) as NavItem[])
+        : [];
+
+    const moneyItems: NavItem[] = auth.company
+        ? ([
+              { title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid },
               can.viewInvoices && {
                   title: 'nav.reports',
                   href: reports(),
@@ -185,7 +191,16 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain items={mainItems} label="nav.group_main" />
-                <NavMain items={companyItems} label="nav.group_company" />
+                <NavMain
+                    items={moneyItems}
+                    label="nav.group_money"
+                    collapsible
+                />
+                <NavMain
+                    items={companyItems}
+                    label="nav.group_company"
+                    collapsible
+                />
                 <NavMain items={adminItems} label="nav.group_platform" />
             </SidebarContent>
 

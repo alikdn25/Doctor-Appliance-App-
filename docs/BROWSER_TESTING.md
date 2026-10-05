@@ -17,6 +17,11 @@ correction of an email typo, signed email confirmation, first-company setup with
 and the first customer screen without mandatory 2FA. These tests read the isolated log mailer;
 they do not verify delivery to a real inbox.
 
+October 5 feedback scenarios (job-page-feedback.spec.ts) check that the technician's visit buttons are not covered
+and the tab bar is hidden on the job page, that the job page has no signature request (the signature is drawn on the
+invoice), that Edit job corrects the customer's name, that appliances are picked from image tiles, and the collapsed
+menu groups.
+
 October 3 feedback scenarios also check the visible Menu touch target, booking from the working
 header/menu/calendar with the first visit and selected date, searchable UTC/city/country time
 zones, absence of markup settings and independent technician customer/private purchase prices

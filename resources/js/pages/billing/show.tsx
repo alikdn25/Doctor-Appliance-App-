@@ -16,6 +16,8 @@ import { useState } from 'react';
 import { DocumentStatusBadge } from '@/components/billing/document-status-badge';
 import { fromMinor, useMoney } from '@/components/billing/money';
 import type { Delivery } from '@/components/billing/document-delivery';
+import { SignatureSection } from '@/components/jobs/signature-section';
+import type { SignatureData } from '@/components/jobs/signature-section';
 import { DocumentDelivery } from '@/components/billing/document-delivery';
 import type { OnlinePayment } from '@/components/billing/online-payment';
 import { OnlinePaymentSection } from '@/components/billing/online-payment';
@@ -76,6 +78,7 @@ export default function BillingShow({
     online = null,
     delivery,
     sms = null,
+    signature = null,
 }: {
     document: BillingDocument;
     can: Can;
@@ -84,6 +87,12 @@ export default function BillingShow({
     online?: OnlinePayment;
     delivery?: Delivery;
     sms?: DocumentSms;
+    signature?: {
+        job_id: number;
+        customer_name: string;
+        data: SignatureData;
+        can_sign: boolean;
+    } | null;
 }) {
     const t = useTrans();
     const phoneText = usePhone();
@@ -668,6 +677,17 @@ export default function BillingShow({
                     </section>
                 )}
 
+                {/* Customer signature: taken when the work is done and invoiced */}
+                {signature && (signature.data || signature.can_sign) && (
+                    <SignatureSection
+                        jobId={signature.job_id}
+                        signature={signature.data}
+                        customerName={signature.customer_name}
+                        canSign={signature.can_sign}
+                        reloadProps={['signature']}
+                    />
+                )}
+
                 {/* Payments */}
                 {isInvoice && (
                     <section className="space-y-2">
@@ -812,7 +832,7 @@ export default function BillingShow({
                 )}
 
                 {can.recordPayment && (
-                    <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 shadow-lg backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+                    <div className="da-pinned fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
                         <Button
                             className="h-12 w-full text-base md:w-auto"
                             onClick={() => setPaymentOpen(true)}

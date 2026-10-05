@@ -294,7 +294,7 @@ test('dark mode customer and inbox screens fit the viewport', async ({
     await screenshot(page, info, 'inbox-dark');
 });
 
-test('technician uploads a job photo and a drawn customer signature through the field queue', async ({
+test('technician uploads a job photo; the customer signs on the invoice through the field queue', async ({
     page,
     browser,
 }, info) => {
@@ -323,36 +323,43 @@ test('technician uploads a job photo and a drawn customer signature through the 
     await expect(
         tech.locator(`img[src*="/jobs/${fixture.job_id}/photos/"]`).first(),
     ).toBeVisible();
-    await tech
-        .getByRole('button', { name: /Get signature|Sign again/ })
-        .click();
-    const canvas = tech.getByRole('dialog').locator('canvas');
-    await expect(canvas).toBeVisible();
-    const rect = (await canvas.boundingBox())!;
-    await tech.mouse.move(rect.x + 20, rect.y + 70);
-    await tech.mouse.down();
-    await tech.mouse.move(rect.x + 80, rect.y + 40, { steps: 5 });
-    await tech.mouse.move(rect.x + 150, rect.y + 90, { steps: 5 });
-    await tech.mouse.up();
-    const signed = tech.waitForResponse(
-        (response) =>
-            response.request().method() === 'POST' &&
-            /\/jobs\/\d+\/signature$/.test(response.url()),
-    );
-    await tech
-        .getByRole('button', { name: 'Save signature', exact: true })
-        .click();
-    expect((await signed).status()).toBeLessThan(400);
+    // The job page no longer asks for a signature: it is taken with the invoice.
     await expect(
-        tech.getByRole('img', { name: 'Customer signature', exact: true }),
-    ).toBeVisible();
+        tech.getByRole('button', { name: /Get signature|Sign again/ }),
+    ).toHaveCount(0);
     const width = await tech.evaluate(() => ({
         page: document.documentElement.scrollWidth,
         viewport: window.innerWidth,
     }));
     expect(width.page).toBeLessThanOrEqual(width.viewport + 1);
-    await screenshot(tech, info, 'field-photo-signature');
+    await screenshot(tech, info, 'field-photo');
     await context.close();
+
+    await page.goto(`/invoices/${fixture.invoice_id}`);
+    await page
+        .getByRole('button', { name: /Get signature|Sign again/ })
+        .click();
+    const canvas = page.getByRole('dialog').locator('canvas');
+    await expect(canvas).toBeVisible();
+    const rect = (await canvas.boundingBox())!;
+    await page.mouse.move(rect.x + 20, rect.y + 70);
+    await page.mouse.down();
+    await page.mouse.move(rect.x + 80, rect.y + 40, { steps: 5 });
+    await page.mouse.move(rect.x + 150, rect.y + 90, { steps: 5 });
+    await page.mouse.up();
+    const signed = page.waitForResponse(
+        (response) =>
+            response.request().method() === 'POST' &&
+            /\/jobs\/\d+\/signature$/.test(response.url()),
+    );
+    await page
+        .getByRole('button', { name: 'Save signature', exact: true })
+        .click();
+    expect((await signed).status()).toBeLessThan(400);
+    await expect(
+        page.getByRole('img', { name: 'Customer signature', exact: true }),
+    ).toBeVisible();
+    await screenshot(page, info, 'invoice-signature');
     await page.goto('/dashboard');
 });
 

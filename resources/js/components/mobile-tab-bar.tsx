@@ -52,7 +52,7 @@ export function MobileTabBar() {
     return (
         <nav
             aria-label={t('nav.tabs')}
-            className="sticky bottom-0 z-20 flex gap-1 border-t border-[#E1E8F2] bg-white px-2 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(16,42,79,.08)] md:hidden"
+            className="da-tabbar sticky bottom-0 z-20 flex gap-1 border-t border-[#E1E8F2] bg-white px-2 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(16,42,79,.08)] md:hidden"
         >
             {tabs.map((tab) => {
                 const active = path === new URL(tab.href, 'http://x').pathname;

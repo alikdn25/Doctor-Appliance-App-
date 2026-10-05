@@ -1,3 +1,34 @@
+# October 5 — owner feedback on the job page, avatars, appliances, menu, signature, editing
+
+- Job page on phones: the visit buttons (On my way, Start job, Finish visit) were hidden under the bottom tabs. Screens
+  with a pinned action bar (job, invoice/estimate view and form) now hide the tabs, as DESIGN.md asks for inner screens;
+  the bar is white with 56 px buttons.
+- Avatars: common Latin spellings of Ukrainian/Russian names (Oleksandr, Dmytro, Olena, Iryna…) now get the cartoon
+  face; a name still unknown shows initials on the light blue circle instead of a faceless icon. Job page and customer
+  page use the 60 px avatar.
+- Appliances are picked from image tiles (the mockup's stainless pictures, 3 per row) when adding an appliance on the
+  job, on the customer, on the full job form and in Book customer (optional; tap again to clear; an appliance of that
+  type already at the address is linked, not duplicated). Appliance lists show the picture. New type Wine cooler; types
+  follow the mockup order. Multiple / Installation tiles are still not in code (decision 3).
+- Menu: Main keeps the everyday sections (Book customer, My jobs, Calendar, Jobs, Customers, Invoices, Messages);
+  Dashboard, Reports, Cash and Expenses are under "Money and reports", company setup under "Company settings" — both
+  collapsed until tapped (open while one of their pages is open).
+- Signature: the job page no longer asks for it (it only shows one already taken). "Get signature" is on the invoice
+  page, for whoever may work on the job, until the invoice is void.
+- Edit job: the customer's first/last/company name and main phone can be corrected right on the job form (Owner/Admin,
+  the job's own customer only, phone validated and stored in E.164). The service address list shows "Address not
+  added yet" instead of an empty choice.
+- Tests: new JobPageFeedbackTest (customer correction, isolation across companies, technician denied, wine cooler and
+  pictures, booking with an appliance tile, names, signature on the invoice) and browser scenarios
+  job-page-feedback.spec.ts (buttons not covered on phone, tabs hidden, image tiles, name correction, menu groups).
+  Locally: 760/761 backend tests (the deployment-check test fails here and on unchanged main because this container has
+  no production services) and 46 browser scenarios passed.
+- Manual check on a phone: open a job assigned to you today → On my way / Start job are visible at the bottom; Edit →
+  change the name or phone → Save; Add appliance → tap a picture; Menu → Money and reports opens on tap; open the
+  invoice → Get signature. The server must install the new main to show these changes.
+- Still to do from the mockups: Finish visit with 4 options, two contacts per customer with a paired avatar, team
+  avatars, "Scan rating plate" and the Manufacturer warranty block on the job page, invoice/payment/calendar restyle.
+
 # October 5 — sign-in recovery command
 
 - `php artisan app:reset-password EMAIL [--generate] [--without-2fa]` sets a new password without email, switches the

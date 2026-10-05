@@ -147,7 +147,11 @@ export default function CustomerShow({
 
             <div className="max-w-3xl space-y-6 p-4">
                 <div className="flex items-start gap-3">
-                    <CustomerAvatar icon={customer.avatar_icon} />
+                    <CustomerAvatar
+                        icon={customer.avatar_icon}
+                        name={customer.display_name}
+                        size="lg"
+                    />
                     <div className="min-w-0 flex-1">
                         <PageHeader
                             title={customer.display_name}

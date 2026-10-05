@@ -8,15 +8,17 @@ enum ApplianceType: string
 {
     use HasOptions;
 
+    // Order of the picker tiles (docs/DESIGN.md, Select appliance).
+    case Refrigerator = 'refrigerator';
+    case Freezer = 'freezer';
+    case WineCooler = 'wine_cooler';
     case Washer = 'washer';
     case Dryer = 'dryer';
     case WasherDryerCombo = 'washer_dryer_combo';
-    case Refrigerator = 'refrigerator';
-    case Freezer = 'freezer';
+    case Dishwasher = 'dishwasher';
     case Range = 'range';
     case Oven = 'oven';
     case Cooktop = 'cooktop';
-    case Dishwasher = 'dishwasher';
     case Microwave = 'microwave';
     case RangeHood = 'range_hood';
     case Other = 'other';

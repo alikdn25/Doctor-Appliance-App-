@@ -22,6 +22,7 @@ use App\Messaging\MessagingPresenter;
 use App\Models\Appliance;
 use App\Models\Brand;
 use App\Models\Customer;
+use App\Models\CustomerPhone;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -40,6 +41,7 @@ use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\CostAccess;
 use App\Support\Billing\JobProfit;
 use App\Support\Jobs\JobPresenter;
+use App\Support\PhoneNumber;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -325,12 +327,7 @@ class JobController extends Controller
                 ])->values(),
                 'estimates' => $job->estimates->map(fn (Estimate $e) => BillingPresenter::row($e))->values(),
                 'invoices' => $job->invoices->map(fn (Invoice $i) => BillingPresenter::row($i))->values(),
-                'signature' => $job->signature_path ? [
-                    'url' => route('jobs.signature.show', $job).'?v='.$job->signed_at?->timestamp,
-                    'name' => $job->signature_name,
-                    'signed_at' => JobPresenter::iso($job->signed_at),
-                    'by' => $job->signer?->name,
-                ] : null,
+                'signature' => JobPresenter::signature($job),
             ],
             'myVisitId' => $myVisit?->id,
             'messaging' => app(MessagingPresenter::class)->forJob($job, $user, $myVisit),
@@ -448,7 +445,13 @@ class JobController extends Controller
 
     public function update(JobRequest $request, ServiceJob $job, SaveJob $save): RedirectResponse
     {
-        $save->update($job, $request->jobAttributes(), $request->applianceIds(), $request->newAppliances(), $request->bringItems());
+        DB::transaction(function () use ($request, $job, $save) {
+            $save->update($job, $request->jobAttributes(), $request->applianceIds(), $request->newAppliances(), $request->bringItems());
+
+            if (($edit = $request->customerEdit()) !== null) {
+                self::updateCustomerContact($job->customer, $edit);
+            }
+        });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.updated')]);
 
@@ -545,6 +548,30 @@ class JobController extends Controller
     }
 
     /**
+     * New name and main phone of a customer, typed on the job form (a typo at booking, a new number).
+     *
+     * @param  array{first_name: ?string, last_name: ?string, company_name: ?string, phone: string}  $edit
+     */
+    private static function updateCustomerContact(Customer $customer, array $edit): void
+    {
+        $customer->fill([
+            'first_name' => $edit['first_name'],
+            'last_name' => $edit['last_name'],
+            'company_name' => $edit['company_name'],
+        ])->save();
+
+        $phone = $customer->primaryPhone()->first() ?? new CustomerPhone(['label' => 'mobile', 'is_primary' => true]);
+
+        if ($phone->exists && $phone->number === PhoneNumber::normalize($edit['phone'])) {
+            return;
+        }
+
+        $phone->number = $edit['phone'];
+        $phone->customer_id = $customer->id;
+        $phone->save();
+    }
+
+    /**
      * A customer with properties and their appliances, as the job form needs it.
      *
      * @return array<string, mixed>
@@ -556,6 +583,9 @@ class JobController extends Controller
         return [
             'id' => $customer->id,
             'display_name' => $customer->display_name,
+            'first_name' => $customer->first_name,
+            'last_name' => $customer->last_name,
+            'company_name' => $customer->company_name,
             'avatar_icon' => $customer->avatarIcon(),
             'notes' => $customer->notes,
             'phone' => $customer->primaryPhone?->number,

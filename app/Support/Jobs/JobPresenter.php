@@ -129,6 +129,21 @@ class JobPresenter
         return $mine->first(fn (JobVisit $v) => $v->status !== VisitStatus::Scheduled) ?? $mine->first();
     }
 
+    /**
+     * The customer's signature on the job, if taken.
+     *
+     * @return array{url: string, name: ?string, signed_at: ?string, by: ?string}|null
+     */
+    public static function signature(ServiceJob $job): ?array
+    {
+        return $job->signature_path ? [
+            'url' => route('jobs.signature.show', $job).'?v='.$job->signed_at?->timestamp,
+            'name' => $job->signature_name,
+            'signed_at' => self::iso($job->signed_at),
+            'by' => $job->signer?->name,
+        ] : null;
+    }
+
     public static function iso(?CarbonInterface $time): ?string
     {
         return $time?->toIso8601String();

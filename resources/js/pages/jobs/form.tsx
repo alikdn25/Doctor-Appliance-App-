@@ -7,6 +7,10 @@ import {
     clearedPlace,
     GEOCODED_FIELDS,
 } from '@/components/customers/address-autocomplete';
+import {
+    ApplianceImage,
+    ApplianceTypePicker,
+} from '@/components/appliance-image';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import type { ApplianceItem, Assignable } from '@/components/jobs/types';
@@ -33,6 +37,9 @@ import type { Option } from '@/types';
 type CustomerOption = {
     id: number;
     display_name: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    company_name?: string | null;
     avatar_icon: AvatarIcon;
     notes: string | null;
     phone: string | null;
@@ -114,6 +121,13 @@ type FormData = {
             longitude: string;
         };
     };
+    /** Name and main phone of the job's customer, editable when the job is edited. */
+    customer_edit: {
+        first_name: string;
+        last_name: string;
+        company_name: string;
+        phone: string;
+    } | null;
     add_visit: boolean;
     visit: {
         date: string;
@@ -207,6 +221,17 @@ export default function JobForm({
                 longitude: '',
             },
         },
+        customer_edit:
+            job && initialCustomer
+                ? {
+                      first_name: initialCustomer.first_name ?? '',
+                      last_name: initialCustomer.last_name ?? '',
+                      company_name: initialCustomer.company_name ?? '',
+                      phone: initialCustomer.phone
+                          ? phoneText(initialCustomer.phone)
+                          : '',
+                  }
+                : null,
         add_visit: !job && booking,
         visit: {
             date: bookingDate ?? today,
@@ -372,6 +397,12 @@ export default function JobForm({
         }));
     };
 
+    const setCustomerEdit = (
+        patch: Partial<NonNullable<FormData['customer_edit']>>,
+    ) =>
+        data.customer_edit &&
+        form.setData('customer_edit', { ...data.customer_edit, ...patch });
+
     const setNewCustomer = (patch: Partial<FormData['new_customer']>) =>
         form.setData('new_customer', { ...data.new_customer, ...patch });
 
@@ -422,7 +453,14 @@ export default function JobForm({
               !!data.new_customer.phone.trim() &&
               !!data.new_customer.property.line1.trim() &&
               !!data.new_customer.property.city.trim()
-            : !!data.customer_id && !!data.property_id);
+            : !!data.customer_id && !!data.property_id) &&
+        (!data.customer_edit ||
+            (!!(
+                data.customer_edit.first_name.trim() ||
+                data.customer_edit.last_name.trim() ||
+                data.customer_edit.company_name.trim()
+            ) &&
+                !!data.customer_edit.phone.trim()));
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
@@ -471,12 +509,62 @@ export default function JobForm({
                         {t('jobs.sections.customer')}
                     </h2>
 
-                    {customer ? (
+                    {customer && data.customer_edit ? (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <CustomerAvatar
+                                    icon={customer.avatar_icon}
+                                    name={customer.display_name}
+                                    size="lg"
+                                />
+                                <p className="text-sm text-muted-foreground">
+                                    {t('jobs.form.edit_customer_hint')}
+                                </p>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                {textField(
+                                    'ce-first_name',
+                                    t('customers.fields.first_name'),
+                                    data.customer_edit.first_name,
+                                    (v) => setCustomerEdit({ first_name: v }),
+                                    errors['customer_edit.first_name'],
+                                    { autoComplete: 'off' },
+                                )}
+                                {textField(
+                                    'ce-last_name',
+                                    t('customers.fields.last_name'),
+                                    data.customer_edit.last_name,
+                                    (v) => setCustomerEdit({ last_name: v }),
+                                    errors['customer_edit.last_name'],
+                                    { autoComplete: 'off' },
+                                )}
+                                {textField(
+                                    'ce-phone',
+                                    t('customers.fields.phone'),
+                                    data.customer_edit.phone,
+                                    (v) => setCustomerEdit({ phone: v }),
+                                    errors['customer_edit.phone'] ??
+                                        errors.customer_edit,
+                                    { type: 'tel', autoComplete: 'off' },
+                                )}
+                                {textField(
+                                    'ce-company_name',
+                                    t('customers.fields.company_name'),
+                                    data.customer_edit.company_name,
+                                    (v) => setCustomerEdit({ company_name: v }),
+                                    errors['customer_edit.company_name'],
+                                    { autoComplete: 'off' },
+                                )}
+                            </div>
+                            <CustomerNotes notes={customer.notes} />
+                        </div>
+                    ) : customer ? (
                         <div className="flex items-start justify-between gap-2 rounded-md bg-muted/50 p-3">
                             <div className="min-w-0 flex-1 space-y-3">
                                 <div className="flex items-center gap-3">
                                     <CustomerAvatar
                                         icon={customer.avatar_icon}
+                                        name={customer.display_name}
                                     />
                                     <span className="font-medium">
                                         {customer.display_name}
@@ -779,7 +867,11 @@ export default function JobForm({
                                 )}
                                 {customer.properties.map((p) => (
                                     <option key={p.id} value={p.id}>
-                                        {[p.label, p.full_address]
+                                        {[
+                                            p.label,
+                                            p.full_address ||
+                                                t('jobs.quick.address_pending'),
+                                        ]
                                             .filter(Boolean)
                                             .join(' · ')}
                                     </option>
@@ -818,6 +910,10 @@ export default function JobForm({
                                                 )
                                             }
                                         />
+                                        <ApplianceImage
+                                            type={a.type}
+                                            className="size-11"
+                                        />
                                         <span className="text-sm">
                                             <span className="font-medium">
                                                 {applianceTitle(a)}
@@ -846,30 +942,24 @@ export default function JobForm({
                                 key={i}
                                 className="grid gap-3 rounded-md border p-3 sm:grid-cols-2"
                             >
-                                <FormField
-                                    id={`na-${i}-type`}
-                                    label={t('appliances.fields.type')}
-                                    error={errors[`new_appliances.${i}.type`]}
-                                >
-                                    <NativeSelect
-                                        id={`na-${i}-type`}
+                                <div className="space-y-2 sm:col-span-2">
+                                    <span className="text-[13px] font-semibold">
+                                        {t('appliances.fields.type')}
+                                    </span>
+                                    <ApplianceTypePicker
+                                        label={t('appliances.fields.type')}
+                                        options={applianceTypes}
                                         value={a.type}
-                                        onChange={(e) =>
-                                            setNewAppliance(i, {
-                                                type: e.target.value,
-                                            })
+                                        onChange={(type) =>
+                                            setNewAppliance(i, { type })
                                         }
-                                    >
-                                        {applianceTypes.map((o) => (
-                                            <option
-                                                key={o.value}
-                                                value={o.value}
-                                            >
-                                                {o.label}
-                                            </option>
-                                        ))}
-                                    </NativeSelect>
-                                </FormField>
+                                    />
+                                    <InputError
+                                        message={
+                                            errors[`new_appliances.${i}.type`]
+                                        }
+                                    />
+                                </div>
                                 {textField(
                                     `na-${i}-manufacturer`,
                                     t('appliances.fields.manufacturer'),

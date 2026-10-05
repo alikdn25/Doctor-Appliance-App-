@@ -12,6 +12,7 @@ import {
     AddressAutocomplete,
     clearedPlace,
 } from '@/components/customers/address-autocomplete';
+import { ApplianceTypePicker } from '@/components/appliance-image';
 import { CustomerNotes } from '@/components/customers/customer-notes';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
@@ -32,7 +33,12 @@ type CustomerChoice = {
     display_name: string;
     phone: string | null;
     notes: string | null;
-    properties: { id: number; full_address: string; is_primary: boolean }[];
+    properties: {
+        id: number;
+        full_address: string;
+        is_primary: boolean;
+        appliances?: { id: number; type: string }[];
+    }[];
 };
 
 export default function QuickBook({
@@ -42,6 +48,7 @@ export default function QuickBook({
     today,
     brands,
     jobTypes,
+    applianceTypes,
     assignableUsers,
     customer: initialCustomer,
 }: {
@@ -51,6 +58,7 @@ export default function QuickBook({
     today: string;
     brands: Option[];
     jobTypes: Option[];
+    applianceTypes: Option[];
     assignableUsers: Assignable[];
     customer: CustomerChoice | null;
 }) {
@@ -62,6 +70,9 @@ export default function QuickBook({
     const [results, setResults] = useState<CustomerChoice[]>([]);
     const [searchError, setSearchError] = useState(false);
     const [searching, setSearching] = useState(false);
+    // Optional: the tech can add the appliance on site from the rating plate.
+    const [applianceType, setApplianceType] = useState('');
+    const tracksAppliances = auth.company?.tracks_appliances ?? true;
     const form = useForm({
         quick_booking: true,
         open_invoice: openInvoice,
@@ -175,6 +186,18 @@ export default function QuickBook({
     const submit = (event: FormEvent) => {
         event.preventDefault();
         if (!canSave || form.processing) return;
+        // An appliance of that type already at the address is linked instead of added twice.
+        const known = customer?.properties
+            .find((p) => p.id === form.data.property_id)
+            ?.appliances?.find((a) => a.type === applianceType);
+        form.transform((data) => ({
+            ...data,
+            ...(applianceType === ''
+                ? {}
+                : known
+                  ? { appliance_ids: [known.id] }
+                  : { new_appliances: [{ type: applianceType }] }),
+        }));
         form.post(store().url);
     };
     const title = t(booking ? 'nav.book_customer' : 'invoices.add');
@@ -578,6 +601,32 @@ export default function QuickBook({
                             <Wrench className="size-5 text-primary" />
                             {t('jobs.quick.problem_title')}
                         </h2>
+                        {tracksAppliances && (
+                            <div className="space-y-2">
+                                <span className="text-[13px] font-semibold">
+                                    {t('jobs.quick.appliance')}
+                                </span>
+                                <ApplianceTypePicker
+                                    label={t('jobs.quick.appliance')}
+                                    options={applianceTypes}
+                                    value={applianceType}
+                                    onChange={(type) =>
+                                        setApplianceType(
+                                            type === applianceType ? '' : type,
+                                        )
+                                    }
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {t('jobs.quick.appliance_hint')}
+                                </p>
+                                <InputError
+                                    message={
+                                        errors['new_appliances.0.type'] ??
+                                        errors.appliance_ids
+                                    }
+                                />
+                            </div>
+                        )}
                         <FormField
                             id="booking-problem"
                             label={t('jobs.quick.problem')}

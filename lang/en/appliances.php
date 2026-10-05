@@ -40,11 +40,12 @@ return [
     ],
 
     'types' => [
+        'refrigerator' => 'Refrigerator',
+        'freezer' => 'Freezer',
+        'wine_cooler' => 'Wine cooler',
         'washer' => 'Washer',
         'dryer' => 'Dryer',
         'washer_dryer_combo' => 'Washer/dryer combo',
-        'refrigerator' => 'Refrigerator',
-        'freezer' => 'Freezer',
         'range' => 'Range',
         'oven' => 'Wall oven',
         'cooktop' => 'Cooktop',

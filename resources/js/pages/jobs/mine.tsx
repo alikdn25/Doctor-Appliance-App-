@@ -213,6 +213,7 @@ export default function MyJobs({
                                 >
                                     <CustomerAvatar
                                         icon={visit.job.customer_icon}
+                                        name={visit.job.customer ?? undefined}
                                         size="lg"
                                     />
                                     <div className="flex min-w-0 flex-1 flex-col gap-1">

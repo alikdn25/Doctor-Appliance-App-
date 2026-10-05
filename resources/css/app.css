@@ -335,4 +335,27 @@
         border: 2px solid #fff;
         box-shadow: 0 4px 10px rgb(16 42 79 / 0.2);
     }
+
+    /* Appliance picker tile; selected = blue border and light blue gradient (DESIGN.md option rows). */
+    .da-tile {
+        border: 2px solid #e1e8f2;
+        border-radius: 16px;
+        background: linear-gradient(90deg, #ffffff 0%, #edf2f9 100%);
+        box-shadow:
+            inset 0 2px 1px #fff,
+            inset 0 -3px 6px rgb(0 36 73 / 0.1),
+            inset -4px 0 8px rgb(0 36 73 / 0.07),
+            0 10px 18px -8px rgb(0 36 73 / 0.3),
+            0 2px 4px rgb(0 36 73 / 0.1);
+        color: #0f1b2d;
+    }
+    .da-tile[aria-pressed='true'] {
+        border-color: #0a6cf5;
+        background: linear-gradient(90deg, #f2f8ff 0%, #cfe1fa 100%);
+    }
+}
+
+/* Inner screens with a pinned action bar have no tab bar (docs/DESIGN.md, Navigation). */
+body:has(.da-pinned) .da-tabbar {
+    display: none;
 }

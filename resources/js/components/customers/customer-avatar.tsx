@@ -6,17 +6,29 @@ import { avatar } from '@/routes/customers';
 export type AvatarStyle = 'auto' | 'neutral' | 'man' | 'woman';
 export type AvatarIcon = Exclude<AvatarStyle, 'auto'> | 'business';
 
-const sizes = { md: 'size-11', lg: 'size-[60px]' } as const;
+const sizes = { md: 'size-11 text-base', lg: 'size-[60px] text-xl' } as const;
+
+/** Up to two initials of a name ("Anna Kim" → "AK"). */
+export function initials(name: string): string {
+    return name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => Array.from(part)[0]?.toLocaleUpperCase() ?? '')
+        .join('');
+}
 
 /**
- * Cartoon 3D face (man / woman), or an icon for a business or an unknown person.
+ * Cartoon 3D face (man / woman); initials when the face is not known yet; an icon for a business.
  * White outline and soft shadow; 60 px in work lists (docs/DESIGN.md).
  */
 export function CustomerAvatar({
     icon,
+    name,
     size = 'md',
 }: {
     icon: AvatarIcon;
+    name?: string;
     size?: keyof typeof sizes;
 }) {
     const t = useTrans();
@@ -30,13 +42,16 @@ export function CustomerAvatar({
             />
         );
     }
+    const letters = icon === 'neutral' && name ? initials(name) : '';
     return (
         <span
-            className={`da-avatar ${sizes[size]} flex shrink-0 items-center justify-center rounded-full bg-[linear-gradient(90deg,#F1F7FF,#B3D4FF)] text-[#1E3A8A]`}
+            className={`da-avatar ${sizes[size]} flex shrink-0 items-center justify-center rounded-full bg-[linear-gradient(90deg,#F1F7FF,#B3D4FF)] font-bold text-[#1E3A8A]`}
             role="img"
             aria-label={label}
         >
-            {icon === 'business' ? (
+            {letters !== '' ? (
+                <span aria-hidden="true">{letters}</span>
+            ) : icon === 'business' ? (
                 <Building2 aria-hidden="true" className="size-1/2" />
             ) : (
                 <UserRound aria-hidden="true" className="size-1/2" />
