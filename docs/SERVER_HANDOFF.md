@@ -155,3 +155,15 @@ two-factor sign-in when the authenticator is lost. If it says no account exists,
 is probably connected to the wrong or a recreated database: do not create a new company; restore
 the right database instead. Give a temporary password to the person directly; they change it in
 Settings → Security.
+
+## Temporary sign-in without a password
+
+The owner asked to switch sign-in off for now. In the server `.env`:
+
+```bash
+AUTH_AUTO_LOGIN_EMAIL=owner@example.com   # the owner's real account email
+```
+
+then `php artisan config:cache` (or the deploy script) and reload PHP-FPM. Every visitor is then signed in as that
+account and lands on Jobs; anyone with the address sees and changes the company's data. To bring sign-in back,
+delete the line, refresh the configuration and reload PHP-FPM; then sign out once on each device.

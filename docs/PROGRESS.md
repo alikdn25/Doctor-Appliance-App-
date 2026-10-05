@@ -1,3 +1,12 @@
+# October 5 (sixth round) — temporary sign-in without a password, Jobs as home
+
+- At the owner's request, sign-in can be switched off for now: with AUTH_AUTO_LOGIN_EMAIL set in the server .env,
+  every visitor is signed in as that account (no password, no two-factor code) and lands on Jobs. Anyone who has the
+  address sees and changes that account's data. Remove the line (and refresh config) to bring sign-in back.
+  Inactive or unknown accounts are never signed in this way.
+- Home is now Jobs: "/" and sign-in open Jobs for Owners/Admins; technicians, who may not see Jobs, go to My Jobs.
+- Tests: AutoLoginTest; login/home expectations updated.
+
 # October 5 (fifth round) — screens exactly as the mockups
 
 - Header as on the mockups: deep navy with square blue buttons. Mockup screens draw their own header (ScreenHeader):

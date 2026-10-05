@@ -73,7 +73,8 @@ Route::post('webhooks/payments/{provider}', PaymentWebhookController::class)
     ->middleware('throttle:120,1')
     ->name('webhooks.payments');
 
-Route::get('/', fn () => redirect()->route(auth()->check() ? 'jobs.mine' : 'login'))->name('home');
+// Home is the Jobs list (technicians, who may not see it, are sent on to My Jobs).
+Route::get('/', fn () => redirect()->route(auth()->check() ? 'jobs.index' : 'login'))->name('home');
 
 Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['verified', 'super-admin'])->group(function () {
