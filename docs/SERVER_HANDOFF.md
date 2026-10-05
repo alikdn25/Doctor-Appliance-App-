@@ -137,3 +137,21 @@ cost authors remain hidden. Review attribution on a controlled copy of older rec
 Report the deployed SHA, URL, actual email receipt, worker/scheduler checks, desktop/mobile
 results and remaining blockers. Stage 2/3 features and platform subscription billing are not
 completed by this signup update.
+
+## Sign-in recovery (no email needed)
+
+When someone cannot sign in ("credentials do not match"), first check the account exists in the
+connected database, then set a new password from the server:
+
+```bash
+cd /var/www/fieldservice
+php artisan app:reset-password OWNER_EMAIL             # asks for the new password (hidden)
+php artisan app:reset-password OWNER_EMAIL --generate  # or prints a random temporary password once
+```
+
+The command switches the account back on (also if it was deleted), signs out its other devices,
+and lists its company memberships without changing them. `--without-2fa` also turns off
+two-factor sign-in when the authenticator is lost. If it says no account exists, the application
+is probably connected to the wrong or a recreated database: do not create a new company; restore
+the right database instead. Give a temporary password to the person directly; they change it in
+Settings → Security.

@@ -1,3 +1,9 @@
+# October 5 — sign-in recovery command
+
+- `php artisan app:reset-password EMAIL [--generate] [--without-2fa]` sets a new password without email, switches the
+  account back on, signs out other devices and reports company memberships (unchanged). Documented in
+  SERVER_HANDOFF.md. The server must install the new main before it can be used.
+
 # October 4 — volumetric design in the app, My jobs as home, visible booking address
 
 - Owner, Admin and Technician land on My jobs after sign-in and from `/`; My jobs is first in the menu and the logo link.
