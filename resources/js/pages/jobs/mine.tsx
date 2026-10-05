@@ -1,24 +1,9 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import {
-    ArrowRight,
-    Banknote,
-    ChevronRight,
-    Clock,
-    Download,
-    MapPin,
-    Navigation,
-    PackageCheck,
-    Phone,
-    Plus,
-    WashingMachine,
-} from 'lucide-react';
-import { applianceImageUrl } from '@/components/appliance-image';
+import { Banknote, Download, PackageCheck, Plus } from 'lucide-react';
 import { formatMoney } from '@/components/billing/money';
-import { CustomerAvatar } from '@/components/customers/customer-avatar';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
-import { mapsUrl, telUrl } from '@/components/customers/types';
 import { StrictBadge } from '@/components/jobs/job-outcome';
-import { StatusBadge } from '@/components/jobs/status-badge';
+import { JobCard } from '@/components/jobs/job-card';
 import type { Visit } from '@/components/jobs/types';
 import { Button } from '@/components/ui/button';
 import { useInstallPrompt } from '@/hooks/use-install-prompt';
@@ -73,22 +58,6 @@ export default function MyJobs({
     const install = useInstallPrompt();
     const { auth } = usePage().props;
     const canBook = auth.can?.createJobs ?? false;
-
-    // "Microwave • Not heating", "Multiple • Fridge, Dishwasher", "Installation • Cooktop".
-    const applianceLine = (job: MyVisit['job']) => {
-        const types = job.appliance_types.join(', ');
-        const lead =
-            job.picture === 'installation'
-                ? job.job_type_label
-                : job.appliance_types.length > 1
-                  ? t('jobs.mine_multiple')
-                  : types;
-        const detail =
-            job.picture === 'installation' || job.appliance_types.length > 1
-                ? types
-                : job.problem;
-        return [lead, detail].filter(Boolean).join(' • ');
-    };
 
     return (
         <>
@@ -170,148 +139,48 @@ export default function MyJobs({
                 )}
 
                 <ul className="space-y-3">
-                    {visits.map((visit) => {
-                        const line = applianceLine(visit.job);
-                        return (
-                            <li
-                                key={visit.id}
-                                className={cn(
-                                    'da-card overflow-hidden',
-                                    visit.status === 'in_progress' &&
-                                        'ring-2 ring-[#FDBA74]',
-                                )}
-                            >
-                                <Link
-                                    href={show(visit.job.id)}
-                                    className="flex items-start gap-2.5 p-3 pb-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-                                >
-                                    <CustomerAvatar
-                                        icon={visit.job.customer_icon}
-                                        name={visit.job.customer ?? undefined}
-                                        size="lg"
-                                    />
-                                    <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-[13px]">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-[17px] font-bold">
-                                                #{visit.job.number}
-                                            </span>
-                                            <StatusBadge
-                                                status={visit.job.status}
-                                                label={visit.job.status_label}
-                                            />
-                                            {visit.strict_arrival && (
-                                                <StrictBadge />
+                    {visits.map((visit) => (
+                        <JobCard
+                            key={visit.id}
+                            job={visit.job}
+                            href={show(visit.job.id)}
+                            highlight={visit.status === 'in_progress'}
+                            time={
+                                tab === 'today'
+                                    ? time.timeRange(
+                                          visit.scheduled_start,
+                                          visit.scheduled_end,
+                                      )
+                                    : time.window(
+                                          visit.scheduled_start,
+                                          visit.scheduled_end,
+                                      )
+                            }
+                            extra={
+                                <>
+                                    {visit.strict_arrival && <StrictBadge />}
+                                    {visit.job.bring && (
+                                        <div
+                                            className={cn(
+                                                'flex items-center gap-1 font-medium',
+                                                visit.job.bring.done <
+                                                    visit.job.bring.total
+                                                    ? 'text-amber-700'
+                                                    : 'text-emerald-700',
                                             )}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-[15px] font-bold whitespace-nowrap tabular-nums">
-                                            <Clock className="size-4 text-[#0A6CF5]" />
-                                            {tab === 'today'
-                                                ? time.timeRange(
-                                                      visit.scheduled_start,
-                                                      visit.scheduled_end,
-                                                  )
-                                                : time.window(
-                                                      visit.scheduled_start,
-                                                      visit.scheduled_end,
-                                                  )}
-                                        </div>
-                                        <div className="truncate text-base font-bold">
-                                            {visit.job.customer}
-                                        </div>
-                                        {visit.job.address && (
-                                            <div className="flex items-start gap-1.5 text-muted-foreground">
-                                                <MapPin className="mt-0.5 size-3.5 shrink-0" />
-                                                <span className="line-clamp-2">
-                                                    {visit.job.address}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {line !== '' && (
-                                            <div className="flex items-start gap-1.5 text-muted-foreground">
-                                                <WashingMachine className="mt-0.5 size-3.5 shrink-0" />
-                                                <span className="line-clamp-2">
-                                                    {line}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {visit.job.bring && (
-                                            <div
-                                                className={cn(
-                                                    'flex items-center gap-1 text-sm font-medium',
-                                                    visit.job.bring.done <
-                                                        visit.job.bring.total
-                                                        ? 'text-amber-700'
-                                                        : 'text-emerald-700',
-                                                )}
-                                            >
-                                                <PackageCheck className="size-4" />
-                                                {t('jobs.bring.title')}:{' '}
-                                                {t('jobs.bring.loaded', {
-                                                    done: visit.job.bring.done,
-                                                    total: visit.job.bring
-                                                        .total,
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {visit.job.picture && (
-                                        <img
-                                            src={applianceImageUrl(
-                                                visit.job.picture,
-                                            )}
-                                            alt=""
-                                            loading="lazy"
-                                            className="h-20 w-[76px] shrink-0 self-center object-contain mix-blend-multiply"
-                                        />
-                                    )}
-                                    <ChevronRight
-                                        aria-hidden="true"
-                                        className="size-4 shrink-0 self-center text-[#8A97A8]"
-                                    />
-                                </Link>
-                                <div className="grid grid-cols-3 gap-2 px-3 pb-3">
-                                    {visit.job.address ? (
-                                        <Button
-                                            asChild
-                                            variant="outline"
-                                            className="h-12"
                                         >
-                                            <a
-                                                href={mapsUrl(
-                                                    visit.job.address,
-                                                )}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                            >
-                                                <Navigation />{' '}
-                                                {t('jobs.navigate')}
-                                            </a>
-                                        </Button>
-                                    ) : (
-                                        <span />
+                                            <PackageCheck className="size-3.5" />
+                                            {t('jobs.bring.title')}:{' '}
+                                            {t('jobs.bring.loaded', {
+                                                done: visit.job.bring.done,
+                                                total: visit.job.bring.total,
+                                            })}
+                                        </div>
                                     )}
-                                    {visit.job.phone ? (
-                                        <Button
-                                            asChild
-                                            variant="outline"
-                                            className="h-12"
-                                        >
-                                            <a href={telUrl(visit.job.phone)}>
-                                                <Phone /> {t('jobs.call')}
-                                            </a>
-                                        </Button>
-                                    ) : (
-                                        <span />
-                                    )}
-                                    <Button asChild className="h-12">
-                                        <Link href={show(visit.job.id)}>
-                                            {t('jobs.view_job')} <ArrowRight />
-                                        </Link>
-                                    </Button>
-                                </div>
-                            </li>
-                        );
-                    })}
+                                </>
+                            }
+                        />
+                    ))}
                 </ul>
 
                 {canBook && (

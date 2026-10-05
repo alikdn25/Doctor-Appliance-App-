@@ -2,6 +2,7 @@
 
 namespace App\Support\Jobs;
 
+use App\Enums\JobType;
 use App\Enums\VisitStatus;
 use App\Models\Appliance;
 use App\Models\JobStatusChange;
@@ -39,6 +40,12 @@ class JobPresenter
             'customer' => $job->customer?->display_name,
             'address' => $job->property?->fullAddress(),
             'appliances' => $job->appliances->map(fn (Appliance $a) => $a->label())->values(),
+            // For the job card of the approved mockup.
+            'customer_icon' => $job->customer?->avatarIcon() ?? 'neutral',
+            'phone' => $job->customer?->primaryPhone?->number,
+            'problem' => $job->description,
+            'picture' => self::picture($job),
+            'appliance_types' => $job->appliances->map(fn (Appliance $a) => $a->type->label())->values(),
             'visit' => $visit ? [
                 'scheduled_start' => self::iso($visit->scheduled_start),
                 'scheduled_end' => self::iso($visit->scheduled_end),
@@ -46,6 +53,18 @@ class JobPresenter
                 'assignees' => $visit->assignees->pluck('name')->values(),
             ] : null,
         ];
+    }
+
+    /**
+     * Picture on a job card: the appliance, several appliances, or tools for an installation.
+     */
+    public static function picture(ServiceJob $job): ?string
+    {
+        return match (true) {
+            $job->job_type === JobType::Installation => 'installation',
+            $job->appliances->count() > 1 => 'multiple',
+            default => $job->appliances->first()?->type->value,
+        };
     }
 
     /**

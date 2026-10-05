@@ -151,3 +151,23 @@ test('the address of a booked job can be corrected on Edit', async ({
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/jobs/${fixture.job_id}$`));
 });
+
+test('the jobs list uses the mockup cards with count circles and folded filters', async ({
+    page,
+}, info) => {
+    await page.goto('/jobs');
+    await expect(page.getByRole('combobox')).toHaveCount(0);
+    const card = page.locator('li', { hasText: 'Jane Browser' }).first();
+    await expect(card.getByRole('link', { name: /View job/ })).toBeVisible();
+    await page.screenshot({
+        path: info.outputPath('jobs-cards.png'),
+        fullPage: true,
+    });
+    const circle = page.getByRole('button', { name: /^Scheduled: \d+$/ });
+    await expect(circle).toBeVisible();
+    await circle.click();
+    await expect(page).toHaveURL(/status=scheduled/);
+    await page.getByRole('button', { name: 'Filters', exact: true }).click();
+    await expect(page.getByRole('combobox').first()).toBeVisible();
+    await page.screenshot({ path: info.outputPath('jobs-list.png') });
+});

@@ -111,7 +111,7 @@ class CustomerController extends Controller
         $jobs = ServiceJob::query()
             ->visibleTo($user)
             ->where('customer_id', $customer->id)
-            ->with(['customer', 'property', 'brand', 'appliances', 'visits.assignees'])
+            ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
             ->orderByDesc('id')
             ->limit(50)
             ->get();

@@ -512,11 +512,7 @@ export default function CustomerShow({
                             </Button>
                         )}
                     </div>
-                    <JobList
-                        jobs={jobs}
-                        empty={t('customers.no_jobs')}
-                        showCustomer={false}
-                    />
+                    <JobList jobs={jobs} empty={t('customers.no_jobs')} />
                 </section>
 
                 <section className="space-y-2">

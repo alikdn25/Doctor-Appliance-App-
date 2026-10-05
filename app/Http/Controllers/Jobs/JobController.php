@@ -107,14 +107,23 @@ class JobController extends Controller
                     $v->where('scheduled_start', '<=', CarbonImmutable::parse($filters['to'], $timezone)->endOfDay()->utc());
                 }
             }))
-            ->with(['customer', 'property', 'brand', 'appliances', 'visits.assignees'])
+            ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
             ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString()
             ->through(fn (ServiceJob $job) => JobPresenter::row($job));
 
+        // Coloured count circles: visible jobs per status (other filters ignored), tap to filter.
+        $statusCounts = ServiceJob::query()
+            ->visibleTo($user)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->map(fn ($total) => (int) $total);
+
         return Inertia::render('jobs/index', [
             'jobs' => $jobs,
+            'statusCounts' => $statusCounts,
             'filters' => $filters,
             'statuses' => JobStatus::options(),
             'types' => currentCompany()->vertical->jobTypeOptions(),
@@ -198,11 +207,7 @@ class JobController extends Controller
                         'address' => $job->property?->fullAddress(),
                         'appliances' => $job->appliances->map(fn (Appliance $a) => $a->label())->values(),
                         // Picture on the card: the appliance, several appliances, or tools for an installation.
-                        'picture' => match (true) {
-                            $job->job_type === JobType::Installation => 'installation',
-                            $job->appliances->count() > 1 => 'multiple',
-                            default => $job->appliances->first()?->type->value,
-                        },
+                        'picture' => JobPresenter::picture($job),
                         'appliance_types' => $job->appliances->map(fn (Appliance $a) => $a->type->label())->values(),
                         'problem' => $job->description,
                     ],

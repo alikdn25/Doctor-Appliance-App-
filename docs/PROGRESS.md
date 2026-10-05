@@ -1,3 +1,13 @@
+# October 5 (third round) — the Jobs list uses the mockup too
+
+- The owner opened Jobs (the office list), which still had the old rows and a wall of filters. Jobs, the backlog and
+  the customer's jobs now use the same card as My jobs (mockup): face, number + status, time, name, address,
+  "Appliance • problem", picture, Navigate · Call · View job; Book customer at the end.
+- Jobs: search and filter are icon buttons next to the title; the filters (and New job / Deleted jobs) fold away until
+  tapped. Coloured count circles per status sit above the list; tapping one shows only that status.
+- Still different from the mockup: the shared dark header keeps Menu + Book customer instead of the page title,
+  search and filter buttons inside it.
+
 # October 5 (second round) — My jobs as on the mockup, address on Edit, no checklist, estimate lines
 
 - My jobs follows the approved mockup: tabs Today / Upcoming / Recent with counts, "Today (N)", cards with the

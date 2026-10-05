@@ -19,6 +19,8 @@ test('New job really opens by clicking and cannot save without a customer', asyn
     page,
 }) => {
     await page.goto('/jobs');
+    // The full job form sits with the folded filters; Book customer is the main button.
+    await page.getByRole('button', { name: 'Filters', exact: true }).click();
     await page.getByRole('link', { name: 'New job', exact: true }).click();
     await expect(page).toHaveURL(/\/jobs\/create$/);
     await expect(
