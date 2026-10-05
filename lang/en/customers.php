@@ -51,9 +51,9 @@ return [
     ],
 
     'about_hint' => 'Preferences and details for your team, such as arrival expectations, children sleeping, or how to contact the customer. Visible during booking and on their jobs.',
-    'avatar_hint' => 'Automatic picks a face from the first name; names that fit both (like Sasha) stay neutral. Choose Man or Woman to keep it. You can also tap the icon on the customer or job page.',
+    'avatar_hint' => 'From first name picks the face by the name; for names that fit both (like Sasha) the initials show until you choose Man or Woman. You can also tap the icon on the customer or job page.',
     'change_icon' => 'Customer icon',
-    'icons' => ['auto' => 'Automatic (from first name)', 'neutral' => 'Neutral', 'man' => 'Man', 'woman' => 'Woman', 'business' => 'Business'],
+    'icons' => ['auto' => 'From first name', 'neutral' => 'Initials', 'man' => 'Man', 'woman' => 'Woman', 'business' => 'Business'],
     'fields' => [
         'avatar_style' => 'Customer icon',
         'type' => 'Customer type',

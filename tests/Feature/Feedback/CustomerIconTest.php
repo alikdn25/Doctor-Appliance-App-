@@ -18,6 +18,7 @@ test('the office can pick a man or woman icon for a name that fits both', functi
         ->and($this->customer->fresh()->avatarIcon())->toBe('woman');
 
     $this->patch(route('customers.icon', $this->customer), ['avatar_style' => 'robot'])->assertSessionHasErrors('avatar_style');
+    $this->patch(route('customers.icon', $this->customer), ['avatar_style' => 'neutral'])->assertSessionHasErrors('avatar_style');
 });
 
 test('the icon of another company customer cannot be changed', function () {

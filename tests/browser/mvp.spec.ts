@@ -40,12 +40,10 @@ test('customer context and a manual icon persist and follow a newly booked job',
     page,
 }, info) => {
     await page.goto(`/customers/${fixture.customer_id}/edit`);
-    await page
-        .getByRole('radio', { name: 'Automatic (from first name)' })
-        .click();
+    await page.getByRole('radio', { name: 'From first name' }).click();
     await page.locator('#first_name').fill('Zzyxunknown');
     await expect(
-        page.getByRole('img', { name: 'Neutral', exact: true }),
+        page.getByRole('img', { name: 'Initials', exact: true }),
     ).toBeVisible();
     await page.locator('#first_name').fill('Jane');
     await page

@@ -202,7 +202,7 @@ class CustomerController extends Controller
     public function updateAvatar(Request $request, Customer $customer): RedirectResponse
     {
         Gate::authorize('update', $customer);
-        $data = $request->validate(['avatar_style' => ['required', 'in:auto,neutral,man,woman']]);
+        $data = $request->validate(['avatar_style' => ['required', 'in:auto,man,woman']]);
         $customer->update(['avatar_style' => $data['avatar_style']]);
 
         return back();

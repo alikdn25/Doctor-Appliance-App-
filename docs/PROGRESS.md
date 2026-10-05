@@ -984,8 +984,9 @@ Built on the branch with the mockup screens (`claude/ui-buttons-avatars-applianc
 walkthrough tested. The "On my way" text with another customer's name was not a bug (the name was changed after the
 text was sent).
 
-- **Customer icon:** tap the avatar on the customer or job page to pick Man / Woman / Neutral / Automatic; the customer
-  form has the same four buttons. Names that fit both (Sasha) stay neutral until someone picks.
+- **Customer icon:** tap the avatar on the customer or job page to pick Man / Woman / From first name; the customer
+  form has the same buttons. There is no "Neutral" choice (saved ones were moved to From first name); names that fit
+  both (Sasha) show initials until someone picks Man or Woman.
 - **On my way** from the technician's phone now changes the status: the status change and the recorded text go in one
   request (two requests at once made the browser drop the status change).
 - **Map:** the calendar says why there is no map (no key / key rejected by Google / addresses without a position).

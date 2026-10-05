@@ -274,36 +274,33 @@ export default function CustomerForm({
                                     role="radiogroup"
                                     className="flex flex-wrap gap-2"
                                 >
-                                    {(
-                                        [
-                                            'man',
-                                            'woman',
-                                            'neutral',
-                                            'auto',
-                                        ] as const
-                                    ).map((style) => (
-                                        <button
-                                            key={style}
-                                            type="button"
-                                            role="radio"
-                                            aria-checked={
-                                                form.data.avatar_style === style
-                                            }
-                                            onClick={() =>
-                                                form.setData(
-                                                    'avatar_style',
-                                                    style as AvatarStyle,
-                                                )
-                                            }
-                                            className={`min-h-11 rounded-2xl px-4 text-sm font-semibold shadow-sm transition ${
-                                                form.data.avatar_style === style
-                                                    ? 'bg-primary text-primary-foreground'
-                                                    : 'bg-card text-foreground ring-1 ring-border'
-                                            }`}
-                                        >
-                                            {t(`customers.icons.${style}`)}
-                                        </button>
-                                    ))}
+                                    {(['man', 'woman', 'auto'] as const).map(
+                                        (style) => (
+                                            <button
+                                                key={style}
+                                                type="button"
+                                                role="radio"
+                                                aria-checked={
+                                                    form.data.avatar_style ===
+                                                    style
+                                                }
+                                                onClick={() =>
+                                                    form.setData(
+                                                        'avatar_style',
+                                                        style as AvatarStyle,
+                                                    )
+                                                }
+                                                className={`min-h-11 rounded-2xl px-4 text-sm font-semibold shadow-sm transition ${
+                                                    form.data.avatar_style ===
+                                                    style
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'bg-card text-foreground ring-1 ring-border'
+                                                }`}
+                                            >
+                                                {t(`customers.icons.${style}`)}
+                                            </button>
+                                        ),
+                                    )}
                                 </div>
                             </FormField>
                         )}

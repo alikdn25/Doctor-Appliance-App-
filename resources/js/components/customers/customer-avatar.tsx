@@ -12,8 +12,9 @@ import {
 import { useTrans } from '@/lib/i18n';
 import { avatar, icon as iconRoute } from '@/routes/customers';
 
-export type AvatarStyle = 'auto' | 'neutral' | 'man' | 'woman';
-export type AvatarIcon = Exclude<AvatarStyle, 'auto'> | 'business';
+export type AvatarStyle = 'auto' | 'man' | 'woman';
+/** 'neutral' = the face is not known yet: the avatar shows initials. */
+export type AvatarIcon = 'man' | 'woman' | 'neutral' | 'business';
 
 const sizes = {
     md: 'size-11 text-base',
@@ -99,7 +100,7 @@ export function useNameAvatar(name: string, style: AvatarStyle): AvatarIcon {
 }
 
 /**
- * The avatar as a button: one tap opens Man / Woman / Neutral / Automatic and saves the choice.
+ * The avatar as a button: one tap opens Man / Woman / From first name and saves the choice.
  * For names that fit both (e.g. Sasha) the office or technician picks the face once.
  */
 export function CustomerAvatarPicker({
@@ -141,17 +142,15 @@ export function CustomerAvatarPicker({
                         )
                     }
                 >
-                    {(['man', 'woman', 'neutral', 'auto'] as const).map(
-                        (option) => (
-                            <DropdownMenuRadioItem
-                                key={option}
-                                value={option}
-                                className="min-h-11"
-                            >
-                                {t(`customers.icons.${option}`)}
-                            </DropdownMenuRadioItem>
-                        ),
-                    )}
+                    {(['man', 'woman', 'auto'] as const).map((option) => (
+                        <DropdownMenuRadioItem
+                            key={option}
+                            value={option}
+                            className="min-h-11"
+                        >
+                            {t(`customers.icons.${option}`)}
+                        </DropdownMenuRadioItem>
+                    ))}
                 </DropdownMenuRadioGroup>
             </DropdownMenuContent>
         </DropdownMenu>
