@@ -234,15 +234,15 @@ Visit statuses use the same look as the matching job status.
 
 ## Navigation and layout
 
-- Bottom bar with 4 tabs: **Today · Calendar · Messages · More**.
+- Bottom bar with 4 tabs: **Today · Map · Messages · More** (approved My Jobs mockup).
 - Inner screens have no tab bar: a back button at the top and actions pinned to the bottom. In code a pinned bar has
   the class `da-pinned`; while one is on screen the tab bar (`da-tabbar`) is hidden so nothing covers the actions.
 - Menu: the everyday sections first (Book customer, My jobs, Calendar, Jobs, Customers, Invoices, Messages); "Money and
   reports" and "Company settings" are collapsed groups.
 - The customer signs on the invoice (when the work is done), not on the job page.
 - **Book customer** button lives in the My Jobs header.
-- The third button in a job card changes with the status: **On my way / Start / Finish visit**. No "View job" button —
-  the whole card opens the job.
+- My Jobs cards (approved mockup): buttons **Navigate · Call · View job**; the whole card also opens the job. Visit
+  steps (On my way / Start / Finish visit) are pinned at the bottom of the job page.
 - Touch targets at least 44 px; screens designed for one-handed use on a phone.
 - Money is always formatted with the company currency (e.g. `CA$95.00`); never a hard-coded "$".
 - Tax lines show the names and rates configured by the company (the mockup uses the first customer's GST/PST as sample

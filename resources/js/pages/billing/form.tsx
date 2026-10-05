@@ -220,13 +220,15 @@ export default function BillingForm({
         prices_include_tax: pricesIncludeTax,
     });
 
-    const setLine = (index: number, patch: Partial<Line>) =>
-        form.setData(
-            'items',
-            data.items.map((line, i) =>
-                i === index ? { ...line, ...patch } : line,
+    // Updates always start from the latest lines: two quick changes (a typed price and the default
+    // warranty that follows it) must not overwrite each other.
+    const setLine = (key: number, patch: Partial<Line>) =>
+        form.setData((d) => ({
+            ...d,
+            items: d.items.map((line) =>
+                line.key === key ? { ...line, ...patch } : line,
             ),
-        );
+        }));
 
     const toggleTax = (id: number, on: boolean) =>
         form.setData(
@@ -410,12 +412,14 @@ export default function BillingForm({
                                 canRemove={data.items.length > 1}
                                 errors={fieldErrors}
                                 money={money}
-                                onChange={(patch) => setLine(i, patch)}
+                                onChange={(patch) => setLine(line.key, patch)}
                                 onRemove={() =>
-                                    form.setData(
-                                        'items',
-                                        data.items.filter((_, j) => j !== i),
-                                    )
+                                    form.setData((d) => ({
+                                        ...d,
+                                        items: d.items.filter(
+                                            (item) => item.key !== line.key,
+                                        ),
+                                    }))
                                 }
                             />
                         ))}
@@ -425,7 +429,10 @@ export default function BillingForm({
                         variant="outline"
                         className="h-11 w-full"
                         onClick={() =>
-                            form.setData('items', [...data.items, newLine()])
+                            form.setData((d) => ({
+                                ...d,
+                                items: [...d.items, newLine()],
+                            }))
                         }
                     >
                         <Plus /> {t('billing.add_item')}

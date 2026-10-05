@@ -40,10 +40,20 @@ class NameAvatar
         }
         self::$names ??= json_decode(file_get_contents(resource_path('data/name-icons.json')), true, flags: JSON_THROW_ON_ERROR)['names'];
 
-        return self::$names[$name] ?? match (true) {
-            in_array($name, self::EXTRA_MEN, true) => 'man',
-            in_array($name, self::EXTRA_WOMEN, true) => 'woman',
-            default => 'neutral',
-        };
+        // The whole name is sometimes typed into the first-name field ("Oleksandr Mykhailychenko"):
+        // try the full value, then its first word.
+        foreach (array_unique([$name, strtok($name, ' ')]) as $candidate) {
+            $icon = self::$names[$candidate] ?? match (true) {
+                in_array($candidate, self::EXTRA_MEN, true) => 'man',
+                in_array($candidate, self::EXTRA_WOMEN, true) => 'woman',
+                default => null,
+            };
+
+            if ($icon !== null) {
+                return $icon;
+            }
+        }
+
+        return 'neutral';
     }
 }

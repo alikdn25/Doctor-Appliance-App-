@@ -140,30 +140,36 @@ class JobController extends Controller
         $todayStart = CarbonImmutable::now($timezone)->startOfDay()->utc();
         $todayEnd = CarbonImmutable::now($timezone)->endOfDay()->utc();
 
-        $visits = JobVisit::query()
+        // One query per tab; the counts are shown on the tabs.
+        $tabQuery = fn (string $name) => JobVisit::query()
             ->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
             ->whereHas('job', fn (Builder $q) => $q->visibleTo($user))
-            ->when($tab === 'today', fn ($q) => $q
+            ->when($name === 'today', fn ($q) => $q
                 ->where(fn ($w) => $w
                     ->whereBetween('scheduled_start', [$todayStart, $todayEnd])
                     ->orWhereIn('status', [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value]))
                 ->orderBy('scheduled_start'))
-            ->when($tab === 'upcoming', fn ($q) => $q
+            ->when($name === 'upcoming', fn ($q) => $q
                 ->where('scheduled_start', '>', $todayEnd)
                 ->where('status', VisitStatus::Scheduled->value)
                 ->orderBy('scheduled_start'))
-            ->when($tab === 'recent', fn ($q) => $q
+            ->when($name === 'recent', fn ($q) => $q
                 ->where('scheduled_start', '<', $todayStart)
                 ->where('scheduled_start', '>=', $todayStart->subDays(30))
-                ->orderByDesc('scheduled_start'))
+                ->orderByDesc('scheduled_start'));
+
+        $visits = $tabQuery($tab)
             ->with(['assignees', 'job.customer.primaryPhone', 'job.property', 'job.appliances', 'job.bringItems'])
             ->limit(100)
             ->get();
+        $counts = collect(['today', 'upcoming', 'recent'])
+            ->mapWithKeys(fn (string $name) => [$name => $tabQuery($name)->reorder()->count()]);
 
         $messaging = app(MessagingPresenter::class);
 
         return Inertia::render('jobs/mine', [
             'tab' => $tab,
+            'counts' => $counts,
             // Cash this person collected and has not handed in yet.
             'cashOnHand' => CashLedger::balances()[$user->id] ?? [],
             'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging) {
@@ -191,6 +197,14 @@ class JobController extends Controller
                         'phone' => $job->customer?->primaryPhone?->number,
                         'address' => $job->property?->fullAddress(),
                         'appliances' => $job->appliances->map(fn (Appliance $a) => $a->label())->values(),
+                        // Picture on the card: the appliance, several appliances, or tools for an installation.
+                        'picture' => match (true) {
+                            $job->job_type === JobType::Installation => 'installation',
+                            $job->appliances->count() > 1 => 'multiple',
+                            default => $job->appliances->first()?->type->value,
+                        },
+                        'appliance_types' => $job->appliances->map(fn (Appliance $a) => $a->type->label())->values(),
+                        'problem' => $job->description,
                     ],
                 ];
             })->values(),
@@ -451,6 +465,11 @@ class JobController extends Controller
             if (($edit = $request->customerEdit()) !== null) {
                 self::updateCustomerContact($job->customer, $edit);
             }
+
+            // The address of the job's place, e.g. added later to a booking taken without one.
+            if (($address = $request->addressEdit()) !== null) {
+                $job->property()->first()?->fill($address)->save();
+            }
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.updated')]);
@@ -595,6 +614,18 @@ class JobController extends Controller
                 'label' => $p->label,
                 'full_address' => $p->fullAddress(),
                 'is_primary' => $p->is_primary,
+                // Address parts, editable from the job form.
+                'address' => [
+                    'line1' => $p->line1 ?? '',
+                    'unit' => $p->unit ?? '',
+                    'city' => $p->city ?? '',
+                    'region' => $p->region ?? '',
+                    'postal_code' => $p->postal_code ?? '',
+                    'country' => $p->country ?? currentCompany()->country,
+                    'google_place_id' => $p->google_place_id ?? '',
+                    'latitude' => $p->latitude === null ? '' : (string) $p->latitude,
+                    'longitude' => $p->longitude === null ? '' : (string) $p->longitude,
+                ],
                 'appliances' => $p->appliances->map(fn (Appliance $a) => JobPresenter::appliance($a))->values(),
             ])->values(),
             // Earlier jobs, for a return visit or warranty callback.

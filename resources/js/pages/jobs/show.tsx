@@ -26,8 +26,6 @@ import type { DocumentRow } from '@/components/billing/types';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
 import InputError from '@/components/input-error';
-import { ChecklistSection } from '@/components/jobs/checklist-section';
-import type { ChecklistItemData } from '@/components/jobs/checklist-section';
 import { FinishDialog } from '@/components/jobs/finish-dialog';
 import type {
     CallbackInfo,
@@ -118,7 +116,6 @@ type Job = {
     appliances: (ApplianceItem & { rating_plate_url: string | null })[];
     visits: Visit[];
     photos: JobPhotoData[];
-    checklist: ChecklistItemData[];
     signature: SignatureData;
     estimates: DocumentRow[];
     invoices: DocumentRow[];
@@ -757,12 +754,6 @@ export default function JobShow({
                     jobId={job.id}
                     messaging={messaging}
                     canWork={can.work}
-                />
-
-                <ChecklistSection
-                    jobId={job.id}
-                    items={job.checklist}
-                    canTick={can.work}
                 />
 
                 <PhotoSection

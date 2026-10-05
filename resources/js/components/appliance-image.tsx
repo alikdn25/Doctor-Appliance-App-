@@ -17,6 +17,8 @@ const PICTURED = new Set([
     'microwave',
     'range_hood',
     'other',
+    'multiple',
+    'installation',
 ]);
 
 export const applianceImageUrl = (type: string) =>

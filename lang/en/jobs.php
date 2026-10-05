@@ -96,6 +96,8 @@ return [
     'minutes' => ':count min',
     'hours_minutes' => ':hours h :minutes min',
     'navigate' => 'Navigate',
+    'view_job' => 'View job',
+    'mine_multiple' => 'Multiple',
     'go' => 'Go',
     'start_short' => 'Start',
     'finish_short' => 'Finish visit',

@@ -1,33 +1,31 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
+    ArrowRight,
     Banknote,
-    Car,
-    CircleCheck,
+    ChevronRight,
     Clock,
     Download,
     MapPin,
     Navigation,
     PackageCheck,
     Phone,
-    Play,
+    Plus,
+    WashingMachine,
 } from 'lucide-react';
-import { useState } from 'react';
+import { applianceImageUrl } from '@/components/appliance-image';
 import { formatMoney } from '@/components/billing/money';
 import { CustomerAvatar } from '@/components/customers/customer-avatar';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { mapsUrl, telUrl } from '@/components/customers/types';
-import InputError from '@/components/input-error';
 import { StrictBadge } from '@/components/jobs/job-outcome';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import type { Visit } from '@/components/jobs/types';
-import { openOnPhone } from '@/components/messaging/job-messaging';
 import { Button } from '@/components/ui/button';
 import { useInstallPrompt } from '@/hooks/use-install-prompt';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { mine, show } from '@/routes/jobs';
-import { onMyWay, start } from '@/routes/visits';
+import { create as bookCustomer, mine, show } from '@/routes/jobs';
 
 type MyVisit = Visit & {
     can_work?: boolean;
@@ -46,17 +44,27 @@ type MyVisit = Visit & {
         phone: string | null;
         address: string | null;
         appliances: string[];
+        appliance_types: string[];
+        picture: string | null;
+        problem: string | null;
     };
 };
 
 const tabs = ['today', 'upcoming', 'recent'] as const;
 
+/**
+ * My jobs, as on the approved mockup: tabs with counts, one card per visit (avatar, number and status,
+ * time, name, address, appliance and problem, appliance picture) with Navigate, Call and View job,
+ * and Book customer at the end. Visit steps (On my way, Start, Finish) are on the job page.
+ */
 export default function MyJobs({
     tab,
+    counts = { today: 0, upcoming: 0, recent: 0 },
     visits,
     cashOnHand = {},
 }: {
     tab: (typeof tabs)[number];
+    counts?: Record<(typeof tabs)[number], number>;
     visits: MyVisit[];
     cashOnHand?: Record<string, number>;
 }) {
@@ -64,63 +72,22 @@ export default function MyJobs({
     const time = useCompanyTime();
     const install = useInstallPrompt();
     const { auth } = usePage().props;
-    const [error, setError] = useState<string>();
+    const canBook = auth.can?.createJobs ?? false;
 
-    const act = (url: string) =>
-        router.post(
-            url,
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: () => setError(undefined),
-                onError: (errors) =>
-                    setError(Object.values(errors)[0] as string),
-            },
-        );
-
-    // The card's third button follows the visit: On my way → Start → Finish visit.
-    const mainAction = (visit: MyVisit) => {
-        if (tab === 'recent' || !visit.can_work) return null;
-        if (visit.status === 'scheduled') {
-            return (
-                <Button
-                    className="h-12"
-                    onClick={() => {
-                        act(onMyWay(visit.id).url);
-                        if (visit.on_my_way_sms) {
-                            openOnPhone(
-                                visit.job.id,
-                                'on_my_way',
-                                visit.on_my_way_sms.to,
-                                visit.on_my_way_sms.body,
-                            );
-                        }
-                    }}
-                >
-                    <Car /> {t('jobs.actions.on_my_way')}
-                </Button>
-            );
-        }
-        if (visit.status === 'on_the_way') {
-            return (
-                <Button
-                    className="h-12"
-                    onClick={() => act(start(visit.id).url)}
-                >
-                    <Play /> {t('jobs.start_short')}
-                </Button>
-            );
-        }
-        if (visit.status === 'in_progress') {
-            return (
-                <Button asChild className="h-12">
-                    <Link href={show(visit.job.id, { query: { finish: 1 } })}>
-                        <CircleCheck /> {t('jobs.finish_short')}
-                    </Link>
-                </Button>
-            );
-        }
-        return null;
+    // "Microwave • Not heating", "Multiple • Fridge, Dishwasher", "Installation • Cooktop".
+    const applianceLine = (job: MyVisit['job']) => {
+        const types = job.appliance_types.join(', ');
+        const lead =
+            job.picture === 'installation'
+                ? job.job_type_label
+                : job.appliance_types.length > 1
+                  ? t('jobs.mine_multiple')
+                  : types;
+        const detail =
+            job.picture === 'installation' || job.appliance_types.length > 1
+                ? types
+                : job.problem;
+        return [lead, detail].filter(Boolean).join(' • ');
     };
 
     return (
@@ -167,7 +134,7 @@ export default function MyJobs({
 
                 <nav
                     aria-label={t('jobs.my_jobs')}
-                    className="da-track grid grid-cols-3 gap-1 p-1"
+                    className="grid grid-cols-3 gap-2"
                 >
                     {tabs.map((name) => (
                         <Link
@@ -175,14 +142,26 @@ export default function MyJobs({
                             href={mine({ query: { tab: name } })}
                             preserveScroll
                             aria-current={tab === name ? 'page' : undefined}
-                            className="da-chip da-press flex min-h-11 items-center justify-center rounded-xl px-3 text-center text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            className="da-chip da-press flex min-h-12 items-center justify-center gap-2 rounded-2xl px-2 text-center text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         >
                             {t(`jobs.tabs.${name}`)}
+                            <span
+                                className={cn(
+                                    'min-w-6 rounded-full px-1.5 text-xs leading-5 tabular-nums',
+                                    tab === name
+                                        ? 'bg-white/25'
+                                        : 'bg-[#E3EAF4] text-[#334155]',
+                                )}
+                            >
+                                {counts[name]}
+                            </span>
                         </Link>
                     ))}
                 </nav>
 
-                <InputError message={error} />
+                <h2 className="pt-1 text-lg font-bold">
+                    {t(`jobs.tabs.${tab}`)} ({visits.length})
+                </h2>
 
                 {visits.length === 0 && (
                     <p className="da-card p-10 text-center text-sm text-muted-foreground">
@@ -192,12 +171,7 @@ export default function MyJobs({
 
                 <ul className="space-y-3">
                     {visits.map((visit) => {
-                        const action = mainAction(visit);
-                        const buttons = [
-                            tab !== 'recent' && visit.job.address,
-                            tab !== 'recent' && visit.job.phone,
-                            action,
-                        ].filter(Boolean).length;
+                        const line = applianceLine(visit.job);
                         return (
                             <li
                                 key={visit.id}
@@ -209,16 +183,16 @@ export default function MyJobs({
                             >
                                 <Link
                                     href={show(visit.job.id)}
-                                    className="flex gap-3 p-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                                    className="flex items-start gap-2.5 p-3 pb-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                                 >
                                     <CustomerAvatar
                                         icon={visit.job.customer_icon}
                                         name={visit.job.customer ?? undefined}
                                         size="lg"
                                     />
-                                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                    <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-[13px]">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-sm font-bold text-muted-foreground">
+                                            <span className="text-[17px] font-bold">
                                                 #{visit.job.number}
                                             </span>
                                             <StatusBadge
@@ -229,10 +203,7 @@ export default function MyJobs({
                                                 <StrictBadge />
                                             )}
                                         </div>
-                                        <div className="text-[17px] font-bold">
-                                            {visit.job.customer}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-sm font-semibold tabular-nums">
+                                        <div className="flex items-center gap-1.5 text-[15px] font-bold whitespace-nowrap tabular-nums">
                                             <Clock className="size-4 text-[#0A6CF5]" />
                                             {tab === 'today'
                                                 ? time.timeRange(
@@ -244,24 +215,25 @@ export default function MyJobs({
                                                       visit.scheduled_end,
                                                   )}
                                         </div>
+                                        <div className="truncate text-base font-bold">
+                                            {visit.job.customer}
+                                        </div>
                                         {visit.job.address && (
-                                            <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
-                                                <MapPin className="mt-0.5 size-4 shrink-0" />
-                                                {visit.job.address}
+                                            <div className="flex items-start gap-1.5 text-muted-foreground">
+                                                <MapPin className="mt-0.5 size-3.5 shrink-0" />
+                                                <span className="line-clamp-2">
+                                                    {visit.job.address}
+                                                </span>
                                             </div>
                                         )}
-                                        <div className="text-sm text-muted-foreground">
-                                            {[
-                                                visit.job.appliances.join(', '),
-                                                visit.job.job_type_label,
-                                                visit.job.visit_type !==
-                                                'new_diagnosis'
-                                                    ? visit.job.visit_type_label
-                                                    : null,
-                                            ]
-                                                .filter(Boolean)
-                                                .join(' · ')}
-                                        </div>
+                                        {line !== '' && (
+                                            <div className="flex items-start gap-1.5 text-muted-foreground">
+                                                <WashingMachine className="mt-0.5 size-3.5 shrink-0" />
+                                                <span className="line-clamp-2">
+                                                    {line}
+                                                </span>
+                                            </div>
+                                        )}
                                         {visit.job.bring && (
                                             <div
                                                 className={cn(
@@ -282,61 +254,73 @@ export default function MyJobs({
                                             </div>
                                         )}
                                     </div>
+                                    {visit.job.picture && (
+                                        <img
+                                            src={applianceImageUrl(
+                                                visit.job.picture,
+                                            )}
+                                            alt=""
+                                            loading="lazy"
+                                            className="h-20 w-[76px] shrink-0 self-center object-contain mix-blend-multiply"
+                                        />
+                                    )}
+                                    <ChevronRight
+                                        aria-hidden="true"
+                                        className="size-4 shrink-0 self-center text-[#8A97A8]"
+                                    />
                                 </Link>
-                                {buttons > 0 && (
-                                    <div
-                                        className={cn(
-                                            'grid gap-2 px-4 pb-4',
-                                            buttons === 3
-                                                ? 'grid-cols-[1fr_1fr_1.5fr]'
-                                                : buttons === 2
-                                                  ? 'grid-cols-2'
-                                                  : 'grid-cols-1',
-                                        )}
-                                    >
-                                        {tab !== 'recent' &&
-                                            visit.job.address && (
-                                                <Button
-                                                    asChild
-                                                    variant="outline"
-                                                    className="h-12"
-                                                >
-                                                    <a
-                                                        href={mapsUrl(
-                                                            visit.job.address,
-                                                        )}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                    >
-                                                        <Navigation />{' '}
-                                                        {t('jobs.go')}
-                                                    </a>
-                                                </Button>
-                                            )}
-                                        {tab !== 'recent' &&
-                                            visit.job.phone && (
-                                                <Button
-                                                    asChild
-                                                    variant="outline"
-                                                    className="h-12"
-                                                >
-                                                    <a
-                                                        href={telUrl(
-                                                            visit.job.phone,
-                                                        )}
-                                                    >
-                                                        <Phone />{' '}
-                                                        {t('jobs.call')}
-                                                    </a>
-                                                </Button>
-                                            )}
-                                        {action}
-                                    </div>
-                                )}
+                                <div className="grid grid-cols-3 gap-2 px-3 pb-3">
+                                    {visit.job.address ? (
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            className="h-12"
+                                        >
+                                            <a
+                                                href={mapsUrl(
+                                                    visit.job.address,
+                                                )}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            >
+                                                <Navigation />{' '}
+                                                {t('jobs.navigate')}
+                                            </a>
+                                        </Button>
+                                    ) : (
+                                        <span />
+                                    )}
+                                    {visit.job.phone ? (
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            className="h-12"
+                                        >
+                                            <a href={telUrl(visit.job.phone)}>
+                                                <Phone /> {t('jobs.call')}
+                                            </a>
+                                        </Button>
+                                    ) : (
+                                        <span />
+                                    )}
+                                    <Button asChild className="h-12">
+                                        <Link href={show(visit.job.id)}>
+                                            {t('jobs.view_job')} <ArrowRight />
+                                        </Link>
+                                    </Button>
+                                </div>
                             </li>
                         );
                     })}
                 </ul>
+
+                {canBook && (
+                    <Button asChild className="h-14 w-full text-lg">
+                        <Link href={bookCustomer({ query: { book: 1 } })}>
+                            <Plus className="size-6" /> {t('nav.book_customer')}
+                        </Link>
+                    </Button>
+                )}
             </div>
         </>
     );

@@ -1,3 +1,19 @@
+# October 5 (second round) — My jobs as on the mockup, address on Edit, no checklist, estimate lines
+
+- My jobs follows the approved mockup: tabs Today / Upcoming / Recent with counts, "Today (N)", cards with the
+  60 px face, number + status, time, name, address, "Appliance • problem" (Multiple / Installation as on the mockup)
+  and the appliance picture on the right, buttons Navigate · Call · View job, Book customer at the end. Visit steps
+  (On my way / Start / Finish) are on the job page. Phone tabs: Today · Map · Messages · More (Map opens the calendar
+  map). Not done: the coloured count circles at the top of the mockup (their meaning is to be confirmed).
+- Faces: the whole name typed into the first-name field ("Oleksandr Mykhailychenko") now finds the face by its first
+  word; quick booking stores "Name Surname" as first and last name.
+- Edit job: address, unit, city and postal code of the job's place can be added or corrected (Google suggestions).
+- Checklist removed from the job page and the menu (Work done notes stay). Stored checklist data is kept.
+- Estimate/invoice lines: every change now starts from the latest lines, so a quick second change (e.g. the default
+  warranty following a typed price) can no longer overwrite a price typed a moment earlier. The exact erasing seen on
+  the owner's Android phone did not reproduce in Chromium; to be rechecked on the phone after deployment.
+- Tests: 765 backend (the local-only deployment check aside) and 46 browser scenarios passed locally.
+
 # October 5 — owner feedback on the job page, avatars, appliances, menu, signature, editing
 
 - Job page on phones: the visit buttons (On my way, Start job, Finish visit) were hidden under the bottom tabs. Screens

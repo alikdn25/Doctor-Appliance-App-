@@ -49,6 +49,7 @@ type CustomerOption = {
         label: string | null;
         full_address: string;
         is_primary: boolean;
+        address?: AddressParts;
         appliances: ApplianceItem[];
     }[];
     /** Earlier jobs, for a return visit or warranty callback. */
@@ -64,6 +65,18 @@ type CustomerOption = {
 };
 
 type BringItem = { description: string; quantity: string };
+
+type AddressParts = {
+    line1: string;
+    unit: string;
+    city: string;
+    region: string;
+    postal_code: string;
+    country: string;
+    google_place_id: string;
+    latitude: string;
+    longitude: string;
+};
 
 type JobData = {
     id: number;
@@ -128,6 +141,8 @@ type FormData = {
         company_name: string;
         phone: string;
     } | null;
+    /** Address of the job's place, editable when the job is edited. */
+    address_edit: AddressParts | null;
     add_visit: boolean;
     visit: {
         date: string;
@@ -232,6 +247,10 @@ export default function JobForm({
                           : '',
                   }
                 : null,
+        address_edit: job
+            ? (initialCustomer?.properties.find((p) => p.id === job.property_id)
+                  ?.address ?? null)
+            : null,
         add_visit: !job && booking,
         visit: {
             date: bookingDate ?? today,
@@ -402,6 +421,19 @@ export default function JobForm({
     ) =>
         data.customer_edit &&
         form.setData('customer_edit', { ...data.customer_edit, ...patch });
+
+    // Typing over a picked address clears its place ID and coordinates.
+    const setAddressEdit = (patch: Partial<AddressParts>, picked = false) =>
+        data.address_edit &&
+        form.setData('address_edit', {
+            ...data.address_edit,
+            ...(picked ||
+            !data.address_edit.google_place_id ||
+            !GEOCODED_FIELDS.some((field) => field in patch)
+                ? {}
+                : clearedPlace),
+            ...patch,
+        });
 
     const setNewCustomer = (patch: Partial<FormData['new_customer']>) =>
         form.setData('new_customer', { ...data.new_customer, ...patch });
@@ -859,6 +891,13 @@ export default function JobForm({
                                         ...d,
                                         property_id: Number(e.target.value),
                                         appliance_ids: [],
+                                        address_edit: editing
+                                            ? (customer.properties.find(
+                                                  (p) =>
+                                                      p.id ===
+                                                      Number(e.target.value),
+                                              )?.address ?? null)
+                                            : null,
                                     }))
                                 }
                             >
@@ -878,6 +917,62 @@ export default function JobForm({
                                 ))}
                             </NativeSelect>
                         </FormField>
+                    )}
+
+                    {/* The address can be added or corrected here (e.g. a booking taken without one). */}
+                    {customer && data.address_edit && (
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <FormField
+                                id="ae-line1"
+                                label={t('properties.fields.line1')}
+                                error={errors['address_edit.line1']}
+                                className="sm:col-span-2"
+                            >
+                                <AddressAutocomplete
+                                    id="ae-line1"
+                                    autoComplete="off"
+                                    value={data.address_edit.line1}
+                                    country={data.address_edit.country}
+                                    onChange={(v) =>
+                                        setAddressEdit({ line1: v })
+                                    }
+                                    onPick={(address) =>
+                                        setAddressEdit(
+                                            {
+                                                ...address,
+                                                unit:
+                                                    address.unit ??
+                                                    data.address_edit?.unit ??
+                                                    '',
+                                            },
+                                            true,
+                                        )
+                                    }
+                                />
+                            </FormField>
+                            {textField(
+                                'ae-unit',
+                                t('properties.fields.unit'),
+                                data.address_edit.unit,
+                                (v) => setAddressEdit({ unit: v }),
+                                errors['address_edit.unit'],
+                            )}
+                            {textField(
+                                'ae-city',
+                                t('properties.fields.city'),
+                                data.address_edit.city,
+                                (v) => setAddressEdit({ city: v }),
+                                errors['address_edit.city'],
+                            )}
+                            {textField(
+                                'ae-postal_code',
+                                auth.company?.address.postal_label ??
+                                    t('properties.fields.postal_code'),
+                                data.address_edit.postal_code,
+                                (v) => setAddressEdit({ postal_code: v }),
+                                errors['address_edit.postal_code'],
+                            )}
+                        </div>
                     )}
                 </section>
 

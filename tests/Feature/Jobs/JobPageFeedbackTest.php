@@ -189,3 +189,64 @@ test('the invoice page offers the customer signature and the job page only shows
     $this->get(route('jobs.show', $this->job))
         ->assertInertia(fn (Assert $page) => $page->where('job.signature.name', 'Oleksandr'));
 });
+
+test('editing a job adds the address missing from a quick booking', function () {
+    inCompany($this->company, fn () => $this->property->forceFill(['line1' => '', 'city' => '', 'postal_code' => null])->save());
+
+    $this->put(route('jobs.update', $this->job), editPayload(['address_edit' => [
+        'line1' => '295 Guildford Way', 'unit' => '1204', 'city' => 'Port Moody', 'region' => 'BC',
+        'postal_code' => 'V3H 0A1', 'country' => 'ca', 'google_place_id' => '', 'latitude' => '', 'longitude' => '',
+    ]]))->assertSessionHasNoErrors();
+
+    $property = inCompany($this->company, fn () => $this->property->fresh());
+    expect($property->line1)->toBe('295 Guildford Way')
+        ->and($property->unit)->toBe('1204')
+        ->and($property->city)->toBe('Port Moody')
+        ->and($property->country)->toBe('CA');
+
+    $this->put(route('jobs.update', $this->job), editPayload(['address_edit' => [
+        'line1' => 'Only street', 'city' => '', 'country' => 'CA',
+    ]]))->assertSessionHasErrors('address_edit.city');
+});
+
+test('the job edit form carries the address parts of each place', function () {
+    $this->get(route('jobs.edit', $this->job))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('customer.properties.0.address.line1', $this->property->line1)
+            ->where('customer.properties.0.address.city', $this->property->city));
+});
+
+test('a full name typed in the quick booking is split and gets a face', function () {
+    $this->post(route('jobs.store'), [
+        'quick_booking' => true,
+        'brand_id' => $this->brand->id,
+        'job_type' => 'repair',
+        'new_customer_mode' => true,
+        'new_customer' => ['first_name' => 'Olena  Shevchenko', 'phone' => '+16045550178', 'property' => ['country' => 'CA']],
+    ])->assertSessionHasNoErrors();
+
+    $customer = inCompany($this->company, fn () => Customer::latest('id')->first());
+    expect($customer->first_name)->toBe('Olena')
+        ->and($customer->last_name)->toBe('Shevchenko')
+        ->and($customer->avatarIcon())->toBe('woman')
+        ->and(NameAvatar::suggest('Oleksandr Mykhailychenko'))->toBe('man');
+});
+
+test('my jobs shows tab counts, the problem and the appliance picture', function () {
+    $microwave = Appliance::factory()->for($this->property)->create(['type' => 'microwave']);
+    inCompany($this->company, function () use ($microwave) {
+        $this->job->appliances()->attach($microwave->id);
+        $this->job->forceFill(['description' => 'Not heating'])->save();
+        $this->job->visits()->first()->forceFill([
+            'scheduled_start' => now()->setTime(12, 0), 'scheduled_end' => now()->setTime(14, 0),
+        ])->save();
+    });
+
+    $this->actingAs($this->tech)->get(route('jobs.mine'))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('counts.today', 1)
+            ->where('counts.upcoming', 0)
+            ->where('visits.0.job.picture', 'microwave')
+            ->where('visits.0.job.problem', 'Not heating')
+            ->where('visits.0.job.appliance_types', ['Microwave']));
+});

@@ -5,7 +5,6 @@ import {
     BookOpen,
     Building,
     Building2,
-    ListChecks,
     MessageSquare,
     CalendarDays,
     ClipboardList,
@@ -39,7 +38,6 @@ import { index as brands } from '@/routes/brands';
 import { index as cash } from '@/routes/cash';
 import { index as reports } from '@/routes/reports';
 import { index as customers } from '@/routes/customers';
-import { edit as checklists } from '@/routes/company/checklists';
 import { edit as googleProfiles } from '@/routes/company/google-profiles';
 import { edit as messaging } from '@/routes/company/messaging';
 import { edit as services } from '@/routes/company/services';
@@ -132,11 +130,6 @@ export function AppSidebar() {
         can.viewBrands && { title: 'nav.brands', href: brands(), icon: Tags },
         can.manageTeam && { title: 'nav.team', href: team(), icon: Users },
         can.viewTaxes && { title: 'nav.taxes', href: taxes(), icon: Percent },
-        can.manageChecklists && {
-            title: 'nav.checklists',
-            href: checklists(),
-            icon: ListChecks,
-        },
         can.manageChecklists && {
             title: 'nav.services',
             href: services(),

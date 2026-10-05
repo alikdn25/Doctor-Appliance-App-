@@ -106,3 +106,48 @@ test('the menu shows the everyday sections and opens money and settings on tap',
     ).toBeVisible();
     await page.screenshot({ path: info.outputPath('menu.png') });
 });
+
+test('my jobs follows the mockup: tab counts, card with Navigate, Call and View job, Book customer', async ({
+    page,
+    browser,
+}, info) => {
+    const context = await browser.newContext({
+        storageState: 'test-results/auth-tech.json',
+        viewport: page.viewportSize()!,
+    });
+    const tech = await context.newPage();
+    await tech.goto('http://127.0.0.1:8000/my-jobs');
+    const today = tech.getByRole('link', { name: /^Today \d+$/ });
+    await expect(today).toBeVisible();
+    const card = tech.locator('li', { hasText: 'Jane Browser' }).first();
+    await expect(card.getByRole('link', { name: /Navigate/ })).toBeVisible();
+    await expect(card.getByRole('link', { name: /Call/ })).toBeVisible();
+    await expect(card.getByRole('link', { name: /View job/ })).toBeVisible();
+    await expect(
+        tech.getByRole('button', { name: /Get signature|Checklist/ }),
+    ).toHaveCount(0);
+    await tech.screenshot({
+        path: info.outputPath('my-jobs.png'),
+        fullPage: true,
+    });
+    await card.getByRole('link', { name: /View job/ }).click();
+    await expect(tech.getByText('Checklist', { exact: true })).toHaveCount(0);
+    await context.close();
+});
+
+test('the address of a booked job can be corrected on Edit', async ({
+    page,
+}) => {
+    await page.goto(`/jobs/${fixture.job_id}/edit`);
+    const street = page.locator('#ae-line1');
+    await expect(street).toHaveValue('123 Browser Street');
+    await page.locator('#ae-unit').fill('5');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/jobs/${fixture.job_id}$`));
+    await expect(page.getByText(/123 Browser Street/).first()).toBeVisible();
+    await page.goto(`/jobs/${fixture.job_id}/edit`);
+    await expect(page.locator('#ae-unit')).toHaveValue('5');
+    await page.locator('#ae-unit').fill('');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/jobs/${fixture.job_id}$`));
+});

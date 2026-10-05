@@ -5,6 +5,7 @@ return [
     'tabs' => 'Main sections',
     'tab_today' => 'Today',
     'tab_calendar' => 'Calendar',
+    'tab_map' => 'Map',
     'tab_messages' => 'Messages',
     'tab_more' => 'More',
     'book_customer' => 'Book customer',

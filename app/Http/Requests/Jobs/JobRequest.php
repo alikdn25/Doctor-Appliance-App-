@@ -23,6 +23,9 @@ use Illuminate\Validation\Validator;
  */
 class JobRequest extends FormRequest
 {
+    /** Address parts the job form may change on the job's place. */
+    private const ADDRESS_FIELDS = ['line1', 'unit', 'city', 'region', 'postal_code', 'country', 'google_place_id', 'latitude', 'longitude'];
+
     private ?Customer $resolvedCustomer = null;
 
     public function authorize(): bool
@@ -108,6 +111,15 @@ class JobRequest extends FormRequest
                     'customer_edit.company_name' => ['nullable', 'string', 'max:255'],
                     'customer_edit.phone' => ['required', 'string', 'max:32'],
                 ] : []),
+                ...(is_array($this->input('address_edit')) ? [
+                    'address_edit' => ['array'],
+                    ...collect(PropertyRequest::addressRules('address_edit.', 'nullable'))
+                        ->only(array_map(fn (string $f) => "address_edit.{$f}", self::ADDRESS_FIELDS))
+                        ->all(),
+                    'address_edit.line1' => ['nullable', 'required_with:address_edit.city', 'string', 'max:255'],
+                    'address_edit.city' => ['nullable', 'required_with:address_edit.line1', 'string', 'max:100'],
+                    'address_edit.country' => ['required', 'string', 'size:2'],
+                ] : []),
             ];
         }
 
@@ -180,6 +192,7 @@ class JobRequest extends FormRequest
             'bring_items.*.description' => __('jobs.bring.item'),
             'customer_edit.first_name' => __('customers.fields.first_name'),
             'customer_edit.phone' => __('customers.fields.phone'),
+            ...PropertyRequest::addressAttributes('address_edit.'),
             'new_customer.first_name' => __('customers.fields.first_name'),
             'new_customer.phone' => __('customers.fields.phone'),
             'new_customer.email' => __('customers.fields.email'),
@@ -257,6 +270,13 @@ class JobRequest extends FormRequest
 
         $data = $this->validated('new_customer');
 
+        // Quick booking has one name field: "Anna Kim" is stored as first name Anna, last name Kim.
+        if ($this->boolean('quick_booking') && blank($data['last_name'] ?? null) && filled($data['first_name'] ?? null)) {
+            $parts = preg_split('/\s+/u', trim($data['first_name']), 2);
+            $data['first_name'] = $parts[0];
+            $data['last_name'] = $parts[1] ?? null;
+        }
+
         return [
             'customer' => [
                 'type' => filled($data['company_name'] ?? null) && blank($data['first_name'] ?? null) && blank($data['last_name'] ?? null)
@@ -300,6 +320,28 @@ class JobRequest extends FormRequest
             'company_name' => filled($data['company_name'] ?? null) ? trim($data['company_name']) : null,
             'phone' => (string) $data['phone'],
         ];
+    }
+
+    /**
+     * New address of the job's place; null when the form did not send one.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function addressEdit(): ?array
+    {
+        if ($this->creating() || ! is_array($this->validated('address_edit'))) {
+            return null;
+        }
+
+        $data = $this->validated('address_edit');
+        $address = [];
+        foreach (self::ADDRESS_FIELDS as $field) {
+            $value = $data[$field] ?? null;
+            $address[$field] = in_array($field, ['line1', 'city'], true) ? trim((string) $value) : (filled($value) ? $value : null);
+        }
+        $address['country'] = strtoupper((string) $address['country']);
+
+        return $address;
     }
 
     /**
