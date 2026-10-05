@@ -6,7 +6,11 @@ import { avatar } from '@/routes/customers';
 export type AvatarStyle = 'auto' | 'neutral' | 'man' | 'woman';
 export type AvatarIcon = Exclude<AvatarStyle, 'auto'> | 'business';
 
-const sizes = { md: 'size-11 text-base', lg: 'size-[60px] text-xl' } as const;
+const sizes = {
+    md: 'size-11 text-base',
+    lg: 'size-[60px] text-xl',
+    xl: 'size-20 text-2xl',
+} as const;
 
 /** Up to two initials of a name ("Anna Kim" → "AK"). */
 export function initials(name: string): string {

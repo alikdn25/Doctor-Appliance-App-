@@ -1,9 +1,19 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Banknote, Download, PackageCheck, Plus } from 'lucide-react';
+import {
+    Banknote,
+    Download,
+    PackageCheck,
+    Plus,
+    Search,
+    SlidersHorizontal,
+} from 'lucide-react';
+import { useState } from 'react';
 import { formatMoney } from '@/components/billing/money';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { StrictBadge } from '@/components/jobs/job-outcome';
-import { JobCard } from '@/components/jobs/job-card';
+import { JobCard, StatusCircles } from '@/components/jobs/job-card';
+import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
+import { Input } from '@/components/ui/input';
 import type { Visit } from '@/components/jobs/types';
 import { Button } from '@/components/ui/button';
 import { useInstallPrompt } from '@/hooks/use-install-prompt';
@@ -58,30 +68,94 @@ export default function MyJobs({
     const install = useInstallPrompt();
     const { auth } = usePage().props;
     const canBook = auth.can?.createJobs ?? false;
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [legendOpen, setLegendOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const [status, setStatus] = useState('');
+
+    // Count circles per status of this tab's jobs; tapping one shows only that status.
+    const statusCounts: Record<string, number> = {};
+    const statusLabels: Record<string, string> = {};
+    visits.forEach((visit) => {
+        statusCounts[visit.job.status] =
+            (statusCounts[visit.job.status] ?? 0) + 1;
+        statusLabels[visit.job.status] = visit.job.status_label;
+    });
+    const term = search.trim().toLowerCase();
+    const shown = visits.filter(
+        (visit) =>
+            (status === '' || visit.job.status === status) &&
+            (term === '' ||
+                [
+                    `#${visit.job.number}`,
+                    visit.job.customer,
+                    visit.job.address,
+                    visit.job.phone,
+                    ...visit.job.appliance_types,
+                ]
+                    .filter(Boolean)
+                    .some((value) => value!.toLowerCase().includes(term))),
+    );
 
     return (
         <>
             <Head title={t('jobs.my_jobs')} />
 
-            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6">
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">
-                            {t('jobs.my_jobs')}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {time.day(new Date().toISOString())}
-                        </p>
-                    </div>
-                    {install && (
-                        <Button
-                            variant="outline"
-                            onClick={() => void install()}
+            <ScreenHeader
+                title={t('jobs.my_jobs')}
+                subtitle={t('jobs.today_subtitle', {
+                    date: time.fullDay(new Date().toISOString()),
+                })}
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            className={headerButtonClass}
+                            aria-label={t('common.search')}
+                            aria-expanded={searchOpen}
+                            onClick={() => setSearchOpen(!searchOpen)}
                         >
-                            <Download /> {t('jobs.install.button')}
-                        </Button>
-                    )}
-                </div>
+                            <Search className="size-6" />
+                        </button>
+                        <button
+                            type="button"
+                            className={headerButtonClass}
+                            aria-label={t('jobs.filters')}
+                            aria-expanded={legendOpen}
+                            onClick={() => setLegendOpen(!legendOpen)}
+                        >
+                            <SlidersHorizontal className="size-6" />
+                        </button>
+                    </>
+                }
+            />
+
+            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6">
+                {install && (
+                    <Button variant="outline" onClick={() => void install()}>
+                        <Download /> {t('jobs.install.button')}
+                    </Button>
+                )}
+
+                <StatusCircles
+                    counts={statusCounts}
+                    labels={statusLabels}
+                    selected={status}
+                    onSelect={setStatus}
+                    open={legendOpen}
+                    onOpenChange={setLegendOpen}
+                />
+
+                {searchOpen && (
+                    <Input
+                        type="search"
+                        autoFocus
+                        value={search}
+                        placeholder={t('jobs.search')}
+                        aria-label={t('common.search')}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                )}
 
                 {Object.entries(cashOnHand)
                     .filter(([, amount]) => amount !== 0)
@@ -129,17 +203,17 @@ export default function MyJobs({
                 </nav>
 
                 <h2 className="pt-1 text-lg font-bold">
-                    {t(`jobs.tabs.${tab}`)} ({visits.length})
+                    {t(`jobs.tabs.${tab}`)} ({shown.length})
                 </h2>
 
-                {visits.length === 0 && (
+                {shown.length === 0 && (
                     <p className="da-card p-10 text-center text-sm text-muted-foreground">
                         {t(`jobs.mine_empty.${tab}`)}
                     </p>
                 )}
 
                 <ul className="space-y-3">
-                    {visits.map((visit) => (
+                    {shown.map((visit) => (
                         <JobCard
                             key={visit.id}
                             job={visit.job}

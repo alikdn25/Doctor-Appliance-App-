@@ -1,6 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { Ellipsis, House, MapPin, MessageSquare } from 'lucide-react';
+import { CalendarCheck, Ellipsis, MapPin, MessageSquare } from 'lucide-react';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -16,7 +16,7 @@ const activeClass =
     'text-[#0A6CF5] bg-[linear-gradient(90deg,#F2F7FF,#D2E2F8)] shadow-[inset_0_1px_0_#fff,0_4px_10px_rgba(10,108,245,.22)]';
 
 /**
- * Bottom tabs on phones: Today · Map · Messages · More (approved My Jobs mockup).
+ * Bottom tabs on phones: My Jobs · Map · Messages · More (approved My Jobs mockup).
  * Tabs the member may not open are left out; More opens the full menu.
  */
 export function MobileTabBar() {
@@ -32,7 +32,7 @@ export function MobileTabBar() {
         can.viewMyJobs && {
             key: 'today',
             href: myJobs().url,
-            icon: House,
+            icon: CalendarCheck,
         },
         can.viewCalendar && {
             key: 'map',

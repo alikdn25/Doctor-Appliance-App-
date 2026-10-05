@@ -1,3 +1,15 @@
+# October 5 (fifth round) — screens exactly as the mockups
+
+- Header as on the mockups: deep navy with square blue buttons. Mockup screens draw their own header (ScreenHeader):
+  My Jobs (menu, "My Jobs", "Today, <date>", search, filters), Jobs (same), Finish Visit (back, "Finish Visit",
+  "#number", ⋯ with "Open the job"). Other screens keep Menu + Book customer. The backlog bar is hidden on mockup screens.
+- Phone tabs: My Jobs · Map · Messages · More.
+- My Jobs: coloured count circles with the arrow that opens their legend (tap filters); search filters the cards.
+- Finish Visit: 80 px face, Call/SMS beside the name, "#unit • Buzzer: code", appliance with View details,
+  "Work completed / Notes (optional)" box with a 500-character counter, Photos with "+ Add photo" and crosses,
+  Job result with the check on Completed and arrows on the others, Finish Visit button with the white check.
+- DESIGN.md: the header colour follows the mockups (navy), replacing the earlier blue-to-black gradient.
+
 # October 5 (fourth round) — Finish visit screen
 
 - Finish visit is now its own screen (/visits/{visit}/finish, approved mockup) instead of a dialog: back button,

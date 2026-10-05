@@ -2,7 +2,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Plus, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
-import { STATUS_CIRCLES } from '@/components/jobs/job-card';
+import { StatusCircles } from '@/components/jobs/job-card';
+import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { JobList } from '@/components/jobs/job-list';
 import type { Assignable, JobRow } from '@/components/jobs/types';
 import { PaginationLinks } from '@/components/pagination-links';
@@ -12,7 +13,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
 import { create, index, trash } from '@/routes/jobs';
 import type { Option } from '@/types';
 
@@ -57,6 +57,7 @@ export default function JobsIndex({
     const t = useTrans();
     const [search, setSearch] = useState(filters.search);
     const [searchOpen, setSearchOpen] = useState(filters.search !== '');
+    const [legendOpen, setLegendOpen] = useState(false);
     // Filters other than search and status stay folded away until asked for.
     const [filtersOpen, setFiltersOpen] = useState(
         Object.entries(filters).some(
@@ -87,20 +88,14 @@ export default function JobsIndex({
         <>
             <Head title={t('jobs.title')} />
 
-            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6">
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">
-                            {t('jobs.title')}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {t('jobs.count', { count: jobs.total })}
-                        </p>
-                    </div>
-                    <div className="flex gap-2">
+            <ScreenHeader
+                title={t('jobs.title')}
+                subtitle={t('jobs.count', { count: jobs.total })}
+                actions={
+                    <>
                         <button
                             type="button"
-                            className="da-soft da-press flex size-12 items-center justify-center rounded-2xl"
+                            className={headerButtonClass}
                             aria-label={t('common.search')}
                             aria-expanded={searchOpen}
                             onClick={() => setSearchOpen(!searchOpen)}
@@ -109,50 +104,28 @@ export default function JobsIndex({
                         </button>
                         <button
                             type="button"
-                            className="da-soft da-press flex size-12 items-center justify-center rounded-2xl"
+                            className={headerButtonClass}
                             aria-label={t('jobs.filters')}
                             aria-expanded={filtersOpen}
                             onClick={() => setFiltersOpen(!filtersOpen)}
                         >
                             <SlidersHorizontal className="size-6" />
                         </button>
-                    </div>
-                </div>
+                    </>
+                }
+            />
 
-                {/* Count circles per status; tap to show only that status. */}
-                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 py-1">
-                    {statuses
-                        .filter((o) => (statusCounts[o.value] ?? 0) > 0)
-                        .map((o) => (
-                            <button
-                                key={o.value}
-                                type="button"
-                                aria-pressed={filters.status === o.value}
-                                aria-label={`${o.label}: ${statusCounts[o.value]}`}
-                                title={o.label}
-                                onClick={() =>
-                                    apply({
-                                        status:
-                                            filters.status === o.value
-                                                ? ''
-                                                : o.value,
-                                    })
-                                }
-                                className={cn(
-                                    'da-press flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white shadow-[inset_0_2px_2px_rgba(255,255,255,.45),inset_0_-4px_8px_rgba(0,0,0,.25),0_6px_12px_-4px_rgba(0,0,0,.4)] [text-shadow:0_1px_2px_rgba(0,0,0,.35)]',
-                                    filters.status === o.value &&
-                                        'ring-3 ring-[#0A6CF5] ring-offset-2',
-                                )}
-                                style={{
-                                    background:
-                                        STATUS_CIRCLES[o.value] ??
-                                        STATUS_CIRCLES.cancelled,
-                                }}
-                            >
-                                {statusCounts[o.value]}
-                            </button>
-                        ))}
-                </div>
+            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6">
+                <StatusCircles
+                    counts={statusCounts}
+                    labels={Object.fromEntries(
+                        statuses.map((o) => [o.value, o.label]),
+                    )}
+                    selected={filters.status}
+                    onSelect={(status) => apply({ status })}
+                    open={legendOpen}
+                    onOpenChange={setLegendOpen}
+                />
 
                 {searchOpen && (
                     <form onSubmit={submit} className="flex gap-2">

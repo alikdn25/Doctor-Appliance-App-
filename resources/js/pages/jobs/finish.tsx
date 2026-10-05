@@ -1,12 +1,12 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import {
-    ArrowLeft,
+    Check,
     ChevronRight,
-    CircleCheck,
-    FilePenLine,
+    Ellipsis,
     MapPin,
     MessageSquare,
     Phone,
+    Wrench,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { applianceImageUrl } from '@/components/appliance-image';
@@ -23,8 +23,15 @@ import type {
 import { PhotoSection } from '@/components/jobs/photo-section';
 import type { JobPhotoData } from '@/components/jobs/photo-section';
 import type { ApplianceItem } from '@/components/jobs/types';
+import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,7 +46,7 @@ import type { Option } from '@/types';
 type Result = 'completed' | 'parts' | 'not_completed';
 type NoRepair = 'customer_declined' | 'unable_to_repair' | 'no_charge';
 
-const NOTES_MAX = 5000;
+const NOTES_MAX = 500;
 
 /**
  * Finish visit (approved mockup): customer, appliance, one free-text "Work completed / notes" box, photos and
@@ -144,80 +151,91 @@ export default function FinishVisit({
 
     const extras = [
         job.unit && t('jobs.finish_screen.unit', { unit: job.unit }),
-        job.gate_code && t('jobs.gate_code', { code: job.gate_code }),
+        job.gate_code &&
+            t('jobs.finish_screen.buzzer', { code: job.gate_code }),
     ].filter(Boolean);
 
     return (
         <>
-            <Head title={t('jobs.finish_short')} />
+            <Head title={t('jobs.finish_screen.title')} />
+
+            <ScreenHeader
+                title={t('jobs.finish_screen.title')}
+                subtitle={`#${job.number}`}
+                back={show(job.id)}
+                actions={
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                type="button"
+                                className={headerButtonClass}
+                                aria-label={t('jobs.finish_screen.more')}
+                            >
+                                <Ellipsis className="size-6" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                                <Link href={show(job.id)}>
+                                    {t('jobs.finish_screen.open_job')}
+                                </Link>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                }
+            />
 
             <form
                 onSubmit={submit}
                 className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6"
             >
-                <div className="flex items-center gap-3">
-                    <Link
-                        href={show(job.id)}
-                        aria-label={t('common.back')}
-                        className="da-soft da-press flex size-12 shrink-0 items-center justify-center rounded-2xl"
-                    >
-                        <ArrowLeft className="size-6" />
-                    </Link>
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">
-                            {t('jobs.finish_short')}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            #{job.number}
-                        </p>
-                    </div>
-                </div>
-
                 {/* Customer */}
                 <section className="da-card flex items-start gap-3 p-3">
                     <CustomerAvatar
                         icon={job.customer.avatar_icon}
                         name={job.customer.display_name}
-                        size="lg"
+                        size="xl"
                     />
-                    <div className="min-w-0 flex-1 space-y-0.5 text-sm">
-                        <div className="text-base font-bold">
-                            {job.customer.display_name}
+                    <div className="min-w-0 flex-1 space-y-1 text-[15px]">
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="pt-1 text-lg font-bold">
+                                {job.customer.display_name}
+                            </div>
+                            {job.customer.phone && (
+                                <div className="flex shrink-0 gap-2">
+                                    <a
+                                        href={telUrl(job.customer.phone)}
+                                        aria-label={t('jobs.call')}
+                                        className="da-soft da-press flex size-11 items-center justify-center rounded-[14px]"
+                                    >
+                                        <Phone className="size-5 fill-[#0A6CF5] text-[#0A6CF5]" />
+                                    </a>
+                                    <a
+                                        href={`sms:${job.customer.phone.replace(/[^\d+]/g, '')}`}
+                                        aria-label={t('jobs.text')}
+                                        className="da-soft da-press flex size-11 items-center justify-center rounded-[14px]"
+                                    >
+                                        <MessageSquare className="size-5 fill-[#0A6CF5] text-[#0A6CF5]" />
+                                    </a>
+                                </div>
+                            )}
                         </div>
                         {job.customer.phone && (
                             <div className="flex items-center gap-1.5">
-                                <Phone className="size-3.5 shrink-0 text-muted-foreground" />
+                                <Phone className="size-4 shrink-0 text-[#334155]" />
                                 {phoneText(job.customer.phone)}
                             </div>
                         )}
                         <div className="flex items-start gap-1.5">
-                            <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                            <MapPin className="mt-0.5 size-4 shrink-0 text-[#334155]" />
                             {job.address || t('jobs.quick.address_pending')}
                         </div>
                         {extras.length > 0 && (
-                            <div className="pl-5 text-muted-foreground">
+                            <div className="pl-[22px] text-muted-foreground">
                                 {extras.join(' • ')}
                             </div>
                         )}
                     </div>
-                    {job.customer.phone && (
-                        <div className="flex gap-2">
-                            <a
-                                href={telUrl(job.customer.phone)}
-                                aria-label={t('jobs.call')}
-                                className="da-soft da-press flex size-11 items-center justify-center rounded-[14px]"
-                            >
-                                <Phone className="size-5" />
-                            </a>
-                            <a
-                                href={`sms:${job.customer.phone.replace(/[^\d+]/g, '')}`}
-                                aria-label={t('jobs.text')}
-                                className="da-soft da-press flex size-11 items-center justify-center rounded-[14px]"
-                            >
-                                <MessageSquare className="size-5" />
-                            </a>
-                        </div>
-                    )}
                 </section>
 
                 {/* Appliances */}
@@ -231,11 +249,13 @@ export default function FinishVisit({
                             <img
                                 src={applianceImageUrl(a.type)}
                                 alt=""
-                                className="h-16 w-16 shrink-0 object-contain mix-blend-multiply"
+                                className="h-20 w-20 shrink-0 object-contain mix-blend-multiply"
                             />
                             <div className="min-w-0 flex-1">
-                                <div className="font-bold">{a.type_label}</div>
-                                <div className="truncate text-sm">
+                                <div className="text-lg font-bold">
+                                    {a.type_label}
+                                </div>
+                                <div className="truncate text-[15px]">
                                     {[a.manufacturer, a.model_number]
                                         .filter(Boolean)
                                         .join(' ')}
@@ -261,8 +281,11 @@ export default function FinishVisit({
                         htmlFor="finish-work"
                         className="flex items-center gap-2 text-base font-bold"
                     >
-                        <FilePenLine className="size-5" />
+                        <Wrench className="size-5" />
                         {t('jobs.finish_screen.work')}
+                        <span className="text-sm font-normal text-muted-foreground">
+                            {t('jobs.finish_screen.optional')}
+                        </span>
                     </label>
                     <Textarea
                         id="finish-work"
@@ -288,6 +311,7 @@ export default function FinishVisit({
                         photos={job.photos}
                         kinds={photoKinds}
                         canAdd
+                        compact
                     />
                 </section>
 
@@ -300,7 +324,9 @@ export default function FinishVisit({
                         id="finish-result"
                         className="flex items-center gap-2 text-base font-bold"
                     >
-                        <CircleCheck className="size-5" />
+                        <span className="flex size-6 items-center justify-center rounded-full bg-[#0F1B2D] text-white">
+                            <Check className="size-4" strokeWidth={3} />
+                        </span>
                         {t('jobs.finish_screen.result')}
                     </h2>
                     <div role="radiogroup" className="space-y-2">
@@ -342,6 +368,24 @@ export default function FinishVisit({
                                             {r.hint}
                                         </span>
                                     </span>
+                                    {r.key === 'completed' ? (
+                                        on && (
+                                            <span className="da-primary flex size-7 shrink-0 items-center justify-center rounded-full">
+                                                <Check
+                                                    className="size-4"
+                                                    strokeWidth={3}
+                                                />
+                                            </span>
+                                        )
+                                    ) : (
+                                        <ChevronRight
+                                            className={cn(
+                                                'size-5 shrink-0 text-[#5B6779] transition-transform',
+                                                on && 'rotate-90',
+                                            )}
+                                            aria-hidden="true"
+                                        />
+                                    )}
                                 </button>
                             );
                         })}
@@ -502,8 +546,10 @@ export default function FinishVisit({
                         (data.result === 'not_completed' && data.reason === '')
                     }
                 >
-                    <CircleCheck className="size-6" />
-                    {t('jobs.finish_short')}
+                    <span className="flex size-8 items-center justify-center rounded-full bg-white text-[#0567F5]">
+                        <Check className="size-5" strokeWidth={3} />
+                    </span>
+                    {t('jobs.finish_screen.title')}
                 </Button>
             </form>
         </>

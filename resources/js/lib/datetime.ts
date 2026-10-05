@@ -21,6 +21,12 @@ export function useCompanyTime() {
             day: 'numeric',
         });
         const timeFormat = make({ hour: 'numeric', minute: '2-digit' });
+        const fullDayFormat = make({
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
         const dateTimeFormat = make({
             month: 'short',
             day: 'numeric',
@@ -43,6 +49,8 @@ export function useCompanyTime() {
 
         return {
             day: (iso: string) => dayFormat.format(new Date(iso)),
+            /** "Thu, Oct 2, 2026" */
+            fullDay: (iso: string) => fullDayFormat.format(new Date(iso)),
             time: (iso: string) => timeFormat.format(new Date(iso)),
             date: (iso: string) => dateFormat.format(new Date(iso)),
             dateTime: (iso: string) => dateTimeFormat.format(new Date(iso)),

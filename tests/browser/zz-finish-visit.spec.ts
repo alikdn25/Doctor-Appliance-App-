@@ -22,7 +22,7 @@ test('the technician finishes a visit on the Finish visit screen with free-text 
     await expect(tech).toHaveURL(/\/visits\/\d+\/finish$/);
     await expect(tech.getByText('Jane Browser').first()).toBeVisible();
     await tech
-        .getByLabel('Work completed / notes')
+        .getByLabel(/Work completed \/ Notes/)
         .fill('Replaced drain pump. Tested, no leaks.');
     await expect(
         tech.getByRole('radio', { name: /Completed/ }).first(),
@@ -32,7 +32,7 @@ test('the technician finishes a visit on the Finish visit screen with free-text 
         fullPage: true,
     });
     await tech
-        .getByRole('button', { name: 'Finish visit', exact: true })
+        .getByRole('button', { name: 'Finish Visit', exact: true })
         .click();
     await expect(tech).toHaveURL(new RegExp(`/jobs/${fixture.job_id}`));
     await expect(

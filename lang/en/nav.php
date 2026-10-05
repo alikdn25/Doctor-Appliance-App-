@@ -3,7 +3,7 @@
 return [
     'menu' => 'Menu',
     'tabs' => 'Main sections',
-    'tab_today' => 'Today',
+    'tab_today' => 'My Jobs',
     'tab_calendar' => 'Calendar',
     'tab_map' => 'Map',
     'tab_messages' => 'Messages',

@@ -74,7 +74,7 @@ export function JobCard({
         >
             <Link
                 href={href}
-                className="flex items-start gap-2.5 p-3 pb-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                className="flex items-start gap-2 p-3 pb-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             >
                 <CustomerAvatar
                     icon={job.customer_icon}
@@ -82,7 +82,7 @@ export function JobCard({
                     size="lg"
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-[13px]">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                         <span className="text-[17px] font-bold">
                             #{job.number}
                         </span>
@@ -92,7 +92,7 @@ export function JobCard({
                         />
                     </div>
                     {time && (
-                        <div className="flex items-start gap-1.5 text-[15px] font-bold tabular-nums">
+                        <div className="flex items-start gap-1.5 text-sm font-bold tabular-nums">
                             <Clock className="mt-0.5 size-4 shrink-0 text-[#0A6CF5]" />
                             {time}
                         </div>
@@ -119,7 +119,7 @@ export function JobCard({
                         src={applianceImageUrl(job.picture)}
                         alt=""
                         loading="lazy"
-                        className="h-20 w-[76px] shrink-0 self-center object-contain mix-blend-multiply"
+                        className="h-[72px] w-16 shrink-0 self-center object-contain mix-blend-multiply"
                     />
                 )}
                 <ChevronRight
@@ -174,3 +174,100 @@ export const STATUS_CIRCLES: Record<string, string> = {
     invoiced: 'linear-gradient(135deg,#5EEAD4,#14B8A6 60%,#0F766E)',
     paid: 'linear-gradient(135deg,#6EE7B7,#10B981 60%,#047857)',
 };
+
+/**
+ * The row of coloured count circles above the list (mockup), with the arrow that opens their legend.
+ * Tapping a circle shows only that status; tapping it again shows all.
+ */
+export function StatusCircles({
+    counts,
+    labels,
+    selected,
+    onSelect,
+    open,
+    onOpenChange,
+}: {
+    counts: Record<string, number>;
+    labels: Record<string, string>;
+    selected: string;
+    onSelect: (status: string) => void;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}) {
+    const t = useTrans();
+    const statuses = Object.keys(STATUS_CIRCLES).filter(
+        (status) => (counts[status] ?? 0) > 0,
+    );
+    const pick = (status: string) =>
+        onSelect(selected === status ? '' : status);
+
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center gap-2">
+                <div className="-mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 py-1">
+                    {statuses.map((status) => (
+                        <button
+                            key={status}
+                            type="button"
+                            aria-pressed={selected === status}
+                            aria-label={`${labels[status] ?? status}: ${counts[status]}`}
+                            title={labels[status]}
+                            onClick={() => pick(status)}
+                            className={cn(
+                                'da-press flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white shadow-[inset_0_2px_2px_rgba(255,255,255,.45),inset_0_-4px_8px_rgba(0,0,0,.25),0_6px_12px_-4px_rgba(0,0,0,.4)] [text-shadow:0_1px_2px_rgba(0,0,0,.35)]',
+                                selected === status &&
+                                    'ring-3 ring-[#0A6CF5] ring-offset-2',
+                            )}
+                            style={{ background: STATUS_CIRCLES[status] }}
+                        >
+                            {counts[status]}
+                        </button>
+                    ))}
+                </div>
+                <button
+                    type="button"
+                    aria-label={t('jobs.status_legend')}
+                    aria-expanded={open}
+                    onClick={() => onOpenChange(!open)}
+                    className="da-raised da-press flex size-12 shrink-0 items-center justify-center rounded-2xl"
+                >
+                    <ChevronRight
+                        className={cn(
+                            'size-6 rotate-90 transition-transform',
+                            open && '-rotate-90',
+                        )}
+                        aria-hidden="true"
+                    />
+                </button>
+            </div>
+            {open && (
+                <ul className="da-card grid grid-cols-2 gap-1 p-2">
+                    {statuses.map((status) => (
+                        <li key={status}>
+                            <button
+                                type="button"
+                                aria-pressed={selected === status}
+                                onClick={() => pick(status)}
+                                className={cn(
+                                    'flex min-h-11 w-full items-center gap-2 rounded-xl px-2 text-left text-sm font-medium',
+                                    selected === status && 'bg-[#DCEAFE]',
+                                )}
+                            >
+                                <span
+                                    className="size-5 shrink-0 rounded-full"
+                                    style={{
+                                        background: STATUS_CIRCLES[status],
+                                    }}
+                                />
+                                <span className="flex-1">{labels[status]}</span>
+                                <span className="tabular-nums">
+                                    {counts[status]}
+                                </span>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}

@@ -36,7 +36,7 @@ return [
         'book_day' => 'Book on this day',
     ],
     'title' => 'Jobs',
-    'my_jobs' => 'My jobs',
+    'my_jobs' => 'My Jobs',
     'backlog' => [
         'title' => 'Not completed jobs',
         'hint' => 'All unfinished work, regardless of visit date. Overdue and unscheduled jobs appear first; oldest jobs first within each group.',
@@ -97,8 +97,15 @@ return [
     'hours_minutes' => ':hours h :minutes min',
     'navigate' => 'Navigate',
     'view_job' => 'View job',
+    'status_legend' => 'What the colours mean',
+    'today_subtitle' => 'Today, :date',
     'finish_screen' => [
-        'work' => 'Work completed / notes',
+        'title' => 'Finish Visit',
+        'more' => 'More actions',
+        'open_job' => 'Open the job',
+        'optional' => '(optional)',
+        'buzzer' => 'Buzzer: :code',
+        'work' => 'Work completed / Notes',
         'work_hint' => 'What you found and did, parts used, anything for the next visit.',
         'result' => 'Job result',
         'completed' => 'Completed',
@@ -388,6 +395,7 @@ return [
 
     'photos' => [
         'title' => 'Photos',
+        'add' => 'Add photo',
         'take' => ':kind photo',
         'empty' => 'No photos yet.',
         'delete' => 'Delete photo',
