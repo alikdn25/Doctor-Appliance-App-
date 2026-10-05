@@ -258,7 +258,7 @@ class JobController extends Controller
             : to_route('jobs.show', $job);
     }
 
-    public function show(Request $request, ServiceJob $job): Response
+    public function show(Request $request, ServiceJob $job): Response|RedirectResponse
     {
         Gate::authorize('view', $job);
 
@@ -272,6 +272,11 @@ class JobController extends Controller
         $canUpdate = Gate::allows('update', $job);
         $property = $job->property;
         $myVisit = JobPresenter::myNextVisit($job, $user);
+
+        // Old "finish" links open the Finish visit screen.
+        if ($request->boolean('finish') && $myVisit?->status === VisitStatus::InProgress) {
+            return to_route('visits.finish-screen', $myVisit);
+        }
 
         return Inertia::render('jobs/show', [
             'job' => [
@@ -417,7 +422,6 @@ class JobController extends Controller
             ] : null,
             'openWarranty' => $request->boolean('warranty'),
             // "Finish visit" on My Jobs opens the finish dialog straight away.
-            'openFinish' => $request->boolean('finish'),
             'assignableUsers' => $canUpdate ? $this->assignableUsers() : [],
             'otherAppliances' => Appliance::query()
                 ->where('property_id', $property->id)

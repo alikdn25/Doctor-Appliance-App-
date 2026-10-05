@@ -142,6 +142,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('calendar', CalendarController::class)->name('calendar');
         Route::post('visits/{visit}/on-my-way', [VisitActionController::class, 'onMyWay'])->name('visits.on-my-way');
         Route::post('visits/{visit}/start', [VisitActionController::class, 'start'])->name('visits.start');
+        Route::get('visits/{visit}/finish', [VisitActionController::class, 'showFinish'])->name('visits.finish-screen');
         Route::post('visits/{visit}/finish', [VisitActionController::class, 'finish'])->name('visits.finish');
 
         // Estimates, invoices and payments (created from a job).

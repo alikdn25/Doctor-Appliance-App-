@@ -72,7 +72,12 @@ import { show as showCustomer } from '@/routes/customers';
 import { create as createEstimate } from '@/routes/estimates';
 import { create as createInvoice } from '@/routes/invoices';
 import { destroy, edit, index, techNotes } from '@/routes/jobs';
-import { destroy as destroyVisit, onMyWay, start } from '@/routes/visits';
+import {
+    destroy as destroyVisit,
+    finishScreen,
+    onMyWay,
+    start,
+} from '@/routes/visits';
 import type { Option } from '@/types';
 
 type Job = {
@@ -147,7 +152,6 @@ type Props = {
     warrantyLines: WarrantyLine[];
     warrantyUnits: Option[];
     openWarranty: boolean;
-    openFinish?: boolean;
     costs: JobCosts | null;
     assignableUsers: Assignable[];
     otherAppliances: ApplianceItem[];
@@ -194,7 +198,6 @@ export default function JobShow({
     warrantyLines,
     warrantyUnits,
     openWarranty,
-    openFinish = false,
     costs,
 }: Props) {
     const t = useTrans();
@@ -205,12 +208,6 @@ export default function JobShow({
         (auth.company?.tracks_appliances ?? true) || job.appliances.length > 0;
     const time = useCompanyTime();
     const [statusOpen, setStatusOpen] = useState(false);
-    const [finishOpen, setFinishOpen] = useState(
-        () =>
-            openFinish &&
-            job.visits.find((v) => v.id === myVisitId)?.status ===
-                'in_progress',
-    );
     const [closeOpen, setCloseOpen] = useState(false);
     const [warrantyOpen, setWarrantyOpen] = useState(openWarranty);
     const visitUnderWay = job.visits.some((v) =>
@@ -445,12 +442,14 @@ export default function JobShow({
                             )}
                             {myVisit.status === 'in_progress' && (
                                 <Button
+                                    asChild
                                     size="lg"
                                     className="min-h-14 rounded-2xl text-base"
-                                    onClick={() => setFinishOpen(true)}
                                 >
-                                    <CheckCircle2 />{' '}
-                                    {t('jobs.actions.finish_title')}
+                                    <Link href={finishScreen(myVisit.id)}>
+                                        <CheckCircle2 />{' '}
+                                        {t('jobs.finish_short')}
+                                    </Link>
                                 </Button>
                             )}
                             <InputError message={actionError} />
@@ -1038,16 +1037,6 @@ export default function JobShow({
                 />
             )}
 
-            {myVisit && (
-                <FinishDialog
-                    open={finishOpen}
-                    onOpenChange={setFinishOpen}
-                    visitId={myVisit.id}
-                    jobId={job.id}
-                    reasons={closureReasons}
-                    callback={callback}
-                />
-            )}
             {can.close && (
                 <FinishDialog
                     open={closeOpen}

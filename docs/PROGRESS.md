@@ -1,3 +1,13 @@
+# October 5 (fourth round) — Finish visit screen
+
+- Finish visit is now its own screen (/visits/{visit}/finish, approved mockup) instead of a dialog: back button,
+  "Finish visit #number", customer card (face, name, phone, address, unit/buzzer, Call and SMS), appliance cards
+  (picture, type, brand + model, View details), one free-text box "Work completed / notes" (saved as the job's work
+  notes; no checkboxes, no separate Notes), photos, Job result (Completed / Part needed / Not completed with
+  declined / unable to repair / no charge, reason, diagnosis invoice and callback refund) and one Finish visit button.
+- The job page's Finish visit button opens it; old links with ?finish=1 redirect to it. After finishing, or for a visit
+  that is not under way, the screen returns to the job page. Closing a job without a visit (office) keeps the dialog.
+
 # October 5 (third round) — the Jobs list uses the mockup too
 
 - The owner opened Jobs (the office list), which still had the old rows and a wall of filters. Jobs, the backlog and
