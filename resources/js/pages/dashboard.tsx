@@ -18,18 +18,17 @@ import { index as team } from '@/routes/team';
 import { create as createCustomer } from '@/routes/customers';
 import { create as createJob, mine as myJobs } from '@/routes/jobs';
 import { index as taxes } from '@/routes/taxes';
-import { edit as googleProfiles } from '@/routes/company/google-profiles';
 
 type Props = {
     companyName: string;
     stats: { brands: number; members: number };
-    setup?: { taxes: boolean; reviewProfiles: boolean; reviewsOn: boolean };
+    setup?: { taxes: boolean };
 };
 
 export default function Dashboard({
     companyName,
     stats,
-    setup = { taxes: true, reviewProfiles: true, reviewsOn: false },
+    setup = { taxes: true },
 }: Props) {
     const { auth } = usePage().props;
     const t = useTrans();
@@ -55,12 +54,6 @@ export default function Dashboard({
             action: t('dashboard.configure_taxes'),
             href: auth.can.viewTaxes ? taxes() : null,
         },
-        setup.reviewsOn &&
-            !setup.reviewProfiles && {
-                text: t('dashboard.missing_review_profile'),
-                action: t('dashboard.add_review_profile'),
-                href: auth.can.manageChecklists ? googleProfiles() : null,
-            },
     ].filter((item) => item !== false);
 
     const actions = [

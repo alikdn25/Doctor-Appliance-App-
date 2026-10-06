@@ -180,7 +180,7 @@ return. Each job counts once; access follows company, brand and technician assig
   own terminal (with transaction reference), other (with note). Available in every company regardless of provider.
 - Marking an invoice paid manually is a normal flow, not an exception.
 - Automatic reminders for unpaid invoices; aging report.
-- **Review request toggle on invoice sending** (see §8).
+- **"Send Google Review request?" after every invoice send** (see §8).
 
 ### 7.7 Customer communication
 
@@ -191,9 +191,9 @@ return. Each job counts once; access follows company, brand and technician assig
   country (one per company for now), so companies never sign up with the provider. The SMS provider is pluggable
   (`SmsProvider` interface), like payment providers; a company keeps the provider its number came from. Keys only in
   `.env`.
-- **From technician's phone** — buttons ("Send SMS", "On my way", "Send by SMS" on documents, "Send review request")
+- **From technician's phone** — buttons ("Send SMS", "On my way", "Send by SMS" on documents, the review request after an invoice)
   open the phone's messages app (`sms:` link, iOS and Android formats) with the number and the text ready; the job
-  history records "SMS opened from technician's phone". No automatic texts: day-before reminders and review requests
+  history records "SMS opened from technician's phone". No automatic texts: day-before reminders
   go by email.
 - **Off** — everything that would be a text goes by email.
 
@@ -280,16 +280,15 @@ from the company number (provider voice).
 
 ## 8. Google review requests
 
-- A company can have **several Google profiles** (e.g. per brand or city). Each profile: label, direct review link,
-  optional brand. Each brand picks its **default profile**.
-- Every job has **"Ask for a review"**; its default comes from the company setting.
-- The request goes out **after the job is paid in full**, after a configurable delay (default 2 hours), by SMS in
-  Automatic mode, otherwise by email. In *From technician's phone* mode the job also has a **"Send review request"**
-  button that opens the text on the technician's phone.
+- A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).
+  Each location: name, direct review link, optional brand. Each brand may pick a **default location** (preselected).
+- The **only** way to send a request: after every invoice send (email or SMS), the app asks **"Send Google Review
+  request?"** with **Yes** and **No**, nothing preselected. No closes it. Yes shows a **Location** dropdown, a
+  **Phone** field (the customer's phone, editable) and **Send**, which sends the chosen location's review link as a
+  **separate SMS** (Automatic mode) or opens it on the technician's phone (*From technician's phone* mode). In *Off*
+  mode it cannot be sent. Nothing is sent automatically, and there are no review buttons or prompts anywhere else.
 - Each company writes its own request text (template with `{customer_first_name}`, `{brand}`, `{review_link}`, …).
-- **At most one request per customer** within a configurable period (default 180 days); later jobs are skipped with
-  the reason shown on the job.
-- Track: scheduled / sent (when, channel, profile) / skipped (why).
+- Track the job's latest request: sent (when, channel, location) / not sent (why, e.g. opted out).
 - **Forbidden by Google's and the FTC's rules, and not supported by the app:** no discounts, gifts or any reward for a
   review; no review gating — never ask "were you happy?" first and send only happy customers to Google. The same
   request goes to every customer.
@@ -318,7 +317,7 @@ Project skeleton, auth, companies (tenants), brands, users & roles, super-admin 
 
 ### Stage 1 — MVP (owner can run the business on it)
 
-Customers, properties, appliances, jobs & statuses, calendar & dispatch, technician PWA view, photos, signatures, estimates, invoices, Square payments, Telnyx SMS (automated messages + inbox), review request toggle, price book, basic reports.
+Customers, properties, appliances, jobs & statuses, calendar & dispatch, technician PWA view, photos, signatures, estimates, invoices, Square payments, Telnyx SMS (automated messages + inbox), review request after invoice send, price book, basic reports.
 
 ### Stage 2
 

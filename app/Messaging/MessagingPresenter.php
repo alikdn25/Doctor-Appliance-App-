@@ -9,7 +9,6 @@ use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\JobVisit;
 use App\Models\Message;
-use App\Models\ReviewRequest;
 use App\Models\ServiceJob;
 use App\Models\User;
 use App\Support\Billing\Money;
@@ -23,10 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class MessagingPresenter
 {
-    public function __construct(
-        private readonly Messenger $messenger,
-        private readonly ReviewRequests $reviews,
-    ) {}
+    public function __construct(private readonly Messenger $messenger) {}
 
     /**
      * @return array<string, mixed>
@@ -37,7 +33,6 @@ class MessagingPresenter
         $customer = $job->customer;
         $phone = $this->messenger->mobile($customer);
         $context = MessageContext::for($customer, $job, $myVisit ?? $job->visits->sortBy('scheduled_start')->last(), $user);
-        $review = ReviewRequest::query()->where('service_job_id', $job->id)->first();
 
         return [
             'mode' => $company->sms_mode->value,
@@ -47,12 +42,6 @@ class MessagingPresenter
             'texts' => [
                 'general' => MessageTemplates::render($company, MessageKind::General, $context),
                 'on_my_way' => MessageTemplates::render($company, MessageKind::OnMyWay, $context),
-                'review_request' => $this->reviews->text($job, $this->reviews->profile($job)),
-            ],
-            'review' => [
-                'ask' => $job->ask_for_review,
-                'status' => $review ? $this->reviewStatus($review) : null,
-                'has_profile' => $this->reviews->profile($job) !== null,
             ],
             'messages' => $this->history(Message::query()->where('service_job_id', $job->id)),
         ];
@@ -138,15 +127,6 @@ class MessagingPresenter
             'amount' => Money::format($invoice ? $document->balance : $document->total, $document->currency, $company->locale),
             'link' => PublicDocument::url($document),
         ]);
-    }
-
-    public function reviewStatus(ReviewRequest $review): string
-    {
-        return match ($review->status) {
-            ReviewRequest::SCHEDULED => __('reviews.statuses.scheduled', ['date' => MessageContext::time($review->send_after)]),
-            ReviewRequest::SENT => __('reviews.statuses.sent', ['date' => MessageContext::date($review->sent_at)]),
-            default => __('reviews.statuses.skipped', ['reason' => $review->skip_reason]),
-        };
     }
 
     /**

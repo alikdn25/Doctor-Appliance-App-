@@ -40,9 +40,6 @@ use Illuminate\Support\Carbon;
  * @property string $quiet_hours_start HH:MM, company time
  * @property string $quiet_hours_end HH:MM, company time
  * @property array<string, string> $message_templates Overrides of the default texts by MessageKind value
- * @property bool $review_requests_default
- * @property int $review_request_delay_hours
- * @property int $review_request_cooldown_days
  * @property PaymentTerms $default_payment_terms
  * @property string $invoice_prefix
  * @property int $invoice_next_number
@@ -124,9 +121,6 @@ class Company extends Model
         'quiet_hours_start',
         'quiet_hours_end',
         'message_templates',
-        'review_requests_default',
-        'review_request_delay_hours',
-        'review_request_cooldown_days',
     ];
 
     protected $attributes = [
@@ -146,9 +140,6 @@ class Company extends Model
         'quiet_hours_start' => '21:00',
         'quiet_hours_end' => '08:00',
         'message_templates' => '{}',
-        'review_requests_default' => true,
-        'review_request_delay_hours' => 2,
-        'review_request_cooldown_days' => 180,
     ];
 
     protected static function booted(): void
@@ -176,9 +167,6 @@ class Company extends Model
             'online_tips' => 'boolean',
             'sms_mode' => SmsMode::class,
             'message_templates' => 'array',
-            'review_requests_default' => 'boolean',
-            'review_request_delay_hours' => 'integer',
-            'review_request_cooldown_days' => 'integer',
             'business_hours' => 'array',
             'invoice_next_number' => 'integer',
             'estimate_next_number' => 'integer',

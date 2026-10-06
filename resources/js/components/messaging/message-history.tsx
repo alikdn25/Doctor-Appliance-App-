@@ -13,7 +13,8 @@ import { usePhone } from '@/lib/phone';
 import { show as showJob } from '@/routes/jobs';
 
 /**
- * Texts and emails to and from the customer, newest first (customer card and job page).
+ * Texts and emails to and from the customer, read like a chat: oldest at the top, newest at the bottom.
+ * Pages send the messages newest first (the latest ones are the ones loaded); they are shown in time order.
  */
 export function MessageHistory({
     messages,
@@ -36,7 +37,7 @@ export function MessageHistory({
 
     return (
         <ul className="space-y-2">
-            {messages.map((m) => {
+            {[...messages].reverse().map((m) => {
                 const Icon =
                     m.channel === 'email'
                         ? Mail

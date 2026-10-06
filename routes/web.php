@@ -10,6 +10,7 @@ use App\Http\Controllers\Billing\CashController;
 use App\Http\Controllers\Billing\DocumentDeliveryController;
 use App\Http\Controllers\Billing\EstimateController;
 use App\Http\Controllers\Billing\InvoiceController;
+use App\Http\Controllers\Billing\InvoiceReviewRequestController;
 use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Billing\PaymentLinkController;
 use App\Http\Controllers\Billing\PriceBookController;
@@ -191,9 +192,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('invoices/{invoice}/send', [DocumentDeliveryController::class, 'sendInvoice'])->middleware('throttle:30,1')->name('invoices.send');
         Route::post('estimates/{estimate}/sms', [DocumentDeliveryController::class, 'smsEstimate'])->middleware('throttle:30,1')->name('estimates.sms');
         Route::post('invoices/{invoice}/sms', [DocumentDeliveryController::class, 'smsInvoice'])->middleware('throttle:30,1')->name('invoices.sms');
+        Route::post('invoices/{invoice}/review-request', InvoiceReviewRequestController::class)->middleware('throttle:30,1')->name('invoices.review-request');
         Route::post('jobs/{job}/sms', [JobMessageController::class, 'sms'])->middleware('throttle:30,1')->name('jobs.sms');
         Route::post('jobs/{job}/messages/opened', [JobMessageController::class, 'opened'])->name('jobs.messages.opened');
-        Route::put('jobs/{job}/ask-for-review', [JobMessageController::class, 'askForReview'])->name('jobs.ask-for-review');
 
         // Connecting the company's own payment provider account (OAuth). The callback URL is registered at the provider.
         Route::get('payment-providers/{provider}/connect', [PaymentProviderController::class, 'connect'])->name('payment-providers.connect');

@@ -11,6 +11,7 @@ use App\Enums\VisitType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Messaging\MessagingPresenter;
+use App\Messaging\ReviewRequests;
 use App\Models\Invoice;
 use App\Models\Service;
 use App\Models\ServiceJob;
@@ -199,6 +200,8 @@ class InvoiceController extends Controller
             'online' => $this->online($invoice, $providers, $links),
             'delivery' => BillingPresenter::delivery($invoice),
             'sms' => $invoice->isVoid() ? null : app(MessagingPresenter::class)->forDocument($invoice),
+            // "Send Google Review request?" asked after every invoice send (SPEC §8).
+            'reviewPrompt' => $invoice->isVoid() ? null : app(ReviewRequests::class)->prompt($invoice),
             // The customer signs when the work is done and the invoice is made, not earlier on the job.
             'signature' => [
                 'job_id' => $invoice->service_job_id,
