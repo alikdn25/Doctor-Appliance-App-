@@ -31,7 +31,7 @@ class DocumentRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->replace(MoneyInput::cleanPaths($this->input(), [
-            'items.*.unit_price', 'items.*.unit_cost', 'items.*.supplier_taxes.*.amount', 'discount_value', 'deposit_value',
+            'items.*.unit_price', 'items.*.unit_cost', 'items.*.supplier_taxes.*.amount', 'items.*.quantity', 'discount_value', 'deposit_value',
         ]));
     }
 

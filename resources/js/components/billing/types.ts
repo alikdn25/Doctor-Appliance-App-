@@ -10,6 +10,9 @@ export type DocumentRow = {
     currency: string;
     total: number;
     balance: number | null;
+    /** An invoice with money owed after its due date. */
+    overdue?: boolean;
+    due_on?: string | null;
     job_id: number;
     customer: string | null;
 };

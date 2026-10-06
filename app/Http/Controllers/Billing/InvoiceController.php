@@ -43,13 +43,19 @@ class InvoiceController extends Controller
 
         return Inertia::render('invoices/start', [
             'search' => $search,
-            'jobs' => $base->search($search)->with('customer')->orderByDesc('id')->limit(25)->get()
+            // Enough to tell two jobs of one customer apart: date, address, status, technicians, invoices.
+            'jobs' => $base->search($search)->with(['customer', 'property', 'assignees', 'visits.assignees', 'invoices'])->orderByDesc('id')->limit(25)->get()
                 ->filter(fn (ServiceJob $job) => Gate::allows('work', $job))
                 ->map(fn (ServiceJob $job) => [
                     'id' => $job->id,
                     'number' => $job->number,
                     'customer' => $job->customer->display_name,
                     'description' => $job->description,
+                    'created_at' => JobPresenter::iso($job->created_at),
+                    'address' => $job->property?->fullAddress(),
+                    'status_label' => $job->status->label(),
+                    'technicians' => $job->assignees->merge($job->visits->flatMap->assignees)->pluck('name')->unique()->values(),
+                    'invoices' => $job->invoices->reject(fn (Invoice $invoice) => $invoice->isVoid())->pluck('number')->values(),
                 ])->values(),
         ]);
     }
@@ -73,6 +79,7 @@ class InvoiceController extends Controller
 
         $invoices = (clone $base)
             ->when($filters['status'] === 'outstanding', fn ($q) => $q->outstanding())
+            ->when($filters['status'] === 'overdue', fn ($q) => $q->overdue())
             ->when($status, fn ($q) => $q->where('status', $status))
             ->when($filters['search'] !== '', function (Builder $q) use ($filters) {
                 $like = '%'.addcslashes($filters['search'], '%_\\').'%';
@@ -124,6 +131,11 @@ class InvoiceController extends Controller
             'paymentTerms' => $terms->label(),
             // "Invoice diagnosis only" after the customer declined the repair: one line, the diagnostic fee.
             'prefillItems' => $request->boolean('diagnosis') ? [self::diagnosisLine()] : self::callbackLines($job),
+            // A job may have several invoices (diagnosis, then repair), but a second one is shown before it is made.
+            'existingInvoices' => $job->invoices()->get()
+                ->reject(fn (Invoice $invoice) => $invoice->isVoid())
+                ->map(fn (Invoice $invoice) => BillingPresenter::row($invoice))
+                ->values(),
         ]);
     }
 

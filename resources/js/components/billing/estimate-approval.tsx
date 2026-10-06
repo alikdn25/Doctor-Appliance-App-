@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { CheckCircle2, PenLine, Type, XCircle } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useRef, useState } from 'react';
-import { computeTotals, currencyDecimals, fromMinor } from './money';
+import { computeTotals, currencyDecimals, fromMinor, toNumber } from './money';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import { SignaturePad } from '@/components/signature-pad';
@@ -65,7 +65,7 @@ export function depositFor(
         'currency' | 'deposit_type' | 'deposit_value'
     >,
 ) {
-    const value = Number.parseFloat(calc.deposit_value) || 0;
+    const value = toNumber(calc.deposit_value);
 
     if (total <= 0 || value <= 0 || !calc.deposit_type) {
         return 0;

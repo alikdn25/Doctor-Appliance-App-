@@ -233,7 +233,7 @@ test('documents accept more than five company taxes on an item and its supplier 
     $rates = TaxRate::factory()->count(7)->create(['company_id' => $this->company->id, 'rate' => 1, 'is_compound' => false]);
     $this->post(route('invoices.store', $this->job), documentPayload([
         'tax_rate_ids' => $rates->modelKeys(),
-        'items' => [['description' => 'Part', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => $rates->modelKeys(),
+        'items' => [['description' => 'Part', 'kind' => 'part', 'quantity' => '1', 'unit_price' => '100', 'taxable' => true, 'tax_rate_ids' => $rates->modelKeys(),
             'supplier_taxes' => $rates->map(fn ($rate) => ['tax_rate_id' => $rate->id, 'amount' => '1'])->all()]],
     ]))->assertSessionHasNoErrors();
     $invoice = inCompany($this->company, fn () => Invoice::query()->with('items')->sole());

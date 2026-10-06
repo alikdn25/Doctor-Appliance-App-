@@ -73,7 +73,10 @@ export function ReviewPromptDialog({
 
         if (prompt.mode === 'technician_phone') {
             // The text opens in the phone's messages app; the request is recorded in the background.
-            form.post(prompt.url, { preserveScroll: true, preserveState: true });
+            form.post(prompt.url, {
+                preserveScroll: true,
+                preserveState: true,
+            });
             window.location.href = smsUrl(
                 toE164(form.data.phone, country),
                 profile.text,

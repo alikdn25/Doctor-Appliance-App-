@@ -7,7 +7,7 @@ import {
     Wrench,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     AddressAutocomplete,
     clearedPlace,
@@ -265,9 +265,12 @@ export default function QuickBook({
         form.clearErrors();
         choose(choice);
     };
+    const sending = useRef(false);
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        if (!canSave || form.processing) return;
+        // A double tap fires twice before `processing` re-renders: the ref stops the second job.
+        if (!canSave || form.processing || sending.current) return;
+        sending.current = true;
         // An appliance of that type already at the address is linked instead of added twice.
         const known = customer?.properties
             .find((p) => p.id === form.data.property_id)
@@ -280,7 +283,11 @@ export default function QuickBook({
                   ? { appliance_ids: [known.id] }
                   : { new_appliances: [{ type: applianceType }] }),
         }));
-        form.post(store().url);
+        form.post(store().url, {
+            onFinish: () => {
+                sending.current = false;
+            },
+        });
     };
     const title = t(booking ? 'nav.book_customer' : 'invoices.add');
     const locale = auth.company?.locale;

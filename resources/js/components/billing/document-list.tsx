@@ -51,6 +51,7 @@ export function DocumentList({
                                     <DocumentStatusBadge
                                         status={d.status}
                                         label={d.status_label}
+                                        overdue={d.overdue}
                                     />
                                 </div>
                                 <div className="truncate text-xs text-muted-foreground">

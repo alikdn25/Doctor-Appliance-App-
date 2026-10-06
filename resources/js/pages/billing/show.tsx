@@ -21,10 +21,7 @@ import type { SignatureData } from '@/components/jobs/signature-section';
 import { DocumentDelivery } from '@/components/billing/document-delivery';
 import type { OnlinePayment } from '@/components/billing/online-payment';
 import { OnlinePaymentSection } from '@/components/billing/online-payment';
-import type {
-    DocumentSms,
-    ReviewPrompt,
-} from '@/components/messaging/types';
+import type { DocumentSms, ReviewPrompt } from '@/components/messaging/types';
 import { PaymentDialog } from '@/components/billing/payment-dialog';
 import type { BillingDocument, PaymentData } from '@/components/billing/types';
 import { FormField } from '@/components/form-field';
@@ -125,7 +122,7 @@ export default function BillingShow({
     const toInvoice = () => {
         if (
             doc.status === 'approved' ||
-            confirm(t('estimates.confirm_convert'))
+            confirm(t('estimates.confirm_convert_unapproved'))
         ) {
             router.post(convert(doc.id).url, {}, options);
         }
@@ -201,6 +198,7 @@ export default function BillingShow({
                     <DocumentStatusBadge
                         status={doc.status}
                         label={doc.status_label}
+                        overdue={doc.overdue}
                     />
                     {/* Saved but not sent yet: the customer has not seen it and it can still be edited. */}
                     {delivery &&
@@ -386,15 +384,17 @@ export default function BillingShow({
                                             ` · ${t('billing.line.total_cost')} ${money(item.total_cost)}${item.supplier ? ` (${item.supplier})` : ''}`}
                                     </p>
                                 </div>
-                                <span
-                                    className={
-                                        item.optional && !item.selected
-                                            ? 'tabular-nums line-through'
-                                            : 'font-medium tabular-nums'
-                                    }
-                                >
-                                    {money(item.total)}
-                                </span>
+                                {item.optional && !item.selected ? (
+                                    <span className="text-right text-sm text-muted-foreground tabular-nums">
+                                        {t('billing.line.optional_extra', {
+                                            amount: money(item.total),
+                                        })}
+                                    </span>
+                                ) : (
+                                    <span className="font-medium tabular-nums">
+                                        {money(item.total)}
+                                    </span>
+                                )}
                             </li>
                         ))}
                     </ul>

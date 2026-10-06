@@ -1,7 +1,7 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Plus, Search, Trash2, UserPlus, X } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     AddressAutocomplete,
     clearedPlace,
@@ -494,14 +494,22 @@ export default function JobForm({
             ) &&
                 !!data.customer_edit.phone.trim()));
 
+    // A double tap fires twice before `processing` re-renders: the ref stops the second job.
+    const sending = useRef(false);
     const submit = (e: FormEvent) => {
         e.preventDefault();
-        if (!canSave || form.processing) return;
+        if (!canSave || form.processing || sending.current) return;
+        sending.current = true;
+        const options = {
+            onFinish: () => {
+                sending.current = false;
+            },
+        };
 
         if (job) {
-            form.put(update(job.id).url);
+            form.put(update(job.id).url, options);
         } else {
-            form.post(store().url);
+            form.post(store().url, options);
         }
     };
 

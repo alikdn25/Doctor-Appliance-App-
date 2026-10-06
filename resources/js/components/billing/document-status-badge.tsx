@@ -1,3 +1,4 @@
+import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 const tones: Record<string, string> = {
@@ -17,26 +18,45 @@ const tones: Record<string, string> = {
     refunded:
         'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200',
     void: 'bg-zinc-200 text-zinc-700 line-through dark:bg-zinc-800 dark:text-zinc-300',
+    overdue: 'bg-red-600 text-white dark:bg-red-700',
 };
 
 export function DocumentStatusBadge({
     status,
     label,
     className,
+    overdue = false,
 }: {
     status: string;
     label: string;
     className?: string;
+    /** Adds a red "Overdue" badge after the status. */
+    overdue?: boolean;
 }) {
+    const t = useTrans();
+
     return (
-        <span
-            className={cn(
-                'inline-flex w-fit shrink-0 items-center rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap',
-                tones[status] ?? 'bg-muted text-muted-foreground',
-                className,
+        <>
+            <span
+                className={cn(
+                    'inline-flex w-fit shrink-0 items-center rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+                    tones[status] ?? 'bg-muted text-muted-foreground',
+                    className,
+                )}
+            >
+                {label}
+            </span>
+            {overdue && (
+                <span
+                    className={cn(
+                        'inline-flex w-fit shrink-0 items-center rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+                        tones.overdue,
+                        className,
+                    )}
+                >
+                    {t('invoices.overdue')}
+                </span>
             )}
-        >
-            {label}
-        </span>
+        </>
     );
 }

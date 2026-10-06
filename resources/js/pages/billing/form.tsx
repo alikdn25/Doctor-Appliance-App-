@@ -1,12 +1,18 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import type { FormEvent } from 'react';
+import { useRef } from 'react';
 import {
     computeTotals,
+    currencyDecimals,
     currencySymbol,
     fromMinor,
+    normalizeNumber,
+    parseNumber,
+    toNumber,
     useMoney,
 } from '@/components/billing/money';
+import { NumberHint } from '@/components/billing/number-hint';
 import { depositFor } from '@/components/billing/estimate-approval';
 import { LineEditor, newLine } from '@/components/billing/line-editor';
 import type {
@@ -17,6 +23,7 @@ import type {
 import type {
     BillingDocument,
     DocumentKind,
+    DocumentRow,
     JobSummary,
     ServiceOption,
     TaxOption,
@@ -72,6 +79,7 @@ export default function BillingForm({
     canTakeDeposit = false,
     prefillItems = null,
     lineSetup,
+    existingInvoices = [],
 }: {
     kind: DocumentKind;
     document: BillingDocument | null;
@@ -96,6 +104,8 @@ export default function BillingForm({
           }[]
         | null;
     lineSetup: LineSetup;
+    /** Invoices this job already has (new invoice only). */
+    existingInvoices?: DocumentRow[];
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -238,20 +248,94 @@ export default function BillingForm({
                 : data.tax_rate_ids.filter((x) => x !== id),
         );
 
+    const fmt = (value: number) =>
+        money(Math.round(value * 10 ** currencyDecimals(currency)));
+
+    // Checked before sending, next to the Save button: numbers that cannot be read and a discount over 100%.
+    const clientErrors = (): Record<string, string> => {
+        const found: Record<string, string> = {};
+        const invalid = t('billing.number.invalid', { example: '150.50' });
+        data.items.forEach((line, i) => {
+            if (parseNumber(line.quantity).normalized === null) {
+                found[`items.${i}.quantity`] = invalid;
+            }
+
+            if (parseNumber(line.unit_price).normalized === null) {
+                found[`items.${i}.unit_price`] = invalid;
+            }
+
+            if (parseNumber(line.unit_cost).normalized === null) {
+                found[`items.${i}.unit_cost`] = invalid;
+            }
+        });
+
+        if (data.discount_type) {
+            if (parseNumber(data.discount_value).normalized === null) {
+                found.discount_value = invalid;
+            } else if (
+                data.discount_type === 'percent' &&
+                toNumber(data.discount_value) > 100
+            ) {
+                found.discount_value = t('billing.percent_over_100');
+            } else if (
+                data.discount_type === 'amount' &&
+                totals.subtotal > 0 &&
+                toNumber(data.discount_value) *
+                    10 ** currencyDecimals(currency) >
+                    totals.subtotal
+            ) {
+                found.discount_value = t('billing.discount_over_subtotal');
+            }
+        }
+
+        if (kind === 'estimate' && data.deposit_type) {
+            if (parseNumber(data.deposit_value).normalized === null) {
+                found.deposit_value = invalid;
+            } else if (
+                data.deposit_type === 'percent' &&
+                toNumber(data.deposit_value) > 100
+            ) {
+                found.deposit_value = t('billing.percent_over_100');
+            }
+        }
+
+        return found;
+    };
+    const blocking = clientErrors();
+    const hasErrors =
+        Object.keys(blocking).length > 0 || Object.keys(errors).length > 0;
+
+    // A double tap fires twice before `processing` re-renders: the ref stops the second document.
+    const sending = useRef(false);
     const submit = (e: FormEvent) => {
         e.preventDefault();
+
+        if (form.processing || sending.current) {
+            return;
+        }
+
+        form.clearErrors();
+
+        if (Object.keys(blocking).length > 0) {
+            form.setError(blocking as Partial<Record<keyof FormData, string>>);
+
+            return;
+        }
+
         form.transform((d) => ({
             ...d,
             valid_until:
                 kind === 'estimate' ? d.valid_until || null : undefined,
             due_on: kind === 'invoice' ? d.due_on || null : undefined,
             discount_type: d.discount_type || null,
-            discount_value: d.discount_type ? d.discount_value || 0 : null,
+            discount_value: d.discount_type
+                ? normalizeNumber(d.discount_value) || 0
+                : null,
             items: d.items.map((line) => ({
                 id: line.id,
                 description: line.description,
-                quantity: line.quantity,
-                unit_price: line.unit_price.replace(/[^\d.-]/g, ''),
+                quantity: normalizeNumber(line.quantity),
+                unit_price: normalizeNumber(line.unit_price),
                 taxable: line.taxable,
                 tax_rate_ids:
                     line.tax_rate_ids === null
@@ -270,18 +354,27 @@ export default function BillingForm({
                         ? null
                         : Number(line.warranty_value),
                 warranty_unit: line.warranty_unit,
+                // A service has no purchase price: values typed while the line was a part are not sent.
                 ...(lineSetup.costs_visible && line.costs_editable
-                    ? {
-                          supplier: line.supplier || null,
-                          unit_cost:
-                              line.unit_cost.replace(/[^\d.]/g, '') || null,
-                          supplier_taxes: Object.entries(line.supplier_taxes)
-                              .filter(([, amount]) => amount.trim() !== '')
-                              .map(([id, amount]) => ({
-                                  tax_rate_id: Number(id),
-                                  amount: amount.replace(/[^\d.]/g, ''),
-                              })),
-                      }
+                    ? line.kind === 'service'
+                        ? {
+                              supplier: null,
+                              unit_cost: null,
+                              supplier_taxes: [],
+                          }
+                        : {
+                              supplier: line.supplier || null,
+                              unit_cost:
+                                  normalizeNumber(line.unit_cost) || null,
+                              supplier_taxes: Object.entries(
+                                  line.supplier_taxes,
+                              )
+                                  .filter(([, amount]) => amount.trim() !== '')
+                                  .map(([id, amount]) => ({
+                                      tax_rate_id: Number(id),
+                                      amount: normalizeNumber(amount),
+                                  })),
+                          }
                     : {}),
                 ...(kind === 'estimate'
                     ? { optional: line.optional, selected: line.selected }
@@ -291,9 +384,16 @@ export default function BillingForm({
                 kind === 'estimate' ? d.deposit_type || null : undefined,
             deposit_value:
                 kind === 'estimate' && d.deposit_type
-                    ? d.deposit_value || 0
+                    ? normalizeNumber(d.deposit_value) || 0
                     : undefined,
         }));
+
+        sending.current = true;
+        const options = {
+            onFinish: () => {
+                sending.current = false;
+            },
+        };
 
         if (document) {
             form.put(
@@ -301,6 +401,7 @@ export default function BillingForm({
                     ? updateInvoice(document.id)
                     : updateEstimate(document.id)
                 ).url,
+                options,
             );
         } else {
             form.post(
@@ -308,12 +409,13 @@ export default function BillingForm({
                     ? storeInvoice(job.id)
                     : storeEstimate(job.id)
                 ).url,
+                options,
             );
         }
     };
 
     const title = document
-        ? t(`${group}.number`, { number: document.number })
+        ? t(`${group}.edit_title`, { number: document.number })
         : t(`${group}.add`);
     const back = document
         ? kind === 'invoice'
@@ -328,6 +430,7 @@ export default function BillingForm({
             <form onSubmit={submit} className="max-w-3xl space-y-6 p-4 pb-28">
                 <PageHeader
                     title={title}
+                    back={back}
                     description={[
                         t('billing.job', { number: job.number }),
                         job.customer,
@@ -336,6 +439,22 @@ export default function BillingForm({
                         .filter(Boolean)
                         .join(' · ')}
                 />
+
+                {!document && existingInvoices.length > 0 && (
+                    <p
+                        className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+                        role="status"
+                    >
+                        {t('invoices.already_invoiced', {
+                            list: existingInvoices
+                                .map(
+                                    (invoice) =>
+                                        `${invoice.number} (${invoice.status_label}, ${money(invoice.total, invoice.currency)})`,
+                                )
+                                .join(', '),
+                        })}
+                    </p>
+                )}
 
                 <section className="grid grid-cols-2 gap-3">
                     <FormField
@@ -412,7 +531,21 @@ export default function BillingForm({
                                 canRemove={data.items.length > 1}
                                 errors={fieldErrors}
                                 money={money}
-                                onChange={(patch) => setLine(line.key, patch)}
+                                onChange={(patch) => {
+                                    const touched = Object.keys(patch).map(
+                                        (field) => `items.${i}.${field}`,
+                                    );
+
+                                    if (
+                                        touched.some((field) => field in errors)
+                                    ) {
+                                        form.clearErrors(
+                                            ...(touched as (keyof FormData)[]),
+                                        );
+                                    }
+
+                                    setLine(line.key, patch);
+                                }}
                                 onRemove={() =>
                                     form.setData((d) => ({
                                         ...d,
@@ -449,13 +582,14 @@ export default function BillingForm({
                             <NativeSelect
                                 id="discount_type"
                                 value={data.discount_type}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                    form.clearErrors('discount_value');
                                     form.setData(
                                         'discount_type',
                                         e.target
                                             .value as FormData['discount_type'],
-                                    )
-                                }
+                                    );
+                                }}
                             >
                                 <option value="">
                                     {t('billing.discount_types.none')}
@@ -475,15 +609,22 @@ export default function BillingForm({
                                     inputMode="decimal"
                                     className="w-28"
                                     value={data.discount_value}
-                                    onChange={(e) =>
+                                    onChange={(e) => {
+                                        form.clearErrors('discount_value');
                                         form.setData(
                                             'discount_value',
                                             e.target.value,
-                                        )
-                                    }
+                                        );
+                                    }}
                                 />
                             )}
                         </div>
+                        {data.discount_type === 'amount' && (
+                            <NumberHint
+                                text={data.discount_value}
+                                format={fmt}
+                            />
+                        )}
                     </FormField>
 
                     <div className="grid gap-2">
@@ -577,12 +718,13 @@ export default function BillingForm({
                                     inputMode="decimal"
                                     className="w-28"
                                     value={data.deposit_value}
-                                    onChange={(e) =>
+                                    onChange={(e) => {
+                                        form.clearErrors('deposit_value');
                                         form.setData(
                                             'deposit_value',
                                             e.target.value,
-                                        )
-                                    }
+                                        );
+                                    }}
                                 />
                             )}
                         </div>
@@ -642,7 +784,17 @@ export default function BillingForm({
                     )}
                 </dl>
 
-                <div className="da-pinned fixed inset-x-0 bottom-0 z-30 flex gap-2 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+                <div className="da-pinned fixed inset-x-0 bottom-0 z-30 flex flex-wrap gap-2 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+                    {hasErrors && (
+                        <p
+                            className="w-full text-sm font-medium text-destructive"
+                            role="alert"
+                        >
+                            {Object.values(blocking)[0] ??
+                                Object.values(fieldErrors).find(Boolean) ??
+                                t('billing.fix_errors')}
+                        </p>
+                    )}
                     <Button
                         type="button"
                         variant="outline"
@@ -654,7 +806,9 @@ export default function BillingForm({
                     <Button
                         type="submit"
                         className="h-12 flex-1 md:h-9 md:flex-none"
-                        disabled={form.processing}
+                        disabled={
+                            form.processing || Object.keys(blocking).length > 0
+                        }
                     >
                         {t('common.save')} · {money(totals.total)}
                     </Button>

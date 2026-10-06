@@ -53,13 +53,105 @@ export function currencySymbol(currency: string, locale = 'en-US'): string {
     );
 }
 
-/** "12.5" → 1250 (USD), "1200" → 1200 (JPY). Empty or invalid input counts as 0. */
+export type ParsedNumber = {
+    /** "" when nothing was typed, null when the text is not a number. */
+    normalized: string | null;
+    /** "1,500": read as one thousand five hundred, but the person may have meant 1.5. */
+    ambiguous: boolean;
+};
+
+/**
+ * Reads a number typed by a person (mirrors App\Support\Billing\MoneyInput::clean): "150,00" and "150,5" use the
+ * comma as the decimal mark (phone keyboards often show a comma); "1,500" and "1,500.50" use it for thousands;
+ * "1.500,50" is read as 1500.50. Currency signs and spaces are ignored. "150.5.5" is not a number.
+ */
+export function parseNumber(text: string): ParsedNumber {
+    const clean = text.replace(/[^\d.,-]/g, '');
+
+    if (clean === '') {
+        return {
+            normalized: text.trim() === '' ? '' : null,
+            ambiguous: false,
+        };
+    }
+
+    const match = /^(-?)([\d.,]+)$/.exec(clean);
+
+    if (!match) {
+        return { normalized: null, ambiguous: false };
+    }
+
+    const [, sign, body] = match;
+    const lastDot = body.lastIndexOf('.');
+    const lastComma = body.lastIndexOf(',');
+    let digits: string | null = null;
+    let ambiguous = false;
+
+    if (lastDot === -1 && lastComma === -1) {
+        digits = body;
+    } else if (lastComma === -1 || lastDot === -1) {
+        const mark = lastComma === -1 ? '.' : ',';
+        const parts = body.split(mark);
+
+        if (parts.length === 2 && /^\d*$/.test(parts[0])) {
+            if (
+                /^\d{1,2}$/.test(parts[1]) ||
+                (mark === '.' && /^\d+$/.test(parts[1]))
+            ) {
+                digits = `${parts[0] || '0'}.${parts[1]}`;
+            } else if (mark === ',' && /^\d{3}$/.test(parts[1])) {
+                digits = parts.join('');
+                ambiguous = true;
+            }
+        } else if (
+            mark === ',' &&
+            /^\d{1,3}$/.test(parts[0]) &&
+            parts.slice(1).every((p) => /^\d{3}$/.test(p))
+        ) {
+            digits = parts.join('');
+        }
+    } else {
+        // Both marks: the last one is the decimal mark, the other groups thousands.
+        const [group, decimal] = lastDot > lastComma ? [',', '.'] : ['.', ','];
+        const [whole, fraction, ...rest] = body.split(decimal);
+        const groups = whole.split(group);
+
+        if (
+            rest.length === 0 &&
+            /^\d+$/.test(fraction) &&
+            /^\d{1,3}$/.test(groups[0]) &&
+            groups.slice(1).every((g) => /^\d{3}$/.test(g))
+        ) {
+            digits = `${groups.join('')}.${fraction}`;
+        }
+    }
+
+    if (digits === null || !/^\d+(\.\d+)?$/.test(digits)) {
+        return { normalized: null, ambiguous: false };
+    }
+
+    return { normalized: sign + digits, ambiguous };
+}
+
+/** "150,00" → "150.00" for the server; text that is not a number is sent as typed so the server rejects it. */
+export function normalizeNumber(text: string): string {
+    return parseNumber(text).normalized ?? text.trim();
+}
+
+/** "12.5" → 1250 (USD), "1200" → 1200 (JPY), "150,00" → 15000. Empty or invalid input counts as 0. */
 export function toMinor(amount: string, currency: string): number {
-    const value = Number.parseFloat(amount.replace(/[^\d.-]/g, ''));
+    const value = Number.parseFloat(parseNumber(amount).normalized ?? '');
 
     return Number.isFinite(value)
         ? Math.round(value * 10 ** currencyDecimals(currency))
         : 0;
+}
+
+/** A number as typed ("1,5" → 1.5); 0 when it is not a number. */
+export function toNumber(text: string): number {
+    const value = Number.parseFloat(parseNumber(text).normalized ?? '');
+
+    return Number.isFinite(value) ? value : 0;
 }
 
 /** 1250 → "12.50" (USD) for inputs. */
@@ -139,8 +231,7 @@ export function computeTotals(input: TotalsInput): Totals {
     const factor = 10 ** currencyDecimals(input.currency);
     const itemTotals = input.items.map((item) =>
         Math.round(
-            (Number.parseFloat(item.quantity) || 0) *
-                toMinor(item.unit_price, input.currency),
+            toNumber(item.quantity) * toMinor(item.unit_price, input.currency),
         ),
     );
     const counted = input.items.map((item) => item.included !== false);
@@ -164,7 +255,7 @@ export function computeTotals(input: TotalsInput): Totals {
         groups.set(key, group);
     });
 
-    const value = Number.parseFloat(input.discount_value) || 0;
+    const value = toNumber(input.discount_value);
     let discount = 0;
 
     if (subtotal > 0 && value > 0) {

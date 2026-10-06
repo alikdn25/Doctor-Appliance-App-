@@ -99,6 +99,7 @@ export default function InvoicesIndex({
                     <option value="outstanding">
                         {t('invoices.outstanding')}
                     </option>
+                    <option value="overdue">{t('invoices.overdue')}</option>
                     <option value="all">{t('invoices.all_statuses')}</option>
                     {statuses.map((o) => (
                         <option key={o.value} value={o.value}>
