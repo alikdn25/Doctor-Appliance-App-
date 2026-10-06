@@ -5,9 +5,11 @@ import { useEffect } from 'react';
 import {
     currencySymbol,
     fromMinor,
+    normalizeNumber,
     toMinor,
     useMoney,
 } from '@/components/billing/money';
+import { NumberHint } from '@/components/billing/number-hint';
 import { FormField } from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import {
@@ -92,7 +94,7 @@ export function PaymentDialog({
         e.preventDefault();
         form.transform((d) => ({
             ...d,
-            amount: d.amount.replace(/[^\d.]/g, ''),
+            amount: normalizeNumber(d.amount),
             reference: referenceLabel[d.method] ? d.reference : '',
             receipt: d.method === 'cash' ? d.receipt : null,
         }));
@@ -183,6 +185,12 @@ export function PaymentDialog({
                                 </Button>
                             )}
                         </div>
+                        <NumberHint
+                            text={form.data.amount}
+                            format={(value) =>
+                                money(toMinor(String(value), currency))
+                            }
+                        />
                     </FormField>
 
                     {referenceLabel[method] && (

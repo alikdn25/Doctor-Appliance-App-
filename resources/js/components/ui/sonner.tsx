@@ -11,7 +11,11 @@ function Toaster({ ...props }: ToasterProps) {
         <Sonner
             theme={appearance}
             className="toaster group"
-            position="top-center"
+            // At the bottom, above the pinned action bar and tab bar, so it never covers a screen's title.
+            position="bottom-center"
+            mobileOffset={{
+                bottom: 'calc(6.5rem + env(safe-area-inset-bottom))',
+            }}
             duration={3000}
             style={
                 {

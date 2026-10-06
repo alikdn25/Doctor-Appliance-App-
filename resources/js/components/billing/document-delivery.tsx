@@ -17,10 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { smsUrl } from '@/lib/sms';
-import type {
-    DocumentSms,
-    ReviewPrompt,
-} from '@/components/messaging/types';
+import type { DocumentSms, ReviewPrompt } from '@/components/messaging/types';
 
 export type Delivery = {
     pdf_url: string;

@@ -159,8 +159,8 @@ class DocumentPrint
             'logo' => $embedLogo ? self::logoDataUri($brand) : $brand?->logo_url,
             'address' => $address
                 ? AddressFormatter::oneLine(
-                    collect([$address->line1, $address->line2])->filter()->implode(', '),
-                    $address->city, $address->region, $address->postal_code, $address->country,
+                    AddressFormatter::street($address->line1, $address->line2, $address->city, $address->country),
+                    $address->city, $address->region, AddressFormatter::postal($address->postal_code), $address->country,
                 )
                 : null,
             'phone' => $brand?->phone ? PhoneNumber::display($brand->phone, $country) : null,

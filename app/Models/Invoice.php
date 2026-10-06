@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\InvoiceStatus;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Concerns\IsBillingDocument;
+use Carbon\CarbonImmutable;
 use Database\Factories\InvoiceFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -91,6 +92,17 @@ class Invoice extends Model
     }
 
     /**
+     * Money is still owed after the due date (in the company's time zone).
+     */
+    public function isOverdue(): bool
+    {
+        return $this->due_on !== null
+            && in_array($this->status, [InvoiceStatus::Unpaid, InvoiceStatus::PartiallyPaid], true)
+            && $this->balance > 0
+            && $this->due_on->toDateString() < CarbonImmutable::now(currentCompany()->timezone)->toDateString();
+    }
+
+    /**
      * @return HasMany<InvoiceItem, $this>
      */
     public function items(): HasMany
@@ -140,5 +152,17 @@ class Invoice extends Model
     public function scopeOutstanding(Builder $query): void
     {
         $query->whereIn('status', [InvoiceStatus::Unpaid->value, InvoiceStatus::PartiallyPaid->value]);
+    }
+
+    /**
+     * Outstanding invoices past their due date (see isOverdue()).
+     *
+     * @param  Builder<Invoice>  $query
+     */
+    public function scopeOverdue(Builder $query): void
+    {
+        $query->outstanding()
+            ->where('balance', '>', 0)
+            ->whereDate('due_on', '<', CarbonImmutable::now(currentCompany()->timezone)->toDateString());
     }
 }

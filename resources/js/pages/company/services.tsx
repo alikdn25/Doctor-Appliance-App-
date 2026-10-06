@@ -6,6 +6,7 @@ import {
     currencySymbol,
     formatMoney,
     fromMinor,
+    normalizeNumber,
     toMinor,
 } from '@/components/billing/money';
 import InputError from '@/components/input-error';
@@ -127,14 +128,14 @@ export default function Services({
                 description: row.description || null,
                 category: row.category.trim() || null,
                 brand_ids: row.brand_ids,
-                unit_price: row.unit_price.replace(/[^\d.]/g, '') || null,
+                unit_price: normalizeNumber(row.unit_price) || null,
                 taxable: row.taxable,
                 is_active: row.is_active,
                 kind: row.kind,
                 part_number: row.part_number || null,
                 supplier: row.supplier,
                 unit: row.unit,
-                unit_cost: row.unit_cost.replace(/[^\d.]/g, '') || null,
+                unit_cost: normalizeNumber(row.unit_cost) || null,
                 warranty_value:
                     row.warranty_value === ''
                         ? null

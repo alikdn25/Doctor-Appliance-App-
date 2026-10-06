@@ -1085,6 +1085,31 @@ and "Not sent yet" marks them — say if a real draft step is wanted.
   card. Real-time (WebSocket) updates were not added; the inbox still refreshes every 15 seconds.
 - Tests: `tests/Feature/Messaging/ReviewRequestTest.php`, tenant isolation in `TenantIsolationTest.php`.
 
+### Estimate and invoice feedback fixes ✅ (October 6)
+
+- Numbers typed with a comma are read like a person means them, on the client and the server
+  (`parseNumber()` in `money.ts`, `MoneyInput::clean`): "150,00" = 150.00 (was 15 000), "50,5" = 50.50,
+  quantity "1,5" = 1.5, "1,500" = 1 500 with a warning, "1.500,50" = 1 500.50, "150.5.5" is rejected (was cut to
+  150.50). Price, cost, quantity, discount, deposit and payment fields show how the number was read ("= $150.00").
+  Same reading in the payment dialog and the price book.
+- Line editor: price book list shows only items of the line's kind (no services on a Part line), never switches the
+  kind and keeps part number / unit; the picked item stays shown. Order is Qty → Price → line total. A service line
+  never keeps a purchase price (server drops it too). Per-line tax choice moved under "Taxes, cost & warranty" and
+  shown only with 2+ document taxes; "Taxable" only when taxes are on. Unpicked optional line reads
+  "+ $X if the customer wants it" instead of being struck through. "Bill to customer" has a hint.
+- Form: discount over 100% / over the items and unreadable numbers block Save with the message next to the button;
+  errors clear as the field is fixed. Edit screens are titled "Edit invoice INV-2" with a back arrow. Toasts moved to
+  the bottom so they no longer cover the title. Double tap on Save no longer creates two jobs / documents.
+- Estimate "Your purchase total" leaves out optional lines the customer has not picked.
+- Overdue: unpaid / partly paid invoices past the due date get a red "Overdue" badge; invoice list filter "Overdue".
+- New invoice on a job that already has one shows "This job already has INV-1 (…)"; the "New invoice" job picker shows
+  date, address, status, technicians and existing invoices. Invoicing a not-approved estimate asks with a clear text.
+- Company address on documents: city / postal code typed into the street line are not repeated, a bare suite number
+  becomes "Unit 514" in front, postal code in capitals.
+- Tests: `tests/Feature/Billing/EstimateInvoiceFeedbackTest.php`.
+- Not done (open product questions): locking partly paid invoices (credit notes), Good/Better/Best options, kits,
+  photos on estimates, a separate estimates list, a one-line compact line card, PDF size.
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started

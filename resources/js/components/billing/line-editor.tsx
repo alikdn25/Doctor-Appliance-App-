@@ -1,6 +1,13 @@
 import { BookPlus, ChevronDown, History, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { currencyDecimals, fromMinor, toMinor } from './money';
+import {
+    currencyDecimals,
+    fromMinor,
+    normalizeNumber,
+    toMinor,
+    toNumber,
+} from './money';
+import { NumberHint } from './number-hint';
 import type { ServiceOption } from './types';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -124,7 +131,7 @@ export function defaultWarranty(
 /**
  * One line of an estimate or invoice: a card that works one-handed on a phone. Services keep the short form;
  * parts and materials add part number, supplier, private purchase price, unit, supplier tax.
- * Cost, warranty and "bill to customer" are under "Cost & warranty".
+ * Per-line taxes, cost, warranty and "bill to customer" are under "Taxes, cost & warranty".
  */
 export function LineEditor({
     line,
@@ -178,8 +185,12 @@ export function LineEditor({
     const privateCosts = setup.costs_visible && line.costs_editable;
     const difference =
         privateCosts && line.unit_cost !== '' && line.unit_price !== ''
-            ? Math.round((priceMinor - costMinor) * Number(line.quantity))
+            ? Math.round((priceMinor - costMinor) * toNumber(line.quantity))
             : null;
+    // The price book offers items of this line's kind only: picking never switches a part into a service.
+    const options = services.filter((s) => s.kind === line.kind);
+    const fmt = (value: number) =>
+        money(Math.round(value * 10 ** currencyDecimals(currency)));
 
     // Default warranty follows kind / price / price book item until set by hand.
     useEffect(() => {
@@ -244,13 +255,12 @@ export function LineEditor({
 
         onChange({
             service_id: service.id,
-            kind: (service.kind as LineKind) ?? 'service',
             description: [service.name, service.description]
                 .filter(Boolean)
                 .join(' — '),
             taxable: service.taxable,
-            part_number: service.part_number ?? '',
-            unit: service.unit ?? '',
+            part_number: service.part_number ?? line.part_number,
+            unit: service.unit ?? line.unit,
             supplier: service.supplier ?? line.supplier,
             ...(service.unit_cost !== null && service.currency === currency
                 ? { unit_cost: fromMinor(service.unit_cost, currency) }
@@ -281,8 +291,8 @@ export function LineEditor({
                 part_number: line.part_number || null,
                 supplier: line.supplier || null,
                 unit: line.unit || null,
-                unit_cost: line.unit_cost || null,
-                unit_price: line.unit_price || null,
+                unit_cost: normalizeNumber(line.unit_cost) || null,
+                unit_price: normalizeNumber(line.unit_price) || null,
                 taxable: line.taxable,
                 warranty_value: line.warranty_value || null,
                 warranty_unit: line.warranty_unit,
@@ -311,7 +321,15 @@ export function LineEditor({
                         size="sm"
                         variant={line.kind === kind ? 'default' : 'outline'}
                         onClick={() => {
-                            onChange({ kind });
+                            const picked = services.find(
+                                (s) => s.id === line.service_id,
+                            );
+                            onChange({
+                                kind,
+                                ...(picked && picked.kind !== kind
+                                    ? { service_id: null }
+                                    : {}),
+                            });
 
                             if (kind !== 'service') {
                                 setOpen(true);
@@ -323,21 +341,25 @@ export function LineEditor({
                 ))}
             </div>
 
-            {services.length > 0 && (
+            {options.length > 0 && (
                 <NativeSelect
                     aria-label={t('billing.pick_service')}
-                    value=""
+                    value={
+                        options.some((s) => s.id === line.service_id)
+                            ? String(line.service_id)
+                            : ''
+                    }
                     onChange={(e) => pickService(e.target.value)}
                 >
                     <option value="">{t('billing.pick_service')}</option>
-                    {[...new Set(services.map((service) => service.category))]
+                    {[...new Set(options.map((service) => service.category))]
                         .sort((a, b) => (a ?? '').localeCompare(b ?? ''))
                         .map((category) => (
                             <optgroup
                                 key={category ?? ''}
                                 label={category ?? t('services.uncategorized')}
                             >
-                                {services
+                                {options
                                     .filter(
                                         (service) =>
                                             service.category === category,
@@ -460,138 +482,65 @@ export function LineEditor({
                 </div>
             )}
 
-            <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[5rem_8rem_1fr]">
+            <div className="grid grid-cols-[4.5rem_1fr] gap-2">
                 <div>
+                    <label className="text-xs text-muted-foreground">
+                        {t('billing.fields.quantity')}
+                    </label>
                     <Input
                         aria-label={t('billing.fields.quantity')}
                         inputMode="decimal"
                         value={line.quantity}
                         onChange={(e) => onChange({ quantity: e.target.value })}
                     />
+                    <NumberHint text={line.quantity} format={String} />
                     <InputError message={err('quantity')} />
                 </div>
-                {line.kind === 'material' ? (
-                    <NativeSelect
-                        aria-label={t('billing.line.unit')}
-                        value={
-                            setup.units.some((u) => u.value === line.unit) ||
-                            line.unit === ''
-                                ? line.unit
-                                : '__custom'
-                        }
-                        onChange={(e) =>
-                            onChange({
-                                unit:
-                                    e.target.value === '__custom'
-                                        ? ' '
-                                        : e.target.value,
-                            })
-                        }
-                    >
-                        <option value="">{t('billing.line.unit')}</option>
-                        {setup.units.map((u) => (
-                            <option key={u.value} value={u.value}>
-                                {u.label}
-                            </option>
-                        ))}
-                        <option value="__custom">
-                            {t('billing.line.custom_unit')}
-                        </option>
-                    </NativeSelect>
-                ) : (
-                    <span className="hidden sm:block" />
-                )}
-                <div className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1">
-                    <label className="flex min-h-10 items-center gap-2 text-sm">
-                        <Checkbox
-                            checked={line.taxable}
-                            onCheckedChange={(c) =>
-                                onChange({ taxable: c === true })
-                            }
-                        />
-                        {t('billing.taxable')}
+                <div>
+                    <label className="text-xs text-muted-foreground">
+                        {t('billing.line.customer_price')}
                     </label>
-                    <span
-                        className={
-                            !line.bill_to_customer ||
-                            (line.optional && !line.selected)
-                                ? 'text-muted-foreground tabular-nums line-through'
-                                : 'font-medium tabular-nums'
+                    <MoneyInput
+                        symbol={symbol}
+                        currency={currency}
+                        value={line.unit_price}
+                        label={t('billing.fields.unit_price')}
+                        onChange={(value) =>
+                            onChange({ unit_price: value, price_touched: true })
                         }
-                    >
-                        {money(total)}
-                    </span>
+                    />
+                    <NumberHint text={line.unit_price} format={fmt} />
+                    <InputError message={err('unit_price')} />
                 </div>
             </div>
-            {line.taxable && (
-                <fieldset className="space-y-2 rounded-md border p-3">
-                    <legend className="px-1 text-sm">
-                        {t('billing.line.taxes')}
-                    </legend>
-                    <label className="flex min-h-10 items-center gap-2 text-sm">
-                        <Checkbox
-                            checked={line.tax_rate_ids === null}
-                            onCheckedChange={(checked) =>
-                                onChange({
-                                    tax_rate_ids: checked === true ? null : [],
-                                })
-                            }
-                        />
-                        {t('billing.line.document_taxes')}
-                    </label>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1">
-                        {taxRates.map(
-                            (tax) =>
-                                tax.tax_rate_id !== null && (
-                                    <label
-                                        key={tax.tax_rate_id}
-                                        className="flex min-h-10 items-center gap-2 text-sm"
-                                    >
-                                        <Checkbox
-                                            checked={
-                                                line.tax_rate_ids === null ||
-                                                line.tax_rate_ids.includes(
-                                                    tax.tax_rate_id,
-                                                )
-                                            }
-                                            onCheckedChange={(checked) => {
-                                                const ids =
-                                                    line.tax_rate_ids ??
-                                                    taxRates.flatMap((rate) =>
-                                                        rate.tax_rate_id ===
-                                                        null
-                                                            ? []
-                                                            : [
-                                                                  rate.tax_rate_id,
-                                                              ],
-                                                    );
-                                                onChange({
-                                                    tax_rate_ids:
-                                                        checked === true
-                                                            ? [
-                                                                  ...ids,
-                                                                  tax.tax_rate_id!,
-                                                              ]
-                                                            : ids.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      tax.tax_rate_id,
-                                                              ),
-                                                });
-                                            }}
-                                        />
-                                        {tax.name} ({tax.rate}%)
-                                    </label>
-                                ),
-                        )}
-                    </div>
-                    {taxRates.length === 0 && (
-                        <p className="text-xs text-muted-foreground">
-                            {t('billing.line.enable_taxes')}
-                        </p>
-                    )}
-                    <InputError message={err('tax_rate_ids')} />
-                </fieldset>
+            {line.kind === 'material' && (
+                <NativeSelect
+                    aria-label={t('billing.line.unit')}
+                    value={
+                        setup.units.some((u) => u.value === line.unit) ||
+                        line.unit === ''
+                            ? line.unit
+                            : '__custom'
+                    }
+                    onChange={(e) =>
+                        onChange({
+                            unit:
+                                e.target.value === '__custom'
+                                    ? ' '
+                                    : e.target.value,
+                        })
+                    }
+                >
+                    <option value="">{t('billing.line.unit')}</option>
+                    {setup.units.map((u) => (
+                        <option key={u.value} value={u.value}>
+                            {u.label}
+                        </option>
+                    ))}
+                    <option value="__custom">
+                        {t('billing.line.custom_unit')}
+                    </option>
+                </NativeSelect>
             )}
             {line.kind === 'material' &&
                 line.unit !== '' &&
@@ -606,52 +555,64 @@ export function LineEditor({
                         }
                     />
                 )}
-
-            <div className="space-y-3">
-                <div>
-                    <label className="text-xs text-muted-foreground">
-                        {t('billing.line.customer_price')}
+            <div className="flex min-h-10 items-center justify-between gap-3">
+                {taxRates.length > 0 ? (
+                    <label className="flex min-h-10 items-center gap-2 text-sm">
+                        <Checkbox
+                            checked={line.taxable}
+                            onCheckedChange={(c) =>
+                                onChange({ taxable: c === true })
+                            }
+                        />
+                        {t('billing.taxable')}
                     </label>
+                ) : (
+                    <span />
+                )}
+                {line.optional && !line.selected ? (
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                        {t('billing.line.optional_extra', {
+                            amount: money(total),
+                        })}
+                    </span>
+                ) : (
+                    <span
+                        className={
+                            !line.bill_to_customer
+                                ? 'text-muted-foreground tabular-nums line-through'
+                                : 'font-medium tabular-nums'
+                        }
+                    >
+                        {money(total)}
+                    </span>
+                )}
+            </div>
+            {goods && privateCosts && (
+                <div className="rounded-xl border border-dashed bg-muted/40 p-3">
+                    <label className="text-xs font-medium">
+                        {t('billing.line.private_purchase_price')}
+                    </label>
+                    <p className="mb-2 text-xs text-muted-foreground">
+                        {t('billing.line.private_cost_hint')}
+                    </p>
                     <MoneyInput
                         symbol={symbol}
                         currency={currency}
-                        value={line.unit_price}
-                        label={t('billing.fields.unit_price')}
-                        onChange={(value) =>
-                            onChange({ unit_price: value, price_touched: true })
-                        }
+                        value={line.unit_cost}
+                        label={t('billing.line.private_purchase_price')}
+                        onChange={setCost}
                     />
-                    <InputError message={err('unit_price')} />
-                </div>
-                {goods && privateCosts && (
-                    <div className="rounded-xl border border-dashed bg-muted/40 p-3">
-                        <label className="text-xs font-medium">
-                            {t('billing.line.private_purchase_price')}
-                        </label>
-                        <p className="mb-2 text-xs text-muted-foreground">
-                            {t('billing.line.private_cost_hint')}
+                    <NumberHint text={line.unit_cost} format={fmt} />
+                    <InputError message={err('unit_cost')} />
+                    {difference !== null && (
+                        <p className="mt-2 text-sm font-medium" role="status">
+                            {t('billing.line.difference', {
+                                amount: money(difference),
+                            })}
                         </p>
-                        <MoneyInput
-                            symbol={symbol}
-                            currency={currency}
-                            value={line.unit_cost}
-                            label={t('billing.line.private_purchase_price')}
-                            onChange={setCost}
-                        />
-                        <InputError message={err('unit_cost')} />
-                        {difference !== null && (
-                            <p
-                                className="mt-2 text-sm font-medium"
-                                role="status"
-                            >
-                                {t('billing.line.difference', {
-                                    amount: money(difference),
-                                })}
-                            </p>
-                        )}
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
 
             {estimate && (
                 <div className="flex flex-wrap gap-x-4">
@@ -787,9 +748,8 @@ export function LineEditor({
                                                         ? fromMinor(
                                                               Math.round(
                                                                   (costMinor *
-                                                                      Number(
-                                                                          line.quantity ||
-                                                                              0,
+                                                                      toNumber(
+                                                                          line.quantity,
                                                                       ) *
                                                                       Number(
                                                                           tax.rate,
@@ -815,6 +775,84 @@ export function LineEditor({
                             </div>
                         )}
 
+                    {line.taxable && taxRates.length > 1 && (
+                        <fieldset className="space-y-2 rounded-md border p-3">
+                            <legend className="px-1 text-sm">
+                                {t('billing.line.taxes')}
+                            </legend>
+                            <label className="flex min-h-10 items-center gap-2 text-sm">
+                                <Checkbox
+                                    checked={line.tax_rate_ids === null}
+                                    onCheckedChange={(checked) =>
+                                        onChange({
+                                            tax_rate_ids:
+                                                checked === true ? null : [],
+                                        })
+                                    }
+                                />
+                                {t('billing.line.document_taxes')}
+                            </label>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                {taxRates.map(
+                                    (tax) =>
+                                        tax.tax_rate_id !== null && (
+                                            <label
+                                                key={tax.tax_rate_id}
+                                                className="flex min-h-10 items-center gap-2 text-sm"
+                                            >
+                                                <Checkbox
+                                                    checked={
+                                                        line.tax_rate_ids ===
+                                                            null ||
+                                                        line.tax_rate_ids.includes(
+                                                            tax.tax_rate_id,
+                                                        )
+                                                    }
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) => {
+                                                        const ids =
+                                                            line.tax_rate_ids ??
+                                                            taxRates.flatMap(
+                                                                (rate) =>
+                                                                    rate.tax_rate_id ===
+                                                                    null
+                                                                        ? []
+                                                                        : [
+                                                                              rate.tax_rate_id,
+                                                                          ],
+                                                            );
+                                                        onChange({
+                                                            tax_rate_ids:
+                                                                checked === true
+                                                                    ? [
+                                                                          ...ids,
+                                                                          tax.tax_rate_id!,
+                                                                      ]
+                                                                    : ids.filter(
+                                                                          (
+                                                                              id,
+                                                                          ) =>
+                                                                              id !==
+                                                                              tax.tax_rate_id,
+                                                                      ),
+                                                        });
+                                                    }}
+                                                />
+                                                {tax.name} ({tax.rate}%)
+                                            </label>
+                                        ),
+                                )}
+                            </div>
+                            {taxRates.length === 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                    {t('billing.line.enable_taxes')}
+                                </p>
+                            )}
+                            <InputError message={err('tax_rate_ids')} />
+                        </fieldset>
+                    )}
+
                     <label className="flex min-h-10 items-start gap-2 text-sm">
                         <Checkbox
                             className="mt-0.5"
@@ -825,11 +863,11 @@ export function LineEditor({
                         />
                         <span>
                             {t('billing.line.bill_to_customer')}
-                            {!line.bill_to_customer && (
-                                <span className="block text-xs text-muted-foreground">
-                                    {t('billing.line.internal_hint')}
-                                </span>
-                            )}
+                            <span className="block text-xs text-muted-foreground">
+                                {line.bill_to_customer
+                                    ? t('billing.line.bill_to_customer_hint')
+                                    : t('billing.line.internal_hint')}
+                            </span>
                         </span>
                     </label>
 

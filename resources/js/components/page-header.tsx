@@ -1,3 +1,4 @@
+import type { InertiaLinkProps } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { ScreenHeader, useHasScreenHeader } from '@/components/screen-header';
 
@@ -9,10 +10,13 @@ export function PageHeader({
     title,
     description,
     actions,
+    back,
 }: {
     title: string;
     description?: string;
     actions?: ReactNode;
+    /** Shows a back arrow in the app header instead of the menu button. */
+    back?: NonNullable<InertiaLinkProps['href']>;
 }) {
     const inApp = useHasScreenHeader();
 
@@ -22,6 +26,7 @@ export function PageHeader({
                 <ScreenHeader
                     title={title}
                     subtitle={description}
+                    back={back}
                     own={false}
                 />
                 {actions && (

@@ -3,9 +3,11 @@
 namespace App\Support\Billing;
 
 /**
- * Cleans an amount typed by a person before validation: "$15.5", "CA$ 1,250.00", "€ 15,50" → "15.5", "1250.00",
- * "15.50". Currency signs, letters and spaces are dropped; a lone comma followed by 1–2 digits is read as the
- * decimal mark, other commas as thousands separators.
+ * Cleans an amount typed by a person before validation: "$15.5", "CA$ 1,250.00", "€ 15,50", "1.250,00" → "15.5",
+ * "1250.00", "15.50", "1250.00". Currency signs, letters and spaces are dropped; a lone comma followed by 1–2 digits
+ * is the decimal mark (phone keyboards often show a comma), commas between groups of three digits separate
+ * thousands. Anything else ("150.5.5", "15,5,5") is returned as typed so that validation rejects it.
+ * Mirrors parseNumber() in resources/js/components/billing/money.ts.
  */
 class MoneyInput
 {
@@ -21,11 +23,66 @@ class MoneyInput
             return trim($value) === '' ? $value : trim($value);
         }
 
-        if (! str_contains($clean, '.') && preg_match('/^-?\d+,\d{1,2}$/', $clean)) {
-            return str_replace(',', '.', $clean);
+        return self::normalize($clean) ?? trim($value);
+    }
+
+    private static function normalize(string $clean): ?string
+    {
+        if (! preg_match('/^(-?)([\d.,]+)$/', $clean, $match)) {
+            return null;
         }
 
-        return str_replace(',', '', $clean);
+        [, $sign, $body] = $match;
+        $lastDot = strrpos($body, '.');
+        $lastComma = strrpos($body, ',');
+        $digits = null;
+
+        if ($lastDot === false && $lastComma === false) {
+            $digits = $body;
+        } elseif ($lastDot === false || $lastComma === false) {
+            $mark = $lastComma === false ? '.' : ',';
+            $parts = explode($mark, $body);
+
+            if (count($parts) === 2 && preg_match('/^\d*$/', $parts[0])) {
+                if (preg_match('/^\d{1,2}$/', $parts[1]) || ($mark === '.' && preg_match('/^\d+$/', $parts[1]))) {
+                    $digits = ($parts[0] === '' ? '0' : $parts[0]).'.'.$parts[1];
+                } elseif ($mark === ',' && preg_match('/^\d{3}$/', $parts[1])) {
+                    $digits = implode('', $parts);
+                }
+            } elseif ($mark === ',' && self::grouped($parts)) {
+                $digits = implode('', $parts);
+            }
+        } else {
+            // Both marks: the last one is the decimal mark, the other groups thousands.
+            [$group, $decimal] = $lastDot > $lastComma ? [',', '.'] : ['.', ','];
+            $pieces = explode($decimal, $body);
+
+            if (count($pieces) === 2 && preg_match('/^\d+$/', $pieces[1]) && self::grouped($groups = explode($group, $pieces[0]))) {
+                $digits = implode('', $groups).'.'.$pieces[1];
+            }
+        }
+
+        return $digits !== null && preg_match('/^\d+(\.\d+)?$/', $digits) ? $sign.$digits : null;
+    }
+
+    /**
+     * "1", "500", "000" → thousands groups: 1–3 digits first, then exactly three.
+     *
+     * @param  list<string>  $groups
+     */
+    private static function grouped(array $groups): bool
+    {
+        if (! preg_match('/^\d{1,3}$/', $groups[0])) {
+            return false;
+        }
+
+        foreach (array_slice($groups, 1) as $group) {
+            if (! preg_match('/^\d{3}$/', $group)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

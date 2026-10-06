@@ -11,6 +11,7 @@ use App\Models\InvoiceItem;
 use App\Models\JobCostItem;
 use App\Models\Service;
 use App\Support\Billing\CostAccess;
+use App\Support\Billing\MoneyInput;
 use App\Support\Jobs\JobPresenter;
 use App\Support\Locale\Currencies;
 use Illuminate\Http\JsonResponse;
@@ -72,6 +73,7 @@ class PriceBookController extends Controller
         abort_unless(CostAccess::canEnterPrivate($request->user()), 403);
 
         $currency = currentCompany()->currency;
+        $request->replace(MoneyInput::cleanPaths($request->input(), ['unit_cost', 'unit_price']));
         $data = $request->validate([
             'kind' => ['required', Rule::enum(LineKind::class)],
             'name' => ['required', 'string', 'max:255'],

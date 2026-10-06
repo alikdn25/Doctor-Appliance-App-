@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { create as createJob } from '@/routes/jobs';
 import { create, start } from '@/routes/invoices';
@@ -18,10 +19,16 @@ export default function StartInvoice({
         number: number;
         customer: string;
         description: string | null;
+        created_at: string | null;
+        address: string | null;
+        status_label: string;
+        technicians: string[];
+        invoices: string[];
     }[];
     search: string;
 }) {
     const t = useTrans();
+    const time = useCompanyTime();
     const [search, setSearch] = useState(initialSearch);
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -51,7 +58,7 @@ export default function StartInvoice({
                     <Input
                         type="search"
                         value={search}
-                        placeholder={t('invoices.search')}
+                        placeholder={t('invoices.search_jobs')}
                         aria-label={t('common.search')}
                         onChange={(event) => setSearch(event.target.value)}
                     />
@@ -66,9 +73,32 @@ export default function StartInvoice({
                             href={create(job.id)}
                             className="block rounded-xl border bg-card p-4 transition-colors hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-ring"
                         >
-                            <span className="font-semibold">
-                                #{job.number} · {job.customer}
+                            <span className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-semibold">
+                                    #{job.number} · {job.customer}
+                                </span>
+                                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium">
+                                    {job.status_label}
+                                </span>
                             </span>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                {[
+                                    job.created_at
+                                        ? time.date(job.created_at)
+                                        : null,
+                                    job.address,
+                                    job.technicians.join(', ') || null,
+                                ]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                            </p>
+                            {job.invoices.length > 0 && (
+                                <p className="mt-1 text-sm font-medium text-amber-700 dark:text-amber-400">
+                                    {t('invoices.job_invoices', {
+                                        numbers: job.invoices.join(', '),
+                                    })}
+                                </p>
+                            )}
                             {job.description && (
                                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                                     {job.description}

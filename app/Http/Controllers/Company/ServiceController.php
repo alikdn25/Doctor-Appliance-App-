@@ -11,6 +11,7 @@ use App\Models\ChecklistTemplate;
 use App\Models\Service;
 use App\Services\AuditLogger;
 use App\Support\Billing\CostAccess;
+use App\Support\Billing\MoneyInput;
 use App\Support\Locale\Currencies;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -60,6 +61,7 @@ class ServiceController extends Controller
         Gate::authorize('manage', ChecklistTemplate::class);
 
         $currency = currentCompany()->currency;
+        $request->replace(MoneyInput::cleanPaths($request->input(), ['services.*.unit_price', 'services.*.unit_cost']));
         $validated = $request->validate([
             'services' => ['present', 'array', 'max:300'],
             'services.*.id' => ['nullable', 'integer'],

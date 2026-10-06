@@ -38,6 +38,8 @@ class BillingPresenter
             'currency' => $document->currency,
             'total' => $document->total,
             'balance' => $invoice ? $document->balance : null,
+            'overdue' => $invoice && $document->isOverdue(),
+            'due_on' => $invoice ? $document->due_on?->toDateString() : null,
             'job_id' => $document->service_job_id,
             'customer' => $document->relationLoaded('customer') ? $document->customer?->display_name : null,
         ];
@@ -93,7 +95,10 @@ class BillingPresenter
                 'private_difference' => CostAccess::owns(auth()->user(), $item) && $item->unit_cost !== null ? (int) round((float) $item->quantity * ($item->unit_price - $item->unit_cost)) : null,
             ])->values(),
             'costs_visible' => $costs,
-            'cost_total' => $costs ? $document->items->filter(fn ($item) => CostAccess::owns(auth()->user(), $item))->sum(fn ($item) => $item->totalCost()) : null,
+            // An optional estimate line the customer has not picked is not bought, so its cost is left out.
+            'cost_total' => $costs ? $document->items
+                ->filter(fn ($item) => CostAccess::owns(auth()->user(), $item) && ($invoice || ! $item->optional || $item->selected))
+                ->sum(fn ($item) => $item->totalCost()) : null,
             'job' => self::job($document->job),
             'customer' => [
                 'id' => $document->customer->id,

@@ -167,7 +167,11 @@ class SaveBillingDocument
                     unset($item[$field]);
                 }
             }
-            $costOwner = $conversion ? ($item['cost_owner_id'] ?? null) : ($old?->cost_owner_id ?? (isset($item['unit_cost']) ? $user->id : null));
+            // A service has no purchase price: a cost typed while the line was a part is dropped.
+            if ($kind === LineKind::Service) {
+                $item = [...$item, 'supplier' => null, 'unit_cost' => null, 'supplier_taxes' => null, 'cost_owner_id' => null];
+            }
+            $costOwner = $conversion ? ($item['cost_owner_id'] ?? null) : ($kind === LineKind::Service ? null : ($old?->cost_owner_id ?? (isset($item['unit_cost']) ? $user->id : null)));
             $line = [
                 'description' => trim((string) $item['description']),
                 'quantity' => (string) $item['quantity'],
