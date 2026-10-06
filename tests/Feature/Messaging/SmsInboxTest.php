@@ -2,6 +2,7 @@
 
 use App\Enums\MessageKind;
 use App\Enums\UserRole;
+use App\Messaging\Messenger;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
@@ -148,14 +149,91 @@ test('US registration blocks inbox replies to a US secondary number', function (
     Http::assertNothingSent();
 });
 
-test('unknown numbers stay visible and become replyable after a unique customer contact is added', function () {
+test('unknown numbers stay visible and can be texted without booking a customer', function () {
     inCompany($this->company, fn () => $this->incoming->update(['customer_id' => null, 'service_job_id' => null, 'from' => '+16045550143']));
     $this->get(route('messages.index', ['phone' => '+16045550143']))->assertInertia(fn (Assert $page) => $page
-        ->where('conversation.customer', null)->where('unreadMessages', 1)->where('conversation.blocked', fn ($reason) => $reason !== null));
-    $this->post(route('messages.send'), ['phone' => '+16045550143', 'body' => 'No contact yet'])->assertSessionHasErrors('body');
-    inCompany($this->company, fn () => $this->customer->phones()->create(['number' => '+16045550143']));
-    $this->post(route('messages.send'), ['phone' => '+16045550143', 'body' => 'Contact added'])->assertSessionHasNoErrors();
-    Http::assertSent(fn (Request $request) => $request['To'] === '+16045550143');
+        ->where('conversation.customer', null)->where('unreadMessages', 1)->where('conversation.blocked', null));
+    $this->post(route('messages.send'), ['phone' => '+16045550143', 'body' => 'Still need help?'])->assertSessionHasNoErrors();
+    Http::assertSent(fn (Request $request) => $request['To'] === '+16045550143' && $request['Body'] === 'Still need help?');
+    $message = inCompany($this->company, fn () => Message::latest('id')->first());
+    expect($message)->customer_id->toBeNull()->service_job_id->toBeNull()->status->toBe('sent')->user_id->toBe($this->owner->id);
+});
+
+test('the office opens a new conversation with any number, then texts and sees it as a thread', function () {
+    $this->get(route('messages.index', ['phone' => '+16045550199']))->assertInertia(fn (Assert $page) => $page
+        ->where('conversation.phone', '+16045550199')->where('conversation.customer', null)
+        ->where('conversation.blocked', null)->where('conversation.sms_mode', 'automatic')
+        ->has('conversation.messages.data', 0));
+    $this->post(route('messages.send'), ['phone' => '+16045550199', 'body' => 'Hi, we tried to call you.'])->assertSessionHasNoErrors();
+    Http::assertSent(fn (Request $request) => $request['To'] === '+16045550199');
+    $this->get(route('messages.index'))->assertInertia(fn (Assert $page) => $page
+        ->has('threads.data', 2)->where('threads.data.0.phone', '+16045550199')->where('threads.data.0.customer_name', null));
+});
+
+test('a new conversation with a customer number texts that customer and shows their name', function () {
+    $other = inCompany($this->company, fn () => Customer::factory()->for($this->company)->withPhone('+16045550177')->create());
+    $this->get(route('messages.index', ['phone' => '+16045550177']))->assertInertia(fn (Assert $page) => $page
+        ->where('conversation.customer.id', $other->id)->where('conversation.blocked', null));
+    $this->post(route('messages.send'), ['phone' => '+16045550177', 'body' => 'Hello'])->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => Message::latest('id')->first()))->customer_id->toBe($other->id)->status->toBe('sent');
+});
+
+test('a STOP from a number without a customer blocks new texts until START', function () {
+    $reply = fn (string $body) => inCompany($this->company, fn () => Message::create([
+        'direction' => 'inbound', 'channel' => 'sms', 'kind' => MessageKind::Reply,
+        'from' => '+16045550199', 'to' => '+16045550100', 'body' => $body, 'status' => 'received',
+    ]));
+    $reply(' stop ');
+    $this->get(route('messages.index', ['phone' => '+16045550199']))->assertInertia(fn (Assert $page) => $page
+        ->where('conversation.blocked', fn ($reason) => str_contains($reason, 'STOP')));
+    $this->post(route('messages.send'), ['phone' => '+16045550199', 'body' => 'Blocked'])->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => Message::latest('id')->first()))->status->toBe('blocked');
+    Http::assertNothingSent();
+    $reply('START');
+    $this->post(route('messages.send'), ['phone' => '+16045550199', 'body' => 'Welcome back'])->assertSessionHasNoErrors();
+    Http::assertSent(fn (Request $request) => $request['Body'] === 'Welcome back');
+});
+
+test('a STOP arriving after a text was queued at night stops it before delivery', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-10-14 22:00', 'America/Vancouver'));
+    $this->post(route('messages.send'), ['phone' => '+16045550199', 'body' => 'Morning text'])->assertSessionHasNoErrors();
+    $queued = inCompany($this->company, fn () => Message::latest('id')->first());
+    inCompany($this->company, fn () => Message::create([
+        'direction' => 'inbound', 'channel' => 'sms', 'kind' => MessageKind::Reply,
+        'from' => '+16045550199', 'to' => '+16045550100', 'body' => 'STOP', 'status' => 'received',
+    ]));
+    inCompany($this->company, fn () => app(Messenger::class)->deliver($queued->fresh()));
+    expect(inCompany($this->company, fn () => $queued->fresh()->status))->toBe('blocked');
+    Http::assertNothingSent();
+});
+
+test('new conversations follow the SMS mode, tenant isolation and validation', function () {
+    $other = Company::factory()->create(['sms_mode' => 'automatic']);
+    inCompany($other, fn () => Message::create([
+        'direction' => 'inbound', 'channel' => 'sms', 'kind' => MessageKind::Reply,
+        'from' => '+16045550199', 'to' => '+16045550101', 'body' => 'Foreign secret', 'status' => 'received',
+    ]));
+    $this->get(route('messages.index', ['phone' => '+16045550199']))->assertInertia(fn (Assert $page) => $page
+        ->has('conversation.messages.data', 0));
+    $this->get(route('messages.index', ['phone' => '6045550199']))->assertSessionHasErrors('phone');
+    $this->post(route('messages.send'), ['phone' => 'abc', 'body' => 'x'])->assertSessionHasErrors('phone');
+    $this->company->update(['sms_mode' => 'technician_phone']);
+    $this->get(route('messages.index', ['phone' => '+16045550199']))->assertInertia(fn (Assert $page) => $page
+        ->where('conversation.sms_mode', 'technician_phone'));
+    $this->post(route('messages.send'), ['phone' => '+16045550199', 'body' => 'Wrong mode'])->assertSessionHasErrors('body');
+    Http::assertNothingSent();
+});
+
+test('a customer number whose texts belong to a hidden brand is not opened as a new conversation', function () {
+    $allowed = inCompany($this->company, fn () => Brand::factory()->create(['company_id' => $this->company->id]));
+    $office = inCompany($this->company, function () use ($allowed) {
+        $user = memberOf($this->company, UserRole::Admin);
+        $user->brands()->attach($allowed->id, ['company_id' => $this->company->id]);
+
+        return $user;
+    });
+    $this->actingAs($office)->get(route('messages.index', ['phone' => '+16045550199']))->assertOk();
+    $this->get(route('messages.index', ['phone' => '+16045550142']))->assertNotFound();
 });
 
 test('ambiguous shared contact numbers and non-automatic modes cannot send replies', function () {

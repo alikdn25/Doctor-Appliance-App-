@@ -605,6 +605,13 @@ export default function JobShow({
                     )}
                 </section>
 
+                {/* Texts right under Call and Navigate */}
+                <JobMessagingSection
+                    jobId={job.id}
+                    messaging={messaging}
+                    canWork={can.work}
+                />
+
                 {/* Problem and notes */}
                 {(job.description || job.notes) && (
                     <section className="space-y-3 rounded-lg border p-4">
@@ -743,12 +750,6 @@ export default function JobShow({
                         </section>
                     </>
                 )}
-
-                <JobMessagingSection
-                    jobId={job.id}
-                    messaging={messaging}
-                    canWork={can.work}
-                />
 
                 <ChecklistSection
                     jobId={job.id}

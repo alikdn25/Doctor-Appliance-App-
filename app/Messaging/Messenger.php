@@ -14,6 +14,7 @@ use App\Models\SmsAccount;
 use App\Models\SmsRegistration;
 use App\Models\User;
 use App\Sms\SmsProvider;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use libphonenumber\PhoneNumberUtil;
 use Throwable;
@@ -94,6 +95,63 @@ class Messenger
     }
 
     /**
+     * An SMS to a number that belongs to no customer yet (the office texting a new lead from the inbox), or a
+     * "not sent" record saying why. Only the office sees it: it has no customer and no job.
+     */
+    public function smsToNumber(string $number, string $body, User $user): Message
+    {
+        $company = currentCompany();
+        $account = SmsAccount::query()->first();
+        $reason = $this->numberBlockedReason($number);
+
+        $message = Message::query()->create([
+            'direction' => Message::OUTBOUND,
+            'channel' => Message::SMS,
+            'kind' => MessageKind::General,
+            'to' => $number,
+            'from' => $account?->phone_number,
+            'body' => $body,
+            'status' => $reason === null ? 'scheduled' : 'blocked',
+            'status_reason' => $reason,
+            'send_after' => $reason === null ? QuietHours::nextAllowed($company) : null,
+            'user_id' => $user->id,
+        ]);
+
+        if ($reason === null) {
+            DeliverSmsMessage::dispatch($message->id, $company->id)->delay($message->send_after);
+        }
+
+        return $message;
+    }
+
+    /**
+     * Whether the company can text a number that belongs to no customer: null = yes, otherwise the reason.
+     */
+    public function numberBlockedReason(string $number): ?string
+    {
+        return match (true) {
+            $this->numberOptedOut($number) => __('messages.blocked.opted_out'),
+            SmsAccount::query()->whereNotNull('phone_number')->doesntExist() || ! $this->sms->isConfigured() => __('messages.blocked.no_account'),
+            $this->registrationBlocks($number) => __('messages.blocked.registration'),
+            default => null,
+        };
+    }
+
+    /**
+     * A number without a customer keeps no opt-out flag of its own: its latest STOP / START reply decides.
+     */
+    public function numberOptedOut(string $number): bool
+    {
+        $optOut = array_map('strtoupper', (array) config('sms.opt_out_keywords'));
+        $optIn = array_map('strtoupper', (array) config('sms.opt_in_keywords'));
+        $latest = Message::query()->where('direction', Message::INBOUND)->where('channel', Message::SMS)
+            ->where('from', $number)->whereIn(DB::raw('UPPER(TRIM(body))'), [...$optOut, ...$optIn])
+            ->latest('id')->value('body');
+
+        return $latest !== null && in_array(strtoupper(trim($latest)), $optOut, true);
+    }
+
+    /**
      * Records that a technician opened the phone's messages app with this text (sms: link).
      */
     public function openedOnPhone(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $to, string $body, User $user): Message
@@ -124,7 +182,7 @@ class Messenger
         $account = SmsAccount::query()->first();
         $phone = CustomerPhone::query()->where('customer_id', $message->customer_id)->where('number_normalized', $message->to)->first();
 
-        if ($phone?->sms_opted_out_at !== null) {
+        if ($phone?->sms_opted_out_at !== null || ($message->customer_id === null && $this->numberOptedOut((string) $message->to))) {
             $message->update(['status' => 'blocked', 'status_reason' => __('messages.blocked.opted_out')]);
 
             return;

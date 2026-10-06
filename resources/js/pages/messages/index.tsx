@@ -1,5 +1,24 @@
-import { Head, Link, router, useForm, usePoll } from '@inertiajs/react';
-import { ArrowLeft, MessageSquare, Send } from 'lucide-react';
+import {
+    Head,
+    Link,
+    router,
+    useForm,
+    usePage,
+    usePoll,
+} from '@inertiajs/react';
+import type { CountryCode } from 'libphonenumber-js/min';
+import {
+    isSupportedCountry,
+    parsePhoneNumberFromString,
+} from 'libphonenumber-js/min';
+import {
+    ArrowLeft,
+    MessageSquare,
+    Phone,
+    Plus,
+    Send,
+    Smartphone,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
@@ -16,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
+import { smsUrl } from '@/lib/sms';
 import {
     create as customerCreate,
     show as customerShow,
@@ -31,6 +51,7 @@ type Thread = {
 };
 type Conversation = {
     phone: string;
+    sms_mode: 'automatic' | 'technician_phone' | 'off';
     customer: { id: number; display_name: string } | null;
     blocked: string | null;
     messages: Paginated<MessageItem>;
@@ -41,8 +62,13 @@ type Filters = { search: string; unread: boolean };
 function Reply({ conversation }: { conversation: Conversation }) {
     const t = useTrans();
     const form = useForm({ phone: conversation.phone, body: '' });
+    // Without Automatic SMS the text still goes out: from the employee's own phone.
+    const fromPhone = conversation.sms_mode !== 'automatic';
+    const blocked = fromPhone ? null : conversation.blocked;
+    const body = form.data.body.trim();
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        if (fromPhone) return;
         form.post(send().url, {
             preserveScroll: true,
             onSuccess: () => form.reset('body'),
@@ -51,10 +77,14 @@ function Reply({ conversation }: { conversation: Conversation }) {
 
     return (
         <form onSubmit={submit} className="space-y-3 border-t p-4">
-            <Label htmlFor="sms-reply">{t('messages.inbox.reply')}</Label>
-            {conversation.blocked && (
+            <Label htmlFor="sms-reply">
+                {conversation.messages.total === 0
+                    ? t('messages.inbox.write')
+                    : t('messages.inbox.reply')}
+            </Label>
+            {(blocked || fromPhone) && (
                 <p role="status" className="text-sm text-muted-foreground">
-                    {conversation.blocked}
+                    {blocked ?? t('messages.inbox.phone_mode_hint')}
                 </p>
             )}
             <Textarea
@@ -63,26 +93,105 @@ function Reply({ conversation }: { conversation: Conversation }) {
                 onChange={(event) => form.setData('body', event.target.value)}
                 maxLength={1600}
                 rows={3}
-                disabled={conversation.blocked !== null}
+                disabled={blocked !== null}
                 placeholder={t('messages.inbox.reply_placeholder')}
             />
             <InputError message={form.errors.body ?? form.errors.phone} />
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground">
-                    {t('messages.inbox.quiet_hint')}
-                </p>
-                <Button
-                    type="submit"
-                    className="min-h-11"
-                    disabled={
-                        form.processing ||
-                        conversation.blocked !== null ||
-                        form.data.body.trim() === ''
-                    }
-                >
-                    <Send /> {t('messages.send_sms')}
+                {fromPhone ? (
+                    <Button
+                        asChild={body !== ''}
+                        className="ml-auto min-h-11"
+                        disabled={body === ''}
+                    >
+                        {body !== '' ? (
+                            <a
+                                href={smsUrl(conversation.phone, body)}
+                                onClick={() => form.reset('body')}
+                            >
+                                <Smartphone />{' '}
+                                {t('messages.inbox.from_my_phone')}
+                            </a>
+                        ) : (
+                            <>
+                                <Smartphone />{' '}
+                                {t('messages.inbox.from_my_phone')}
+                            </>
+                        )}
+                    </Button>
+                ) : (
+                    <>
+                        <p className="text-xs text-muted-foreground">
+                            {t('messages.inbox.quiet_hint')}
+                        </p>
+                        <Button
+                            type="submit"
+                            className="min-h-11"
+                            disabled={
+                                form.processing ||
+                                blocked !== null ||
+                                body === ''
+                            }
+                        >
+                            <Send /> {t('messages.send_sms')}
+                        </Button>
+                    </>
+                )}
+            </div>
+        </form>
+    );
+}
+
+/** Opens a conversation with any number, so a lead can be texted or called before they are booked. */
+function NewMessage({ onDone }: { onDone: () => void }) {
+    const t = useTrans();
+    const { auth } = usePage().props;
+    const country = auth.company?.country ?? 'US';
+    const [number, setNumber] = useState('');
+    const [error, setError] = useState<string>();
+    const open = (event: FormEvent) => {
+        event.preventDefault();
+        const parsed = parsePhoneNumberFromString(
+            number,
+            isSupportedCountry(country) ? (country as CountryCode) : undefined,
+        );
+        if (!parsed?.isPossible()) {
+            setError(t('messages.inbox.invalid_number'));
+            return;
+        }
+        onDone();
+        router.get(index({ query: { phone: parsed.number } }).url);
+    };
+
+    return (
+        <form
+            onSubmit={open}
+            className="mb-3 space-y-2 rounded-2xl border bg-card p-4 shadow-sm"
+        >
+            <h2 className="font-semibold">{t('messages.inbox.new_title')}</h2>
+            <p className="text-sm text-muted-foreground">
+                {t('messages.inbox.new_hint')}
+            </p>
+            <Label htmlFor="new-number">{t('messages.inbox.number')}</Label>
+            <div className="flex gap-2">
+                <Input
+                    id="new-number"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    autoFocus
+                    value={number}
+                    maxLength={30}
+                    onChange={(event) => {
+                        setNumber(event.target.value);
+                        setError(undefined);
+                    }}
+                />
+                <Button type="submit" className="min-h-11">
+                    {t('messages.inbox.open')}
                 </Button>
             </div>
+            <InputError message={error} />
         </form>
     );
 }
@@ -100,6 +209,7 @@ export default function SmsInbox({
     const time = useCompanyTime();
     const phoneText = usePhone();
     const [search, setSearch] = useState(filters.search);
+    const [composing, setComposing] = useState(false);
     const lastRead = useRef('');
     usePoll(15000, { only: ['threads', 'conversation', 'unreadMessages'] });
     const phone = conversation?.phone;
@@ -142,6 +252,16 @@ export default function SmsInbox({
                             conversation ? 'hidden min-w-0 lg:block' : 'min-w-0'
                         }
                     >
+                        <Button
+                            className="mb-3 min-h-11 w-full"
+                            aria-expanded={composing}
+                            onClick={() => setComposing(!composing)}
+                        >
+                            <Plus /> {t('messages.inbox.new')}
+                        </Button>
+                        {composing && (
+                            <NewMessage onDone={() => setComposing(false)} />
+                        )}
                         <form onSubmit={submit} className="mb-3 flex gap-2">
                             <Input
                                 type="search"
@@ -249,6 +369,14 @@ export default function SmsInbox({
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
+                                        <Button asChild className="min-h-11">
+                                            <a
+                                                href={`tel:${conversation.phone}`}
+                                            >
+                                                <Phone />{' '}
+                                                {t('messages.inbox.call')}
+                                            </a>
+                                        </Button>
                                         <Button
                                             asChild
                                             variant="outline"
@@ -301,7 +429,9 @@ export default function SmsInbox({
                                 </div>
                                 <div className="min-w-0 space-y-4 p-4">
                                     <p className="text-xs text-muted-foreground">
-                                        {t('messages.inbox.newest_first')}
+                                        {conversation.messages.total === 0
+                                            ? t('messages.inbox.start')
+                                            : t('messages.inbox.newest_first')}
                                     </p>
                                     <MessageHistory
                                         messages={conversation.messages.data}

@@ -1,3 +1,21 @@
+# October 6 — SMS right under Call/Navigate, text or call any number
+
+- Job page: the Messages (SMS) block now sits right under Call and Navigate; Appliances come after it.
+- SMS Inbox is now a messaging center: **New message** takes any phone number (read in the company's country,
+  stored in E.164) and opens a conversation without booking a customer first. The conversation header has a **Call**
+  button (tel: link). A number that belongs to one customer shows that customer; a number nobody has is texted as it
+  is (office-only message without customer or job). Shared numbers still need review.
+- Automatic SMS mode sends from the company number (quiet hours, US A2P 10DLC). In the other modes the composer
+  opens the employee's own messages app with the text ready ("Text from my phone").
+- A STOP from a number without a customer blocks further texts to it (also re-checked before a queued text goes out)
+  until START.
+- Who: Owner and Admin (a salesperson gets the Admin role). Brand-limited members cannot open a number whose texts
+  belong to a hidden brand.
+- Tests: new conversation, unlinked texting, customer lookup, STOP/START, queued STOP, mode, validation, tenant
+  isolation, hidden brand.
+- Next: a dedicated Sales/Collector role limited to the inbox (Stage 2), and recording calls/texts made from the
+  employee's own phone for numbers without a customer.
+
 # October 5 — sign-in recovery command
 
 - `php artisan app:reset-password EMAIL [--generate] [--without-2fa]` sets a new password without email, switches the

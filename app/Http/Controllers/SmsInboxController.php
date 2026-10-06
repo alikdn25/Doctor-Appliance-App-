@@ -57,20 +57,24 @@ class SmsInboxController extends Controller
             'phone' => ['required', 'string', self::PHONE_RULE],
             'body' => ['required', 'string', 'max:1600'],
         ]);
-        abort_unless(SmsInbox::forPhone($request->user(), $data['phone'])->exists(), 404);
+        // Any number can be texted: an existing conversation, a customer's phone or a new lead.
+        abort_if(SmsInbox::hiddenFrom($request->user(), $data['phone']), 404);
         if (currentCompany()->sms_mode !== SmsMode::Automatic) {
             throw ValidationException::withMessages(['body' => __('messages.inbox.automatic_required')]);
-        }
-        $recipient = $inbox->recipient($request->user(), $data['phone']);
-        if ($recipient === null) {
-            throw ValidationException::withMessages(['body' => __('messages.inbox.link_customer')]);
         }
         $body = trim($data['body']);
         if ($body === '') {
             throw ValidationException::withMessages(['body' => __('validation.required', ['attribute' => __('messages.inbox.reply')])]);
         }
-        $message = $messenger->sms(MessageKind::General, $recipient->customer,
-            $inbox->job($request->user(), $data['phone'], $recipient), $body, $request->user(), recipient: $recipient);
+        $recipient = $inbox->recipient($request->user(), $data['phone']);
+        if ($recipient !== null) {
+            $message = $messenger->sms(MessageKind::General, $recipient->customer,
+                $inbox->job($request->user(), $data['phone'], $recipient), $body, $request->user(), recipient: $recipient);
+        } elseif ($inbox->unlinked($request->user(), $data['phone'])) {
+            $message = $messenger->smsToNumber($data['phone'], $body, $request->user());
+        } else {
+            throw ValidationException::withMessages(['body' => __('messages.inbox.link_customer')]);
+        }
 
         return JobMessageController::result($message->status, $message->status_reason, $message->send_after);
     }
