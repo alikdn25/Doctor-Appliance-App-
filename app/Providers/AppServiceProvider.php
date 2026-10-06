@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Services\Impersonation;
+use App\Sms\RoutedSmsProvider;
 use App\Sms\SmsProvider;
+use App\Sms\SmsProviders;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\TimezoneDatabase;
 use Carbon\CarbonImmutable;
@@ -27,8 +29,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(CurrentCompany::class);
         $this->app->scoped(Impersonation::class);
         $this->app->bind(TimezoneDatabase::class, fn () => TimezoneDatabase::fromEnvironment());
-        // The platform's SMS provider (config/sms.php): Twilio.
-        $this->app->bind(SmsProvider::class, fn ($app) => $app->make(config('sms.provider')));
+        // The platform's SMS providers (config/sms.php): Telnyx for new numbers, each account its own provider.
+        $this->app->singleton(SmsProviders::class);
+        $this->app->bind(SmsProvider::class, RoutedSmsProvider::class);
     }
 
     /**

@@ -69,7 +69,7 @@ A company can have multiple brands (e.g. Doctor Appliance and Duct Works; a frie
 Each brand has:
 
 - Name, logo, colors, website, address(es)
-- Its own phone number for SMS (Twilio) and email sender identity
+- Its own phone number for SMS (Telnyx; Twilio supported) and email sender identity
 - Its own invoice/estimate template, footer, terms, tax/business registration numbers (e.g. GST/HST number, VAT
   number, EIN)
 - Its own **Google review profiles** (see §8)
@@ -186,9 +186,11 @@ return. Each job counts once; access follows company, brand and technician assig
 
 **SMS mode** (company setting; new companies start on *From technician's phone*):
 
-- **Automatic** — the app sends texts itself. The platform holds one Twilio account; every company gets its own
-  **subaccount and local number** in its country (one per company for now), so companies never sign up with Twilio.
-  The SMS provider is pluggable (`SmsProvider` interface, Twilio first), like payment providers. Keys only in `.env`.
+- **Automatic** — the app sends texts itself. The platform holds one provider account (**Telnyx** by default,
+  Twilio also supported); every company gets its own **messaging profile / subaccount and local number** in its
+  country (one per company for now), so companies never sign up with the provider. The SMS provider is pluggable
+  (`SmsProvider` interface), like payment providers; a company keeps the provider its number came from. Keys only in
+  `.env`.
 - **From technician's phone** — buttons ("Send SMS", "On my way", "Send by SMS" on documents, "Send review request")
   open the phone's messages app (`sms:` link, iOS and Android formats) with the number and the text ready; the job
   history records "SMS opened from technician's phone". No automatic texts: day-before reminders and review requests
@@ -208,13 +210,13 @@ Rules:
   not sent and the UI says why (the message goes by email when there is an address). Canada and other countries:
   no such restriction today (other countries have their own sender rules).
 - **STOP / START / HELP**: a customer who replies STOP gets no more texts to that number (shown on the customer card);
-  START turns texts back on; Twilio answers STOP/HELP itself.
+  START turns texts back on; the provider answers STOP/HELP itself.
 - **Quiet hours** in the company time zone (default 21:00–08:00): texts due at night go out in the morning.
 - All texts, emails and the customer's replies are kept on the customer and job timelines with their status
   (scheduled, sent, delivered, failed, not sent + reason).
 
 Later: automated "parts arrived", "payment received", payment reminders (Stage 2), click-to-call
-from the company number (Twilio voice).
+from the company number (provider voice).
 
 ### 7.8 Appliance-specific features (appliance repair vertical; not in Housecall Pro)
 
@@ -270,7 +272,7 @@ from the company number (Twilio voice).
 ### 7.14 Integrations
 
 - Square (required, v1)
-- Twilio SMS + voice (v1)
+- Telnyx SMS (v1; Twilio supported) + voice later
 - Google Maps / Places (v1)
 - Transactional email provider (v1)
 - QuickBooks Online (later)
@@ -316,7 +318,7 @@ Project skeleton, auth, companies (tenants), brands, users & roles, super-admin 
 
 ### Stage 1 — MVP (owner can run the business on it)
 
-Customers, properties, appliances, jobs & statuses, calendar & dispatch, technician PWA view, photos, signatures, estimates, invoices, Square payments, Twilio SMS (automated messages + inbox), review request toggle, price book, basic reports.
+Customers, properties, appliances, jobs & statuses, calendar & dispatch, technician PWA view, photos, signatures, estimates, invoices, Square payments, Telnyx SMS (automated messages + inbox), review request toggle, price book, basic reports.
 
 ### Stage 2
 

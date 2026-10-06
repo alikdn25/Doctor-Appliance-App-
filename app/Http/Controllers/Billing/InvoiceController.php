@@ -18,6 +18,7 @@ use App\Payments\PaymentProviders;
 use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\Warranties;
+use App\Support\Jobs\JobPresenter;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -198,6 +199,13 @@ class InvoiceController extends Controller
             'online' => $this->online($invoice, $providers, $links),
             'delivery' => BillingPresenter::delivery($invoice),
             'sms' => $invoice->isVoid() ? null : app(MessagingPresenter::class)->forDocument($invoice),
+            // The customer signs when the work is done and the invoice is made, not earlier on the job.
+            'signature' => [
+                'job_id' => $invoice->service_job_id,
+                'customer_name' => (string) $invoice->job->customer?->display_name,
+                'data' => JobPresenter::signature($invoice->job),
+                'can_sign' => ! $invoice->isVoid() && Gate::allows('work', $invoice->job),
+            ],
         ]);
     }
 

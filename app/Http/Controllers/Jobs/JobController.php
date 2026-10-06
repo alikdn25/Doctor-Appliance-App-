@@ -22,6 +22,7 @@ use App\Messaging\MessagingPresenter;
 use App\Models\Appliance;
 use App\Models\Brand;
 use App\Models\Customer;
+use App\Models\CustomerPhone;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -40,6 +41,7 @@ use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\CostAccess;
 use App\Support\Billing\JobProfit;
 use App\Support\Jobs\JobPresenter;
+use App\Support\PhoneNumber;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -105,14 +107,23 @@ class JobController extends Controller
                     $v->where('scheduled_start', '<=', CarbonImmutable::parse($filters['to'], $timezone)->endOfDay()->utc());
                 }
             }))
-            ->with(['customer', 'property', 'brand', 'appliances', 'visits.assignees'])
+            ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
             ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString()
             ->through(fn (ServiceJob $job) => JobPresenter::row($job));
 
+        // Coloured count circles: visible jobs per status (other filters ignored), tap to filter.
+        $statusCounts = ServiceJob::query()
+            ->visibleTo($user)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->map(fn ($total) => (int) $total);
+
         return Inertia::render('jobs/index', [
             'jobs' => $jobs,
+            'statusCounts' => $statusCounts,
             'filters' => $filters,
             'statuses' => JobStatus::options(),
             'types' => currentCompany()->vertical->jobTypeOptions(),
@@ -137,31 +148,42 @@ class JobController extends Controller
         $timezone = currentCompany()->timezone;
         $todayStart = CarbonImmutable::now($timezone)->startOfDay()->utc();
         $todayEnd = CarbonImmutable::now($timezone)->endOfDay()->utc();
+        $search = trim((string) $request->query('search', ''));
+        $active = [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value];
 
-        $visits = JobVisit::query()
+        // One query per tab; the counts are shown on the tabs. A search applies to every tab (and its count).
+        // A visit started on an earlier day and still open stays in Today only, not also in Recent.
+        $tabQuery = fn (string $name) => JobVisit::query()
             ->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
-            ->whereHas('job', fn (Builder $q) => $q->visibleTo($user))
-            ->when($tab === 'today', fn ($q) => $q
+            ->whereHas('job', fn (Builder $q) => $q->visibleTo($user)->when($search !== '', fn (Builder $j) => $j->search($search)))
+            ->when($name === 'today', fn ($q) => $q
                 ->where(fn ($w) => $w
                     ->whereBetween('scheduled_start', [$todayStart, $todayEnd])
-                    ->orWhereIn('status', [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value]))
+                    ->orWhereIn('status', $active))
                 ->orderBy('scheduled_start'))
-            ->when($tab === 'upcoming', fn ($q) => $q
+            ->when($name === 'upcoming', fn ($q) => $q
                 ->where('scheduled_start', '>', $todayEnd)
                 ->where('status', VisitStatus::Scheduled->value)
                 ->orderBy('scheduled_start'))
-            ->when($tab === 'recent', fn ($q) => $q
+            ->when($name === 'recent', fn ($q) => $q
                 ->where('scheduled_start', '<', $todayStart)
                 ->where('scheduled_start', '>=', $todayStart->subDays(30))
-                ->orderByDesc('scheduled_start'))
+                ->whereNotIn('status', $active)
+                ->orderByDesc('scheduled_start'));
+
+        $visits = $tabQuery($tab)
             ->with(['assignees', 'job.customer.primaryPhone', 'job.property', 'job.appliances', 'job.bringItems'])
             ->limit(100)
             ->get();
+        $counts = collect(['today', 'upcoming', 'recent'])
+            ->mapWithKeys(fn (string $name) => [$name => $tabQuery($name)->reorder()->count()]);
 
         $messaging = app(MessagingPresenter::class);
 
         return Inertia::render('jobs/mine', [
             'tab' => $tab,
+            'search' => $search,
+            'counts' => $counts,
             // Cash this person collected and has not handed in yet.
             'cashOnHand' => CashLedger::balances()[$user->id] ?? [],
             'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging) {
@@ -189,6 +211,10 @@ class JobController extends Controller
                         'phone' => $job->customer?->primaryPhone?->number,
                         'address' => $job->property?->fullAddress(),
                         'appliances' => $job->appliances->map(fn (Appliance $a) => $a->label())->values(),
+                        // Picture on the card: the appliance, several appliances, or tools for an installation.
+                        'picture' => JobPresenter::picture($job),
+                        'appliance_types' => $job->appliances->map(fn (Appliance $a) => $a->type->label())->values(),
+                        'problem' => $job->description,
                     ],
                 ];
             })->values(),
@@ -213,6 +239,8 @@ class JobController extends Controller
             'bookingDate' => $request->input('date'),
             'customer' => $customer ? self::customerOption($customer) : null,
             'today' => CarbonImmutable::now(currentCompany()->timezone)->format('Y-m-d'),
+            // Company clock, so the booking form never suggests a window that has already passed.
+            'nowTime' => CarbonImmutable::now(currentCompany()->timezone)->format('H:i'),
             ...$this->formOptions($request->user()),
         ]);
     }
@@ -237,7 +265,7 @@ class JobController extends Controller
             : to_route('jobs.show', $job);
     }
 
-    public function show(Request $request, ServiceJob $job): Response
+    public function show(Request $request, ServiceJob $job): Response|RedirectResponse
     {
         Gate::authorize('view', $job);
 
@@ -251,6 +279,11 @@ class JobController extends Controller
         $canUpdate = Gate::allows('update', $job);
         $property = $job->property;
         $myVisit = JobPresenter::myNextVisit($job, $user);
+
+        // Old "finish" links open the Finish visit screen.
+        if ($request->boolean('finish') && $myVisit?->status === VisitStatus::InProgress) {
+            return to_route('visits.finish-screen', $myVisit);
+        }
 
         return Inertia::render('jobs/show', [
             'job' => [
@@ -293,11 +326,13 @@ class JobController extends Controller
                     'id' => $job->customer->id,
                     'display_name' => $job->customer->display_name,
                     'avatar_icon' => $job->customer->avatarIcon(),
+                    'avatar_style' => $job->customer->avatar_style,
                     'notes' => $job->customer->notes,
                     'phones' => $job->customer->phones->map(fn ($p) => [
                         'id' => $p->id,
                         'number' => $p->number,
                         'label_text' => $p->label->label(),
+                        'contact_name' => $p->contact_name,
                     ])->values(),
                 ],
                 'property' => [
@@ -325,12 +360,7 @@ class JobController extends Controller
                 ])->values(),
                 'estimates' => $job->estimates->map(fn (Estimate $e) => BillingPresenter::row($e))->values(),
                 'invoices' => $job->invoices->map(fn (Invoice $i) => BillingPresenter::row($i))->values(),
-                'signature' => $job->signature_path ? [
-                    'url' => route('jobs.signature.show', $job).'?v='.$job->signed_at?->timestamp,
-                    'name' => $job->signature_name,
-                    'signed_at' => JobPresenter::iso($job->signed_at),
-                    'by' => $job->signer?->name,
-                ] : null,
+                'signature' => JobPresenter::signature($job),
             ],
             'myVisitId' => $myVisit?->id,
             'messaging' => app(MessagingPresenter::class)->forJob($job, $user, $myVisit),
@@ -340,6 +370,7 @@ class JobController extends Controller
                 'work' => Gate::allows('work', $job),
                 'close' => Gate::allows('work', $job) && $job->status !== JobStatus::Cancelled && ! $job->trashed(),
                 'viewCustomer' => Gate::allows('view', $job->customer),
+                'updateCustomer' => Gate::allows('update', $job->customer),
             ],
             'statusOptions' => $canUpdate && ! $job->status->isLocked() ? JobStatus::manualOptions() : [],
             'closureReasons' => [
@@ -379,6 +410,7 @@ class JobController extends Controller
                         'supplier' => $item->supplier,
                         'quantity' => rtrim(rtrim((string) $item->quantity, '0'), '.'),
                         'unit' => $item->unit,
+                        'unit_cost' => $item->unit_cost,
                         'total_cost' => $item->totalCost(),
                     ])->values(),
                 'receipts' => SupplierReceipt::query()
@@ -401,7 +433,6 @@ class JobController extends Controller
             ] : null,
             'openWarranty' => $request->boolean('warranty'),
             // "Finish visit" on My Jobs opens the finish dialog straight away.
-            'openFinish' => $request->boolean('finish'),
             'assignableUsers' => $canUpdate ? $this->assignableUsers() : [],
             'otherAppliances' => Appliance::query()
                 ->where('property_id', $property->id)
@@ -448,7 +479,18 @@ class JobController extends Controller
 
     public function update(JobRequest $request, ServiceJob $job, SaveJob $save): RedirectResponse
     {
-        $save->update($job, $request->jobAttributes(), $request->applianceIds(), $request->newAppliances(), $request->bringItems());
+        DB::transaction(function () use ($request, $job, $save) {
+            $save->update($job, $request->jobAttributes(), $request->applianceIds(), $request->newAppliances(), $request->bringItems());
+
+            if (($edit = $request->customerEdit()) !== null) {
+                self::updateCustomerContact($job->customer, $edit);
+            }
+
+            // The address of the job's place, e.g. added later to a booking taken without one.
+            if (($address = $request->addressEdit()) !== null) {
+                $job->property()->first()?->fill($address)->save();
+            }
+        });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.updated')]);
 
@@ -545,6 +587,30 @@ class JobController extends Controller
     }
 
     /**
+     * New name and main phone of a customer, typed on the job form (a typo at booking, a new number).
+     *
+     * @param  array{first_name: ?string, last_name: ?string, company_name: ?string, phone: string}  $edit
+     */
+    private static function updateCustomerContact(Customer $customer, array $edit): void
+    {
+        $customer->fill([
+            'first_name' => $edit['first_name'],
+            'last_name' => $edit['last_name'],
+            'company_name' => $edit['company_name'],
+        ])->save();
+
+        $phone = $customer->primaryPhone()->first() ?? new CustomerPhone(['label' => 'mobile', 'is_primary' => true]);
+
+        if ($phone->exists && $phone->number === PhoneNumber::normalize($edit['phone'])) {
+            return;
+        }
+
+        $phone->number = $edit['phone'];
+        $phone->customer_id = $customer->id;
+        $phone->save();
+    }
+
+    /**
      * A customer with properties and their appliances, as the job form needs it.
      *
      * @return array<string, mixed>
@@ -556,6 +622,9 @@ class JobController extends Controller
         return [
             'id' => $customer->id,
             'display_name' => $customer->display_name,
+            'first_name' => $customer->first_name,
+            'last_name' => $customer->last_name,
+            'company_name' => $customer->company_name,
             'avatar_icon' => $customer->avatarIcon(),
             'notes' => $customer->notes,
             'phone' => $customer->primaryPhone?->number,
@@ -565,6 +634,18 @@ class JobController extends Controller
                 'label' => $p->label,
                 'full_address' => $p->fullAddress(),
                 'is_primary' => $p->is_primary,
+                // Address parts, editable from the job form.
+                'address' => [
+                    'line1' => $p->line1 ?? '',
+                    'unit' => $p->unit ?? '',
+                    'city' => $p->city ?? '',
+                    'region' => $p->region ?? '',
+                    'postal_code' => $p->postal_code ?? '',
+                    'country' => $p->country ?? currentCompany()->country,
+                    'google_place_id' => $p->google_place_id ?? '',
+                    'latitude' => $p->latitude === null ? '' : (string) $p->latitude,
+                    'longitude' => $p->longitude === null ? '' : (string) $p->longitude,
+                ],
                 'appliances' => $p->appliances->map(fn (Appliance $a) => JobPresenter::appliance($a))->values(),
             ])->values(),
             // Earlier jobs, for a return visit or warranty callback.

@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'missing_profile' => 'No Google review profile is added for this brand yet, so no request will be sent. Add one in Company settings → Google reviews.',
     'title' => 'Google reviews',
     'description' => 'Google Business Profiles and their review links. Each brand picks its default profile.',
     'add' => 'Add profile',

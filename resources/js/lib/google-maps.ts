@@ -4,7 +4,29 @@ declare global {
             maps?: { importLibrary?: (name: string) => Promise<unknown> };
         };
         __doctorMapsReady?: () => void;
+        gm_authFailure?: () => void;
     }
+}
+
+let authFailed = false;
+const authListeners = new Set<() => void>();
+
+/** Google calls gm_authFailure when it rejects the key (wrong referrer, API not enabled, billing off). */
+if (typeof window !== 'undefined') {
+    window.gm_authFailure = () => {
+        authFailed = true;
+        authListeners.forEach((listener) => listener());
+    };
+}
+
+export function googleMapsKeyRejected(): boolean {
+    return authFailed;
+}
+
+/** Subscribe to the key being rejected; returns the unsubscribe function. */
+export function onGoogleMapsKeyRejected(listener: () => void): () => void {
+    authListeners.add(listener);
+    return () => authListeners.delete(listener);
 }
 
 let loading: Promise<void> | null = null;

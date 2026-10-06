@@ -27,13 +27,13 @@ test('name suggestions support Latin names and leave ambiguous or unknown names 
 test('saved icon choices survive a rename and edits that omit the icon', function () {
     $company = Company::factory()->create();
     $this->actingAs(memberOf($company, UserRole::Owner));
-    $customer = Customer::factory()->for($company)->create(['first_name' => 'James', 'avatar_style' => 'neutral']);
+    $customer = Customer::factory()->for($company)->create(['first_name' => 'James', 'avatar_style' => 'woman']);
 
     $this->get(route('customers.edit', $customer))->assertInertia(fn (Assert $page) => $page
-        ->where('customer.avatar_style', 'neutral')->where('customer.avatar_icon', 'neutral'));
+        ->where('customer.avatar_style', 'woman')->where('customer.avatar_icon', 'woman'));
     $this->put(route('customers.update', $customer), ['type' => 'residential', 'first_name' => 'Maria', 'phones' => [], 'emails' => [], 'notes' => 'Do not call: baby sleeping.'])
         ->assertSessionHasNoErrors();
-    expect($customer->fresh()->avatarIcon())->toBe('neutral');
+    expect($customer->fresh()->avatarIcon())->toBe('woman');
     $this->put(route('customers.update', $customer), ['type' => 'residential', 'first_name' => 'Maria', 'avatar_style' => 'man', 'phones' => [], 'emails' => []])
         ->assertSessionHasNoErrors();
     expect($customer->fresh()->avatarIcon())->toBe('man');

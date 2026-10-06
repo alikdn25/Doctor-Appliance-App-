@@ -20,13 +20,12 @@ import {
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import { ApplianceImage } from '@/components/appliance-image';
 import { DocumentList } from '@/components/billing/document-list';
 import type { DocumentRow } from '@/components/billing/types';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
 import InputError from '@/components/input-error';
-import { ChecklistSection } from '@/components/jobs/checklist-section';
-import type { ChecklistItemData } from '@/components/jobs/checklist-section';
 import { FinishDialog } from '@/components/jobs/finish-dialog';
 import type {
     CallbackInfo,
@@ -54,26 +53,39 @@ import { StatusDialog } from '@/components/jobs/status-dialog';
 import type { ApplianceItem, Assignable, Visit } from '@/components/jobs/types';
 import { applianceTitle } from '@/components/jobs/types';
 import { VisitDialog } from '@/components/jobs/visit-dialog';
-import { CustomerAvatar } from '@/components/customers/customer-avatar';
-import type { AvatarIcon } from '@/components/customers/customer-avatar';
+import {
+    CustomerAvatar,
+    CustomerAvatarPicker,
+} from '@/components/customers/customer-avatar';
+import type {
+    AvatarIcon,
+    AvatarStyle,
+} from '@/components/customers/customer-avatar';
 import { CustomerNotes } from '@/components/customers/customer-notes';
 import { PageHeader } from '@/components/page-header';
 import {
     JobMessagingSection,
     openOnPhone,
+    openSmsApp,
 } from '@/components/messaging/job-messaging';
 import type { JobMessaging } from '@/components/messaging/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatMinutes, useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
+import { smsUrl } from '@/lib/sms';
 import { usePhone } from '@/lib/phone';
 import { show as showAppliance } from '@/routes/appliances';
 import { show as showCustomer } from '@/routes/customers';
 import { create as createEstimate } from '@/routes/estimates';
 import { create as createInvoice } from '@/routes/invoices';
 import { destroy, edit, index, techNotes } from '@/routes/jobs';
-import { destroy as destroyVisit, onMyWay, start } from '@/routes/visits';
+import {
+    destroy as destroyVisit,
+    finishScreen,
+    onMyWay,
+    start,
+} from '@/routes/visits';
 import type { Option } from '@/types';
 
 type Job = {
@@ -110,14 +122,19 @@ type Job = {
         id: number;
         display_name: string;
         avatar_icon: AvatarIcon;
+        avatar_style: AvatarStyle;
         notes: string | null;
-        phones: { id: number; number: string; label_text: string }[];
+        phones: {
+            id: number;
+            number: string;
+            label_text: string;
+            contact_name: string | null;
+        }[];
     };
     property: PropertyData & { full_address: string };
     appliances: (ApplianceItem & { rating_plate_url: string | null })[];
     visits: Visit[];
     photos: JobPhotoData[];
-    checklist: ChecklistItemData[];
     signature: SignatureData;
     estimates: DocumentRow[];
     invoices: DocumentRow[];
@@ -142,6 +159,7 @@ type Props = {
         work: boolean;
         close: boolean;
         viewCustomer: boolean;
+        updateCustomer: boolean;
     };
     statusOptions: Option[];
     closureReasons: ClosureReasons;
@@ -149,7 +167,6 @@ type Props = {
     warrantyLines: WarrantyLine[];
     warrantyUnits: Option[];
     openWarranty: boolean;
-    openFinish?: boolean;
     costs: JobCosts | null;
     assignableUsers: Assignable[];
     otherAppliances: ApplianceItem[];
@@ -196,7 +213,6 @@ export default function JobShow({
     warrantyLines,
     warrantyUnits,
     openWarranty,
-    openFinish = false,
     costs,
 }: Props) {
     const t = useTrans();
@@ -207,12 +223,6 @@ export default function JobShow({
         (auth.company?.tracks_appliances ?? true) || job.appliances.length > 0;
     const time = useCompanyTime();
     const [statusOpen, setStatusOpen] = useState(false);
-    const [finishOpen, setFinishOpen] = useState(
-        () =>
-            openFinish &&
-            job.visits.find((v) => v.id === myVisitId)?.status ===
-                'in_progress',
-    );
     const [closeOpen, setCloseOpen] = useState(false);
     const [warrantyOpen, setWarrantyOpen] = useState(openWarranty);
     const visitUnderWay = job.visits.some((v) =>
@@ -242,17 +252,13 @@ export default function JobShow({
         notesForm.put(techNotes(job.id).url, { preserveScroll: true });
     };
 
-    const act = (url: string) =>
-        router.post(
-            url,
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: () => setActionError(undefined),
-                onError: (errors) =>
-                    setActionError(Object.values(errors)[0] as string),
-            },
-        );
+    const act = (url: string, data: Record<string, unknown> = {}) =>
+        router.post(url, data as never, {
+            preserveScroll: true,
+            onSuccess: () => setActionError(undefined),
+            onError: (errors) =>
+                setActionError(Object.values(errors)[0] as string),
+        });
 
     const remove = () => {
         if (
@@ -308,6 +314,22 @@ export default function JobShow({
                         label={job.status_label}
                         className="px-3 py-1 text-sm"
                     />
+                    {/* The job status follows the work; invoices still show next to it before the work is done. */}
+                    {!['invoiced', 'paid'].includes(job.status) &&
+                        job.invoices
+                            .filter((invoice) => invoice.status !== 'void')
+                            .map((invoice) => (
+                                <a
+                                    key={invoice.id}
+                                    href="#documents"
+                                    className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900"
+                                >
+                                    {t('jobs.invoice_chip', {
+                                        number: invoice.number,
+                                        status: invoice.status_label,
+                                    })}
+                                </a>
+                            ))}
                     {job.minutes_on_job > 0 && (
                         <span className="text-sm text-muted-foreground">
                             {t('jobs.time_on_job', {
@@ -317,7 +339,7 @@ export default function JobShow({
                     )}
                     {statusOptions.length > 0 && (
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => setStatusOpen(true)}
                         >
@@ -383,7 +405,7 @@ export default function JobShow({
 
                 {/* Field actions for the current user's visit */}
                 {myVisit && job.allows_visit_work && (
-                    <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:static md:rounded-2xl md:border md:p-4 md:shadow-none">
+                    <div className="da-pinned fixed inset-x-0 bottom-0 z-30 border-t border-[#E1E8F2] bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(16,42,79,.08)] md:static md:rounded-2xl md:border md:p-4 md:shadow-none dark:bg-background">
                         <div className="mx-auto flex max-w-3xl flex-col gap-2">
                             <div className="flex items-center justify-between text-sm">
                                 <span className="font-medium">
@@ -402,22 +424,31 @@ export default function JobShow({
                                 <div className="grid grid-cols-2 gap-2">
                                     <Button
                                         size="lg"
-                                        className="min-h-12 rounded-xl"
+                                        className="min-h-14 rounded-2xl text-base"
                                         onClick={() => {
-                                            act(onMyWay(myVisit.id).url);
-
-                                            // From technician's phone: the messages app opens with the text ready.
-                                            if (
+                                            // From the technician's phone: the messages app opens with the
+                                            // text ready; the status change records the text in one request.
+                                            const phoneText =
                                                 messaging.mode ===
                                                     'technician_phone' &&
                                                 messaging.phone &&
                                                 !messaging.opted_out
-                                            ) {
-                                                openOnPhone(
-                                                    job.id,
-                                                    'on_my_way',
-                                                    messaging.phone,
-                                                    messaging.texts.on_my_way,
+                                                    ? {
+                                                          to: messaging.phone,
+                                                          body: messaging.texts
+                                                              .on_my_way,
+                                                      }
+                                                    : null;
+                                            act(
+                                                onMyWay(myVisit.id).url,
+                                                phoneText
+                                                    ? { phone_sms: phoneText }
+                                                    : {},
+                                            );
+                                            if (phoneText) {
+                                                openSmsApp(
+                                                    phoneText.to,
+                                                    phoneText.body,
                                                 );
                                             }
                                         }}
@@ -427,7 +458,7 @@ export default function JobShow({
                                     <Button
                                         size="lg"
                                         variant="outline"
-                                        className="min-h-12 rounded-xl"
+                                        className="min-h-14 rounded-2xl text-base"
                                         onClick={() =>
                                             act(start(myVisit.id).url)
                                         }
@@ -439,7 +470,7 @@ export default function JobShow({
                             {myVisit.status === 'on_the_way' && (
                                 <Button
                                     size="lg"
-                                    className="min-h-12 rounded-xl"
+                                    className="min-h-14 rounded-2xl text-base"
                                     onClick={() => act(start(myVisit.id).url)}
                                 >
                                     <Play /> {t('jobs.actions.start')}
@@ -447,12 +478,14 @@ export default function JobShow({
                             )}
                             {myVisit.status === 'in_progress' && (
                                 <Button
+                                    asChild
                                     size="lg"
-                                    className="min-h-12 rounded-xl"
-                                    onClick={() => setFinishOpen(true)}
+                                    className="min-h-14 rounded-2xl text-base"
                                 >
-                                    <CheckCircle2 />{' '}
-                                    {t('jobs.actions.finish_title')}
+                                    <Link href={finishScreen(myVisit.id)}>
+                                        <CheckCircle2 />{' '}
+                                        {t('jobs.finish_short')}
+                                    </Link>
                                 </Button>
                             )}
                             <InputError message={actionError} />
@@ -463,7 +496,21 @@ export default function JobShow({
                 {/* Customer and address */}
                 <section className="space-y-4 rounded-3xl border bg-card p-5 shadow-sm">
                     <div className="flex items-start gap-3">
-                        <CustomerAvatar icon={job.customer.avatar_icon} />
+                        {can.updateCustomer ? (
+                            <CustomerAvatarPicker
+                                customerId={job.customer.id}
+                                icon={job.customer.avatar_icon}
+                                style={job.customer.avatar_style}
+                                name={job.customer.display_name}
+                                size="lg"
+                            />
+                        ) : (
+                            <CustomerAvatar
+                                icon={job.customer.avatar_icon}
+                                name={job.customer.display_name}
+                                size="lg"
+                            />
+                        )}
                         <div className="min-w-0 flex-1">
                             <h2 className="text-xs text-muted-foreground">
                                 {t('jobs.sections.customer')}
@@ -559,19 +606,39 @@ export default function JobShow({
                         )}
                     </div>
 
+                    {/* Other numbers, e.g. the second person of a couple: Call and SMS for each. */}
                     {job.customer.phones.length > 1 && (
-                        <ul className="space-y-1 text-sm">
+                        <ul className="space-y-2 text-sm">
                             {job.customer.phones.slice(1).map((p) => (
-                                <li key={p.id}>
-                                    <a
-                                        href={telUrl(p.number)}
-                                        className="underline-offset-4 hover:underline"
-                                    >
-                                        {phoneText(p.number)}
-                                    </a>{' '}
-                                    <span className="text-xs text-muted-foreground">
-                                        {p.label_text}
+                                <li
+                                    key={p.id}
+                                    className="flex flex-wrap items-center gap-2"
+                                >
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block font-semibold">
+                                            {p.contact_name ??
+                                                phoneText(p.number)}
+                                        </span>
+                                        <span className="block text-xs text-muted-foreground">
+                                            {[
+                                                p.contact_name &&
+                                                    phoneText(p.number),
+                                                p.label_text,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                        </span>
                                     </span>
+                                    <Button asChild variant="outline">
+                                        <a href={telUrl(p.number)}>
+                                            <Phone /> {t('jobs.call')}
+                                        </a>
+                                    </Button>
+                                    <Button asChild variant="outline">
+                                        <a href={smsUrl(p.number, '')}>
+                                            <MessageSquare /> {t('jobs.sms')}
+                                        </a>
+                                    </Button>
                                 </li>
                             ))}
                         </ul>
@@ -670,8 +737,12 @@ export default function JobShow({
                                     {job.appliances.map((a) => (
                                         <li
                                             key={a.id}
-                                            className="flex min-h-14 items-center gap-2 px-3 py-2"
+                                            className="flex min-h-14 items-center gap-3 px-3 py-2"
                                         >
+                                            <ApplianceImage
+                                                type={a.type}
+                                                className="size-14"
+                                            />
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
                                                     {a.removed ? (
@@ -751,12 +822,6 @@ export default function JobShow({
                     </>
                 )}
 
-                <ChecklistSection
-                    jobId={job.id}
-                    items={job.checklist}
-                    canTick={can.work}
-                />
-
                 <PhotoSection
                     jobId={job.id}
                     visitId={myVisitId}
@@ -804,12 +869,15 @@ export default function JobShow({
                     )}
                 </section>
 
-                <SignatureSection
-                    jobId={job.id}
-                    signature={job.signature}
-                    customerName={job.customer.display_name}
-                    canSign={can.work}
-                />
+                {/* The signature is taken on the invoice; the job only shows it once signed. */}
+                {job.signature && (
+                    <SignatureSection
+                        jobId={job.id}
+                        signature={job.signature}
+                        customerName={job.customer.display_name}
+                        canSign={false}
+                    />
+                )}
 
                 {/* Visits */}
                 <section className="space-y-2">
@@ -859,7 +927,7 @@ export default function JobShow({
                                                           .join(', ')
                                                     : t('jobs.unassigned')}
                                                 {v.estimated_duration_minutes &&
-                                                    ` · ${formatMinutes(v.estimated_duration_minutes, t)}`}
+                                                    ` · ${t('jobs.estimated_on_site', { time: formatMinutes(v.estimated_duration_minutes, t) })}`}
                                             </div>
                                         </div>
                                         {can.update && (
@@ -945,7 +1013,7 @@ export default function JobShow({
                 </section>
 
                 {/* Estimates and invoices */}
-                <section className="space-y-2">
+                <section id="documents" className="scroll-mt-24 space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <h2 className="flex items-center gap-2 text-base font-medium">
                             <Receipt className="size-4" />
@@ -1036,16 +1104,6 @@ export default function JobShow({
                 />
             )}
 
-            {myVisit && (
-                <FinishDialog
-                    open={finishOpen}
-                    onOpenChange={setFinishOpen}
-                    visitId={myVisit.id}
-                    jobId={job.id}
-                    reasons={closureReasons}
-                    callback={callback}
-                />
-            )}
             {can.close && (
                 <FinishDialog
                     open={closeOpen}

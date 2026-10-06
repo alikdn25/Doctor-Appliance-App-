@@ -34,6 +34,21 @@ export function formatPhone(
         : parsed.formatInternational();
 }
 
+/** Keeps only characters a phone number can contain: digits, +, spaces, dashes, dots and brackets. */
+export function phoneCharacters(value: string): string {
+    return value.replace(/[^\d+\-().\s]/g, '');
+}
+
+/** Whether the typed number can be a real phone number (read in the company's country when it has no +). */
+export function isPossiblePhone(value: string, country: string): boolean {
+    const region = isSupportedCountry(country)
+        ? (country as CountryCode)
+        : undefined;
+    const parsed = parsePhoneNumberFromString(value, region);
+
+    return !!parsed && parsed.isPossible();
+}
+
 /** Formatter bound to the current company's country. */
 export function usePhone() {
     const { auth } = usePage().props;

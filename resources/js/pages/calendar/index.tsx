@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useTouchDrag } from '@/hooks/use-touch-drag';
+import { useClock } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
 import { cn } from '@/lib/utils';
@@ -81,6 +82,7 @@ export default function CalendarPage({
     assignableUsers,
 }: Props) {
     const t = useTrans();
+    const clock = useClock();
     const locale = useLocale();
     const drag = useRef<DragItem | null>(null);
     const [dragging, setDragging] = useState(false);
@@ -204,7 +206,7 @@ export default function CalendarPage({
             touch.begin(
                 e,
                 { kind: 'visit', visit, fromLane: lane.id, grabOffset },
-                `${visit.start_time} ${visit.job.customer ?? ''}`,
+                `${clock.clock(visit.start_time)} ${visit.job.customer ?? ''}`,
             );
         }
     };
@@ -256,29 +258,11 @@ export default function CalendarPage({
                                 })}
                             >
                                 <Plus />
-                                {t('nav.book_customer')}
+                                {t('jobs.quick.book_day')}
                             </Link>
                         </Button>
                     }
                 />
-
-                {!visits.some((visit) => visit.date === date) && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
-                        <p className="text-sm text-muted-foreground">
-                            {t('jobs.quick.empty_day')}
-                        </p>
-                        <Button asChild variant="outline" className="min-h-11">
-                            <Link
-                                href={bookCustomer({
-                                    query: { book: 1, date },
-                                })}
-                            >
-                                <Plus />
-                                {t('jobs.quick.book_day')}
-                            </Link>
-                        </Button>
-                    </div>
-                )}
 
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
@@ -501,8 +485,10 @@ export default function CalendarPage({
                                                         </span>
                                                         <span className="min-w-0">
                                                             <span className="font-medium">
-                                                                {v.start_time}–
-                                                                {v.end_time}{' '}
+                                                                {clock.range(
+                                                                    v.start_time,
+                                                                    v.end_time,
+                                                                )}{' '}
                                                                 {v.job.customer}
                                                             </span>
                                                             <span className="block text-muted-foreground">
@@ -568,7 +554,10 @@ export default function CalendarPage({
                                 </DialogTitle>
                                 <DialogDescription>
                                     {dayLabel(details.date, locale)} ·{' '}
-                                    {details.start_time}–{details.end_time}
+                                    {clock.range(
+                                        details.start_time,
+                                        details.end_time,
+                                    )}
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-2 text-sm">

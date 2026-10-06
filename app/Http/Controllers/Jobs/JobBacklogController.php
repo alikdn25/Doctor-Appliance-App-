@@ -26,7 +26,7 @@ class JobBacklogController extends Controller
         $jobs = JobBacklog::query($request->user())
             ->search($filters['search'])
             ->when($filters['reason'] !== '', fn ($query) => $query->where('backlog_reason', $filters['reason']))
-            ->with(['customer', 'property', 'brand', 'appliances', 'visits.assignees'])
+            ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
             ->orderByRaw("CASE backlog_reason WHEN 'overdue' THEN 0 WHEN 'needs_schedule' THEN 1 WHEN 'waiting_for_parts' THEN 2 WHEN 'waiting_for_customer' THEN 3 WHEN 'on_hold' THEN 4 ELSE 5 END")
             ->orderBy('created_at')
             ->orderBy('id')

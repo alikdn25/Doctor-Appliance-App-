@@ -13,9 +13,12 @@ class WorkLoginResponse implements LoginResponse, TwoFactorLoginResponse
         $user = $request->user();
         $companies = $user->accessibleCompanies();
         $company = $companies->firstWhere('id', $user->current_company_id) ?? $companies->first();
-        // Field members (Owner, Admin, Technician) start on their own jobs for today.
-        $destination = $company && in_array($user->membershipFor($company)?->role, [UserRole::Owner, UserRole::Admin, UserRole::Technician], true)
-            ? route('jobs.mine', absolute: false) : route('dashboard', absolute: false);
+        // Owners and Admins start on Jobs, technicians on their own jobs.
+        $destination = match ($company ? $user->membershipFor($company)?->role : null) {
+            UserRole::Owner, UserRole::Admin => route('jobs.index', absolute: false),
+            UserRole::Technician => route('jobs.mine', absolute: false),
+            default => route('dashboard', absolute: false),
+        };
 
         return $request->wantsJson()
             ? response()->json(['two_factor' => false])

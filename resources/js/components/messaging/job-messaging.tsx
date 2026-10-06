@@ -23,6 +23,11 @@ import { opened } from '@/routes/jobs/messages';
  * Opens the messages app on the technician's phone with the text ready and records it on the job.
  * The record is posted in the background; the phone switches to the messages app right away.
  */
+/** Opens the phone's messages app with the text ready, without recording it (the caller records it). */
+export function openSmsApp(to: string, body: string): void {
+    window.location.href = smsUrl(to, body);
+}
+
 export function openOnPhone(
     jobId: number,
     kind: string,
@@ -99,6 +104,11 @@ export function JobMessagingSection({
                 <p className="text-xs text-muted-foreground">
                     {messaging.review.status ?? t('reviews.ask_hint')}
                 </p>
+                {messaging.review.ask && !messaging.review.has_profile && (
+                    <p className="mt-1 text-xs font-medium text-amber-800">
+                        {t('reviews.missing_profile')}
+                    </p>
+                )}
                 {messaging.mode === 'technician_phone' &&
                     canWork &&
                     canText &&

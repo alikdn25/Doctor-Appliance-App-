@@ -81,6 +81,7 @@ class CustomerRequest extends FormRequest
             'phones.*.id' => ['nullable', 'integer'],
             'phones.*.label' => ['required', Rule::enum(PhoneLabel::class)],
             'phones.*.number' => ['required', 'string', 'max:32'],
+            'phones.*.contact_name' => ['nullable', 'string', 'max:100'],
             'phones.*.is_primary' => ['boolean'],
 
             'emails' => ['array', 'max:10'],

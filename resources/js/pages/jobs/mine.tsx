@@ -1,33 +1,26 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Banknote,
-    Car,
-    CircleCheck,
-    Clock,
     Download,
-    MapPin,
-    Navigation,
     PackageCheck,
-    Phone,
-    Play,
+    Plus,
+    Search,
+    SlidersHorizontal,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatMoney } from '@/components/billing/money';
-import { CustomerAvatar } from '@/components/customers/customer-avatar';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
-import { mapsUrl, telUrl } from '@/components/customers/types';
-import InputError from '@/components/input-error';
 import { StrictBadge } from '@/components/jobs/job-outcome';
-import { StatusBadge } from '@/components/jobs/status-badge';
+import { JobCard, StatusCircles } from '@/components/jobs/job-card';
+import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
+import { Input } from '@/components/ui/input';
 import type { Visit } from '@/components/jobs/types';
-import { openOnPhone } from '@/components/messaging/job-messaging';
 import { Button } from '@/components/ui/button';
 import { useInstallPrompt } from '@/hooks/use-install-prompt';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { mine, show } from '@/routes/jobs';
-import { onMyWay, start } from '@/routes/visits';
+import { create as bookCustomer, mine, show } from '@/routes/jobs';
 
 type MyVisit = Visit & {
     can_work?: boolean;
@@ -46,17 +39,29 @@ type MyVisit = Visit & {
         phone: string | null;
         address: string | null;
         appliances: string[];
+        appliance_types: string[];
+        picture: string | null;
+        problem: string | null;
     };
 };
 
 const tabs = ['today', 'upcoming', 'recent'] as const;
 
+/**
+ * My jobs, as on the approved mockup: tabs with counts, one card per visit (avatar, number and status,
+ * time, name, address, appliance and problem, appliance picture) with Navigate, Call and View job,
+ * and Book customer at the end. Visit steps (On my way, Start, Finish) are on the job page.
+ */
 export default function MyJobs({
     tab,
+    search: initialSearch = '',
+    counts = { today: 0, upcoming: 0, recent: 0 },
     visits,
     cashOnHand = {},
 }: {
     tab: (typeof tabs)[number];
+    search?: string;
+    counts?: Record<(typeof tabs)[number], number>;
     visits: MyVisit[];
     cashOnHand?: Record<string, number>;
 }) {
@@ -64,88 +69,103 @@ export default function MyJobs({
     const time = useCompanyTime();
     const install = useInstallPrompt();
     const { auth } = usePage().props;
-    const [error, setError] = useState<string>();
+    const canBook = auth.can?.createJobs ?? false;
+    // The search runs on the server over all tabs (and their counts); it stays open while switching tabs.
+    const [searchOpen, setSearchOpen] = useState(initialSearch !== '');
+    const [legendOpen, setLegendOpen] = useState(false);
+    const [search, setSearch] = useState(initialSearch);
+    const firstRender = useRef(true);
+    useEffect(() => {
+        if (firstRender.current) {
+            firstRender.current = false;
+            return;
+        }
+        const timer = setTimeout(() => {
+            router.get(
+                mine().url,
+                { tab, ...(search.trim() ? { search: search.trim() } : {}) },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
+        }, 350);
+        return () => clearTimeout(timer);
+    }, [search]);
+    const term = search.trim();
+    const [status, setStatus] = useState('');
 
-    const act = (url: string) =>
-        router.post(
-            url,
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: () => setError(undefined),
-                onError: (errors) =>
-                    setError(Object.values(errors)[0] as string),
-            },
-        );
-
-    // The card's third button follows the visit: On my way → Start → Finish visit.
-    const mainAction = (visit: MyVisit) => {
-        if (tab === 'recent' || !visit.can_work) return null;
-        if (visit.status === 'scheduled') {
-            return (
-                <Button
-                    className="h-12"
-                    onClick={() => {
-                        act(onMyWay(visit.id).url);
-                        if (visit.on_my_way_sms) {
-                            openOnPhone(
-                                visit.job.id,
-                                'on_my_way',
-                                visit.on_my_way_sms.to,
-                                visit.on_my_way_sms.body,
-                            );
-                        }
-                    }}
-                >
-                    <Car /> {t('jobs.actions.on_my_way')}
-                </Button>
-            );
-        }
-        if (visit.status === 'on_the_way') {
-            return (
-                <Button
-                    className="h-12"
-                    onClick={() => act(start(visit.id).url)}
-                >
-                    <Play /> {t('jobs.start_short')}
-                </Button>
-            );
-        }
-        if (visit.status === 'in_progress') {
-            return (
-                <Button asChild className="h-12">
-                    <Link href={show(visit.job.id, { query: { finish: 1 } })}>
-                        <CircleCheck /> {t('jobs.finish_short')}
-                    </Link>
-                </Button>
-            );
-        }
-        return null;
-    };
+    // Count circles per status of this tab's jobs; tapping one shows only that status.
+    const statusCounts: Record<string, number> = {};
+    const statusLabels: Record<string, string> = {};
+    visits.forEach((visit) => {
+        statusCounts[visit.job.status] =
+            (statusCounts[visit.job.status] ?? 0) + 1;
+        statusLabels[visit.job.status] = visit.job.status_label;
+    });
+    const shown = visits.filter(
+        (visit) => status === '' || visit.job.status === status,
+    );
 
     return (
         <>
             <Head title={t('jobs.my_jobs')} />
 
-            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6">
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">
-                            {t('jobs.my_jobs')}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {time.day(new Date().toISOString())}
-                        </p>
-                    </div>
-                    {install && (
-                        <Button
-                            variant="outline"
-                            onClick={() => void install()}
+            <ScreenHeader
+                title={t('jobs.my_jobs')}
+                subtitle={t('jobs.today_subtitle', {
+                    date: time.fullDay(new Date().toISOString()),
+                })}
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            className={headerButtonClass}
+                            aria-label={t('common.search')}
+                            aria-expanded={searchOpen}
+                            onClick={() => {
+                                if (searchOpen) setSearch('');
+                                setSearchOpen(!searchOpen);
+                            }}
                         >
-                            <Download /> {t('jobs.install.button')}
-                        </Button>
-                    )}
-                </div>
+                            <Search className="size-6" />
+                        </button>
+                        <button
+                            type="button"
+                            className={headerButtonClass}
+                            aria-label={t('jobs.filters')}
+                            aria-expanded={legendOpen}
+                            onClick={() => setLegendOpen(!legendOpen)}
+                        >
+                            <SlidersHorizontal className="size-6" />
+                        </button>
+                    </>
+                }
+            />
+
+            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6">
+                {install && (
+                    <Button variant="outline" onClick={() => void install()}>
+                        <Download /> {t('jobs.install.button')}
+                    </Button>
+                )}
+
+                <StatusCircles
+                    counts={statusCounts}
+                    labels={statusLabels}
+                    selected={status}
+                    onSelect={setStatus}
+                    open={legendOpen}
+                    onOpenChange={setLegendOpen}
+                />
+
+                {searchOpen && (
+                    <Input
+                        type="search"
+                        autoFocus
+                        value={search}
+                        placeholder={t('jobs.search')}
+                        aria-label={t('common.search')}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                )}
 
                 {Object.entries(cashOnHand)
                     .filter(([, amount]) => amount !== 0)
@@ -167,175 +187,101 @@ export default function MyJobs({
 
                 <nav
                     aria-label={t('jobs.my_jobs')}
-                    className="da-track grid grid-cols-3 gap-1 p-1"
+                    className="grid grid-cols-3 gap-2"
                 >
                     {tabs.map((name) => (
                         <Link
                             key={name}
-                            href={mine({ query: { tab: name } })}
+                            href={mine({
+                                query: term
+                                    ? { tab: name, search: term }
+                                    : { tab: name },
+                            })}
+                            preserveState
                             preserveScroll
                             aria-current={tab === name ? 'page' : undefined}
-                            className="da-chip da-press flex min-h-11 items-center justify-center rounded-xl px-3 text-center text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            className="da-chip da-press flex min-h-12 items-center justify-center gap-2 rounded-2xl px-2 text-center text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         >
                             {t(`jobs.tabs.${name}`)}
+                            <span
+                                className={cn(
+                                    'min-w-6 rounded-full px-1.5 text-xs leading-5 tabular-nums',
+                                    tab === name
+                                        ? 'bg-white/25'
+                                        : 'bg-[#E3EAF4] text-[#334155]',
+                                )}
+                            >
+                                {counts[name]}
+                            </span>
                         </Link>
                     ))}
                 </nav>
 
-                <InputError message={error} />
+                <h2 className="pt-1 text-lg font-bold">
+                    {t(`jobs.tabs.${tab}`)} ({shown.length})
+                </h2>
 
-                {visits.length === 0 && (
+                {shown.length === 0 && (
                     <p className="da-card p-10 text-center text-sm text-muted-foreground">
-                        {t(`jobs.mine_empty.${tab}`)}
+                        {term
+                            ? t('jobs.search_empty', { search: term })
+                            : t(`jobs.mine_empty.${tab}`)}
                     </p>
                 )}
 
                 <ul className="space-y-3">
-                    {visits.map((visit) => {
-                        const action = mainAction(visit);
-                        const buttons = [
-                            tab !== 'recent' && visit.job.address,
-                            tab !== 'recent' && visit.job.phone,
-                            action,
-                        ].filter(Boolean).length;
-                        return (
-                            <li
-                                key={visit.id}
-                                className={cn(
-                                    'da-card overflow-hidden',
-                                    visit.status === 'in_progress' &&
-                                        'ring-2 ring-[#FDBA74]',
-                                )}
-                            >
-                                <Link
-                                    href={show(visit.job.id)}
-                                    className="flex gap-3 p-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-                                >
-                                    <CustomerAvatar
-                                        icon={visit.job.customer_icon}
-                                        size="lg"
-                                    />
-                                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-sm font-bold text-muted-foreground">
-                                                #{visit.job.number}
-                                            </span>
-                                            <StatusBadge
-                                                status={visit.job.status}
-                                                label={visit.job.status_label}
-                                            />
-                                            {visit.strict_arrival && (
-                                                <StrictBadge />
+                    {shown.map((visit) => (
+                        <JobCard
+                            key={visit.id}
+                            job={visit.job}
+                            href={show(visit.job.id)}
+                            highlight={visit.status === 'in_progress'}
+                            time={
+                                tab === 'today' &&
+                                time.isToday(visit.scheduled_start)
+                                    ? time.timeRange(
+                                          visit.scheduled_start,
+                                          visit.scheduled_end,
+                                      )
+                                    : time.window(
+                                          visit.scheduled_start,
+                                          visit.scheduled_end,
+                                      )
+                            }
+                            extra={
+                                <>
+                                    {visit.strict_arrival && <StrictBadge />}
+                                    {visit.job.bring && (
+                                        <div
+                                            className={cn(
+                                                'flex items-center gap-1 font-medium',
+                                                visit.job.bring.done <
+                                                    visit.job.bring.total
+                                                    ? 'text-amber-700'
+                                                    : 'text-emerald-700',
                                             )}
+                                        >
+                                            <PackageCheck className="size-3.5" />
+                                            {t('jobs.bring.title')}:{' '}
+                                            {t('jobs.bring.loaded', {
+                                                done: visit.job.bring.done,
+                                                total: visit.job.bring.total,
+                                            })}
                                         </div>
-                                        <div className="text-[17px] font-bold">
-                                            {visit.job.customer}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-sm font-semibold tabular-nums">
-                                            <Clock className="size-4 text-[#0A6CF5]" />
-                                            {tab === 'today'
-                                                ? time.timeRange(
-                                                      visit.scheduled_start,
-                                                      visit.scheduled_end,
-                                                  )
-                                                : time.window(
-                                                      visit.scheduled_start,
-                                                      visit.scheduled_end,
-                                                  )}
-                                        </div>
-                                        {visit.job.address && (
-                                            <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
-                                                <MapPin className="mt-0.5 size-4 shrink-0" />
-                                                {visit.job.address}
-                                            </div>
-                                        )}
-                                        <div className="text-sm text-muted-foreground">
-                                            {[
-                                                visit.job.appliances.join(', '),
-                                                visit.job.job_type_label,
-                                                visit.job.visit_type !==
-                                                'new_diagnosis'
-                                                    ? visit.job.visit_type_label
-                                                    : null,
-                                            ]
-                                                .filter(Boolean)
-                                                .join(' · ')}
-                                        </div>
-                                        {visit.job.bring && (
-                                            <div
-                                                className={cn(
-                                                    'flex items-center gap-1 text-sm font-medium',
-                                                    visit.job.bring.done <
-                                                        visit.job.bring.total
-                                                        ? 'text-amber-700'
-                                                        : 'text-emerald-700',
-                                                )}
-                                            >
-                                                <PackageCheck className="size-4" />
-                                                {t('jobs.bring.title')}:{' '}
-                                                {t('jobs.bring.loaded', {
-                                                    done: visit.job.bring.done,
-                                                    total: visit.job.bring
-                                                        .total,
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                </Link>
-                                {buttons > 0 && (
-                                    <div
-                                        className={cn(
-                                            'grid gap-2 px-4 pb-4',
-                                            buttons === 3
-                                                ? 'grid-cols-[1fr_1fr_1.5fr]'
-                                                : buttons === 2
-                                                  ? 'grid-cols-2'
-                                                  : 'grid-cols-1',
-                                        )}
-                                    >
-                                        {tab !== 'recent' &&
-                                            visit.job.address && (
-                                                <Button
-                                                    asChild
-                                                    variant="outline"
-                                                    className="h-12"
-                                                >
-                                                    <a
-                                                        href={mapsUrl(
-                                                            visit.job.address,
-                                                        )}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                    >
-                                                        <Navigation />{' '}
-                                                        {t('jobs.go')}
-                                                    </a>
-                                                </Button>
-                                            )}
-                                        {tab !== 'recent' &&
-                                            visit.job.phone && (
-                                                <Button
-                                                    asChild
-                                                    variant="outline"
-                                                    className="h-12"
-                                                >
-                                                    <a
-                                                        href={telUrl(
-                                                            visit.job.phone,
-                                                        )}
-                                                    >
-                                                        <Phone />{' '}
-                                                        {t('jobs.call')}
-                                                    </a>
-                                                </Button>
-                                            )}
-                                        {action}
-                                    </div>
-                                )}
-                            </li>
-                        );
-                    })}
+                                    )}
+                                </>
+                            }
+                        />
+                    ))}
                 </ul>
+
+                {canBook && (
+                    <Button asChild className="h-14 w-full text-lg">
+                        <Link href={bookCustomer({ query: { book: 1 } })}>
+                            <Plus className="size-6" /> {t('nav.book_customer')}
+                        </Link>
+                    </Button>
+                )}
             </div>
         </>
     );

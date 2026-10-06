@@ -68,6 +68,7 @@ class Customer extends Model
             'lead_source' => LeadSource::class,
             'payment_terms' => PaymentTerms::class,
             'tags' => 'array',
+            'has_second_contact' => 'boolean',
         ];
     }
 
@@ -75,6 +76,13 @@ class Customer extends Model
     {
         static::saving(function (Customer $customer) {
             $customer->display_name = $customer->buildDisplayName();
+        });
+
+        // A phone named after the customer is not a second person: recheck when the name changes.
+        static::updated(function (Customer $customer) {
+            if ($customer->wasChanged('first_name')) {
+                CustomerPhone::refreshSecondContact($customer->id);
+            }
         });
 
         // Soft-delete the customer's properties (and through them, appliances) with it.
@@ -92,7 +100,11 @@ class Customer extends Model
             return 'business';
         }
 
-        return $this->avatar_style === 'auto' ? NameAvatar::suggest($this->first_name) : $this->avatar_style;
+        if ($this->avatar_style === 'auto') {
+            return $this->has_second_contact ? 'couple' : NameAvatar::suggest($this->first_name);
+        }
+
+        return $this->avatar_style;
     }
 
     /** The customer's own payment terms, or the company default. */
@@ -173,7 +185,7 @@ class Customer extends Model
     }
 
     /**
-     * Search by name, phone (any format), email, address, model or serial number.
+     * Search by name, phone (any format), email, address, appliance brand, model or serial number.
      *
      * @param  Builder<Customer>  $query
      */
@@ -201,9 +213,10 @@ class Customer extends Model
                     ->orWhere('city', 'ilike', $like)
                     ->orWhere('postal_code', 'ilike', $like)
                     ->orWhere('label', 'ilike', $like)))
-                ->orWhereHas('appliances', fn (Builder $a) => $a
+                ->orWhereHas('appliances', fn (Builder $a) => $a->where(fn (Builder $m) => $m
                     ->where('model_number', 'ilike', $like)
-                    ->orWhere('serial_number', 'ilike', $like));
+                    ->orWhere('serial_number', 'ilike', $like)
+                    ->orWhere('manufacturer', 'ilike', $like)));
 
             if (strlen($digits) >= 3) {
                 $q->orWhereHas('phones', fn (Builder $p) => $p->where('number_normalized', 'like', "%{$digits}%"));

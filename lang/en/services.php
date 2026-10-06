@@ -9,6 +9,10 @@ return [
     'empty' => 'No services yet.',
     'saved' => 'Services saved.',
     'no_price' => 'Price not set',
+    'price_placeholder' => 'Not set',
+    'new' => 'New service',
+    'inactive' => 'Not active',
+    'save_changes' => 'Save changes',
 
     'warranty_default' => 'Default',
     'uncategorized' => 'Uncategorized',

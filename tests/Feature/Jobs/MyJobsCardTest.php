@@ -45,7 +45,56 @@ test('cards of a closed job offer no field action', function () {
     $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page->where('visits.0.can_work', false));
 });
 
-test('Finish visit from My jobs opens the finish dialog on the job page', function () {
-    $this->get(route('jobs.show', [$this->job, 'finish' => 1]))->assertInertia(fn (Assert $page) => $page->where('openFinish', true));
-    $this->get(route('jobs.show', $this->job))->assertInertia(fn (Assert $page) => $page->where('openFinish', false));
+test('an old finish link opens the Finish visit screen while the visit is under way', function () {
+    $this->get(route('jobs.show', [$this->job, 'finish' => 1]))->assertOk();
+
+    $this->visit->forceFill(['status' => VisitStatus::InProgress])->saveQuietly();
+    $this->get(route('jobs.show', [$this->job, 'finish' => 1]))->assertRedirect(route('visits.finish-screen', $this->visit));
+    $this->get(route('jobs.show', $this->job))->assertOk();
+});
+
+test('the Finish visit screen shows the job and saves the work notes with the result', function () {
+    $this->visit->forceFill(['status' => VisitStatus::InProgress, 'started_at' => now()])->saveQuietly();
+    $this->job->forceFill(['status' => JobStatus::InProgress])->saveQuietly();
+
+    $this->get(route('visits.finish-screen', $this->visit))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('jobs/finish')
+            ->where('visitId', $this->visit->id)
+            ->where('job.number', $this->job->number)
+            ->where('job.customer.display_name', 'Card Owner')
+            ->where('job.customer.phone', '+16045550101'));
+
+    $this->post(route('visits.finish', $this->visit), [
+        'outcome' => 'completed',
+        'tech_notes' => 'Replaced compressor. No leaks.',
+    ])->assertSessionHasNoErrors();
+
+    $job = ServiceJob::withoutCompanyScope()->find($this->job->id);
+    expect($job->tech_notes)->toBe('Replaced compressor. No leaks.')
+        ->and($job->status)->toBe(JobStatus::Completed)
+        ->and($this->visit->fresh()->status)->toBe(VisitStatus::Completed);
+
+    // Once finished, the screen goes back to the job.
+    $this->get(route('visits.finish-screen', $this->visit))->assertRedirect(route('jobs.show', $this->job));
+});
+
+test('part needed keeps the job waiting for parts and other technicians cannot open the screen', function () {
+    $foreign = memberOf(Company::factory()->create(), UserRole::Owner);
+    $this->visit->forceFill(['status' => VisitStatus::InProgress, 'started_at' => now()])->saveQuietly();
+    $this->job->forceFill(['status' => JobStatus::InProgress])->saveQuietly();
+
+    $other = memberOf($this->company, UserRole::Technician);
+    $this->actingAs($other)->get(route('visits.finish-screen', $this->visit))->assertForbidden();
+
+    $this->actingAs($foreign)->get(route('visits.finish-screen', $this->visit))->assertNotFound();
+
+    $this->actingAs($this->tech)->post(route('visits.finish', $this->visit), [
+        'outcome' => 'waiting_for_parts',
+        'tech_notes' => 'Needs drain pump.',
+    ])->assertSessionHasNoErrors();
+
+    $job = ServiceJob::withoutCompanyScope()->find($this->job->id);
+    expect($job->status)->toBe(JobStatus::WaitingForParts)
+        ->and($job->tech_notes)->toBe('Needs drain pump.');
 });

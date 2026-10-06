@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'take_plate_photo' => 'Take a photo of the rating plate',
     'add' => 'Add appliance',
     'edit' => 'Edit appliance',
     'empty' => 'No appliances yet.',
@@ -40,11 +41,12 @@ return [
     ],
 
     'types' => [
+        'refrigerator' => 'Refrigerator',
+        'freezer' => 'Freezer',
+        'wine_cooler' => 'Wine cooler',
         'washer' => 'Washer',
         'dryer' => 'Dryer',
         'washer_dryer_combo' => 'Washer/dryer combo',
-        'refrigerator' => 'Refrigerator',
-        'freezer' => 'Freezer',
         'range' => 'Range',
         'oven' => 'Wall oven',
         'cooktop' => 'Cooktop',

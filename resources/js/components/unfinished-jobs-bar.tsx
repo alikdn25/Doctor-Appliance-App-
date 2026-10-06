@@ -12,7 +12,7 @@ export function UnfinishedJobsBar() {
     return (
         <nav
             aria-label={t('jobs.backlog.title')}
-            className="sticky top-0 z-30 flex min-h-10 items-center gap-3 border-b bg-muted px-4 text-sm"
+            className="da-unfinished-bar sticky top-0 z-30 flex min-h-10 items-center gap-3 border-b bg-muted px-4 text-sm"
         >
             <Link
                 href={backlog()}

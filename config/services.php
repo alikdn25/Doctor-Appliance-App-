@@ -40,6 +40,8 @@ return [
     'google_maps' => [
         'map_id' => env('GOOGLE_MAPS_MAP_ID', 'DEMO_MAP_ID'),
         'browser_key' => env('GOOGLE_MAPS_BROWSER_KEY'),
+        // Geocoding API key restricted to the server's IP: map positions for addresses typed by hand.
+        'server_key' => env('GOOGLE_MAPS_SERVER_KEY'),
     ],
 
     'square' => [
@@ -56,6 +58,17 @@ return [
     | Use Twilio test credentials (TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN of the test account) for tests.
     | Webhook URLs set on each number: {APP_URL}/webhooks/sms/twilio (incoming) and …/status (delivery).
     */
+    /*
+    | Telnyx (SPEC §7.7, default SMS provider): one platform API key; each company gets a messaging profile and a
+    | number. TELNYX_PUBLIC_KEY is the account's webhook public key (Portal → Keys & Credentials → Public Key).
+    | Webhooks: {APP_URL}/webhooks/sms/telnyx (incoming, set on each profile) and …/status (delivery, per message).
+    */
+    'telnyx' => [
+        'api_key' => env('TELNYX_API_KEY'),
+        'public_key' => env('TELNYX_PUBLIC_KEY'),
+        'base_url' => env('TELNYX_BASE_URL', 'https://api.telnyx.com'),
+    ],
+
     'twilio' => [
         'account_sid' => env('TWILIO_ACCOUNT_SID'),
         'auth_token' => env('TWILIO_AUTH_TOKEN'),

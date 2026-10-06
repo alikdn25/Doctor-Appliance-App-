@@ -5,6 +5,7 @@ namespace App\Http\Requests\Accounting;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Models\BusinessExpense;
 use App\Models\TaxRate;
+use App\Support\Billing\MoneyInput;
 use App\Support\Locale\Currencies;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -22,6 +23,7 @@ class BusinessExpenseRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $this->replace(MoneyInput::cleanPaths($this->input(), ['amount', 'tax_amount', 'tax_amounts.*']));
         $this->merge([
             'description' => is_string($this->description) ? trim($this->description) : $this->description,
             'new_category' => is_string($this->new_category) ? trim($this->new_category) : $this->new_category,

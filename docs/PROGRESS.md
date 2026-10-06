@@ -13,8 +13,98 @@
   belong to a hidden brand.
 - Tests: new conversation, unlinked texting, customer lookup, STOP/START, queued STOP, mode, validation, tenant
   isolation, hidden brand.
+- The Telnyx/mockup UI branch (ccr-8b80e0ee-yc44tp) was installed on the server but never merged into main;
+  it is now merged together with this work, so the server can fast-forward to main again.
 - Next: a dedicated Sales/Collector role limited to the inbox (Stage 2), and recording calls/texts made from the
   employee's own phone for numbers without a customer.
+
+# October 5 (sixth round) — temporary sign-in without a password, Jobs as home
+
+- At the owner's request, sign-in can be switched off for now: with AUTH_AUTO_LOGIN_EMAIL set in the server .env,
+  every visitor is signed in as that account (no password, no two-factor code) and lands on Jobs. Anyone who has the
+  address sees and changes that account's data. Remove the line (and refresh config) to bring sign-in back.
+  Inactive or unknown accounts are never signed in this way.
+- Home is now Jobs: "/" and sign-in open Jobs for Owners/Admins; technicians, who may not see Jobs, go to My Jobs.
+- Tests: AutoLoginTest; login/home expectations updated.
+
+# October 5 (fifth round) — screens exactly as the mockups
+
+- Header as on the mockups: deep navy with square blue buttons. Mockup screens draw their own header (ScreenHeader):
+  My Jobs (menu, "My Jobs", "Today, <date>", search, filters), Jobs (same), Finish Visit (back, "Finish Visit",
+  "#number", ⋯ with "Open the job"). Other screens keep Menu + Book customer. The backlog bar is hidden on mockup screens.
+- Phone tabs: My Jobs · Map · Messages · More.
+- My Jobs: coloured count circles with the arrow that opens their legend (tap filters); search filters the cards.
+- Finish Visit: 80 px face, Call/SMS beside the name, "#unit • Buzzer: code", appliance with View details,
+  "Work completed / Notes (optional)" box with a 500-character counter, Photos with "+ Add photo" and crosses,
+  Job result with the check on Completed and arrows on the others, Finish Visit button with the white check.
+- DESIGN.md: the header colour follows the mockups (navy), replacing the earlier blue-to-black gradient.
+
+# October 5 (fourth round) — Finish visit screen
+
+- Finish visit is now its own screen (/visits/{visit}/finish, approved mockup) instead of a dialog: back button,
+  "Finish visit #number", customer card (face, name, phone, address, unit/buzzer, Call and SMS), appliance cards
+  (picture, type, brand + model, View details), one free-text box "Work completed / notes" (saved as the job's work
+  notes; no checkboxes, no separate Notes), photos, Job result (Completed / Part needed / Not completed with
+  declined / unable to repair / no charge, reason, diagnosis invoice and callback refund) and one Finish visit button.
+- The job page's Finish visit button opens it; old links with ?finish=1 redirect to it. After finishing, or for a visit
+  that is not under way, the screen returns to the job page. Closing a job without a visit (office) keeps the dialog.
+
+# October 5 (third round) — the Jobs list uses the mockup too
+
+- The owner opened Jobs (the office list), which still had the old rows and a wall of filters. Jobs, the backlog and
+  the customer's jobs now use the same card as My jobs (mockup): face, number + status, time, name, address,
+  "Appliance • problem", picture, Navigate · Call · View job; Book customer at the end.
+- Jobs: search and filter are icon buttons next to the title; the filters (and New job / Deleted jobs) fold away until
+  tapped. Coloured count circles per status sit above the list; tapping one shows only that status.
+- Still different from the mockup: the shared dark header keeps Menu + Book customer instead of the page title,
+  search and filter buttons inside it.
+
+# October 5 (second round) — My jobs as on the mockup, address on Edit, no checklist, estimate lines
+
+- My jobs follows the approved mockup: tabs Today / Upcoming / Recent with counts, "Today (N)", cards with the
+  60 px face, number + status, time, name, address, "Appliance • problem" (Multiple / Installation as on the mockup)
+  and the appliance picture on the right, buttons Navigate · Call · View job, Book customer at the end. Visit steps
+  (On my way / Start / Finish) are on the job page. Phone tabs: Today · Map · Messages · More (Map opens the calendar
+  map). Not done: the coloured count circles at the top of the mockup (their meaning is to be confirmed).
+- Faces: the whole name typed into the first-name field ("Oleksandr Mykhailychenko") now finds the face by its first
+  word; quick booking stores "Name Surname" as first and last name.
+- Edit job: address, unit, city and postal code of the job's place can be added or corrected (Google suggestions).
+- Checklist removed from the job page and the menu (Work done notes stay). Stored checklist data is kept.
+- Estimate/invoice lines: every change now starts from the latest lines, so a quick second change (e.g. the default
+  warranty following a typed price) can no longer overwrite a price typed a moment earlier. The exact erasing seen on
+  the owner's Android phone did not reproduce in Chromium; to be rechecked on the phone after deployment.
+- Tests: 765 backend (the local-only deployment check aside) and 46 browser scenarios passed locally.
+
+# October 5 — owner feedback on the job page, avatars, appliances, menu, signature, editing
+
+- Job page on phones: the visit buttons (On my way, Start job, Finish visit) were hidden under the bottom tabs. Screens
+  with a pinned action bar (job, invoice/estimate view and form) now hide the tabs, as DESIGN.md asks for inner screens;
+  the bar is white with 56 px buttons.
+- Avatars: common Latin spellings of Ukrainian/Russian names (Oleksandr, Dmytro, Olena, Iryna…) now get the cartoon
+  face; a name still unknown shows initials on the light blue circle instead of a faceless icon. Job page and customer
+  page use the 60 px avatar.
+- Appliances are picked from image tiles (the mockup's stainless pictures, 3 per row) when adding an appliance on the
+  job, on the customer, on the full job form and in Book customer (optional; tap again to clear; an appliance of that
+  type already at the address is linked, not duplicated). Appliance lists show the picture. New type Wine cooler; types
+  follow the mockup order. Multiple / Installation tiles are still not in code (decision 3).
+- Menu: Main keeps the everyday sections (Book customer, My jobs, Calendar, Jobs, Customers, Invoices, Messages);
+  Dashboard, Reports, Cash and Expenses are under "Money and reports", company setup under "Company settings" — both
+  collapsed until tapped (open while one of their pages is open).
+- Signature: the job page no longer asks for it (it only shows one already taken). "Get signature" is on the invoice
+  page, for whoever may work on the job, until the invoice is void.
+- Edit job: the customer's first/last/company name and main phone can be corrected right on the job form (Owner/Admin,
+  the job's own customer only, phone validated and stored in E.164). The service address list shows "Address not
+  added yet" instead of an empty choice.
+- Tests: new JobPageFeedbackTest (customer correction, isolation across companies, technician denied, wine cooler and
+  pictures, booking with an appliance tile, names, signature on the invoice) and browser scenarios
+  job-page-feedback.spec.ts (buttons not covered on phone, tabs hidden, image tiles, name correction, menu groups).
+  Locally: 760/761 backend tests (the deployment-check test fails here and on unchanged main because this container has
+  no production services) and 46 browser scenarios passed.
+- Manual check on a phone: open a job assigned to you today → On my way / Start job are visible at the bottom; Edit →
+  change the name or phone → Save; Add appliance → tap a picture; Menu → Money and reports opens on tap; open the
+  invoice → Get signature. The server must install the new main to show these changes.
+- Still to do from the mockups: Finish visit with 4 options, two contacts per customer with a paired avatar, team
+  avatars, "Scan rating plate" and the Manufacturer warranty block on the job page, invoice/payment/calendar restyle.
 
 # October 5 — sign-in recovery command
 
@@ -908,6 +998,78 @@ Decisions made without asking (change if needed):
 Ideas for later: **stock / inventory of materials** (van stock, reorder levels, consumption per job) — out of scope
 now; automatic supplier price import; cash refunds tied to cash on hand.
 
+### October 5 site walkthrough — fixes ✅
+
+Built on the branch with the mockup screens (`claude/ui-buttons-avatars-appliances-gocqla`), which is what the
+walkthrough tested. The "On my way" text with another customer's name was not a bug (the name was changed after the
+text was sent).
+
+- **Customer icon:** tap the avatar on the customer or job page to pick Man / Woman / Couple / Automatic; the customer
+  form has the same buttons. There is no "Neutral" choice (saved ones were moved to Automatic); names that fit both
+  (Sasha) show initials until someone picks.
+- **Second person (couple):** each phone can carry the name of whoever answers it ("Anna (wife)"); the customer form has
+  "Add second person". A named second person makes the automatic icon a couple (two faces in one circle, built from
+  the man and woman pictures); the job page shows that person's name with Call and SMS buttons. Stored as
+  `customer_phones.contact_name` and `customers.has_second_contact` (kept in sync when phones or the first name change).
+- **Appliance type on a booked job** can be corrected in "Edit appliance details" (Change → appliance tiles), by the
+  office and by the technician of the job.
+- **On my way** from the technician's phone now changes the status: the status change and the recorded text go in one
+  request (two requests at once made the browser drop the status change).
+- **Map:** the calendar says why there is no map (no key / key rejected by Google / addresses without a position).
+  Optional `GOOGLE_MAPS_SERVER_KEY` places addresses typed by hand in the background; `php artisan properties:geocode`
+  places addresses saved earlier.
+- **Booking:** the default arrival window is the first one with at least an hour left today (otherwise tomorrow 9–11);
+  past windows are disabled and a past time shows a warning. The phone field keeps only phone characters, checks the
+  number after leaving the field, clears the error when corrected and offers "Use this customer" when the number
+  belongs to an existing customer. A disabled Save button says what is missing.
+- **My jobs search** runs on the server over all tabs and updates the tab counts; finds phones in any format, appliance
+  brand and type, problem text; stays open while switching tabs; says "No jobs match …". Customer search also finds
+  the appliance brand. A visit started on an earlier day and still open is only in Today (with its date), not also in
+  Recent.
+- **Dates and times:** "Customer since" uses the company time zone and regional format; the calendar shows times in the
+  regional format (1:00 p.m.) and labels the first hour; visit length reads "about 1 h of work".
+- **Costs:** labelled fields with the error under each field and plain messages; "$15.5", "CA$ 1,250.00" and "15,50"
+  are accepted in all money fields (costs, invoices, payments, expenses); a cost line can be edited; removing asks
+  first; Cancel closes the form.
+- **Invoices and payment:** an unsent unpaid invoice is marked "Not sent yet — you can still edit it"; the job page
+  shows the invoice next to the job status while the work is not finished; toasts appear at the top for 3 s; date
+  fields line up; the payment window is anchored to the top, scrolls, and keeps the Record payment button visible.
+- **Navigation and headers:** every section shows its name in the dark header; the Menu button is only on phones
+  (desktop has the sidebar, which folds from its edge); the header has no Book customer button; Jobs has no "New job"
+  in the filters (the full form is linked from the booking screen); the calendar has one "Book on this day" button and
+  no layout jump. Phone tabs: My Jobs · Calendar · Map · Messages · More, with Map lit only on the map view.
+- **Texts:** status circles on Jobs and My jobs show their names; date filters are labelled From / To; "Change status"
+  is a button; "Set repair warranty" replaces "Review warranties"; Dashboard is "Getting started" under Company
+  settings and lists missing setup (no taxes; review requests on without a Google profile); the job page warns when a
+  review request cannot be sent; Reports explains which dates each figure uses; expenses and the SMS inbox use correct
+  empty/scope texts; plural forms ("1 job", "1 customer").
+- **Services:** one folded line per service (name, kind, price); labels above the fields; the Save bar appears when
+  something changed.
+- **File fields** (receipts, rating plate, logo, cash receipt photo) are buttons in English instead of the browser's
+  own field.
+
+Tests: `tests/Feature/Feedback/*` (icon, geocoding, My jobs search/tabs, booking clock, On my way, cost lines and money
+input); browser tests updated for the single menu, Book on this day, icon buttons and regional times.
+
+Not changed (data or decisions for the owner): the company name "Doctor Appliance." is typed with a period (Company
+settings); Team has two owner accounts (Alex and Oleksandr) — deactivate one if both are you; taxes and the Google
+review profile must be added in settings. An invoice "Draft" status was not added: invoices stay editable until paid,
+and "Not sent yet" marks them — say if a real draft step is wanted.
+
+### SMS through Telnyx ✅
+
+- `TelnyxProvider` (API v2): one platform API key; each company gets a messaging profile (texts only to its country)
+  and a local number ordered onto it; sending with a per-message delivery webhook; incoming texts and delivery
+  reports on `/webhooks/sms/telnyx` and `/webhooks/sms/telnyx/status`, checked with Ed25519 signatures
+  (`TELNYX_PUBLIC_KEY`, 5-minute replay window); US 10DLC campaign status followed by `sms:sync-registrations`
+  (`MNO_PROVISIONED` = approved; failed / rejected / suspended / expired = rejected).
+- `SMS_PROVIDER=telnyx` (default) chooses where new numbers come from. A company keeps the provider of its number,
+  so existing Twilio numbers keep working (`RoutedSmsProvider`, `SmsProviders`).
+- Setup: DEPLOYMENT.md §6a. Tests: `tests/Feature/Messaging/TelnyxSmsTest.php`; the older messaging and browser tests
+  run with `SMS_PROVIDER=twilio` because their fakes speak the Twilio API.
+- Not done: voice calls; Telnyx's own number-porting; automatic 10DLC registration through the API (IDs are entered by
+  the super-admin, as with Twilio).
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started
@@ -935,8 +1097,8 @@ code has changed yet. Product decisions from the approved mockup:
    Dishwasher, Range, Wall oven (`oven` in code); Cooktop, Microwave, Range hood; Multiple, Installation, Other; plus a
    "Not sure yet — tech adds it on site" button. `ApplianceType` has no Wine cooler or Multiple yet, and Installation
    is a `JobType` in code — decide how to store them.
-4. **Two contacts per customer:** each phone has its own name (e.g. "Anna Kim · wife"), and the Job page shows Call and
-   SMS buttons for each. `customer_phones` has no name field yet. Needs a paired avatar (two faces in one circle).
+4. **Two contacts per customer:** ✅ done (October 6): each phone has its own name, the Job page shows Call and SMS for
+   each, and a paired avatar.
 5. **Job page:** "Scan rating plate" button when model or serial is missing; a Manufacturer warranty block; invoices
    shown in the company currency (e.g. `CA$95.00`, never a hard-coded "$").
 

@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Jobs\GeocodeProperty;
 use App\Models\Concerns\BelongsToCompany;
 use App\Support\Locale\AddressFormatter;
+use App\Support\Maps\Geocoder;
 use App\Support\PhoneNumber;
 use Database\Factories\PropertyFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -85,6 +87,14 @@ class Property extends Model
 
             if (filled($property->site_contact_phone)) {
                 $property->site_contact_phone = PhoneNumber::normalize($property->site_contact_phone, $property->country);
+            }
+        });
+
+        // An address typed by hand gets its map position from the server (when a server key is set).
+        static::saved(function (Property $property) {
+            if ($property->latitude === null && Geocoder::enabled()
+                && ($property->wasRecentlyCreated || $property->wasChanged(['line1', 'unit', 'city', 'region', 'postal_code', 'country']))) {
+                GeocodeProperty::dispatch($property->id)->afterCommit();
             }
         });
 

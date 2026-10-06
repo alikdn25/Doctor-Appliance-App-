@@ -21,6 +21,12 @@ export function useCompanyTime() {
             day: 'numeric',
         });
         const timeFormat = make({ hour: 'numeric', minute: '2-digit' });
+        const fullDayFormat = make({
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
         const dateTimeFormat = make({
             month: 'short',
             day: 'numeric',
@@ -41,8 +47,20 @@ export function useCompanyTime() {
             year: 'numeric',
         });
 
+        const ymdFormat = make({
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        });
+
         return {
+            /** True when the moment falls on today's date in the company time zone. */
+            isToday: (iso: string) =>
+                ymdFormat.format(new Date(iso)) ===
+                ymdFormat.format(new Date()),
             day: (iso: string) => dayFormat.format(new Date(iso)),
+            /** "Thu, Oct 2, 2026" */
+            fullDay: (iso: string) => fullDayFormat.format(new Date(iso)),
             time: (iso: string) => timeFormat.format(new Date(iso)),
             date: (iso: string) => dateFormat.format(new Date(iso)),
             dateTime: (iso: string) => dateTimeFormat.format(new Date(iso)),
@@ -59,7 +77,7 @@ export function useCompanyTime() {
     }, [timeZone, locale]);
 }
 
-/** Minutes as "45 min" or "1 h 20 min". */
+/** Minutes as "45 min", "1 h" or "1 h 20 min". */
 export function formatMinutes(
     minutes: number,
     t: (key: string, replacements?: Record<string, number>) => string,
@@ -68,8 +86,44 @@ export function formatMinutes(
         return t('jobs.minutes', { count: minutes });
     }
 
+    if (minutes % 60 === 0) {
+        return t('jobs.hours', { hours: minutes / 60 });
+    }
+
     return t('jobs.hours_minutes', {
         hours: Math.floor(minutes / 60),
         minutes: minutes % 60,
     });
+}
+
+/**
+ * Wall-clock times ("13:00") in the company's regional format ("1:00 p.m." for en-CA, "13:00" for en-GB),
+ * so the calendar reads the same as the rest of the app.
+ */
+export function useClock() {
+    const { auth } = usePage().props;
+    const locale = auth.company?.locale ?? 'en-US';
+
+    return useMemo(() => {
+        const format = new Intl.DateTimeFormat(locale, {
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZone: 'UTC',
+        });
+        const clock = (hhmm: string) => {
+            const [hours, minutes] = hhmm.split(':').map(Number);
+
+            return Number.isNaN(hours)
+                ? hhmm
+                : format.format(
+                      new Date(Date.UTC(2000, 0, 1, hours, minutes || 0)),
+                  );
+        };
+
+        return {
+            clock,
+            range: (start: string, end: string) =>
+                `${clock(start)} – ${clock(end)}`,
+        };
+    }, [locale]);
 }

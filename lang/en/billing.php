@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'not_sent' => 'Not sent yet — you can still edit it',
     'private_cost' => 'Private',
     'section' => 'Estimates & invoices',
     'empty' => 'No estimates or invoices yet.',

@@ -131,7 +131,10 @@ export default function CustomersIndex({
                                 href={show(customer.id)}
                                 className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-muted/50"
                             >
-                                <CustomerAvatar icon={customer.avatar_icon} />
+                                <CustomerAvatar
+                                    icon={customer.avatar_icon}
+                                    name={customer.display_name}
+                                />
                                 <div className="min-w-0 flex-1 space-y-1">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <span className="font-medium">

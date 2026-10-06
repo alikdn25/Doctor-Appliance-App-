@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AutoLogin;
 use App\Http\Middleware\EnsureAccountEmailVerified;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureSuperAdmin;
@@ -26,7 +27,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Payment provider webhooks are signed by the provider instead of a CSRF token.
         $middleware->preventRequestForgery(except: ['webhooks/*']);
 
+        // Signed-in people opening the sign-in pages go home (Jobs).
+        $middleware->redirectUsersTo('/');
+
         $middleware->web(append: [
+            AutoLogin::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,

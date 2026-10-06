@@ -7,6 +7,7 @@ import {
     toMinor,
     useMoney,
 } from '@/components/billing/money';
+import { FilePicker } from '@/components/file-picker';
 import { FormField } from '@/components/form-field';
 import { PageHeader } from '@/components/page-header';
 import type { TaxOption } from '@/components/billing/types';
@@ -424,16 +425,12 @@ export default function BusinessExpenseForm({
                         error={form.errors.receipt}
                         hint={t('expenses.receipt_hint')}
                     >
-                        <Input
+                        <FilePicker
                             id="receipt"
-                            type="file"
                             accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
-                            onChange={(event) =>
-                                form.setData(
-                                    'receipt',
-                                    event.target.files?.[0] ?? null,
-                                )
-                            }
+                            file={form.data.receipt}
+                            label={t('expenses.add_receipt')}
+                            onChange={(file) => form.setData('receipt', file)}
                         />
                         {expense?.receipt_url && (
                             <div className="space-y-1 text-sm">
