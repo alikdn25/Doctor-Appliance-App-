@@ -1,6 +1,6 @@
 import { router, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
     ApplianceImage,
     ApplianceTypePicker,
@@ -38,7 +38,7 @@ const toForm = (a: ApplianceItem | null): FormData => ({
 
 /**
  * Field edits of appliances on a job: add one (new, or already at the address),
- * or correct manufacturer, model and serial number of a linked one.
+ * or correct the type, manufacturer, model and serial number of a linked one.
  */
 export function JobApplianceDialog({
     open,
@@ -63,8 +63,11 @@ export function JobApplianceDialog({
     const form = useForm<FormData>(toForm(appliance));
     const errors = form.errors as Record<string, string | undefined>;
 
+    const [changingType, setChangingType] = useState(false);
+
     useEffect(() => {
         if (open) {
+            setChangingType(false);
             form.clearErrors();
             form.setData(toForm(appliance));
         }
@@ -80,11 +83,14 @@ export function JobApplianceDialog({
         e.preventDefault();
 
         if (appliance) {
-            form.transform(({ manufacturer, model_number, serial_number }) => ({
-                manufacturer,
-                model_number,
-                serial_number,
-            }));
+            form.transform(
+                ({ type, manufacturer, model_number, serial_number }) => ({
+                    type,
+                    manufacturer,
+                    model_number,
+                    serial_number,
+                }),
+            );
             form.put(update([jobId, appliance.id]).url, options);
         } else {
             form.transform((data) => data);
@@ -171,7 +177,32 @@ export function JobApplianceDialog({
                 )}
 
                 <form onSubmit={submit} className="grid gap-4">
-                    {!appliance && (
+                    {appliance && !changingType && (
+                        <div className="flex items-center gap-3 rounded-2xl border p-2">
+                            <ApplianceImage
+                                type={form.data.type}
+                                className="size-12"
+                            />
+                            <span className="min-w-0 flex-1">
+                                <span className="block text-[13px] text-muted-foreground">
+                                    {t('appliances.fields.type')}
+                                </span>
+                                <span className="font-semibold">
+                                    {applianceTypes.find(
+                                        (o) => o.value === form.data.type,
+                                    )?.label ?? form.data.type}
+                                </span>
+                            </span>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setChangingType(true)}
+                            >
+                                {t('jobs.appliance.change_type')}
+                            </Button>
+                        </div>
+                    )}
+                    {(!appliance || changingType) && (
                         <div className="space-y-2">
                             <span className="text-[13px] font-semibold">
                                 {t('appliances.fields.type')}

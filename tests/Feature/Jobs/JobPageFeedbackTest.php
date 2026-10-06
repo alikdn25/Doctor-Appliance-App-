@@ -238,7 +238,9 @@ test('my jobs shows tab counts, the problem and the appliance picture', function
         $this->job->appliances()->attach($microwave->id);
         $this->job->forceFill(['description' => 'Not heating'])->save();
         $this->job->visits()->first()->forceFill([
-            'scheduled_start' => now()->setTime(12, 0), 'scheduled_end' => now()->setTime(14, 0),
+            // Noon to 2 p.m. of today in the company's time zone (UTC may already be on the next day).
+            'scheduled_start' => now($this->company->timezone)->setTime(12, 0)->utc(),
+            'scheduled_end' => now($this->company->timezone)->setTime(14, 0)->utc(),
         ])->save();
     });
 

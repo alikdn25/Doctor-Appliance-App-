@@ -984,9 +984,15 @@ Built on the branch with the mockup screens (`claude/ui-buttons-avatars-applianc
 walkthrough tested. The "On my way" text with another customer's name was not a bug (the name was changed after the
 text was sent).
 
-- **Customer icon:** tap the avatar on the customer or job page to pick Man / Woman / From first name; the customer
-  form has the same buttons. There is no "Neutral" choice (saved ones were moved to From first name); names that fit
-  both (Sasha) show initials until someone picks Man or Woman.
+- **Customer icon:** tap the avatar on the customer or job page to pick Man / Woman / Couple / Automatic; the customer
+  form has the same buttons. There is no "Neutral" choice (saved ones were moved to Automatic); names that fit both
+  (Sasha) show initials until someone picks.
+- **Second person (couple):** each phone can carry the name of whoever answers it ("Anna (wife)"); the customer form has
+  "Add second person". A named second person makes the automatic icon a couple (two faces in one circle, built from
+  the man and woman pictures); the job page shows that person's name with Call and SMS buttons. Stored as
+  `customer_phones.contact_name` and `customers.has_second_contact` (kept in sync when phones or the first name change).
+- **Appliance type on a booked job** can be corrected in "Edit appliance details" (Change → appliance tiles), by the
+  office and by the technician of the job.
 - **On my way** from the technician's phone now changes the status: the status change and the recorded text go in one
   request (two requests at once made the browser drop the status change).
 - **Map:** the calendar says why there is no map (no key / key rejected by Google / addresses without a position).
@@ -1057,8 +1063,8 @@ code has changed yet. Product decisions from the approved mockup:
    Dishwasher, Range, Wall oven (`oven` in code); Cooktop, Microwave, Range hood; Multiple, Installation, Other; plus a
    "Not sure yet — tech adds it on site" button. `ApplianceType` has no Wine cooler or Multiple yet, and Installation
    is a `JobType` in code — decide how to store them.
-4. **Two contacts per customer:** each phone has its own name (e.g. "Anna Kim · wife"), and the Job page shows Call and
-   SMS buttons for each. `customer_phones` has no name field yet. Needs a paired avatar (two faces in one circle).
+4. **Two contacts per customer:** ✅ done (October 6): each phone has its own name, the Job page shows Call and SMS for
+   each, and a paired avatar.
 5. **Job page:** "Scan rating plate" button when model or serial is missing; a Manufacturer warranty block; invoices
    shown in the company currency (e.g. `CA$95.00`, never a hard-coded "$").
 

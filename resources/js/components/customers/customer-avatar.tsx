@@ -12,9 +12,9 @@ import {
 import { useTrans } from '@/lib/i18n';
 import { avatar, icon as iconRoute } from '@/routes/customers';
 
-export type AvatarStyle = 'auto' | 'man' | 'woman';
+export type AvatarStyle = 'auto' | 'man' | 'woman' | 'couple';
 /** 'neutral' = the face is not known yet: the avatar shows initials. */
-export type AvatarIcon = 'man' | 'woman' | 'neutral' | 'business';
+export type AvatarIcon = 'man' | 'woman' | 'couple' | 'neutral' | 'business';
 
 const sizes = {
     md: 'size-11 text-base',
@@ -47,6 +47,27 @@ export function CustomerAvatar({
 }) {
     const t = useTrans();
     const label = t(`customers.icons.${icon}`);
+    if (icon === 'couple') {
+        // Two faces in one circle: the woman behind on the left, the man in front on the right.
+        return (
+            <span
+                role="img"
+                aria-label={label}
+                className={`da-avatar ${sizes[size]} relative inline-block shrink-0 overflow-hidden rounded-full bg-[linear-gradient(90deg,#F1F7FF,#B3D4FF)]`}
+            >
+                <img
+                    src="/images/avatars/woman.png"
+                    alt=""
+                    className="absolute top-[12%] -left-[14%] size-[82%] rounded-full object-cover"
+                />
+                <img
+                    src="/images/avatars/man.png"
+                    alt=""
+                    className="absolute top-[18%] -right-[14%] size-[82%] rounded-full object-cover ring-2 ring-white"
+                />
+            </span>
+        );
+    }
     if (icon === 'man' || icon === 'woman') {
         return (
             <img
@@ -100,7 +121,7 @@ export function useNameAvatar(name: string, style: AvatarStyle): AvatarIcon {
 }
 
 /**
- * The avatar as a button: one tap opens Man / Woman / From first name and saves the choice.
+ * The avatar as a button: one tap opens Man / Woman / Couple / Automatic and saves the choice.
  * For names that fit both (e.g. Sasha) the office or technician picks the face once.
  */
 export function CustomerAvatarPicker({
@@ -142,15 +163,17 @@ export function CustomerAvatarPicker({
                         )
                     }
                 >
-                    {(['man', 'woman', 'auto'] as const).map((option) => (
-                        <DropdownMenuRadioItem
-                            key={option}
-                            value={option}
-                            className="min-h-11"
-                        >
-                            {t(`customers.icons.${option}`)}
-                        </DropdownMenuRadioItem>
-                    ))}
+                    {(['man', 'woman', 'couple', 'auto'] as const).map(
+                        (option) => (
+                            <DropdownMenuRadioItem
+                                key={option}
+                                value={option}
+                                className="min-h-11"
+                            >
+                                {t(`customers.icons.${option}`)}
+                            </DropdownMenuRadioItem>
+                        ),
+                    )}
                 </DropdownMenuRadioGroup>
             </DropdownMenuContent>
         </DropdownMenu>

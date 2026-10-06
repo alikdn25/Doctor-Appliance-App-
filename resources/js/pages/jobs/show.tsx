@@ -73,6 +73,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatMinutes, useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
+import { smsUrl } from '@/lib/sms';
 import { usePhone } from '@/lib/phone';
 import { show as showAppliance } from '@/routes/appliances';
 import { show as showCustomer } from '@/routes/customers';
@@ -123,7 +124,12 @@ type Job = {
         avatar_icon: AvatarIcon;
         avatar_style: AvatarStyle;
         notes: string | null;
-        phones: { id: number; number: string; label_text: string }[];
+        phones: {
+            id: number;
+            number: string;
+            label_text: string;
+            contact_name: string | null;
+        }[];
     };
     property: PropertyData & { full_address: string };
     appliances: (ApplianceItem & { rating_plate_url: string | null })[];
@@ -600,19 +606,39 @@ export default function JobShow({
                         )}
                     </div>
 
+                    {/* Other numbers, e.g. the second person of a couple: Call and SMS for each. */}
                     {job.customer.phones.length > 1 && (
-                        <ul className="space-y-1 text-sm">
+                        <ul className="space-y-2 text-sm">
                             {job.customer.phones.slice(1).map((p) => (
-                                <li key={p.id}>
-                                    <a
-                                        href={telUrl(p.number)}
-                                        className="underline-offset-4 hover:underline"
-                                    >
-                                        {phoneText(p.number)}
-                                    </a>{' '}
-                                    <span className="text-xs text-muted-foreground">
-                                        {p.label_text}
+                                <li
+                                    key={p.id}
+                                    className="flex flex-wrap items-center gap-2"
+                                >
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block font-semibold">
+                                            {p.contact_name ??
+                                                phoneText(p.number)}
+                                        </span>
+                                        <span className="block text-xs text-muted-foreground">
+                                            {[
+                                                p.contact_name &&
+                                                    phoneText(p.number),
+                                                p.label_text,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                        </span>
                                     </span>
+                                    <Button asChild variant="outline">
+                                        <a href={telUrl(p.number)}>
+                                            <Phone /> {t('jobs.call')}
+                                        </a>
+                                    </Button>
+                                    <Button asChild variant="outline">
+                                        <a href={smsUrl(p.number, '')}>
+                                            <MessageSquare /> {t('jobs.sms')}
+                                        </a>
+                                    </Button>
                                 </li>
                             ))}
                         </ul>

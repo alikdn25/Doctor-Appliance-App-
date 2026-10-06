@@ -142,6 +142,7 @@ return [
     'start_short' => 'Start',
     'finish_short' => 'Finish visit',
     'call' => 'Call',
+    'sms' => 'SMS',
     'text' => 'Text',
     'open_customer' => 'Open customer',
     'gate_code' => 'Gate / buzzer: :code',
@@ -242,6 +243,7 @@ return [
         'add_new' => 'New appliance',
         'link' => 'Add to job',
         'edit' => 'Edit appliance details',
+        'change_type' => 'Change',
         'removed' => 'Deleted',
     ],
 

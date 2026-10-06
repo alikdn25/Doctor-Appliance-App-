@@ -1,5 +1,5 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { Plus, TriangleAlert, X } from 'lucide-react';
+import { Plus, TriangleAlert, UserPlus, X } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import {
@@ -27,6 +27,7 @@ import type { Option } from '@/types';
 type Phone = {
     id?: number;
     label: string;
+    contact_name: string;
     number: string;
     is_primary: boolean;
 };
@@ -44,7 +45,7 @@ type Customer = {
     payment_terms: string | null;
     tags: string[];
     notes: string | null;
-    phones: Phone[];
+    phones: (Omit<Phone, 'contact_name'> & { contact_name: string | null })[];
     emails: Email[];
 };
 
@@ -147,12 +148,17 @@ export default function CustomerForm({
         payment_terms: customer?.payment_terms ?? '',
         tags: customer?.tags.join(', ') ?? '',
         notes: customer?.notes ?? '',
-        phones: customer?.phones.map(({ id, label, number, is_primary }) => ({
-            id,
-            label,
-            number: formatPhone(number, auth.company?.country ?? 'US'),
-            is_primary,
-        })) ?? [{ label: 'mobile', number: '', is_primary: true }],
+        phones: customer?.phones.map(
+            ({ id, label, contact_name, number, is_primary }) => ({
+                id,
+                label,
+                contact_name: contact_name ?? '',
+                number: formatPhone(number, auth.company?.country ?? 'US'),
+                is_primary,
+            }),
+        ) ?? [
+            { label: 'mobile', contact_name: '', number: '', is_primary: true },
+        ],
         emails: customer?.emails.map(({ id, label, email, is_primary }) => ({
             id,
             label,
@@ -165,10 +171,21 @@ export default function CustomerForm({
             is_primary: true,
         },
     });
-    const suggestedIcon = useNameAvatar(
+    const nameIcon = useNameAvatar(
         form.data.type === 'residential' ? form.data.first_name : '',
         form.data.avatar_style,
     );
+    // A second named person on a phone makes the automatic icon a couple.
+    const secondPerson = form.data.phones.some(
+        (p) =>
+            p.contact_name.trim() !== '' &&
+            p.contact_name
+                .trim()
+                .split(/[\s·,(]/)[0]
+                .toLowerCase() !== form.data.first_name.trim().toLowerCase(),
+    );
+    const suggestedIcon =
+        form.data.avatar_style === 'auto' && secondPerson ? 'couple' : nameIcon;
     const errors = form.errors as Record<string, string | undefined>;
 
     const found = useDuplicates(
@@ -274,33 +291,36 @@ export default function CustomerForm({
                                     role="radiogroup"
                                     className="flex flex-wrap gap-2"
                                 >
-                                    {(['man', 'woman', 'auto'] as const).map(
-                                        (style) => (
-                                            <button
-                                                key={style}
-                                                type="button"
-                                                role="radio"
-                                                aria-checked={
-                                                    form.data.avatar_style ===
-                                                    style
-                                                }
-                                                onClick={() =>
-                                                    form.setData(
-                                                        'avatar_style',
-                                                        style as AvatarStyle,
-                                                    )
-                                                }
-                                                className={`min-h-11 rounded-2xl px-4 text-sm font-semibold shadow-sm transition ${
-                                                    form.data.avatar_style ===
-                                                    style
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'bg-card text-foreground ring-1 ring-border'
-                                                }`}
-                                            >
-                                                {t(`customers.icons.${style}`)}
-                                            </button>
-                                        ),
-                                    )}
+                                    {(
+                                        [
+                                            'man',
+                                            'woman',
+                                            'couple',
+                                            'auto',
+                                        ] as const
+                                    ).map((style) => (
+                                        <button
+                                            key={style}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={
+                                                form.data.avatar_style === style
+                                            }
+                                            onClick={() =>
+                                                form.setData(
+                                                    'avatar_style',
+                                                    style as AvatarStyle,
+                                                )
+                                            }
+                                            className={`min-h-11 rounded-2xl px-4 text-sm font-semibold shadow-sm transition ${
+                                                form.data.avatar_style === style
+                                                    ? 'bg-primary text-primary-foreground'
+                                                    : 'bg-card text-foreground ring-1 ring-border'
+                                            }`}
+                                        >
+                                            {t(`customers.icons.${style}`)}
+                                        </button>
+                                    ))}
                                 </div>
                             </FormField>
                         )}
@@ -434,26 +454,71 @@ export default function CustomerForm({
                             <InputError
                                 message={errors[`phones.${i}.number`]}
                             />
+                            {/* Whose number it is when it is not the customer: a second person (couple icon). */}
+                            {(i > 0 || phone.contact_name !== '') && (
+                                <Input
+                                    aria-label={t(
+                                        'customers.fields.contact_name',
+                                    )}
+                                    placeholder={t(
+                                        'customers.contact_name_placeholder',
+                                    )}
+                                    maxLength={100}
+                                    value={phone.contact_name}
+                                    onChange={(e) =>
+                                        setRow('phones', i, {
+                                            contact_name: e.target.value,
+                                        })
+                                    }
+                                />
+                            )}
+                            <InputError
+                                message={errors[`phones.${i}.contact_name`]}
+                            />
                         </div>
                     ))}
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="justify-self-start"
-                        onClick={() =>
-                            form.setData('phones', [
-                                ...form.data.phones,
-                                {
-                                    label: 'mobile',
-                                    number: '',
-                                    is_primary: form.data.phones.length === 0,
-                                },
-                            ])
-                        }
-                    >
-                        <Plus /> {t('customers.add_phone')}
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                                form.setData('phones', [
+                                    ...form.data.phones,
+                                    {
+                                        label: 'mobile',
+                                        contact_name: '',
+                                        number: '',
+                                        is_primary:
+                                            form.data.phones.length === 0,
+                                    },
+                                ])
+                            }
+                        >
+                            <Plus /> {t('customers.add_phone')}
+                        </Button>
+                        {form.data.type === 'residential' && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                    form.setData('phones', [
+                                        ...form.data.phones,
+                                        {
+                                            label: 'mobile',
+                                            contact_name: '',
+                                            number: '',
+                                            is_primary:
+                                                form.data.phones.length === 0,
+                                        },
+                                    ])
+                                }
+                            >
+                                <UserPlus /> {t('customers.add_second_person')}
+                            </Button>
+                        )}
+                    </div>
 
                     {form.data.emails.map((email, i) => (
                         <div

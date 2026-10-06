@@ -77,6 +77,7 @@ type Customer = {
     phones: {
         id: number;
         label_text: string;
+        contact_name: string | null;
         number: string;
         is_primary: boolean;
         sms_opted_out_at: string | null;
@@ -228,7 +229,9 @@ export default function CustomerShow({
                                     {phoneText(p.number)}
                                 </a>
                                 <span className="text-xs text-muted-foreground">
-                                    {p.label_text}
+                                    {[p.contact_name, p.label_text]
+                                        .filter(Boolean)
+                                        .join(' · ')}
                                 </span>
                                 {p.sms_opted_out_at && (
                                     <span

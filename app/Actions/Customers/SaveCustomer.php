@@ -30,6 +30,9 @@ class SaveCustomer
             $customer->fill($attributes)->save();
 
             $this->syncRows($customer->phones(), $phones, CustomerPhone::class);
+            // Removed phones are deleted by query (no model events): recheck the second person here.
+            CustomerPhone::refreshSecondContact($customer->id);
+            $customer->refresh();
             $this->syncRows($customer->emails(), $emails, CustomerEmail::class);
 
             if ($property !== null) {

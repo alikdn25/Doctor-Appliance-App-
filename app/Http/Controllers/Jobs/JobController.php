@@ -332,6 +332,7 @@ class JobController extends Controller
                         'id' => $p->id,
                         'number' => $p->number,
                         'label_text' => $p->label->label(),
+                        'contact_name' => $p->contact_name,
                     ])->values(),
                 ],
                 'property' => [

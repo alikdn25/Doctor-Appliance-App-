@@ -51,11 +51,14 @@ return [
     ],
 
     'about_hint' => 'Preferences and details for your team, such as arrival expectations, children sleeping, or how to contact the customer. Visible during booking and on their jobs.',
-    'avatar_hint' => 'From first name picks the face by the name; for names that fit both (like Sasha) the initials show until you choose Man or Woman. You can also tap the icon on the customer or job page.',
+    'avatar_hint' => 'Automatic: a couple when a second person is added, otherwise the face from the first name; names that fit both (like Sasha) show initials until you choose. You can also tap the icon on the customer or job page.',
     'change_icon' => 'Customer icon',
-    'icons' => ['auto' => 'From first name', 'neutral' => 'Initials', 'man' => 'Man', 'woman' => 'Woman', 'business' => 'Business'],
+    'add_second_person' => 'Add second person',
+    'contact_name_placeholder' => 'Whose number: e.g. Anna (wife)',
+    'icons' => ['auto' => 'Automatic', 'neutral' => 'Initials', 'man' => 'Man', 'woman' => 'Woman', 'couple' => 'Couple', 'business' => 'Business'],
     'fields' => [
         'avatar_style' => 'Customer icon',
+        'contact_name' => 'Name of this person',
         'type' => 'Customer type',
         'first_name' => 'First name',
         'last_name' => 'Last name',

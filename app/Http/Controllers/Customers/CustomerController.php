@@ -202,7 +202,7 @@ class CustomerController extends Controller
     public function updateAvatar(Request $request, Customer $customer): RedirectResponse
     {
         Gate::authorize('update', $customer);
-        $data = $request->validate(['avatar_style' => ['required', 'in:auto,man,woman']]);
+        $data = $request->validate(['avatar_style' => ['required', 'in:auto,man,woman,couple']]);
         $customer->update(['avatar_style' => $data['avatar_style']]);
 
         return back();
@@ -310,6 +310,7 @@ class CustomerController extends Controller
                 'id' => $p->id,
                 'label' => $p->label->value,
                 'label_text' => $p->label->label(),
+                'contact_name' => $p->contact_name,
                 'number' => $p->number,
                 'is_primary' => $p->is_primary,
                 'sms_opted_out_at' => $p->sms_opted_out_at?->toIso8601String(),

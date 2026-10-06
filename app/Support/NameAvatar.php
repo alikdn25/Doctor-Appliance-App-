@@ -7,8 +7,8 @@ use Normalizer;
 /** A decorative icon suggestion, never a recorded claim about the person's gender. */
 class NameAvatar
 {
-    /** Choices people can save: a face, or automatic from the first name (initials when the name fits both). */
-    public const STYLES = ['auto', 'man', 'woman'];
+    /** Choices people can save: a face, a couple, or automatic (a couple when a second person is added, else from the first name). */
+    public const STYLES = ['auto', 'man', 'woman', 'couple'];
 
     /**
      * Latin spellings missing from the Faker-based dictionary: common transliterations of Ukrainian and
