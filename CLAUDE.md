@@ -16,6 +16,16 @@ Read `SPEC.md` before any task. It is the source of truth for scope and stages.
 - At the end of each task, update `docs/PROGRESS.md`: what is done per stage and what is next.
 - If something in SPEC.md is unclear or contradictory, stop and ask instead of guessing.
 
+## Working with the owner
+- Do not ask permission for routine steps. When the work is done and tests pass: commit, push, open the PR and merge it
+  into `main`. If the environment blocks the merge, say so in one line with the PR link ("press Merge").
+- Ask only real product questions (what the feature should do), never "should I open a PR / merge / continue?".
+- This workspace has no server access. Grok Bot is the agent with server access (docs/SERVER_HANDOFF.md). When a
+  change must reach the server (deploy, `.env`, migrations, workers), end the task with a ready-to-paste command block
+  for Grok Bot: steps, checks to run on the live site, and what to report back.
+- After a merge, say whether the branch needs deleting (normally not: deploys use `main` only).
+- Say plainly what still has to be done by the owner (e.g. settings to fill in the app), and nothing else.
+
 ## Business context
 - The product is international. First markets: USA and Canada; later the whole world. Nothing in the code may assume
   Canada (or any other country): no hard-coded currency, "$" sign, taxes (GST/PST), provinces, postal code formats,
