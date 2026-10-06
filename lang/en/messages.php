@@ -18,7 +18,7 @@ return [
         'reply' => 'Reply to this number',
         'reply_placeholder' => 'Write your reply…',
         'quiet_hint' => 'Texts wait until company quiet hours end.',
-        'newest_first' => 'Newest messages first. Read status is personal to each employee.',
+        'newest_last' => 'Newest messages at the bottom. Read status is personal to each employee.',
         'back' => 'Conversations',
         'open_customer' => 'Open customer',
         'new' => 'New message',

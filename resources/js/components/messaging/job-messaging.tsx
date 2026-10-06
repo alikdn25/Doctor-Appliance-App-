@@ -1,11 +1,10 @@
 import { router, useForm } from '@inertiajs/react';
-import { MessageSquare, Send, Star } from 'lucide-react';
+import { MessageSquare, Send } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { MessageHistory } from '@/components/messaging/message-history';
 import type { JobMessaging } from '@/components/messaging/types';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -16,7 +15,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
 import { smsUrl } from '@/lib/sms';
-import { askForReview, sms } from '@/routes/jobs';
+import { sms } from '@/routes/jobs';
 import { opened } from '@/routes/jobs/messages';
 
 /**
@@ -43,8 +42,7 @@ export function openOnPhone(
 }
 
 /**
- * The job's texting tools: "Ask for a review", the review request button (technician's phone mode),
- * an SMS dialog (Automatic mode) and the message history.
+ * The job's texting tools: an SMS dialog (Automatic mode) and the message history.
  */
 export function JobMessagingSection({
     jobId,
@@ -84,51 +82,6 @@ export function JobMessagingSection({
                     })}
                 </p>
             )}
-
-            <div className="rounded-lg border p-3 text-sm">
-                <label className="flex min-h-10 items-center gap-2">
-                    <Checkbox
-                        checked={messaging.review.ask}
-                        disabled={!canWork}
-                        onCheckedChange={(c) =>
-                            router.put(
-                                askForReview(jobId).url,
-                                { ask: c === true },
-                                { preserveScroll: true },
-                            )
-                        }
-                    />
-                    <Star className="size-4" />
-                    {t('reviews.ask_for_review')}
-                </label>
-                <p className="text-xs text-muted-foreground">
-                    {messaging.review.status ?? t('reviews.ask_hint')}
-                </p>
-                {messaging.review.ask && !messaging.review.has_profile && (
-                    <p className="mt-1 text-xs font-medium text-amber-800">
-                        {t('reviews.missing_profile')}
-                    </p>
-                )}
-                {messaging.mode === 'technician_phone' &&
-                    canWork &&
-                    canText &&
-                    messaging.review.has_profile && (
-                        <Button
-                            variant="outline"
-                            className="mt-2 h-11 w-full"
-                            onClick={() =>
-                                openOnPhone(
-                                    jobId,
-                                    'review_request',
-                                    messaging.phone!,
-                                    messaging.texts.review_request,
-                                )
-                            }
-                        >
-                            <Star /> {t('reviews.send_request')}
-                        </Button>
-                    )}
-            </div>
 
             {messaging.mode === 'automatic' && canWork && canText && (
                 <Button

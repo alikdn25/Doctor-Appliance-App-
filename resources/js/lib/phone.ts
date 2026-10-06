@@ -59,3 +59,13 @@ export function usePhone() {
         [country],
     );
 }
+
+/** The typed number in E.164 (read in the company's country when it has no +), or the input as typed. */
+export function toE164(value: string, country: string): string {
+    const region = isSupportedCountry(country)
+        ? (country as CountryCode)
+        : undefined;
+    const parsed = parsePhoneNumberFromString(value, region);
+
+    return parsed ? parsed.format('E.164') : value;
+}

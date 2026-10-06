@@ -1,42 +1,34 @@
 <?php
 
 return [
-    'missing_profile' => 'No Google review profile is added for this brand yet, so no request will be sent. Add one in Company settings → Google reviews.',
     'title' => 'Google reviews',
-    'description' => 'Google Business Profiles and their review links. Each brand picks its default profile.',
-    'add' => 'Add profile',
-    'remove' => 'Remove profile',
-    'empty' => 'No Google profiles yet. Add the "Ask for a review" link of each profile.',
-    'saved' => 'Google profiles saved.',
+    'description' => 'Your locations and their Google review links. Name each location yourself (e.g. Surrey, Burnaby); you pick one when you send a review request after an invoice.',
+    'add' => 'Add location',
+    'remove' => 'Remove location',
+    'empty' => 'No locations yet. Add each Google Business Profile\'s "Ask for reviews" link.',
+    'saved' => 'Google review locations saved.',
     'link_hint' => 'In Google Business Profile: Ask for reviews → copy the link.',
     'fields' => [
-        'label' => 'Label (e.g. Surrey)',
+        'label' => 'Location name (e.g. Surrey)',
         'review_url' => 'Review link',
         'brand' => 'Brand',
-        'default_profile' => 'Google profile for review requests',
+        'default_profile' => 'Default Google review location',
     ],
     'any_brand' => 'Any brand',
     'none' => 'None',
-
-    'settings' => 'Review requests',
     'rules' => 'Google and the FTC do not allow rewards or discounts for reviews, or asking only happy customers to post. Every customer gets the same request.',
-    'fields_settings' => [
-        'review_requests_default' => 'Ask for a review on new jobs',
-        'review_request_delay_hours' => 'Send after full payment (hours)',
-        'review_request_cooldown_days' => 'At most one request per customer every (days)',
-    ],
 
-    'ask_for_review' => 'Ask for a review',
-    'ask_hint' => 'A Google review request goes out after the job is paid in full.',
-    'send_request' => 'Send review request',
-    'statuses' => [
-        'scheduled' => 'Review request scheduled for :date',
-        'sent' => 'Review request sent :date',
-        'skipped' => 'Review request not sent: :reason',
-    ],
-    'skipped' => [
-        'turned_off' => '"Ask for a review" is off for this job.',
-        'no_profile' => 'No Google profile is set up.',
-        'recent' => 'The customer already got a review request in the last :days days.',
+    'prompt' => [
+        'title' => 'Send Google Review request?',
+        'description' => 'The review link goes to the customer as a separate text.',
+        'yes' => 'Yes',
+        'no' => 'No',
+        'location' => 'Location',
+        'choose_location' => 'Choose a location',
+        'phone' => 'Phone',
+        'send' => 'Send',
+        'no_locations' => 'No Google review locations yet. Add them in Company → Google reviews.',
+        'sms_off' => 'Texting is off for the company (Company → Messaging), so a review request cannot be sent by SMS.',
+        'invalid_phone' => 'Enter a valid phone number.',
     ],
 ];

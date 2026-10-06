@@ -125,6 +125,43 @@ class Messenger
     }
 
     /**
+     * An SMS to a number typed for this customer (e.g. the review request prompt): one of the customer's phones is
+     * texted as usual; another number keeps the customer and job on the record, with the number's own opt-out.
+     */
+    public function smsToCustomerNumber(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $number, string $body, User $user): Message
+    {
+        $phone = $customer->phones()->where('number_normalized', $number)->first();
+        if ($phone !== null) {
+            return $this->sms($kind, $customer, $job, $body, $user, recipient: $phone);
+        }
+
+        $company = currentCompany();
+        $account = SmsAccount::query()->first();
+        $reason = $this->numberBlockedReason($number);
+
+        $message = Message::query()->create([
+            'customer_id' => $customer->id,
+            'service_job_id' => $job?->id,
+            'direction' => Message::OUTBOUND,
+            'channel' => Message::SMS,
+            'kind' => $kind,
+            'to' => $number,
+            'from' => $account?->phone_number,
+            'body' => $body,
+            'status' => $reason === null ? 'scheduled' : 'blocked',
+            'status_reason' => $reason,
+            'send_after' => $reason === null ? QuietHours::nextAllowed($company) : null,
+            'user_id' => $user->id,
+        ]);
+
+        if ($reason === null) {
+            DeliverSmsMessage::dispatch($message->id, $company->id)->delay($message->send_after);
+        }
+
+        return $message;
+    }
+
+    /**
      * Whether the company can text a number that belongs to no customer: null = yes, otherwise the reason.
      */
     public function numberBlockedReason(string $number): ?string
@@ -182,7 +219,7 @@ class Messenger
         $account = SmsAccount::query()->first();
         $phone = CustomerPhone::query()->where('customer_id', $message->customer_id)->where('number_normalized', $message->to)->first();
 
-        if ($phone?->sms_opted_out_at !== null || ($message->customer_id === null && $this->numberOptedOut((string) $message->to))) {
+        if ($phone?->sms_opted_out_at !== null || ($phone === null && $this->numberOptedOut((string) $message->to))) {
             $message->update(['status' => 'blocked', 'status_reason' => __('messages.blocked.opted_out')]);
 
             return;

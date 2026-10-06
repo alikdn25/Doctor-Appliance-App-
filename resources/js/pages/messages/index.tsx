@@ -214,6 +214,16 @@ export default function SmsInbox({
     usePoll(15000, { only: ['threads', 'conversation', 'unreadMessages'] });
     const phone = conversation?.phone;
     const unreadIds = conversation?.unread_ids.join(',') ?? '';
+    const newestId = conversation?.messages.data[0]?.id;
+    const conversationEnd = useRef<HTMLDivElement>(null);
+
+    // Like any chat: the newest message sits at the bottom, next to the reply box. Opening a conversation and
+    // every new message (sent, or received by the poll) bring the newest message and the reply box into view.
+    useEffect(() => {
+        if (phone) {
+            conversationEnd.current?.scrollIntoView({ block: 'end' });
+        }
+    }, [phone, newestId]);
 
     useEffect(() => {
         const key = `${phone}:${unreadIds}`;
@@ -435,19 +445,25 @@ export default function SmsInbox({
                                     <p className="text-xs text-muted-foreground">
                                         {conversation.messages.total === 0
                                             ? t('messages.inbox.start')
-                                            : t('messages.inbox.newest_first')}
+                                            : t('messages.inbox.newest_last')}
                                     </p>
+                                    {/* Older pages above the messages, the newest at the bottom. */}
+                                    <PaginationLinks
+                                        links={conversation.messages.links}
+                                    />
                                     <MessageHistory
                                         messages={conversation.messages.data}
                                         showJobLinks
-                                    />
-                                    <PaginationLinks
-                                        links={conversation.messages.links}
                                     />
                                 </div>
                                 <Reply
                                     key={conversation.phone}
                                     conversation={conversation}
+                                />
+                                {/* Room for the phone bottom navigation. */}
+                                <div
+                                    ref={conversationEnd}
+                                    className="scroll-mb-28 lg:scroll-mb-4"
                                 />
                             </>
                         ) : (

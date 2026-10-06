@@ -5,7 +5,6 @@ import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,9 +21,6 @@ type Settings = {
     sms_mode: string;
     quiet_hours_start: string;
     quiet_hours_end: string;
-    review_requests_default: boolean;
-    review_request_delay_hours: number;
-    review_request_cooldown_days: number;
 };
 
 type Template = { kind: string; label: string; text: string; default: string };
@@ -55,7 +51,7 @@ const BUSINESS_FIELDS = [
 ] as const;
 
 /**
- * Company → Messaging: SMS mode, quiet hours, review requests, templates, SMS number and US registration.
+ * Company → Messaging: SMS mode, quiet hours, templates, SMS number and US registration.
  */
 export default function MessagingSettings({
     settings,
@@ -157,60 +153,6 @@ export default function MessagingSettings({
                         <p className="-mt-2 text-xs text-muted-foreground">
                             {t('messages.quiet_hint')}
                         </p>
-                    </section>
-
-                    <section className="grid gap-4">
-                        <h2 className="text-base font-medium">
-                            {t('reviews.settings')}
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            {t('reviews.rules')}
-                        </p>
-                        <label className="flex min-h-10 items-center gap-2 text-sm">
-                            <Checkbox
-                                checked={form.data.review_requests_default}
-                                onCheckedChange={(c) =>
-                                    form.setData(
-                                        'review_requests_default',
-                                        c === true,
-                                    )
-                                }
-                            />
-                            {t(
-                                'reviews.fields_settings.review_requests_default',
-                            )}
-                        </label>
-                        <div className="grid grid-cols-2 gap-4">
-                            {(
-                                [
-                                    'review_request_delay_hours',
-                                    'review_request_cooldown_days',
-                                ] as const
-                            ).map((field) => (
-                                <FormField
-                                    key={field}
-                                    id={field}
-                                    label={t(
-                                        `reviews.fields_settings.${field}`,
-                                    )}
-                                    error={errors[field]}
-                                >
-                                    <Input
-                                        id={field}
-                                        type="number"
-                                        inputMode="numeric"
-                                        min={0}
-                                        value={form.data[field]}
-                                        onChange={(e) =>
-                                            form.setData(
-                                                field,
-                                                Number(e.target.value),
-                                            )
-                                        }
-                                    />
-                                </FormField>
-                            ))}
-                        </div>
                     </section>
 
                     <section className="grid gap-4">

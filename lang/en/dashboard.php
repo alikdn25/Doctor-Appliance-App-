@@ -21,7 +21,5 @@ return [
     'brand_needed_hint' => 'A brand is the business name shown to customers. Add one before booking jobs or creating invoices.',
     'setup_missing' => 'Not set up yet',
     'missing_taxes' => 'No taxes are set up, so invoices have no tax lines.',
-    'missing_review_profile' => 'Review requests are on, but no Google review profile is added, so no request can be sent.',
-    'add_review_profile' => 'Add review profile',
     'brand_needed_admin' => 'Ask the company owner to add a brand before booking jobs or creating invoices.',
 ];

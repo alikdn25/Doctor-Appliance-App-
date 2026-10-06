@@ -83,7 +83,6 @@ class JobRequest extends FormRequest
             'job_type' => ['required', Rule::in($this->allowedJobTypes())],
             'lead_source' => ['nullable', Rule::enum(LeadSource::class)],
             'description' => ['nullable', 'string', 'max:5000'],
-            'ask_for_review' => ['sometimes', 'boolean'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'appliance_ids' => ['array', 'max:20'],
             'appliance_ids.*' => ['integer', 'distinct'],
@@ -218,7 +217,7 @@ class JobRequest extends FormRequest
     public function jobAttributes(): array
     {
         return collect($this->validated())
-            ->only(['brand_id', 'property_id', 'job_type', 'lead_source', 'description', 'notes', 'ask_for_review', 'visit_type', 'previous_job_id'])
+            ->only(['brand_id', 'property_id', 'job_type', 'lead_source', 'description', 'notes', 'visit_type', 'previous_job_id'])
             ->when(
                 fn ($attributes) => isset($attributes['visit_type']) && ! VisitType::from($attributes['visit_type'])->needsPreviousJob(),
                 fn ($attributes) => $attributes->put('previous_job_id', null),

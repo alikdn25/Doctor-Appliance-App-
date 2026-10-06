@@ -22,8 +22,7 @@ export type JobMessaging = {
     phone: string | null;
     opted_out: boolean;
     sms_blocked: string | null;
-    texts: { general: string; on_my_way: string; review_request: string };
-    review: { ask: boolean; status: string | null; has_profile: boolean };
+    texts: { general: string; on_my_way: string };
     messages: MessageItem[];
 };
 
@@ -35,4 +34,13 @@ export type DocumentSms = {
     url: string;
     opened_url: string;
     kind: string;
+} | null;
+
+export type ReviewPrompt = {
+    url: string;
+    mode: SmsMode;
+    blocked: string | null;
+    phone: string | null;
+    profiles: { id: number; label: string; text: string }[];
+    default_profile_id: number | null;
 } | null;

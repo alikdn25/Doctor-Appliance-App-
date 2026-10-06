@@ -697,7 +697,9 @@ test('messages, review requests and SMS settings of another company stay hidden'
         ->where('messaging.messages.0.body', 'Secret text'));
     $this->get(route('customers.show', $this->customerB))->assertNotFound();
     $this->post(route('jobs.messages.opened', $this->jobB), ['kind' => 'general', 'to' => '+1', 'body' => 'x'])->assertNotFound();
-    $this->put(route('jobs.ask-for-review', $this->jobB), ['ask' => false])->assertNotFound();
+    $this->post(route('invoices.review-request', $this->invoiceB), ['google_profile_id' => 1, 'phone' => '+16045550142'])->assertNotFound();
+    $profileA = GoogleProfile::withoutCompanyScope()->where('company_id', $this->companyA->id)->sole();
+    $this->post(route('invoices.review-request', $this->invoiceB), ['google_profile_id' => $profileA->id, 'phone' => '+16045550142'])->assertNotFound();
 
     // Profile ids of company B cannot be taken over through the list editor.
     $foreign = GoogleProfile::withoutCompanyScope()->where('company_id', $this->companyB->id)->sole();

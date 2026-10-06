@@ -21,7 +21,10 @@ import type { SignatureData } from '@/components/jobs/signature-section';
 import { DocumentDelivery } from '@/components/billing/document-delivery';
 import type { OnlinePayment } from '@/components/billing/online-payment';
 import { OnlinePaymentSection } from '@/components/billing/online-payment';
-import type { DocumentSms } from '@/components/messaging/types';
+import type {
+    DocumentSms,
+    ReviewPrompt,
+} from '@/components/messaging/types';
 import { PaymentDialog } from '@/components/billing/payment-dialog';
 import type { BillingDocument, PaymentData } from '@/components/billing/types';
 import { FormField } from '@/components/form-field';
@@ -78,6 +81,7 @@ export default function BillingShow({
     online = null,
     delivery,
     sms = null,
+    reviewPrompt = null,
     signature = null,
 }: {
     document: BillingDocument;
@@ -87,6 +91,7 @@ export default function BillingShow({
     online?: OnlinePayment;
     delivery?: Delivery;
     sms?: DocumentSms;
+    reviewPrompt?: ReviewPrompt;
     signature?: {
         job_id: number;
         customer_name: string;
@@ -620,6 +625,7 @@ export default function BillingShow({
                         )}
                         number={doc.number}
                         sms={sms}
+                        reviewPrompt={reviewPrompt}
                     />
                 )}
 

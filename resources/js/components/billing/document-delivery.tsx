@@ -2,6 +2,7 @@ import { router, useForm } from '@inertiajs/react';
 import { Download, Eye, Mail, MessageSquare, Send } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import { ReviewPromptDialog } from '@/components/billing/review-prompt';
 import { FormField } from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +17,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { smsUrl } from '@/lib/sms';
-import type { DocumentSms } from '@/components/messaging/types';
+import type {
+    DocumentSms,
+    ReviewPrompt,
+} from '@/components/messaging/types';
 
 export type Delivery = {
     pdf_url: string;
@@ -32,21 +36,33 @@ export type Delivery = {
 
 /**
  * PDF and "Send by email" for an estimate or invoice, with when it was sent and viewed.
+ * After every invoice send, "Send Google Review request?" is asked (reviewPrompt).
  */
 export function DocumentDelivery({
     delivery,
     kindLabel,
     number,
     sms = null,
+    reviewPrompt = null,
 }: {
     delivery: Delivery;
     kindLabel: string;
     number: string;
     sms?: DocumentSms;
+    reviewPrompt?: ReviewPrompt;
 }) {
     const t = useTrans();
     const time = useCompanyTime();
     const [open, setOpen] = useState(false);
+    const [reviewOpen, setReviewOpen] = useState(false);
+    // After "Send by SMS": asked only when the text really went out (a blocked SMS leaves "sent" unchanged).
+    const askForReview = (page: { props: Record<string, unknown> }) => {
+        const sent = (page.props.delivery as Delivery | undefined)?.sent_at;
+
+        if (reviewPrompt && sent && sent !== delivery.sent_at) {
+            setReviewOpen(true);
+        }
+    };
     const form = useForm({ email: delivery.email, message: delivery.message });
 
     useEffect(() => {
@@ -65,7 +81,11 @@ export function DocumentDelivery({
         }
 
         if (sms.mode === 'automatic') {
-            router.post(sms.url, {}, { preserveScroll: true });
+            router.post(
+                sms.url,
+                {},
+                { preserveScroll: true, onSuccess: askForReview },
+            );
 
             return;
         }
@@ -75,6 +95,10 @@ export function DocumentDelivery({
             { kind: sms.kind, to: sms.phone, body: sms.text },
             { preserveScroll: true, preserveState: true },
         );
+        // The prompt waits on the page for when the technician comes back from the messages app.
+        if (reviewPrompt) {
+            setReviewOpen(true);
+        }
         window.location.href = smsUrl(sms.phone, sms.text);
     };
 
@@ -82,7 +106,10 @@ export function DocumentDelivery({
         e.preventDefault();
         form.post(delivery.send_url, {
             preserveScroll: true,
-            onSuccess: () => setOpen(false),
+            onSuccess: () => {
+                setOpen(false);
+                setReviewOpen(reviewPrompt !== null);
+            },
         });
     };
 
@@ -209,6 +236,14 @@ export function DocumentDelivery({
                     </form>
                 </DialogContent>
             </Dialog>
+
+            {reviewPrompt && (
+                <ReviewPromptDialog
+                    prompt={reviewPrompt}
+                    open={reviewOpen}
+                    onOpenChange={setReviewOpen}
+                />
+            )}
         </section>
     );
 }

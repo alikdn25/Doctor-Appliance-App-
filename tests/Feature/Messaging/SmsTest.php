@@ -206,7 +206,6 @@ test('the technician\'s phone mode gives ready texts and records texts opened on
 test('company templates replace the default texts', function () {
     $this->put(route('company.messaging.update'), [
         'sms_mode' => 'automatic', 'quiet_hours_start' => '21:00', 'quiet_hours_end' => '08:00',
-        'review_requests_default' => true, 'review_request_delay_hours' => 2, 'review_request_cooldown_days' => 180,
         'templates' => ['on_my_way' => '{brand}: {tech_name} is coming, {arrival_window}.', 'general' => ''],
     ])->assertRedirect(route('company.messaging.edit'));
 

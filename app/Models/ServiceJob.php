@@ -73,7 +73,6 @@ class ServiceJob extends Model
         'description',
         'notes',
         'tech_notes',
-        'ask_for_review',
         'visit_type',
         'previous_job_id',
     ];
@@ -98,7 +97,6 @@ class ServiceJob extends Model
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'signed_at' => 'datetime',
-            'ask_for_review' => 'boolean',
             'outcome' => JobOutcome::class,
             'visit_type' => VisitType::class,
             'closed_at' => 'datetime',

@@ -1070,6 +1070,21 @@ and "Not sent yet" marks them — say if a real draft step is wanted.
 - Not done: voice calls; Telnyx's own number-porting; automatic 10DLC registration through the API (IDs are entered by
   the super-admin, as with Twilio).
 
+### Review request after invoice send, chat order in conversations ✅ (October 6)
+
+- Google review requests are sent only from the prompt after an invoice is sent (email, or SMS that went out):
+  "Send Google Review request?" with Yes / No, nothing preselected. Yes shows Location (the company's own named Google
+  profiles, e.g. Surrey / Burnaby; the brand's default preselected), Phone (customer's phone, editable) and Send, which
+  texts the location's link as a separate SMS (Automatic) or opens it on the technician's phone. Route
+  `invoices.review-request` (`InvoiceReviewRequestController`, `ReviewRequests::prompt/send`).
+- Removed: the job's "Ask for a review" switch and "Send review request" button, the automatic request after full
+  payment (and its delay/cooldown settings and dashboard warning), and review requests from `messages:deliver-due`.
+  The old DB columns (`service_jobs.ask_for_review`, `companies.review_request_*`) are left unused.
+- Conversations read like a chat: oldest at the top, newest at the bottom next to the reply box; opening a
+  conversation or a new message scrolls to the bottom; older pages are above. Same order on the job page and customer
+  card. Real-time (WebSocket) updates were not added; the inbox still refreshes every 15 seconds.
+- Tests: `tests/Feature/Messaging/ReviewRequestTest.php`, tenant isolation in `TenantIsolationTest.php`.
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started

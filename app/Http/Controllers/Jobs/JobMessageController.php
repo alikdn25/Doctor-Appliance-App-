@@ -7,7 +7,6 @@ use App\Enums\SmsMode;
 use App\Http\Controllers\Controller;
 use App\Messaging\MessageContext;
 use App\Messaging\Messenger;
-use App\Messaging\ReviewRequests;
 use App\Models\ServiceJob;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +16,7 @@ use Inertia\Inertia;
 
 /**
  * Texts from a job: an SMS typed on the job (Automatic mode), the record that a text was opened on the
- * technician's phone (sms: link), and the "Ask for a review" switch.
+ * technician's phone (sms: link).
  */
 class JobMessageController extends Controller
 {
@@ -35,31 +34,17 @@ class JobMessageController extends Controller
     /**
      * The technician tapped a button that opens the phone's messages app: keep a trace on the job.
      */
-    public function opened(Request $request, ServiceJob $job, Messenger $messenger, ReviewRequests $reviews): RedirectResponse
+    public function opened(Request $request, ServiceJob $job, Messenger $messenger): RedirectResponse
     {
         Gate::authorize('work', $job);
 
         $data = $request->validate([
-            'kind' => ['required', Rule::in(array_map(fn (MessageKind $k) => $k->value, MessageKind::templated()))],
+            // Review requests go only through the prompt after an invoice is sent.
+            'kind' => ['required', Rule::in(array_map(fn (MessageKind $k) => $k->value, array_filter(MessageKind::templated(), fn (MessageKind $k) => $k !== MessageKind::ReviewRequest)))],
             'to' => ['required', 'string', 'max:32'],
             'body' => ['required', 'string', 'max:1600'],
         ]);
-        $kind = MessageKind::from($data['kind']);
-
-        if ($kind === MessageKind::ReviewRequest) {
-            $reviews->sentFromPhone($job, $data['to'], $request->user());
-        } else {
-            $messenger->openedOnPhone($kind, $job->customer, $job, $data['to'], $data['body'], $request->user());
-        }
-
-        return back();
-    }
-
-    public function askForReview(Request $request, ServiceJob $job): RedirectResponse
-    {
-        Gate::authorize('work', $job);
-
-        $job->update(['ask_for_review' => $request->validate(['ask' => ['required', 'boolean']])['ask']]);
+        $messenger->openedOnPhone(MessageKind::from($data['kind']), $job->customer, $job, $data['to'], $data['body'], $request->user());
 
         return back();
     }
