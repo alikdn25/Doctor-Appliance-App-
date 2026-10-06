@@ -115,7 +115,7 @@ return [
 
     'account' => [
         'title' => 'Company SMS number',
-        'none' => 'No SMS number yet. The app gets a number for your company in your country; you do not need a Twilio account.',
+        'none' => 'No SMS number yet. The app gets a number for your company in your country; you do not need an account with the SMS provider.',
         'set_up' => 'Get an SMS number',
         'number' => 'Your SMS number: :number',
         'ready' => 'SMS number ready.',

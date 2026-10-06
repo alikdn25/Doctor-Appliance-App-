@@ -106,7 +106,7 @@ Repository → **Settings → Environments → New environment → `production`*
 | `SSH_KNOWN_HOSTS` | Output of `ssh-keyscan` above (pins the server's host key)                           |
 | `APP_PATH`        | `/var/www/fieldservice`                                                              |
 
-Application secrets (database password, mail credentials, later Square/Twilio keys) live **only** in the server's
+Application secrets (database password, mail credentials, later Square/Telnyx keys) live **only** in the server's
 `.env`, never in GitHub or in the repository.
 
 ## 4. What `deploy/deploy.sh` does
@@ -187,6 +187,24 @@ restrictions matter. Without a key, address fields are typed by hand.
 If the calendar map says the key was rejected, the referrer restriction or the API list of the browser key does not
 match the site address (step 3).
 
+## 6a. SMS through Telnyx (Automatic SMS mode)
+
+1. Telnyx Portal: create the platform account, add a payment method / balance, and enable messaging.
+2. **Keys & Credentials → API Keys**: create a key → `TELNYX_API_KEY`. **Keys & Credentials → Public Key**: copy it →
+   `TELNYX_PUBLIC_KEY` (it checks the signature of every webhook). Set `SMS_PROVIDER=telnyx`, then
+   `php artisan config:cache` and `php artisan queue:restart`.
+3. The site must be reachable over HTTPS: Telnyx posts incoming texts to `https://<APP_URL>/webhooks/sms/telnyx` and
+   delivery reports to `…/webhooks/sms/telnyx/status`. Both are set automatically; nothing to configure in the portal.
+4. A company switches Messaging settings to Automatic and presses **Get number**: the app creates a Telnyx messaging
+   profile for it (texts only to numbers of its country) and orders a local number onto that profile.
+5. US numbers: register the company's 10DLC brand and campaign in the Telnyx portal (10DLC), then record the campaign
+   ID in Super-admin → company → SMS. The daily `sms:sync-registrations` follows it until it is provisioned with the
+   carriers. Canada has no such step today.
+6. Check: send a text from a job, reply from a phone, see the reply in SMS Inbox and the delivery status on the job.
+
+Companies whose number was taken at Twilio keep texting through Twilio while `TWILIO_*` stay set; new numbers come
+from Telnyx.
+
 ## 7. `.env` reference
 
 Required in production:
@@ -208,7 +226,8 @@ Required for the features that use them (empty = the feature is off):
 | Variable                                                                                                                                               | Feature                                                                           |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
 | `SQUARE_ENVIRONMENT`, `SQUARE_APPLICATION_ID`, `SQUARE_APPLICATION_SECRET`, `SQUARE_WEBHOOK_SIGNATURE_KEY`, `SQUARE_WEBHOOK_URL`, `SQUARE_API_VERSION` | online payments, deposits, refunds (`production` + production app keys when live) |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`                                                                                                              | SMS in Automatic mode                                                             |
+| `SMS_PROVIDER` (`telnyx` default, or `twilio`), `TELNYX_API_KEY`, `TELNYX_PUBLIC_KEY`                                                                  | SMS in Automatic mode (Telnyx)                                                    |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`                                                                                                              | only for companies whose number is at Twilio                                      |
 | `GOOGLE_MAPS_SERVER_KEY`                                                                                                                               | optional: map positions for typed addresses (§6)                                  |
 | `GOOGLE_MAPS_BROWSER_KEY`                                                                                                                              | address suggestions (§6)                                                          |
 | `REDIS_HOST`, `REDIS_PASSWORD`, `REDIS_PORT`, `REDIS_CLIENT`                                                                                           | only with Redis (§5)                                                              |

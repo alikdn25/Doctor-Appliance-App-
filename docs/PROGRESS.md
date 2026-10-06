@@ -1036,6 +1036,20 @@ settings); Team has two owner accounts (Alex and Oleksandr) — deactivate one i
 review profile must be added in settings. An invoice "Draft" status was not added: invoices stay editable until paid,
 and "Not sent yet" marks them — say if a real draft step is wanted.
 
+### SMS through Telnyx ✅
+
+- `TelnyxProvider` (API v2): one platform API key; each company gets a messaging profile (texts only to its country)
+  and a local number ordered onto it; sending with a per-message delivery webhook; incoming texts and delivery
+  reports on `/webhooks/sms/telnyx` and `/webhooks/sms/telnyx/status`, checked with Ed25519 signatures
+  (`TELNYX_PUBLIC_KEY`, 5-minute replay window); US 10DLC campaign status followed by `sms:sync-registrations`
+  (`MNO_PROVISIONED` = approved; failed / rejected / suspended / expired = rejected).
+- `SMS_PROVIDER=telnyx` (default) chooses where new numbers come from. A company keeps the provider of its number,
+  so existing Twilio numbers keep working (`RoutedSmsProvider`, `SmsProviders`).
+- Setup: DEPLOYMENT.md §6a. Tests: `tests/Feature/Messaging/TelnyxSmsTest.php`; the older messaging and browser tests
+  run with `SMS_PROVIDER=twilio` because their fakes speak the Twilio API.
+- Not done: voice calls; Telnyx's own number-porting; automatic 10DLC registration through the API (IDs are entered by
+  the super-admin, as with Twilio).
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started

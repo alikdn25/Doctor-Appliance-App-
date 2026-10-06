@@ -105,6 +105,8 @@ jobs:
           MAIL_MAILER: log
           # Browser tests read the logged confirmation link; this is a test-only mail fixture.
           AUTH_EMAIL_DELIVERY_ENABLED: true
+          # The loopback SMS stub speaks the Twilio API.
+          SMS_PROVIDER: twilio
           TWILIO_ACCOUNT_SID: ACbrowser-master
           TWILIO_AUTH_TOKEN: browser-test-token
           TWILIO_BASE_URL: http://127.0.0.1:9001

@@ -6,8 +6,9 @@ use App\Enums\MessageKind;
 use App\Models\Company;
 use App\Models\CustomerPhone;
 use App\Models\Message;
-use App\Models\SmsAccount;
 use App\Sms\SmsProvider;
+use App\Sms\SmsProviders;
+use App\Sms\Telnyx\TelnyxProvider;
 use App\Support\PhoneNumber;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Http\Request;
@@ -20,12 +21,18 @@ use Illuminate\Http\Response;
  */
 class SmsWebhookController extends Controller
 {
-    public function __construct(private readonly SmsProvider $sms, private readonly CurrentCompany $tenancy) {}
+    public function __construct(private readonly SmsProviders $providers, private readonly CurrentCompany $tenancy) {}
 
     public function inbound(Request $request, string $provider): Response
     {
-        [$account, $company] = $this->verified($request, $provider);
-        $text = $this->sms->inbound($request);
+        [$sms, $company] = $this->verified($request, $provider);
+
+        // Telnyx sends every event of the profile here; only incoming texts are stored.
+        if ($sms instanceof TelnyxProvider && ! $sms->isInboundText($request)) {
+            return response()->noContent();
+        }
+
+        $text = $sms->inbound($request);
 
         $this->tenancy->runAs($company, function () use ($text) {
             $from = PhoneNumber::normalize($text['from']);
@@ -63,14 +70,16 @@ class SmsWebhookController extends Controller
             ]);
         });
 
-        // Empty TwiML: no automatic reply from us (the provider answers STOP/HELP itself).
-        return response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', 200, ['Content-Type' => 'text/xml']);
+        // No automatic reply from us (the provider answers STOP/HELP itself). Twilio expects (empty) TwiML.
+        return $sms->key() === 'twilio'
+            ? response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', 200, ['Content-Type' => 'text/xml'])
+            : response()->noContent();
     }
 
     public function status(Request $request, string $provider): Response
     {
-        [, $company] = $this->verified($request, $provider);
-        $update = $this->sms->statusUpdate($request);
+        [$sms, $company] = $this->verified($request, $provider);
+        $update = $sms->statusUpdate($request);
 
         $this->tenancy->runAs($company, function () use ($update) {
             $message = Message::query()->where('provider_message_id', $update['message_id'])->first();
@@ -88,17 +97,20 @@ class SmsWebhookController extends Controller
     }
 
     /**
-     * @return array{0: SmsAccount, 1: Company}
+     * The provider named in the webhook URL, after its signature check with the company's account.
+     *
+     * @return array{0: SmsProvider, 1: Company}
      */
     private function verified(Request $request, string $provider): array
     {
-        abort_unless($provider === $this->sms->key(), 404);
+        abort_unless($this->providers->has($provider), 404);
+        $sms = $this->providers->get($provider);
 
-        $account = $this->sms->accountForWebhook($request) ?? abort(404);
-        abort_unless($this->sms->verifyWebhook($request, $account), 403);
+        $account = $sms->accountForWebhook($request) ?? abort(404);
+        abort_unless($sms->verifyWebhook($request, $account), 403);
 
         $company = Company::query()->find($account->company_id) ?? abort(404);
 
-        return [$account, $company];
+        return [$sms, $company];
     }
 }
