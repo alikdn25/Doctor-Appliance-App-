@@ -148,6 +148,7 @@ export function LineEditor({
     money,
     onChange,
     onRemove,
+    autoFocus = false,
 }: {
     line: Line;
     index: number;
@@ -163,11 +164,13 @@ export function LineEditor({
     money: (minor: number, currency?: string) => string;
     onChange: (patch: Partial<Line>) => void;
     onRemove: () => void;
+    /** A line just added with "+ Labor / Part / Material": the cursor goes to its description. */
+    autoFocus?: boolean;
 }) {
     const t = useTrans();
     const time = useCompanyTime();
     const goods = line.kind !== 'service';
-    const [open, setOpen] = useState(goods || !line.bill_to_customer);
+    const [open, setOpen] = useState(!line.bill_to_customer);
     const [history, setHistory] = useState<
         {
             description: string;
@@ -179,6 +182,7 @@ export function LineEditor({
         }[]
     >([]);
     const [saved, setSaved] = useState(false);
+    const [changingKind, setChangingKind] = useState(false);
     const err = (field: string) => errors[`items.${index}.${field}`];
     const costMinor = toMinor(line.unit_cost, currency);
     const priceMinor = toMinor(line.unit_price, currency);
@@ -313,33 +317,48 @@ export function LineEditor({
                     : 'space-y-3 rounded-lg border border-dashed bg-muted/40 p-3'
             }
         >
-            <div className="grid grid-cols-3 gap-1">
-                {(['service', 'part', 'material'] as const).map((kind) => (
-                    <Button
-                        key={kind}
+            {/* The type is picked when the line is added. A filled line shows its type and changes it only on
+                request, so typing a part after labor never re-labels the labor line and its price. */}
+            {changingKind ||
+            (line.description === '' && line.unit_price === '') ? (
+                <div className="grid grid-cols-3 gap-1">
+                    {(['service', 'part', 'material'] as const).map((kind) => (
+                        <Button
+                            key={kind}
+                            type="button"
+                            size="sm"
+                            variant={line.kind === kind ? 'default' : 'outline'}
+                            onClick={() => {
+                                const picked = services.find(
+                                    (s) => s.id === line.service_id,
+                                );
+                                onChange({
+                                    kind,
+                                    ...(picked && picked.kind !== kind
+                                        ? { service_id: null }
+                                        : {}),
+                                });
+                                setChangingKind(false);
+                            }}
+                        >
+                            {t(`billing.kinds.${kind}`)}
+                        </Button>
+                    ))}
+                </div>
+            ) : (
+                <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold tracking-wide text-primary uppercase">
+                        {t(`billing.kinds.${line.kind}`)}
+                    </span>
+                    <button
                         type="button"
-                        size="sm"
-                        variant={line.kind === kind ? 'default' : 'outline'}
-                        onClick={() => {
-                            const picked = services.find(
-                                (s) => s.id === line.service_id,
-                            );
-                            onChange({
-                                kind,
-                                ...(picked && picked.kind !== kind
-                                    ? { service_id: null }
-                                    : {}),
-                            });
-
-                            if (kind !== 'service') {
-                                setOpen(true);
-                            }
-                        }}
+                        className="h-8 text-xs text-muted-foreground underline"
+                        onClick={() => setChangingKind(true)}
                     >
-                        {t(`billing.kinds.${kind}`)}
-                    </Button>
-                ))}
-            </div>
+                        {t('billing.change_kind')}
+                    </button>
+                </div>
+            )}
 
             {options.length > 0 && (
                 <NativeSelect
@@ -382,6 +401,7 @@ export function LineEditor({
             <div className="flex items-start gap-2">
                 <div className="flex-1">
                     <Textarea
+                        autoFocus={autoFocus}
                         aria-label={t('billing.fields.description')}
                         placeholder={t('billing.fields.description')}
                         rows={2}
