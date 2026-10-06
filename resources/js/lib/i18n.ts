@@ -21,7 +21,7 @@ function lookup(tree: TranslationTree, key: string): string | undefined {
 
 /**
  * Translate a key from lang/{locale}/*.php, e.g. t('brands.title').
- * Placeholders use Laravel's ":name" syntax. Unknown keys return the key itself.
+ * Placeholders use Laravel's ":name" syntax; "one|many" texts pick a form by :count. Unknown keys return the key itself.
  */
 export function translate(
     translations: TranslationTree,
@@ -29,6 +29,15 @@ export function translate(
     replacements: Replacements = {},
 ): string {
     let text = lookup(translations, key) ?? key;
+
+    // Plural forms as in Laravel: "1 job|:count jobs" picks by :count (English rules: one / other).
+    if (text.includes('|') && typeof replacements.count === 'number') {
+        const forms = text.split('|');
+        text = forms[replacements.count === 1 ? 0 : forms.length - 1].replace(
+            /^\s*(\{\d+\}|\[[^\]]*\])\s*/,
+            '',
+        );
+    }
 
     for (const [name, value] of Object.entries(replacements)) {
         text = text.replaceAll(`:${name}`, String(value ?? ''));

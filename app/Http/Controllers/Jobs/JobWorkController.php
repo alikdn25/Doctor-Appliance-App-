@@ -65,7 +65,11 @@ class JobWorkController extends Controller
 
         abort_unless($job->appliances()->whereKey($appliance->id)->exists(), 404);
 
-        $appliance->update($request->validate(self::detailRules()));
+        // The type can be corrected too: a job booked as a washer may turn out to be a fridge.
+        $appliance->update($request->validate([
+            'type' => ['sometimes', Rule::enum(ApplianceType::class)],
+            ...self::detailRules(),
+        ]));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('appliances.updated')]);
 

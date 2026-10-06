@@ -148,7 +148,7 @@ test('a technician sees appliances at their job\'s address, but cannot use the o
     $this->post(route('appliances.store', $this->property), ['type' => 'dryer'])->assertForbidden();
 });
 
-test('a technician corrects manufacturer, model and serial number of an appliance on their job', function () {
+test('a technician corrects the type, manufacturer, model and serial number of an appliance on their job', function () {
     $this->put(route('jobs.appliances.update', [$this->job, $this->appliance]), [
         'manufacturer' => 'Samsung',
         'model_number' => 'wf45 ',
@@ -161,7 +161,7 @@ test('a technician corrects manufacturer, model and serial number of an applianc
         ->manufacturer->toBe('Samsung')
         ->model_number->toBe('WF45')
         ->serial_number->toBe('ABC123')
-        ->type->value->toBe('washer')
+        ->type->value->toBe('dryer')
         ->notes->toBeNull();
 });
 

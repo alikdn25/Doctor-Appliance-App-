@@ -345,7 +345,11 @@ export default function SmsInbox({
                             ))}
                             {threads.data.length === 0 && (
                                 <li className="p-6 text-sm text-muted-foreground">
-                                    {t('messages.inbox.empty')}
+                                    {t(
+                                        filters.search || filters.unread
+                                            ? 'messages.inbox.empty'
+                                            : 'messages.inbox.empty_all',
+                                    )}
                                 </li>
                             )}
                         </ul>

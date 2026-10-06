@@ -5,7 +5,6 @@ import {
     BookOpen,
     Building,
     Building2,
-    ListChecks,
     MessageSquare,
     CalendarDays,
     ClipboardList,
@@ -32,6 +31,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarRail,
 } from '@/components/ui/sidebar';
 import { calendar, dashboard } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
@@ -39,7 +39,6 @@ import { index as brands } from '@/routes/brands';
 import { index as cash } from '@/routes/cash';
 import { index as reports } from '@/routes/reports';
 import { index as customers } from '@/routes/customers';
-import { edit as checklists } from '@/routes/company/checklists';
 import { edit as googleProfiles } from '@/routes/company/google-profiles';
 import { edit as messaging } from '@/routes/company/messaging';
 import { edit as services } from '@/routes/company/services';
@@ -65,6 +64,7 @@ export function AppSidebar() {
         { autoStart: Boolean(can.viewMessageInbox) },
     );
 
+    // Everyday sections first; money, reports and settings sit in groups that open on tap.
     const mainItems: NavItem[] = auth.company
         ? ([
               can.createJobs && {
@@ -77,7 +77,6 @@ export function AppSidebar() {
                   href: myJobs(),
                   icon: Wrench,
               },
-              { title: 'nav.dashboard', href: dashboard(), icon: LayoutGrid },
               can.viewCalendar && {
                   title: 'nav.calendar',
                   href: calendar(),
@@ -88,15 +87,15 @@ export function AppSidebar() {
                   href: jobs(),
                   icon: ClipboardList,
               },
-              can.viewInvoices && {
-                  title: 'nav.invoices',
-                  href: invoices(),
-                  icon: Receipt,
-              },
               can.viewCustomers && {
                   title: 'nav.customers',
                   href: customers(),
                   icon: Contact,
+              },
+              can.viewInvoices && {
+                  title: 'nav.invoices',
+                  href: invoices(),
+                  icon: Receipt,
               },
               can.viewMessageInbox && {
                   title: 'nav.sms_inbox',
@@ -104,6 +103,11 @@ export function AppSidebar() {
                   icon: MessageSquare,
                   badge: unreadMessages ?? 0,
               },
+          ].filter(Boolean) as NavItem[])
+        : [];
+
+    const moneyItems: NavItem[] = auth.company
+        ? ([
               can.viewInvoices && {
                   title: 'nav.reports',
                   href: reports(),
@@ -123,14 +127,14 @@ export function AppSidebar() {
         : [];
 
     const companyItems: NavItem[] = [
+        auth.company && {
+            title: 'nav.getting_started',
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
         can.viewBrands && { title: 'nav.brands', href: brands(), icon: Tags },
         can.manageTeam && { title: 'nav.team', href: team(), icon: Users },
         can.viewTaxes && { title: 'nav.taxes', href: taxes(), icon: Percent },
-        can.manageChecklists && {
-            title: 'nav.checklists',
-            href: checklists(),
-            icon: ListChecks,
-        },
         can.manageChecklists && {
             title: 'nav.services',
             href: services(),
@@ -185,13 +189,24 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain items={mainItems} label="nav.group_main" />
-                <NavMain items={companyItems} label="nav.group_company" />
+                <NavMain
+                    items={moneyItems}
+                    label="nav.group_money"
+                    collapsible
+                />
+                <NavMain
+                    items={companyItems}
+                    label="nav.group_company"
+                    collapsible
+                />
                 <NavMain items={adminItems} label="nav.group_platform" />
             </SidebarContent>
 
             <SidebarFooter>
                 <NavUser />
             </SidebarFooter>
+            {/* Desktop: the sidebar folds from its edge; the header has no second menu button. */}
+            <SidebarRail />
         </Sidebar>
     );
 }

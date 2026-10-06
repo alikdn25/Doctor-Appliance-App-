@@ -27,6 +27,7 @@ return [
         'online' => 'Online',
     ],
 
+    'take_receipt_photo' => 'Take a photo of the cash receipt',
     'fields' => [
         'amount' => 'Amount',
         'receipt_photo' => 'Photo of the receipt (optional)',

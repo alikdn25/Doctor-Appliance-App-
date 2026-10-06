@@ -31,15 +31,18 @@ export function SignatureSection({
     signature,
     customerName,
     canSign,
+    reloadProps = ['job'],
 }: {
     jobId: number;
     signature: SignatureData;
     customerName: string;
     canSign: boolean;
+    /** Page props that hold the signature, reloaded once the upload is done. */
+    reloadProps?: string[];
 }) {
     const t = useTrans();
     const time = useCompanyTime();
-    const pending = useUploads(`job:${jobId}:signature`, ['job']);
+    const pending = useUploads(`job:${jobId}:signature`, reloadProps);
     const [open, setOpen] = useState(false);
     const [name, setName] = useState(customerName);
     const [empty, setEmpty] = useState(true);

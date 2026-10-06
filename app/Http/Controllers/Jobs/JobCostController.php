@@ -12,6 +12,7 @@ use App\Models\SupplierReceiptLink;
 use App\Models\TaxRate;
 use App\Services\AuditLogger;
 use App\Support\Billing\CostAccess;
+use App\Support\Billing\MoneyInput;
 use App\Support\Locale\Currencies;
 use App\Support\PrivateMedia;
 use Illuminate\Http\RedirectResponse;
@@ -31,7 +32,30 @@ class JobCostController extends Controller
     {
         $this->authorizeCosts($request, $job);
 
-        $currency = currentCompany()->currency;
+        $item = new JobCostItem;
+        $item->service_job_id = $job->id;
+        $item->currency = currentCompany()->currency;
+        $item->created_by = $request->user()->id;
+        $this->fill($request, $item)->save();
+
+        return back();
+    }
+
+    public function updateCost(Request $request, ServiceJob $job, JobCostItem $cost): RedirectResponse
+    {
+        $this->authorizeCosts($request, $job);
+        abort_unless($cost->service_job_id === $job->id, 404);
+
+        $this->fill($request, $cost)->save();
+
+        return back();
+    }
+
+    /** Validates the cost line form ("$15.5" is read as 15.50) and fills the line. */
+    private function fill(Request $request, JobCostItem $item): JobCostItem
+    {
+        $currency = $item->currency ?? currentCompany()->currency;
+        $request->replace(MoneyInput::cleanPaths($request->input(), ['unit_cost', 'supplier_taxes.*.amount']));
         $data = $request->validate([
             'kind' => ['required', Rule::in([LineKind::Part->value, LineKind::Material->value])],
             'description' => ['required', 'string', 'max:255'],
@@ -39,14 +63,18 @@ class JobCostController extends Controller
             'supplier' => ['nullable', 'string', 'max:150'],
             'quantity' => ['required', 'numeric', 'gt:0', 'max:99999'],
             'unit' => ['nullable', 'string', 'max:20'],
-            'unit_cost' => ['required', 'numeric', DocumentRequest::moneyRule($currency)],
+            'unit_cost' => ['required', DocumentRequest::moneyRule($currency)],
             'supplier_taxes' => ['nullable', 'array'],
             'supplier_taxes.*.tax_rate_id' => ['required', 'integer', Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)],
-            'supplier_taxes.*.amount' => ['required', 'numeric', DocumentRequest::moneyRule($currency)],
+            'supplier_taxes.*.amount' => ['required', DocumentRequest::moneyRule($currency)],
+        ], [
+            'description.required' => __('costs.errors.description'),
+            'unit_cost.required' => __('costs.errors.cost'),
+            'quantity.*' => __('costs.errors.quantity'),
         ]);
         $rates = TaxRate::query()->get()->keyBy('id');
 
-        $item = new JobCostItem([
+        $item->fill([
             ...$data,
             'unit_cost' => Currencies::toMinor($data['unit_cost'], $currency),
             'supplier_taxes' => array_values(array_map(fn (array $tax) => [
@@ -56,12 +84,8 @@ class JobCostController extends Controller
                 'recoverable' => (bool) ($rates[(int) $tax['tax_rate_id']]?->is_recoverable ?? true),
             ], array_filter($data['supplier_taxes'] ?? [], fn (array $t) => (float) $t['amount'] > 0))) ?: null,
         ]);
-        $item->service_job_id = $job->id;
-        $item->currency = $currency;
-        $item->created_by = $request->user()->id;
-        $item->save();
 
-        return back();
+        return $item;
     }
 
     public function destroyCost(Request $request, ServiceJob $job, JobCostItem $cost, AuditLogger $audit): RedirectResponse

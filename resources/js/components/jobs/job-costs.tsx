@@ -1,8 +1,21 @@
 import { router, useForm } from '@inertiajs/react';
-import { FileText, Link2, Plus, Trash2, TrendingUp } from 'lucide-react';
+import {
+    FileText,
+    Link2,
+    Pencil,
+    Plus,
+    Trash2,
+    TrendingUp,
+    Upload,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
-import { useMoney } from '@/components/billing/money';
+import {
+    currencyDecimals,
+    fromMinor,
+    useMoney,
+} from '@/components/billing/money';
+import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +25,7 @@ import { useTrans } from '@/lib/i18n';
 import {
     destroy as destroyCost,
     store as storeCost,
+    update as updateCost,
 } from '@/routes/jobs/costs';
 import { store as storeReceipt } from '@/routes/jobs/receipts';
 import {
@@ -37,6 +51,7 @@ export type JobCosts = {
         supplier: string | null;
         quantity: string;
         unit: string | null;
+        unit_cost: number;
         total_cost: number;
     }[];
     receipts: {
@@ -73,6 +88,8 @@ export function JobCostsSection({
     const time = useCompanyTime();
     const money = useMoney(costs.currency);
     const [adding, setAdding] = useState(false);
+    // The cost line being edited (null = a new line).
+    const [editing, setEditing] = useState<number | null>(null);
     const [linkTo, setLinkTo] = useState<Record<number, string>>({});
     const p = costs.profit;
     const form = useForm({
@@ -91,16 +108,50 @@ export function JobCostsSection({
         amount: string;
     }>({ file: null, supplier: '', receipt_date: '', amount: '' });
 
+    const closeForm = () => {
+        form.reset();
+        form.clearErrors();
+        setAdding(false);
+        setEditing(null);
+    };
     const addCost = (e: FormEvent) => {
         e.preventDefault();
-        form.post(storeCost(jobId).url, {
+        const options = { preserveScroll: true, onSuccess: closeForm };
+        if (editing === null) {
+            form.post(storeCost(jobId).url, options);
+        } else {
+            form.put(updateCost({ job: jobId, cost: editing }).url, options);
+        }
+    };
+    const startEdit = (item: JobCosts['items'][number]) => {
+        form.clearErrors();
+        form.setData({
+            kind: item.kind,
+            description: item.description,
+            part_number: item.part_number ?? '',
+            supplier: item.supplier ?? '',
+            quantity: item.quantity,
+            unit: item.unit ?? '',
+            unit_cost: fromMinor(item.unit_cost, costs.currency),
+        });
+        setEditing(item.id);
+        setAdding(true);
+    };
+    const remove = (item: JobCosts['items'][number]) => {
+        if (
+            !window.confirm(
+                t('costs.confirm_remove', {
+                    description: item.description,
+                    amount: money(item.total_cost),
+                }),
+            )
+        )
+            return;
+        router.delete(destroyCost({ job: jobId, cost: item.id }).url, {
             preserveScroll: true,
-            onSuccess: () => {
-                form.reset();
-                setAdding(false);
-            },
         });
     };
+    const decimals = currencyDecimals(costs.currency);
 
     const upload = (file: File | null) => {
         if (!file) {
@@ -196,17 +247,18 @@ export function JobCostsSection({
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="size-9"
+                                    className="size-11"
+                                    aria-label={t('costs.edit_cost')}
+                                    onClick={() => startEdit(item)}
+                                >
+                                    <Pencil />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-11"
                                     aria-label={t('costs.remove_cost')}
-                                    onClick={() =>
-                                        router.delete(
-                                            destroyCost({
-                                                job: jobId,
-                                                cost: item.id,
-                                            }).url,
-                                            { preserveScroll: true },
-                                        )
-                                    }
+                                    onClick={() => remove(item)}
                                 >
                                     <Trash2 />
                                 </Button>
@@ -215,93 +267,143 @@ export function JobCostsSection({
                     </ul>
                 )}
                 {adding ? (
-                    <form onSubmit={addCost} className="grid grid-cols-2 gap-2">
-                        <NativeSelect
-                            aria-label={t('billing.kinds.part')}
-                            value={form.data.kind}
-                            onChange={(e) =>
-                                form.setData('kind', e.target.value)
-                            }
+                    <form
+                        onSubmit={addCost}
+                        className="grid grid-cols-2 gap-3 rounded-2xl border p-3"
+                    >
+                        <FormField
+                            id="cost-kind"
+                            label={t('costs.fields.kind')}
+                            error={form.errors.kind}
                         >
-                            <option value="part">
-                                {t('billing.kinds.part')}
-                            </option>
-                            <option value="material">
-                                {t('billing.kinds.material')}
-                            </option>
-                        </NativeSelect>
-                        <Input
-                            placeholder={t('billing.line.part_number')}
-                            aria-label={t('billing.line.part_number')}
-                            value={form.data.part_number}
-                            onChange={(e) =>
-                                form.setData('part_number', e.target.value)
-                            }
-                        />
-                        <Input
-                            className="col-span-2"
-                            placeholder={t('billing.fields.description')}
-                            aria-label={t('billing.fields.description')}
-                            value={form.data.description}
-                            onChange={(e) =>
-                                form.setData('description', e.target.value)
-                            }
-                        />
-                        <Input
-                            placeholder={t('billing.line.supplier')}
-                            aria-label={t('billing.line.supplier')}
-                            value={form.data.supplier}
-                            onChange={(e) =>
-                                form.setData('supplier', e.target.value)
-                            }
-                        />
-                        <Input
-                            placeholder={t('billing.fields.quantity')}
-                            aria-label={t('billing.fields.quantity')}
-                            inputMode="decimal"
-                            value={form.data.quantity}
-                            onChange={(e) =>
-                                form.setData('quantity', e.target.value)
-                            }
-                        />
-                        <Input
-                            placeholder={t('billing.line.cost')}
-                            aria-label={t('billing.line.cost')}
-                            inputMode="decimal"
-                            value={form.data.unit_cost}
-                            onChange={(e) =>
-                                form.setData('unit_cost', e.target.value)
-                            }
-                        />
-                        {form.data.kind === 'material' && (
                             <NativeSelect
-                                aria-label={t('billing.line.unit')}
-                                value={form.data.unit}
+                                id="cost-kind"
+                                value={form.data.kind}
                                 onChange={(e) =>
-                                    form.setData('unit', e.target.value)
+                                    form.setData('kind', e.target.value)
                                 }
                             >
-                                <option value="">
-                                    {t('billing.line.unit')}
+                                <option value="part">
+                                    {t('billing.kinds.part')}
                                 </option>
-                                {costs.units.map((u) => (
-                                    <option key={u.value} value={u.value}>
-                                        {u.label}
-                                    </option>
-                                ))}
+                                <option value="material">
+                                    {t('billing.kinds.material')}
+                                </option>
                             </NativeSelect>
-                        )}
-                        <InputError
-                            className="col-span-2"
-                            message={Object.values(form.errors)[0]}
-                        />
-                        <Button
-                            type="submit"
-                            className="col-span-2"
-                            disabled={form.processing}
+                        </FormField>
+                        <FormField
+                            id="cost-part-number"
+                            label={t('costs.fields.part_number')}
+                            error={form.errors.part_number}
                         >
-                            {t('costs.add_cost')}
-                        </Button>
+                            <Input
+                                id="cost-part-number"
+                                value={form.data.part_number}
+                                onChange={(e) =>
+                                    form.setData('part_number', e.target.value)
+                                }
+                            />
+                        </FormField>
+                        <FormField
+                            id="cost-description"
+                            label={t('costs.fields.description')}
+                            className="col-span-2"
+                            error={form.errors.description}
+                        >
+                            <Input
+                                id="cost-description"
+                                placeholder={t('costs.fields.description_hint')}
+                                value={form.data.description}
+                                onChange={(e) =>
+                                    form.setData('description', e.target.value)
+                                }
+                            />
+                        </FormField>
+                        <FormField
+                            id="cost-supplier"
+                            label={t('costs.fields.supplier')}
+                            className="col-span-2"
+                            error={form.errors.supplier}
+                        >
+                            <Input
+                                id="cost-supplier"
+                                value={form.data.supplier}
+                                onChange={(e) =>
+                                    form.setData('supplier', e.target.value)
+                                }
+                            />
+                        </FormField>
+                        <FormField
+                            id="cost-quantity"
+                            label={t('costs.fields.quantity')}
+                            error={form.errors.quantity}
+                        >
+                            <Input
+                                id="cost-quantity"
+                                inputMode="decimal"
+                                value={form.data.quantity}
+                                onChange={(e) =>
+                                    form.setData('quantity', e.target.value)
+                                }
+                            />
+                        </FormField>
+                        <FormField
+                            id="cost-unit-cost"
+                            label={t('costs.fields.unit_cost')}
+                            error={form.errors.unit_cost}
+                        >
+                            <Input
+                                id="cost-unit-cost"
+                                inputMode="decimal"
+                                placeholder={(0).toFixed(decimals)}
+                                value={form.data.unit_cost}
+                                onChange={(e) =>
+                                    form.setData('unit_cost', e.target.value)
+                                }
+                            />
+                        </FormField>
+                        {form.data.kind === 'material' && (
+                            <FormField
+                                id="cost-unit"
+                                label={t('costs.fields.unit')}
+                                error={form.errors.unit}
+                            >
+                                <NativeSelect
+                                    id="cost-unit"
+                                    value={form.data.unit}
+                                    onChange={(e) =>
+                                        form.setData('unit', e.target.value)
+                                    }
+                                >
+                                    <option value="">—</option>
+                                    {costs.units.map((u) => (
+                                        <option key={u.value} value={u.value}>
+                                            {u.label}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </FormField>
+                        )}
+                        <div className="col-span-2 flex gap-2">
+                            <Button
+                                type="submit"
+                                className="flex-1"
+                                disabled={form.processing}
+                            >
+                                {t(
+                                    editing === null
+                                        ? 'costs.add_cost'
+                                        : 'costs.save_cost',
+                                )}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={closeForm}
+                            >
+                                {t('common.cancel')}
+                            </Button>
+                        </div>
                     </form>
                 ) : (
                     <Button
@@ -412,16 +514,29 @@ export function JobCostsSection({
                         </li>
                     ))}
                 </ul>
-                <label className="inline-flex">
-                    <span className="sr-only">{t('costs.receipts.add')}</span>
-                    <Input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        aria-label={t('costs.receipts.add')}
-                        disabled={receipt.processing}
-                        onChange={(e) => upload(e.target.files?.[0] ?? null)}
-                    />
-                </label>
+                <Button
+                    asChild
+                    variant="outline"
+                    className="cursor-pointer"
+                    aria-disabled={receipt.processing}
+                >
+                    <label>
+                        <Upload />
+                        {receipt.processing
+                            ? t('costs.receipts.uploading')
+                            : t('costs.receipts.add')}
+                        <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            className="sr-only"
+                            disabled={receipt.processing}
+                            onChange={(e) => {
+                                upload(e.target.files?.[0] ?? null);
+                                e.target.value = '';
+                            }}
+                        />
+                    </label>
+                </Button>
                 <InputError message={receipt.errors.file} />
             </div>
         </section>

@@ -1,3 +1,5 @@
+import type { AvatarIcon } from '@/components/customers/customer-avatar';
+
 export type JobRow = {
     id: number;
     number: number;
@@ -14,6 +16,11 @@ export type JobRow = {
     customer: string | null;
     address: string | null;
     appliances: string[];
+    customer_icon: AvatarIcon;
+    phone: string | null;
+    problem: string | null;
+    picture: string | null;
+    appliance_types: string[];
     visit: {
         scheduled_start: string;
         scheduled_end: string;

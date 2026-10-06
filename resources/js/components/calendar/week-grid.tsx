@@ -3,6 +3,7 @@ import { AlarmClock, AlertTriangle } from 'lucide-react';
 import type { DragEvent, TouchEvent } from 'react';
 import type { CalendarVisit, Lane } from '@/components/calendar/types';
 import { dayLabel, inLane } from '@/components/calendar/types';
+import { useClock } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
 import { cn } from '@/lib/utils';
@@ -49,6 +50,7 @@ export function WeekGrid({
     onOpen,
 }: Props) {
     const t = useTrans();
+    const clock = useClock();
     const locale = useLocale();
 
     return (
@@ -173,7 +175,9 @@ export function WeekGrid({
                                                                 )}
                                                             />
                                                         )}
-                                                        {visit.start_time}
+                                                        {clock.clock(
+                                                            visit.start_time,
+                                                        )}
                                                     </span>
                                                     <span className="block truncate">
                                                         {visit.job.customer}

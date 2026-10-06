@@ -2,6 +2,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import type { Option } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
+import { FilePicker } from '@/components/file-picker';
 import { FormField } from '@/components/form-field';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -212,17 +213,12 @@ export default function BrandForm({
                             hint={t('brands.logo_hint')}
                             className="flex-1"
                         >
-                            <Input
+                            <FilePicker
                                 id="logo"
-                                type="file"
                                 accept="image/png,image/jpeg,image/webp"
                                 disabled={readOnly}
-                                onChange={(e) =>
-                                    form.setData(
-                                        'logo',
-                                        e.target.files?.[0] ?? null,
-                                    )
-                                }
+                                file={form.data.logo}
+                                onChange={(file) => form.setData('logo', file)}
                             />
                         </FormField>
                     </div>

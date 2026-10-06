@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ApplianceType;
 use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\JobType;
@@ -353,8 +354,9 @@ class ServiceJob extends Model
         $number = ltrim($term, '#');
         $like = '%'.addcslashes($term, '%_\\').'%';
         $digits = PhoneNumber::searchDigits($term);
+        $types = ApplianceType::matching($term);
 
-        $query->where(function (Builder $q) use ($number, $like, $digits) {
+        $query->where(function (Builder $q) use ($number, $like, $digits, $types) {
             if (ctype_digit($number) && strlen($number) <= 9) {
                 $q->orWhere('service_jobs.number', (int) $number);
             }
@@ -369,9 +371,12 @@ class ServiceJob extends Model
                     ->orWhere('unit', 'ilike', $like)
                     ->orWhere('city', 'ilike', $like)
                     ->orWhere('postal_code', 'ilike', $like)))
+                ->orWhere('service_jobs.description', 'ilike', $like)
                 ->orWhereHas('appliances', fn (Builder $a) => $a->where(fn (Builder $m) => $m
                     ->where('model_number', 'ilike', $like)
-                    ->orWhere('serial_number', 'ilike', $like)));
+                    ->orWhere('serial_number', 'ilike', $like)
+                    ->orWhere('manufacturer', 'ilike', $like)
+                    ->when($types !== [], fn (Builder $t) => $t->orWhereIn('type', $types))));
 
             if (strlen($digits) >= 3) {
                 $q->orWhereHas('customer.phones', fn (Builder $p) => $p->where('number_normalized', 'like', "%{$digits}%"));

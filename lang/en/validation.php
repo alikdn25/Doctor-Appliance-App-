@@ -197,6 +197,16 @@ return [
     |
     */
 
-    'attributes' => [],
+    'money_amount' => 'Enter the amount as a number, for example :example.',
+    'money_amount_whole' => 'Enter the amount as a whole number, for example :example.',
+
+    'attributes' => [
+        'unit_cost' => 'cost',
+        'unit_price' => 'price',
+        'items.*.unit_price' => 'price',
+        'items.*.unit_cost' => 'cost',
+        'items.*.description' => 'description',
+        'items.*.quantity' => 'quantity',
+    ],
 
 ];

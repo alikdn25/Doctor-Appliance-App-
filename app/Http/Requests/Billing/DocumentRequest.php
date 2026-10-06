@@ -7,7 +7,9 @@ use App\Enums\WarrantyUnit;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\TaxRate;
+use App\Rules\MoneyAmount;
 use App\Support\Billing\CostAccess;
+use App\Support\Billing\MoneyInput;
 use App\Support\Locale\Currencies;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +26,13 @@ class DocumentRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->replace(MoneyInput::cleanPaths($this->input(), [
+            'items.*.unit_price', 'items.*.unit_cost', 'items.*.supplier_taxes.*.amount', 'discount_value', 'deposit_value',
+        ]));
     }
 
     /**
@@ -165,12 +174,9 @@ class DocumentRequest extends FormRequest
     /**
      * An amount typed in major units with at most the currency's decimals ("12.50" USD, "1200" JPY).
      */
-    public static function moneyRule(string $currency, bool $negative = false): string
+    public static function moneyRule(string $currency, bool $negative = false): MoneyAmount
     {
-        $decimals = Currencies::decimals($currency);
-        $fraction = $decimals > 0 ? '(\.\d{1,'.$decimals.'})?' : '';
-
-        return 'regex:/^'.($negative ? '-?' : '').'\d{1,9}'.$fraction.'$/';
+        return new MoneyAmount($currency, $negative);
     }
 
     /**

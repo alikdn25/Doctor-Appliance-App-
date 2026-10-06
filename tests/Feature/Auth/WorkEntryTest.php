@@ -8,14 +8,15 @@ use App\Support\Locale\Timezones;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Testing\AssertableInertia as Assert;
 
-test('normal sign-in opens My jobs for every field member and supports persistent login', function (UserRole $role) {
+test('sign-in opens Jobs for the office and My Jobs for technicians, and supports persistent login', function (UserRole $role) {
     $user = memberOf(role: $role);
+    $screen = $role === UserRole::Technician ? 'jobs.mine' : 'jobs.index';
     $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password', 'remember' => true])
-        ->assertRedirect(route('jobs.mine', absolute: false))
+        ->assertRedirect(route($screen, absolute: false))
         ->assertCookie(Auth::guard('web')->getRecallerName());
     $this->assertAuthenticatedAs($user);
-    $this->get(route('jobs.mine'))->assertOk();
-    $this->get('/')->assertRedirect(route('jobs.mine'));
+    $this->get(route($screen))->assertOk();
+    $this->get('/')->assertRedirect(route('jobs.index'));
     expect(ImpersonationLog::count())->toBe(0);
 })->with([UserRole::Owner, UserRole::Admin, UserRole::Technician]);
 

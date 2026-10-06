@@ -117,4 +117,16 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Temporary sign-in without a password
+    |--------------------------------------------------------------------------
+    |
+    | While set, every visitor is signed in as this account (no password, no
+    | two-factor code). Leave empty for normal sign-in.
+    |
+    */
+
+    'auto_login_email' => env('AUTH_AUTO_LOGIN_EMAIL'),
+
 ];

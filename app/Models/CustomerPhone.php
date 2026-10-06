@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
  * @property int $company_id
  * @property int $customer_id
  * @property PhoneLabel $label
+ * @property string|null $contact_name Who answers this number when it is not the customer (e.g. "Anna · wife")
  * @property string $number
  * @property string $number_normalized
  * @property bool $is_primary
@@ -23,7 +24,7 @@ class CustomerPhone extends Model
 {
     use BelongsToCompany;
 
-    protected $fillable = ['label', 'number', 'is_primary'];
+    protected $fillable = ['label', 'contact_name', 'number', 'is_primary'];
 
     protected $attributes = [
         'label' => 'mobile',
@@ -48,7 +49,31 @@ class CustomerPhone extends Model
             // Stored in E.164; number_normalized is kept for the search and duplicate indexes.
             $phone->number = PhoneNumber::normalize($phone->number);
             $phone->number_normalized = $phone->number;
+            $phone->contact_name = filled($phone->contact_name) ? trim($phone->contact_name) : null;
         });
+
+        // A named second person makes the customer a couple (icon with two faces).
+        static::saved(fn (CustomerPhone $phone) => self::refreshSecondContact($phone->customer_id));
+        static::deleted(fn (CustomerPhone $phone) => self::refreshSecondContact($phone->customer_id));
+    }
+
+    public static function refreshSecondContact(int $customerId): void
+    {
+        // By id, without the tenant scope: also runs from factories and queue jobs.
+        $customer = Customer::query()->withoutGlobalScopes()->find($customerId);
+
+        if ($customer === null) {
+            return;
+        }
+
+        $first = mb_strtolower(trim((string) $customer->first_name));
+        $named = self::query()->withoutGlobalScopes()->where('customer_id', $customerId)->whereNotNull('contact_name')->pluck('contact_name')
+            // The customer's own name on a phone is not a second person.
+            ->contains(fn (string $name) => mb_strtolower(strtok($name, ' ·,(') ?: $name) !== $first);
+
+        if ($customer->has_second_contact !== $named) {
+            $customer->forceFill(['has_second_contact' => $named])->saveQuietly();
+        }
     }
 
     /**

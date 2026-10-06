@@ -12,7 +12,7 @@ return [
         'number' => 'Number: :number',
         'registration' => 'A2P 10DLC registration',
         'none' => 'Not started by the company.',
-        'hint' => 'Register the brand and campaign in the Twilio console (subaccount of the company) with these details, then record the IDs and the status here. The daily sync follows the status at Twilio.',
+        'hint' => 'Register the brand and campaign with the SMS provider (Telnyx portal → 10DLC, or the company\'s Twilio subaccount) with these details, then record the IDs and the status here. For Telnyx, the campaign ID goes in Campaign ID. The daily sync follows the status at the provider.',
         'save' => 'Save registration',
     ],
     'timezone_from_owner' => 'Detect from the Owner\'s browser',

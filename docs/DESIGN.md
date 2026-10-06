@@ -52,13 +52,13 @@ Everything pressable is a raised, soft, rounded shape:
 
 ## Colors
 
-| Token           | Value                                                                                       |
-| --------------- | ------------------------------------------------------------------------------------------- |
-| Page background | `#EEF3FA`                                                                                   |
-| Text            | `#0F1B2D`                                                                                   |
-| Secondary text  | `#5B6779`                                                                                   |
-| Link            | `#0A6CF5` (hover `#0050D0`)                                                                 |
-| Header          | `linear-gradient(90deg, #3535FF 0%, #000000 100%)` (bright blue to black, as on the canvas) |
+| Token           | Value                                                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Page background | `#EEF3FA`                                                                                                                                  |
+| Text            | `#0F1B2D`                                                                                                                                  |
+| Secondary text  | `#5B6779`                                                                                                                                  |
+| Link            | `#0A6CF5` (hover `#0050D0`)                                                                                                                |
+| Header          | `linear-gradient(180deg, #0F3270 0%, #0A2453 100%)` (deep navy, as on the approved phone mockups); header buttons blue `#2B6EE6 → #1A4FB8` |
 
 The dark-blue header sits above a light "sheet" (page background) with rounded top corners.
 
@@ -225,18 +225,24 @@ Visit statuses use the same look as the matching job status.
   contacts (e.g. husband and wife), both faces go into **one** circle.
 - **Team avatars** (technicians, office): same cartoon style in a blue polo; 40 px in compact places (headers,
   columns, chips).
-- **No avatar yet:** a 60 px circle with initials on the light blue gradient `#F1F7FF → #B3D4FF`.
+- **No avatar yet:** a 60 px circle with initials on the light blue gradient `#F1F7FF → #B3D4FF` (a name the name
+  dictionary does not know; a business gets a building icon).
 - **Appliance images:** calm, light stainless steel without strong glare. Black parts (glass, cooktop) are dark but not
   harsh.
+  Stored in `public/images/appliances/<type>.png` (one per `ApplianceType`).
 - Icons: inline stroke SVG (stroke width 2, round caps), never emoji.
 
 ## Navigation and layout
 
-- Bottom bar with 4 tabs: **Today · Calendar · Messages · More**.
-- Inner screens have no tab bar: a back button at the top and actions pinned to the bottom.
+- Bottom bar with 4 tabs: **Today · Map · Messages · More** (approved My Jobs mockup).
+- Inner screens have no tab bar: a back button at the top and actions pinned to the bottom. In code a pinned bar has
+  the class `da-pinned`; while one is on screen the tab bar (`da-tabbar`) is hidden so nothing covers the actions.
+- Menu: the everyday sections first (Book customer, My jobs, Calendar, Jobs, Customers, Invoices, Messages); "Money and
+  reports" and "Company settings" are collapsed groups.
+- The customer signs on the invoice (when the work is done), not on the job page.
 - **Book customer** button lives in the My Jobs header.
-- The third button in a job card changes with the status: **On my way / Start / Finish visit**. No "View job" button —
-  the whole card opens the job.
+- My Jobs cards (approved mockup): buttons **Navigate · Call · View job**; the whole card also opens the job. Visit
+  steps (On my way / Start / Finish visit) are pinned at the bottom of the job page.
 - Touch targets at least 44 px; screens designed for one-handed use on a phone.
 - Money is always formatted with the company currency (e.g. `CA$95.00`); never a hard-coded "$".
 - Tax lines show the names and rates configured by the company (the mockup uses the first customer's GST/PST as sample

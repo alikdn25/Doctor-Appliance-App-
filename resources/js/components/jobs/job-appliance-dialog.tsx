@@ -1,7 +1,12 @@
 import { router, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import {
+    ApplianceImage,
+    ApplianceTypePicker,
+} from '@/components/appliance-image';
 import { FormField } from '@/components/form-field';
+import InputError from '@/components/input-error';
 import type { ApplianceItem } from '@/components/jobs/types';
 import { applianceTitle } from '@/components/jobs/types';
 import { Button } from '@/components/ui/button';
@@ -13,7 +18,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
 import { store, update } from '@/routes/jobs/appliances';
 import type { Option } from '@/types';
@@ -34,7 +38,7 @@ const toForm = (a: ApplianceItem | null): FormData => ({
 
 /**
  * Field edits of appliances on a job: add one (new, or already at the address),
- * or correct manufacturer, model and serial number of a linked one.
+ * or correct the type, manufacturer, model and serial number of a linked one.
  */
 export function JobApplianceDialog({
     open,
@@ -59,8 +63,11 @@ export function JobApplianceDialog({
     const form = useForm<FormData>(toForm(appliance));
     const errors = form.errors as Record<string, string | undefined>;
 
+    const [changingType, setChangingType] = useState(false);
+
     useEffect(() => {
         if (open) {
+            setChangingType(false);
             form.clearErrors();
             form.setData(toForm(appliance));
         }
@@ -76,11 +83,14 @@ export function JobApplianceDialog({
         e.preventDefault();
 
         if (appliance) {
-            form.transform(({ manufacturer, model_number, serial_number }) => ({
-                manufacturer,
-                model_number,
-                serial_number,
-            }));
+            form.transform(
+                ({ type, manufacturer, model_number, serial_number }) => ({
+                    type,
+                    manufacturer,
+                    model_number,
+                    serial_number,
+                }),
+            );
             form.put(update([jobId, appliance.id]).url, options);
         } else {
             form.transform((data) => data);
@@ -135,6 +145,10 @@ export function JobApplianceDialog({
                                     key={a.id}
                                     className="flex items-center gap-2 px-3 py-2"
                                 >
+                                    <ApplianceImage
+                                        type={a.type}
+                                        className="size-10"
+                                    />
                                     <span className="min-w-0 flex-1 text-sm">
                                         <span className="font-medium">
                                             {applianceTitle(a)}
@@ -163,26 +177,44 @@ export function JobApplianceDialog({
                 )}
 
                 <form onSubmit={submit} className="grid gap-4">
-                    {!appliance && (
-                        <FormField
-                            id="job-appliance-type"
-                            label={t('appliances.fields.type')}
-                            error={errors.type}
-                        >
-                            <NativeSelect
-                                id="job-appliance-type"
-                                value={form.data.type}
-                                onChange={(e) =>
-                                    form.setData('type', e.target.value)
-                                }
+                    {appliance && !changingType && (
+                        <div className="flex items-center gap-3 rounded-2xl border p-2">
+                            <ApplianceImage
+                                type={form.data.type}
+                                className="size-12"
+                            />
+                            <span className="min-w-0 flex-1">
+                                <span className="block text-[13px] text-muted-foreground">
+                                    {t('appliances.fields.type')}
+                                </span>
+                                <span className="font-semibold">
+                                    {applianceTypes.find(
+                                        (o) => o.value === form.data.type,
+                                    )?.label ?? form.data.type}
+                                </span>
+                            </span>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setChangingType(true)}
                             >
-                                {applianceTypes.map((o) => (
-                                    <option key={o.value} value={o.value}>
-                                        {o.label}
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                        </FormField>
+                                {t('jobs.appliance.change_type')}
+                            </Button>
+                        </div>
+                    )}
+                    {(!appliance || changingType) && (
+                        <div className="space-y-2">
+                            <span className="text-[13px] font-semibold">
+                                {t('appliances.fields.type')}
+                            </span>
+                            <ApplianceTypePicker
+                                label={t('appliances.fields.type')}
+                                options={applianceTypes}
+                                value={form.data.type}
+                                onChange={(v) => form.setData('type', v)}
+                            />
+                            <InputError message={errors.type} />
+                        </div>
                     )}
                     {field('manufacturer', { list: 'job-appliance-brands' })}
                     <datalist id="job-appliance-brands">

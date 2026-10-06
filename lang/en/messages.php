@@ -8,8 +8,9 @@ return [
         'conversation' => 'Selected conversation',
         'search' => 'Name, phone or message',
         'unread_only' => 'Unread only',
-        'unread_count' => ':count unread messages',
+        'unread_count' => ':count unread message|:count unread messages',
         'empty' => 'No conversations match these filters.',
+        'empty_all' => 'No text conversations yet. Texts with customers will appear here.',
         'select' => 'Select a conversation to read and reply.',
         'unknown' => 'Not a customer yet',
         'link_customer' => 'Several customers share this number, or it moved to another customer. Review the contact details before replying.',
@@ -125,7 +126,7 @@ return [
 
     'account' => [
         'title' => 'Company SMS number',
-        'none' => 'No SMS number yet. The app gets a number for your company in your country; you do not need a Twilio account.',
+        'none' => 'No SMS number yet. The app gets a number for your company in your country; you do not need an account with the SMS provider.',
         'set_up' => 'Get an SMS number',
         'number' => 'Your SMS number: :number',
         'ready' => 'SMS number ready.',

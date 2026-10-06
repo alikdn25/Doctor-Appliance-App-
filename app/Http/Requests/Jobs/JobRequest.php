@@ -23,6 +23,9 @@ use Illuminate\Validation\Validator;
  */
 class JobRequest extends FormRequest
 {
+    /** Address parts the job form may change on the job's place. */
+    private const ADDRESS_FIELDS = ['line1', 'unit', 'city', 'region', 'postal_code', 'country', 'google_place_id', 'latitude', 'longitude'];
+
     private ?Customer $resolvedCustomer = null;
 
     public function authorize(): bool
@@ -97,7 +100,27 @@ class JobRequest extends FormRequest
         ];
 
         if (! $this->creating()) {
-            return [...$rules, 'property_id' => ['required', 'integer']];
+            return [
+                ...$rules,
+                'property_id' => ['required', 'integer'],
+                // Name and main phone of the job's customer, corrected from the job form.
+                ...(is_array($this->input('customer_edit')) ? [
+                    'customer_edit' => ['array'],
+                    'customer_edit.first_name' => ['nullable', 'required_without_all:customer_edit.last_name,customer_edit.company_name', 'string', 'max:100'],
+                    'customer_edit.last_name' => ['nullable', 'string', 'max:100'],
+                    'customer_edit.company_name' => ['nullable', 'string', 'max:255'],
+                    'customer_edit.phone' => ['required', 'string', 'max:32'],
+                ] : []),
+                ...(is_array($this->input('address_edit')) ? [
+                    'address_edit' => ['array'],
+                    ...collect(PropertyRequest::addressRules('address_edit.', 'nullable'))
+                        ->only(array_map(fn (string $f) => "address_edit.{$f}", self::ADDRESS_FIELDS))
+                        ->all(),
+                    'address_edit.line1' => ['nullable', 'required_with:address_edit.city', 'string', 'max:255'],
+                    'address_edit.city' => ['nullable', 'required_with:address_edit.line1', 'string', 'max:100'],
+                    'address_edit.country' => ['required', 'string', 'size:2'],
+                ] : []),
+            ];
         }
 
         $newCustomer = $this->boolean('new_customer_mode');
@@ -141,6 +164,8 @@ class JobRequest extends FormRequest
             $this->validateCustomerAndProperty($validator);
             $this->validatePreviousJob($validator);
 
+            $this->validateCustomerEdit($validator);
+
             if ($this->boolean('new_customer_mode')
                 && ! PhoneNumber::isPossible((string) $this->input('new_customer.phone'))) {
                 $validator->errors()->add('new_customer.phone', __('customers.invalid_phone'));
@@ -165,6 +190,9 @@ class JobRequest extends FormRequest
             'visit_type' => __('jobs.fields.visit_type'),
             'previous_job_id' => __('jobs.fields.previous_job_id'),
             'bring_items.*.description' => __('jobs.bring.item'),
+            'customer_edit.first_name' => __('customers.fields.first_name'),
+            'customer_edit.phone' => __('customers.fields.phone'),
+            ...PropertyRequest::addressAttributes('address_edit.'),
             'new_customer.first_name' => __('customers.fields.first_name'),
             'new_customer.phone' => __('customers.fields.phone'),
             'new_customer.email' => __('customers.fields.email'),
@@ -242,6 +270,13 @@ class JobRequest extends FormRequest
 
         $data = $this->validated('new_customer');
 
+        // Quick booking has one name field: "Anna Kim" is stored as first name Anna, last name Kim.
+        if ($this->boolean('quick_booking') && blank($data['last_name'] ?? null) && filled($data['first_name'] ?? null)) {
+            $parts = preg_split('/\s+/u', trim($data['first_name']), 2);
+            $data['first_name'] = $parts[0];
+            $data['last_name'] = $parts[1] ?? null;
+        }
+
         return [
             'customer' => [
                 'type' => filled($data['company_name'] ?? null) && blank($data['first_name'] ?? null) && blank($data['last_name'] ?? null)
@@ -264,6 +299,49 @@ class JobRequest extends FormRequest
                 'is_primary' => true,
             ],
         ];
+    }
+
+    /**
+     * Corrected name and main phone of the job's customer; null when the form did not send them.
+     *
+     * @return array{first_name: ?string, last_name: ?string, company_name: ?string, phone: string}|null
+     */
+    public function customerEdit(): ?array
+    {
+        if ($this->creating() || ! is_array($this->validated('customer_edit'))) {
+            return null;
+        }
+
+        $data = $this->validated('customer_edit');
+
+        return [
+            'first_name' => filled($data['first_name'] ?? null) ? trim($data['first_name']) : null,
+            'last_name' => filled($data['last_name'] ?? null) ? trim($data['last_name']) : null,
+            'company_name' => filled($data['company_name'] ?? null) ? trim($data['company_name']) : null,
+            'phone' => (string) $data['phone'],
+        ];
+    }
+
+    /**
+     * New address of the job's place; null when the form did not send one.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function addressEdit(): ?array
+    {
+        if ($this->creating() || ! is_array($this->validated('address_edit'))) {
+            return null;
+        }
+
+        $data = $this->validated('address_edit');
+        $address = [];
+        foreach (self::ADDRESS_FIELDS as $field) {
+            $value = $data[$field] ?? null;
+            $address[$field] = in_array($field, ['line1', 'city'], true) ? trim((string) $value) : (filled($value) ? $value : null);
+        }
+        $address['country'] = strtoupper((string) $address['country']);
+
+        return $address;
     }
 
     /**
@@ -301,6 +379,26 @@ class JobRequest extends FormRequest
 
         if ($previous === null) {
             $validator->errors()->add('previous_job_id', __('jobs.errors.invalid_previous_job'));
+        }
+    }
+
+    private function validateCustomerEdit(Validator $validator): void
+    {
+        /** @var ServiceJob|null $job */
+        $job = $this->route('job');
+
+        if ($job === null || ! is_array($this->input('customer_edit'))) {
+            return;
+        }
+
+        if ($job->customer === null || ! $this->user()->can('update', $job->customer)) {
+            $validator->errors()->add('customer_edit', __('jobs.errors.invalid_customer'));
+
+            return;
+        }
+
+        if (! PhoneNumber::isPossible((string) $this->input('customer_edit.phone'))) {
+            $validator->errors()->add('customer_edit.phone', __('customers.invalid_phone'));
         }
     }
 

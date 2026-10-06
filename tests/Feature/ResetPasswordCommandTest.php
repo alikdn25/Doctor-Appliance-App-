@@ -19,7 +19,7 @@ test('the command sets a new password and the person can sign in again', functio
         ->and(AuditLog::where('action', 'user.password_reset_cli')->count())->toBe(1);
 
     $this->post(route('login.store'), ['email' => $user->email, 'password' => 'brand-new-password-1'])
-        ->assertRedirect(route('jobs.mine', absolute: false));
+        ->assertRedirect(route('jobs.index', absolute: false));
     $this->assertAuthenticatedAs($user);
 });
 
