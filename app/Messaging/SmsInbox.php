@@ -41,6 +41,21 @@ class SmsInbox
         return self::messages($user)->whereRaw(self::PEER.' = ?', [$phone]);
     }
 
+    /** Texts with this number that the user may not see (another brand's job): never open them as a new chat. */
+    public static function hiddenFrom(User $user, string $phone): bool
+    {
+        return ! self::forPhone($user, $phone)->exists()
+            && Message::query()->where('channel', Message::SMS)->whereRaw(self::PEER.' = ?', [$phone])->exists();
+    }
+
+    /** A number no customer has and no earlier text links to a customer: it can be texted as it is. */
+    public function unlinked(User $user, string $phone): bool
+    {
+        return self::forPhone($user, $phone)->whereNotNull('customer_id')->doesntExist()
+            && CustomerPhone::query()->with('customer')->where('number_normalized', $phone)->get()
+                ->filter(fn (CustomerPhone $phone) => $phone->customer !== null)->isEmpty();
+    }
+
     public function threads(User $user, string $search, bool $unreadOnly): LengthAwarePaginator
     {
         $query = self::messages($user);
@@ -101,19 +116,23 @@ class SmsInbox
 
     public function conversation(User $user, string $phone): array
     {
-        abort_unless(self::forPhone($user, $phone)->exists(), 404);
+        // A number without texts yet opens as a new, empty conversation.
+        abort_if(self::hiddenFrom($user, $phone), 404);
         $recipient = $this->recipient($user, $phone);
+        $unlinked = $recipient === null && $this->unlinked($user, $phone);
         $messages = self::forPhone($user, $phone)->with(['user', 'job'])->latest('id')
             ->paginate(50, ['*'], 'message_page')->withQueryString();
         $unreadIds = self::unread($user)->whereIn('id', $messages->getCollection()->pluck('id'))->pluck('id')->all();
         $blocked = match (true) {
             currentCompany()->sms_mode !== SmsMode::Automatic => __('messages.inbox.automatic_required'),
+            $unlinked => $this->messenger->numberBlockedReason($phone),
             $recipient === null => __('messages.inbox.link_customer'),
             default => $this->messenger->smsBlockedReason($recipient->customer, $recipient),
         };
 
         return [
             'phone' => $phone,
+            'sms_mode' => currentCompany()->sms_mode->value,
             'customer' => $recipient ? $recipient->customer->only(['id', 'display_name']) : null,
             'blocked' => $blocked,
             'messages' => $messages->through(fn (Message $message) => MessagingPresenter::item($message)),
