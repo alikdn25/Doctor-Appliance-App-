@@ -1,7 +1,7 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
     computeTotals,
     currencyDecimals,
@@ -229,6 +229,23 @@ export default function BillingForm({
         currency,
         prices_include_tax: pricesIncludeTax,
     });
+
+    const [addedKey, setAddedKey] = useState<number | null>(null);
+    // A new empty line of that type: its price starts blank and is added to the total.
+    const addLine = (lineKind: LineKind) => {
+        const line = newLine({ kind: lineKind });
+        setAddedKey(line.key);
+        form.setData((d) => {
+            // The untouched first line of a new document is reused instead of leaving an empty line behind.
+            const [only] = d.items;
+            const blank =
+                d.items.length === 1 &&
+                only.description.trim() === '' &&
+                only.unit_price.trim() === '';
+
+            return { ...d, items: blank ? [line] : [...d.items, line] };
+        });
+    };
 
     // Updates always start from the latest lines: two quick changes (a typed price and the default
     // warranty that follows it) must not overwrite each other.
@@ -529,6 +546,7 @@ export default function BillingForm({
                                 taxRates={selectedTaxes}
                                 estimate={kind === 'estimate'}
                                 canRemove={data.items.length > 1}
+                                autoFocus={line.key === addedKey}
                                 errors={fieldErrors}
                                 money={money}
                                 onChange={(patch) => {
@@ -557,19 +575,22 @@ export default function BillingForm({
                             />
                         ))}
                     </ul>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="h-11 w-full"
-                        onClick={() =>
-                            form.setData((d) => ({
-                                ...d,
-                                items: [...d.items, newLine()],
-                            }))
-                        }
-                    >
-                        <Plus /> {t('billing.add_item')}
-                    </Button>
+                    {/* Labor, parts and materials are separate lines that add up: one button per type. */}
+                    <div className="grid grid-cols-3 gap-2">
+                        {(['service', 'part', 'material'] as const).map(
+                            (lineKind) => (
+                                <Button
+                                    key={lineKind}
+                                    type="button"
+                                    variant="outline"
+                                    className="h-11 px-2"
+                                    onClick={() => addLine(lineKind)}
+                                >
+                                    <Plus /> {t(`billing.add_kind.${lineKind}`)}
+                                </Button>
+                            ),
+                        )}
+                    </div>
                 </section>
 
                 <section className="grid gap-3 sm:grid-cols-2">

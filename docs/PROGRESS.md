@@ -1110,6 +1110,15 @@ and "Not sent yet" marks them — say if a real draft step is wanted.
 - Not done (open product questions): locking partly paid invoices (credit notes), Good/Better/Best options, kits,
   photos on estimates, a separate estimates list, a one-line compact line card, PDF size.
 
+### Invoice lines: labor, parts and materials add up ✅ (October 6)
+
+- The Service / Part / Material tabs used to change the type of the same line, so a labor price became the part
+  price instead of a second line. Now "+ Labor", "+ Part", "+ Material" under the lines each add a new empty line of
+  that type (cursor in its description) and all lines add up. A filled line shows its type as a label with
+  "Change type"; the tabs are shown only on an empty line. The untouched first line is reused, not left empty.
+- "Service" is called "Labor" in the UI. "Taxes, cost & warranty" starts collapsed on parts too.
+- Test: `tests/browser/invoice-lines.spec.ts` (labor $100 + part $150 + material $20 = $270, desktop and phone).
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started

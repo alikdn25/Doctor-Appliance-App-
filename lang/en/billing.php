@@ -9,6 +9,12 @@ return [
     'new_invoice' => 'New invoice',
     'items' => 'Items',
     'add_item' => 'Add line',
+    'add_kind' => [
+        'service' => 'Labor',
+        'part' => 'Part',
+        'material' => 'Material',
+    ],
+    'change_kind' => 'Change type',
     'pick_service' => 'Pick from price book…',
     'remove_item' => 'Remove line',
     'taxable' => 'Taxable',
@@ -50,7 +56,7 @@ return [
     ],
 
     'kinds' => [
-        'service' => 'Service',
+        'service' => 'Labor',
         'part' => 'Part',
         'material' => 'Material',
     ],
