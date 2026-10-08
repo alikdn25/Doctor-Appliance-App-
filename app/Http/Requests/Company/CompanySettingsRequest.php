@@ -40,6 +40,8 @@ class CompanySettingsRequest extends FormRequest
             'estimate_next_number' => ['required', 'integer', 'min:1', 'max:999999999'],
             'business_hours' => ['required', 'array:'.implode(',', Company::WEEKDAYS)],
             'travel_buffer_minutes' => ['required', 'integer', 'min:0', 'max:240'],
+            'distance_unit' => ['sometimes', Rule::in(['km', 'mi'])],
+            'mileage_rate' => ['nullable', 'numeric', 'min:0', 'max:1000'],
             'estimate_valid_days' => ['nullable', 'integer', 'min:1', 'max:365'],
             'estimate_followup_days' => ['nullable', 'integer', 'min:1', 'max:90'],
             'technicians_can_delete_jobs' => ['boolean'],
@@ -98,6 +100,13 @@ class CompanySettingsRequest extends FormRequest
         $data['technicians_can_delete_jobs'] = (bool) ($data['technicians_can_delete_jobs'] ?? false);
         $data['technicians_see_costs'] = (bool) ($data['technicians_see_costs'] ?? false);
         $data['accepts_cash'] = (bool) ($data['accepts_cash'] ?? true);
+
+        // Rate per km/mi in minor units of the currency (0.72 → 72); empty = not set.
+        if (array_key_exists('mileage_rate', $data)) {
+            $data['mileage_rate'] = filled($data['mileage_rate'])
+                ? Currencies::toMinor((string) $data['mileage_rate'], $data['currency'] ?? currentCompany()->currency)
+                : null;
+        }
 
         if (array_key_exists('warranty_parts_threshold', $data)) {
             $data['warranty_parts_threshold'] = filled($data['warranty_parts_threshold'])

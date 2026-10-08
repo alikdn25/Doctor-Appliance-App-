@@ -3,6 +3,7 @@
 namespace App\Actions\Jobs;
 
 use App\Actions\Billing\SyncJobBillingStatus;
+use App\Actions\Mileage\RecordRouteTrip;
 use App\Enums\JobStatus;
 use App\Enums\VisitStatus;
 use App\Models\JobVisit;
@@ -19,6 +20,7 @@ class VisitWorkflow
     public function __construct(
         private readonly ChangeJobStatus $changeStatus,
         private readonly SyncJobBillingStatus $syncBilling,
+        private readonly RecordRouteTrip $routeTrip,
     ) {}
 
     public function onMyWay(JobVisit $visit, User $user): void
@@ -40,6 +42,9 @@ class VisitWorkflow
             $visit->save();
 
             $this->changeStatus->handle($visit->job, JobStatus::InProgress, $user, $visit);
+
+            // The drive here goes into the mileage log.
+            $this->routeTrip->handle($visit, $user);
         });
     }
 

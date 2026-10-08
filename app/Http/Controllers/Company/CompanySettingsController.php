@@ -46,6 +46,9 @@ class CompanySettingsController extends Controller
                 'business_hours' => $company->business_hours ?? $company::defaultBusinessHours(),
                 'default_payment_terms' => $company->default_payment_terms->value,
                 'vertical' => $company->vertical->label(),
+                'distance_unit' => $company->distance_unit,
+                'mileage_rate' => $company->mileage_rate === null ? null
+                    : rtrim(rtrim(number_format($company->mileage_rate / Currencies::factor($company->currency), Currencies::decimals($company->currency), '.', ''), '0'), '.'),
             ],
             'paymentProviders' => $providers->options($company),
             // Providers the company can connect in its country (Square: US, CA, UK, IE, AU, JP, FR, ES).
