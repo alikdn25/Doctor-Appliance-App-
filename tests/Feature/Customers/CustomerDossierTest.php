@@ -61,4 +61,3 @@ test('a technician sees the totals of their own jobs only', function () {
         ->where('summary.money', [['currency' => 'CAD', 'paid' => 28050, 'owed' => 0]])
         ->has('history', 1));
 });
-
