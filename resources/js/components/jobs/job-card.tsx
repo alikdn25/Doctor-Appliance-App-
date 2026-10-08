@@ -15,6 +15,7 @@ import { CustomerAvatar } from '@/components/customers/customer-avatar';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import { StatusBadge } from '@/components/jobs/status-badge';
+import { isFinishedJob } from '@/components/jobs/types';
 import { Button } from '@/components/ui/button';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -70,6 +71,8 @@ export function JobCard({
             className={cn(
                 'da-card overflow-hidden',
                 highlight && 'ring-2 ring-[#FDBA74]',
+                // Finished work is muted (grey) in every list.
+                isFinishedJob(job.status) && 'opacity-60 grayscale',
             )}
         >
             <Link

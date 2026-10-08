@@ -6,6 +6,7 @@ use App\Actions\Billing\SaveBillingDocument;
 use App\Enums\JobStatus;
 use App\Enums\MessageKind;
 use App\Enums\UserRole;
+use App\Enums\VisitStatus;
 use App\Models\Brand;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseCategory;
@@ -58,6 +59,13 @@ class BrowserSmokeSeeder extends Seeder
                 'scheduled_start' => now()->startOfDay()->setTime(13, 0),
                 'scheduled_end' => now()->startOfDay()->setTime(15, 0),
             ])->create(['brand_id' => $brand->id, 'description' => 'Browser dishwasher repair']);
+            // Finished this morning (no one assigned): hidden from the calendar until "Show completed".
+            $finished = ServiceJob::factory()->for($property)->withVisit([], [
+                'scheduled_start' => now()->startOfDay()->setTime(8, 0),
+                'scheduled_end' => now()->startOfDay()->setTime(9, 0),
+                'status' => VisitStatus::Completed,
+            ])->create(['brand_id' => $brand->id, 'description' => 'Finished browser repair']);
+            $finished->forceFill(['status' => JobStatus::Completed])->save();
             $waiting = ServiceJob::factory()->for($property)->create([
                 'brand_id' => $brand->id, 'status' => JobStatus::WaitingForParts,
                 'description' => 'Old repair still waiting for parts', 'created_at' => now()->subDays(60),
@@ -90,7 +98,7 @@ class BrowserSmokeSeeder extends Seeder
             }
 
             return [
-                'customer_id' => $customer->id, 'job_id' => $job->id, 'waiting_job_id' => $waiting->id,
+                'customer_id' => $customer->id, 'job_id' => $job->id, 'waiting_job_id' => $waiting->id, 'finished_job_id' => $finished->id,
                 'invoice_id' => $invoice->id, 'public_token' => PublicDocument::token($invoice),
                 'gst_id' => $gst->id, 'pst_id' => $pst->id, 'today' => now()->toDateString(),
             ];

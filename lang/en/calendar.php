@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'show_completed' => 'Show completed',
     'title' => 'Calendar',
     'day' => 'Day',
     'map' => 'Map',
