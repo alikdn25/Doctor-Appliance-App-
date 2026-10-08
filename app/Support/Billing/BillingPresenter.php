@@ -5,6 +5,7 @@ namespace App\Support\Billing;
 use App\Actions\Billing\SendDocument;
 use App\Enums\EstimateStatus;
 use App\Enums\InvoiceStatus;
+use App\Enums\LineKind;
 use App\Enums\WarrantyUnit;
 use App\Models\Estimate;
 use App\Models\Invoice;
@@ -236,6 +237,7 @@ class BillingPresenter
                 'rate' => isset($saved[$rate->id]) ? (string) $saved[$rate->id]['rate'] : rtrim(rtrim((string) $rate->rate, '0'), '.'),
                 'is_compound' => $saved[$rate->id]['compound'] ?? $rate->is_compound,
                 'is_default' => $rate->is_default && $rate->is_active,
+                'applies_to' => $rate->applies_to ?? array_column(LineKind::cases(), 'value'),
             ])
             ->sortBy(fn ($rate) => [(int) $rate['is_compound'], $positions[$rate['id']] ?? count($positions)])
             ->values()

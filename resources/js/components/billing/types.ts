@@ -178,4 +178,6 @@ export type TaxOption = {
     rate: string;
     is_compound: boolean;
     is_default: boolean;
+    /** Line types a new line of which gets this tax when it is a default tax. */
+    applies_to: ('service' | 'part' | 'material')[];
 };

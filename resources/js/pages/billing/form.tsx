@@ -126,6 +126,12 @@ export default function BillingForm({
     const money = useMoney(currency);
     const group = kind === 'invoice' ? 'invoices' : 'estimates';
 
+    // A new line gets the default taxes that apply to its type (e.g. a sales tax on parts and materials only).
+    const defaultTaxIds = (lineKind: LineKind) =>
+        taxRates
+            .filter((r) => r.is_default && r.applies_to.includes(lineKind))
+            .map((r) => r.id);
+
     const form = useForm<FormData>({
         issued_on: document?.issued_on ?? today,
         valid_until: document
@@ -189,6 +195,7 @@ export default function BillingForm({
                                 ? fromMinor(item.unit_price, currency)
                                 : '',
                         taxable: item.taxable,
+                        tax_rate_ids: defaultTaxIds(item.kind ?? 'service'),
                         price_touched: item.unit_price !== null,
                         ...(item.kind ? { kind: item.kind } : {}),
                         ...(item.quantity ? { quantity: item.quantity } : {}),
@@ -263,9 +270,14 @@ export default function BillingForm({
         form.setData((d) => ({ ...d, items: [...d.items, line] }));
     };
     const addCustom = (lineKind: LineKind) =>
-        addLine(newLine({ kind: lineKind }));
+        addLine(
+            newLine({ kind: lineKind, tax_rate_ids: defaultTaxIds(lineKind) }),
+        );
     const addService = (service: ServiceOption) => {
-        const line = newLine({ kind: service.kind });
+        const line = newLine({
+            kind: service.kind,
+            tax_rate_ids: defaultTaxIds(service.kind),
+        });
         addLine({ ...line, ...servicePatch(service, currency, line) });
     };
 
@@ -632,7 +644,18 @@ export default function BillingForm({
                                         );
                                     }
 
-                                    setLine(line.key, patch);
+                                    // A line switched to another type takes that type's default taxes.
+                                    setLine(
+                                        line.key,
+                                        patch.kind && patch.kind !== line.kind
+                                            ? {
+                                                  ...patch,
+                                                  tax_rate_ids: defaultTaxIds(
+                                                      patch.kind,
+                                                  ),
+                                              }
+                                            : patch,
+                                    );
                                 }}
                                 onRemove={() => {
                                     form.clearErrors();

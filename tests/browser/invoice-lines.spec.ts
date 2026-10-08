@@ -70,3 +70,66 @@ test('one "Add item" sheet adds labor, part and material rows whose prices add u
     await expect(page).toHaveURL(/\/invoices\/\d+$/);
     await expect(page.getByText('Drain pump')).toBeVisible();
 });
+
+test('a tax set for parts and materials skips labor until ticked on the line', async ({
+    page,
+}, info) => {
+    const name = `Parts tax ${info.project.name}`;
+    await page.goto('/company/taxes');
+    await page.getByRole('button', { name: 'Add tax', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.locator('#name').fill(name);
+    await dialog.locator('#rate').fill('10');
+    await dialog
+        .getByRole('checkbox', { name: 'Labor', exact: true })
+        .uncheck();
+    await dialog
+        .getByRole('checkbox', {
+            name: 'Apply by default on new estimates and invoices',
+        })
+        .check();
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByText('on Part, Material').first()).toBeVisible();
+
+    await page.goto(`/jobs/${fixture.job_id}/invoices/create`);
+    for (const [kind, label] of [
+        ['Labor', 'Repair labor'],
+        ['Part', 'Door switch'],
+    ]) {
+        await page.getByRole('button', { name: 'Add item' }).click();
+        await page
+            .getByRole('dialog')
+            .getByRole('button', { name: kind, exact: true })
+            .click();
+        await page.getByLabel('Description', { exact: true }).fill(label);
+        await page.getByLabel('Price', { exact: true }).fill('100');
+        await page.getByRole('button', { name: 'Done' }).click();
+    }
+
+    const totals = page.getByLabel('Totals');
+    const taxRow = totals.getByText(`${name} 10%`).locator('..');
+    await expect(taxRow).toContainText('$10.00');
+
+    // Ticked on the labor line, the tax covers it too.
+    await page.getByRole('button', { name: /Repair labor/ }).click();
+    await page.getByRole('checkbox', { name: `${name} 10%` }).check();
+    await expect(taxRow).toContainText('$20.00');
+
+    // Switched off again so the other scenarios keep their totals.
+    await page.goto('/company/taxes');
+    await page
+        .getByRole('listitem')
+        .filter({ hasText: name })
+        .getByRole('button', { name: 'Edit' })
+        .click();
+    await dialog
+        .getByRole('checkbox', {
+            name: 'Apply by default on new estimates and invoices',
+        })
+        .uncheck();
+    await dialog
+        .getByRole('checkbox', { name: 'Active', exact: true })
+        .uncheck();
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+});

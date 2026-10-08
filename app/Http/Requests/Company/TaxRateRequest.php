@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Company;
 
+use App\Enums\LineKind;
 use App\Models\TaxRate;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class TaxRateRequest extends FormRequest
 {
@@ -26,6 +28,11 @@ class TaxRateRequest extends FormRequest
             'is_active' => $this->boolean('is_active'),
             'is_recoverable' => $this->boolean('is_recoverable', true),
         ]);
+
+        // Every line type ticked is the same as no restriction.
+        if (is_array($this->input('applies_to')) && count(array_unique($this->input('applies_to'))) >= count(LineKind::cases())) {
+            $this->merge(['applies_to' => null]);
+        }
     }
 
     /**
@@ -41,6 +48,8 @@ class TaxRateRequest extends FormRequest
             'is_active' => ['boolean'],
             'is_recoverable' => ['boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            'applies_to' => ['nullable', 'array'],
+            'applies_to.*' => ['distinct', Rule::enum(LineKind::class)],
         ];
     }
 }
