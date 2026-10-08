@@ -54,7 +54,7 @@ return [
     ],
 
     'kinds' => [
-        'visit_reminder' => 'Visit reminder (day before)',
+        'visit_reminder' => 'Reminder (day before)',
         'on_my_way' => 'On my way',
         'estimate_link' => 'Estimate link',
         'estimate_followup' => 'Estimate follow-up',

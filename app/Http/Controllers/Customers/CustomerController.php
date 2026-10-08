@@ -6,6 +6,7 @@ use App\Actions\Customers\SaveCustomer;
 use App\Enums\ApplianceType;
 use App\Enums\CustomerType;
 use App\Enums\EmailLabel;
+use App\Enums\InvoiceStatus;
 use App\Enums\LeadSource;
 use App\Enums\PaymentTerms;
 use App\Enums\PhoneLabel;
@@ -20,9 +21,9 @@ use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\Property;
 use App\Models\ServiceJob;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
-use App\Support\Jobs\JobPresenter;
 use App\Support\NameAvatar;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
@@ -111,7 +112,7 @@ class CustomerController extends Controller
         $jobs = ServiceJob::query()
             ->visibleTo($user)
             ->where('customer_id', $customer->id)
-            ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
+            ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees', 'invoices'])
             ->orderByDesc('id')
             ->limit(50)
             ->get();
@@ -146,7 +147,8 @@ class CustomerController extends Controller
                     ])->values(),
                 ])->values(),
             ],
-            'jobs' => $jobs->map(fn (ServiceJob $job) => JobPresenter::row($job))->values(),
+            'history' => $jobs->map(fn (ServiceJob $job) => self::historyRow($job))->values(),
+            'summary' => self::summary($customer, $user),
             // Estimates and invoices of the jobs the user can see.
             'estimates' => Estimate::query()
                 ->where('customer_id', $customer->id)
@@ -170,6 +172,67 @@ class CustomerController extends Controller
             'applianceTypes' => ApplianceType::options(),
             'manufacturers' => self::manufacturers(),
         ]);
+    }
+
+    /**
+     * One line of the customer's job history: when, which appliance, what was done, how much and whether it is paid.
+     *
+     * @return array<string, mixed>
+     */
+    private static function historyRow(ServiceJob $job): array
+    {
+        $invoices = $job->invoices->reject(fn (Invoice $i) => $i->isVoid())->values();
+        $last = $job->visits->sortBy('scheduled_start')->last();
+        $owed = $invoices->sum('balance');
+
+        return [
+            'id' => $job->id,
+            'number' => $job->number,
+            'date' => ($last?->scheduled_start ?? $job->created_at)?->timezone(currentCompany()->timezone)->toDateString(),
+            'appliances' => $job->appliances->map(fn (Appliance $a) => $a->label())->values(),
+            'work' => $job->tech_notes ?: $job->description,
+            'status' => $job->status->value,
+            'status_label' => $job->status->label(),
+            // Amounts of a job's invoices share one currency in practice; the first one is shown with them.
+            'currency' => $invoices->first()?->currency,
+            'total' => $invoices->isEmpty() ? null : (int) $invoices->sum('total'),
+            'payment' => match (true) {
+                $invoices->isEmpty() => null,
+                $owed <= 0 => 'paid',
+                $invoices->sum('amount_paid') > 0 => 'partial',
+                default => 'unpaid',
+            },
+            'invoice_id' => $invoices->first()?->id,
+        ];
+    }
+
+    /**
+     * Totals over all jobs the user can see: number of jobs, paid and owed, one row per currency.
+     *
+     * @return array{jobs: int, money: list<array{currency: string, paid: int, owed: int}>}
+     */
+    private static function summary(Customer $customer, User $user): array
+    {
+        $jobIds = ServiceJob::query()->visibleTo($user)->where('customer_id', $customer->id)->select('id');
+        $money = Invoice::query()
+            ->where('customer_id', $customer->id)
+            ->whereIn('service_job_id', $jobIds)
+            ->where('status', '!=', InvoiceStatus::Void->value)
+            ->get(['currency', 'amount_paid', 'balance'])
+            ->groupBy('currency')
+            ->map(fn ($group, string $currency) => [
+                'currency' => $currency,
+                'paid' => (int) $group->sum('amount_paid'),
+                'owed' => (int) $group->sum(fn (Invoice $i) => max(0, $i->balance)),
+            ])
+            ->sortBy('currency')
+            ->values()
+            ->all();
+
+        return [
+            'jobs' => ServiceJob::query()->visibleTo($user)->where('customer_id', $customer->id)->count(),
+            'money' => $money,
+        ];
     }
 
     public function edit(Customer $customer): Response

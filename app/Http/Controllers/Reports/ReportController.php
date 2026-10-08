@@ -16,6 +16,7 @@ use App\Support\Billing\JobProfit;
 use App\Support\Locale\Currencies;
 use App\Support\PrivateMedia;
 use App\Support\Reports\BusinessReport;
+use App\Support\Reports\ProfitReport;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -44,7 +45,7 @@ class ReportController extends Controller
             'technician' => $this->technician($job),
             'appliance' => $job->appliances->first()?->type->label() ?? __('reports.no_appliance'),
             'brand' => $job->brand?->name ?? '—',
-            ...JobProfit::for($job),
+            ...JobProfit::for($job, $request->user()->hasRole(UserRole::Owner)),
         ]);
 
         $billable = $rows->filter(fn (array $r) => ! in_array($r['job']->outcome, [JobOutcome::Cancelled], true));
@@ -61,6 +62,8 @@ class ReportController extends Controller
             'to' => $to->toDateString(),
             'currency' => currentCompany()->currency,
             'business' => BusinessReport::for($from, $to, $request->user()),
+            'profit' => ProfitReport::for($jobs, $from, $to, $request->user()),
+            'today' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
             'totals' => $this->sum($billable),
             'byTechnician' => $this->groupProfit($billable, 'technician'),
             'byAppliance' => $this->groupProfit($billable, 'appliance'),

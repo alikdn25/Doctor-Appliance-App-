@@ -54,6 +54,9 @@ type CompanySettings = {
     technicians_see_costs: boolean;
     accepts_cash: boolean;
     payment_provider: string;
+    distance_unit: 'km' | 'mi';
+    /** Mileage rate per distance unit, in major units of the company currency ('' = not set). */
+    mileage_rate: string;
 };
 
 const REASON_OUTCOMES = [
@@ -118,6 +121,8 @@ export default function CompanySettingsPage({
         estimate_next_number: company.estimate_next_number,
         business_hours: company.business_hours,
         travel_buffer_minutes: company.travel_buffer_minutes,
+        distance_unit: company.distance_unit,
+        mileage_rate: company.mileage_rate ?? '',
         estimate_valid_days: company.estimate_valid_days,
         estimate_followup_days: company.estimate_followup_days,
         technicians_can_delete_jobs: company.technicians_can_delete_jobs,
@@ -542,6 +547,54 @@ export default function CompanySettingsPage({
                             }
                         />
                     </FormField>
+                    <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+                        <FormField
+                            id="distance_unit"
+                            label={t('company.fields.distance_unit')}
+                            error={errors.distance_unit}
+                        >
+                            <NativeSelect
+                                id="distance_unit"
+                                value={form.data.distance_unit}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'distance_unit',
+                                        e.target.value as 'km' | 'mi',
+                                    )
+                                }
+                            >
+                                <option value="km">
+                                    {t('trips.units.km')}
+                                </option>
+                                <option value="mi">
+                                    {t('trips.units.mi')}
+                                </option>
+                            </NativeSelect>
+                        </FormField>
+                        <FormField
+                            id="mileage_rate"
+                            label={t('company.fields.mileage_rate', {
+                                unit: t(
+                                    `trips.units.${form.data.distance_unit}`,
+                                ),
+                            })}
+                            error={errors.mileage_rate}
+                        >
+                            <Input
+                                id="mileage_rate"
+                                inputMode="decimal"
+                                value={form.data.mileage_rate}
+                                onChange={(e) =>
+                                    form.setData('mileage_rate', e.target.value)
+                                }
+                            />
+                        </FormField>
+                    </div>
+                    <p className="-mt-1 text-xs text-muted-foreground">
+                        {t('company.mileage_rate_hint', {
+                            currency: form.data.currency,
+                        })}
+                    </p>
                 </section>
 
                 <section className="grid gap-3">

@@ -5,6 +5,7 @@ namespace App\Support\Billing;
 use App\Actions\Billing\SendDocument;
 use App\Enums\EstimateStatus;
 use App\Enums\InvoiceStatus;
+use App\Enums\LineKind;
 use App\Enums\WarrantyUnit;
 use App\Models\Estimate;
 use App\Models\Invoice;
@@ -82,10 +83,10 @@ class BillingPresenter
                 'part_number' => $item->part_number,
                 'unit' => $item->unit,
                 'bill_to_customer' => $item->bill_to_customer,
-                'warranty_value' => $item->warranty_value,
-                'warranty_unit' => $item->warranty_unit,
-                'warranty_label' => $item->warrantyLabel(),
-                'warranty_ends_on' => $invoice ? $item->warranty_ends_on?->toDateString() : null,
+                'warranty_value' => $item->hasWarranty() ? $item->warranty_value : null,
+                'warranty_unit' => $item->hasWarranty() ? $item->warranty_unit : null,
+                'warranty_label' => $item->hasWarranty() ? $item->warrantyLabel() : '',
+                'warranty_ends_on' => $invoice && $item->hasWarranty() ? $item->warranty_ends_on?->toDateString() : null,
                 'costs_editable' => $item->cost_owner_id === null || CostAccess::owns(auth()->user(), $item),
                 // Purchase values are private to their author, including for Owners/Admins.
                 'supplier' => CostAccess::owns(auth()->user(), $item) ? $item->supplier : null,
@@ -236,6 +237,7 @@ class BillingPresenter
                 'rate' => isset($saved[$rate->id]) ? (string) $saved[$rate->id]['rate'] : rtrim(rtrim((string) $rate->rate, '0'), '.'),
                 'is_compound' => $saved[$rate->id]['compound'] ?? $rate->is_compound,
                 'is_default' => $rate->is_default && $rate->is_active,
+                'applies_to' => $rate->applies_to ?? array_column(LineKind::cases(), 'value'),
             ])
             ->sortBy(fn ($rate) => [(int) $rate['is_compound'], $positions[$rate['id']] ?? count($positions)])
             ->values()

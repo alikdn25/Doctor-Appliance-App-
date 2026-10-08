@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     AlarmClock,
+    Banknote,
     CalendarPlus,
     Car,
     CheckCircle2,
@@ -22,6 +23,8 @@ import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { ApplianceImage } from '@/components/appliance-image';
 import { DocumentList } from '@/components/billing/document-list';
+import { useMoney } from '@/components/billing/money';
+import { PaymentDialog } from '@/components/billing/payment-dialog';
 import type { DocumentRow } from '@/components/billing/types';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
@@ -175,6 +178,14 @@ type Props = {
     today: string;
     photoKinds: Option[];
     messaging: JobMessaging;
+    /** Invoices with money owed that this person may mark as paid. */
+    payable: {
+        id: number;
+        number: string;
+        balance: number;
+        currency: string;
+    }[];
+    paymentMethods: Option[];
 };
 
 /** Minutes since an ISO time, refreshed every 30 seconds. */
@@ -208,6 +219,8 @@ export default function JobShow({
     today,
     photoKinds,
     messaging,
+    payable,
+    paymentMethods,
     closureReasons,
     callback,
     warrantyLines,
@@ -224,6 +237,8 @@ export default function JobShow({
     const time = useCompanyTime();
     const [statusOpen, setStatusOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
+    const [paying, setPaying] = useState<Props['payable'][number] | null>(null);
+    const money = useMoney();
     const [warrantyOpen, setWarrantyOpen] = useState(openWarranty);
     const visitUnderWay = job.visits.some((v) =>
         ['on_the_way', 'in_progress'].includes(v.status),
@@ -239,6 +254,13 @@ export default function JobShow({
     const [actionError, setActionError] = useState<string | undefined>();
 
     const myVisit = job.visits.find((v) => v.id === myVisitId) ?? null;
+    // The time the job is booked for now: the latest one not finished or cancelled.
+    const current =
+        [...job.visits]
+            .reverse()
+            .find((v) =>
+                ['scheduled', 'on_the_way', 'in_progress'].includes(v.status),
+            ) ?? null;
     const elapsed = useElapsedMinutes(
         myVisit?.status === 'in_progress' ? myVisit.started_at : null,
     );
@@ -356,6 +378,30 @@ export default function JobShow({
                         </Button>
                     )}
                 </div>
+
+                {/* Mark as paid: cash, card, e-transfer… with the balance as the amount. */}
+                {payable.length > 0 && (
+                    <div className="grid gap-2">
+                        {payable.map((invoice) => (
+                            <Button
+                                key={invoice.id}
+                                className="h-12 w-full text-base"
+                                onClick={() => setPaying(invoice)}
+                            >
+                                <Banknote />
+                                {payable.length === 1
+                                    ? `${t('payments.record')} · ${money(invoice.balance, invoice.currency)}`
+                                    : t('payments.mark_paid_invoice', {
+                                          number: invoice.number,
+                                          amount: money(
+                                              invoice.balance,
+                                              invoice.currency,
+                                          ),
+                                      })}
+                            </Button>
+                        ))}
+                    </div>
+                )}
 
                 {warrantyLines.length > 0 && can.work && (
                     <Button
@@ -879,137 +925,115 @@ export default function JobShow({
                     />
                 )}
 
-                {/* Visits */}
+                {/* Schedule: a job is one booking on the calendar. A second trip (parts arrived) is a new time
+                    for the same job; earlier times stay in the job history. */}
                 <section className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-base font-medium">
-                            {t('jobs.sections.visits')}
-                        </h2>
-                        {can.update && job.status !== 'cancelled' && (
+                    <h2 className="text-base font-medium">
+                        {t('jobs.sections.visits')}
+                    </h2>
+                    {current ? (
+                        <div className="da-card space-y-1 p-3">
+                            <div className="flex items-start gap-2">
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                                        {time.window(
+                                            current.scheduled_start,
+                                            current.scheduled_end,
+                                        )}
+                                        {current.strict_arrival && (
+                                            <StrictBadge />
+                                        )}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        {current.assignees.length > 0
+                                            ? current.assignees
+                                                  .map((a) => a.name)
+                                                  .join(', ')
+                                            : t('jobs.unassigned')}
+                                        {current.estimated_duration_minutes &&
+                                            ` · ${t('jobs.estimated_on_site', { time: formatMinutes(current.estimated_duration_minutes, t) })}`}
+                                    </div>
+                                </div>
+                                {can.update && (
+                                    <div className="flex">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            aria-label={t('jobs.edit_visit')}
+                                            onClick={() =>
+                                                setVisitDialog({
+                                                    open: true,
+                                                    visit: current,
+                                                })
+                                            }
+                                        >
+                                            <Pencil />
+                                        </Button>
+                                        {current.status === 'scheduled' && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label={t(
+                                                    'jobs.delete_visit',
+                                                )}
+                                                onClick={() =>
+                                                    removeVisit(current)
+                                                }
+                                            >
+                                                <Trash2 />
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            {(current.on_the_way_at || current.started_at) && (
+                                <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                    {(
+                                        ['on_the_way_at', 'started_at'] as const
+                                    ).map(
+                                        (field) =>
+                                            current[field] && (
+                                                <div key={field}>
+                                                    <dt className="inline">
+                                                        {t(
+                                                            `jobs.visit_times.${field}`,
+                                                        )}
+                                                        :{' '}
+                                                    </dt>
+                                                    <dd className="inline">
+                                                        {time.time(
+                                                            current[field],
+                                                        )}
+                                                    </dd>
+                                                </div>
+                                            ),
+                                    )}
+                                </dl>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            {t('jobs.no_visits')}
+                        </p>
+                    )}
+                    {!current &&
+                        can.update &&
+                        !['cancelled', 'invoiced', 'paid'].includes(
+                            job.status,
+                        ) && (
                             <Button
                                 variant="outline"
-                                size="sm"
+                                className="h-11 w-full"
                                 onClick={() =>
                                     setVisitDialog({ open: true, visit: null })
                                 }
                             >
-                                <CalendarPlus /> {t('jobs.add_visit')}
+                                <CalendarPlus />{' '}
+                                {job.visits.length > 0
+                                    ? t('jobs.schedule_again')
+                                    : t('jobs.add_visit')}
                             </Button>
                         )}
-                    </div>
-                    {job.visits.length === 0 ? (
-                        <p className="rounded-lg border p-4 text-sm text-muted-foreground">
-                            {t('jobs.no_visits')}
-                        </p>
-                    ) : (
-                        <ul className="divide-y rounded-lg border">
-                            {job.visits.map((v) => (
-                                <li key={v.id} className="space-y-1 p-3">
-                                    <div className="flex items-start gap-2">
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                                                {time.window(
-                                                    v.scheduled_start,
-                                                    v.scheduled_end,
-                                                )}
-                                                <StatusBadge
-                                                    status={v.status}
-                                                    label={v.status_label}
-                                                />
-                                                {v.strict_arrival && (
-                                                    <StrictBadge />
-                                                )}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {v.assignees.length > 0
-                                                    ? v.assignees
-                                                          .map((a) => a.name)
-                                                          .join(', ')
-                                                    : t('jobs.unassigned')}
-                                                {v.estimated_duration_minutes &&
-                                                    ` · ${t('jobs.estimated_on_site', { time: formatMinutes(v.estimated_duration_minutes, t) })}`}
-                                            </div>
-                                        </div>
-                                        {can.update && (
-                                            <div className="flex">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-9"
-                                                    aria-label={t(
-                                                        'jobs.edit_visit',
-                                                    )}
-                                                    onClick={() =>
-                                                        setVisitDialog({
-                                                            open: true,
-                                                            visit: v,
-                                                        })
-                                                    }
-                                                >
-                                                    <Pencil />
-                                                </Button>
-                                                {v.status === 'scheduled' && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="size-9"
-                                                        aria-label={t(
-                                                            'jobs.delete_visit',
-                                                        )}
-                                                        onClick={() =>
-                                                            removeVisit(v)
-                                                        }
-                                                    >
-                                                        <Trash2 />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {(v.on_the_way_at ||
-                                        v.started_at ||
-                                        v.finished_at) && (
-                                        <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                                            {(
-                                                [
-                                                    'on_the_way_at',
-                                                    'started_at',
-                                                    'finished_at',
-                                                ] as const
-                                            ).map(
-                                                (field) =>
-                                                    v[field] && (
-                                                        <div key={field}>
-                                                            <dt className="inline">
-                                                                {t(
-                                                                    `jobs.visit_times.${field}`,
-                                                                )}
-                                                                :{' '}
-                                                            </dt>
-                                                            <dd className="inline">
-                                                                {time.time(
-                                                                    v[field],
-                                                                )}
-                                                            </dd>
-                                                        </div>
-                                                    ),
-                                            )}
-                                            {v.minutes_on_job !== null && (
-                                                <div>
-                                                    {t('jobs.time_on_job', {
-                                                        time: formatMinutes(
-                                                            v.minutes_on_job,
-                                                            t,
-                                                        ),
-                                                    })}
-                                                </div>
-                                            )}
-                                        </dl>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
                 </section>
 
                 {/* Estimates and invoices */}
@@ -1120,6 +1144,18 @@ export default function JobShow({
                     jobId={job.id}
                     lines={warrantyLines}
                     units={warrantyUnits}
+                />
+            )}
+
+            {paying && (
+                <PaymentDialog
+                    open={paying !== null}
+                    onOpenChange={(open) => !open && setPaying(null)}
+                    invoiceId={paying.id}
+                    balance={paying.balance}
+                    currency={paying.currency}
+                    methods={paymentMethods}
+                    today={today}
                 />
             )}
 

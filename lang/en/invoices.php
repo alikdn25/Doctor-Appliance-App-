@@ -44,6 +44,7 @@ return [
     ],
 
     'terms_hint' => 'Customer terms: :terms',
+    'no_due_date' => 'No due date',
 
     'terms' => [
         'due_on_receipt' => 'Due on receipt',

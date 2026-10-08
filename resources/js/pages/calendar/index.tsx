@@ -28,9 +28,11 @@ import {
 import { WeekGrid } from '@/components/calendar/week-grid';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import type { Assignable } from '@/components/jobs/types';
+import { isFinishedJob } from '@/components/jobs/types';
 import { VisitDialog } from '@/components/jobs/visit-dialog';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -77,11 +79,32 @@ export default function CalendarPage({
     hours,
     travelBuffer,
     lanes,
-    visits,
+    visits: allVisits,
     unscheduled,
     assignableUsers,
 }: Props) {
     const t = useTrans();
+    // Finished work is hidden by default; "Show completed" brings it back (greyed out). Remembered per device.
+    const [showCompleted, setShowCompleted] = useState(() => {
+        try {
+            return localStorage.getItem('calendar.showCompleted') === '1';
+        } catch {
+            return false;
+        }
+    });
+    const toggleCompleted = (on: boolean) => {
+        setShowCompleted(on);
+
+        try {
+            localStorage.setItem('calendar.showCompleted', on ? '1' : '0');
+        } catch {
+            // Storage unavailable (private mode): the choice lasts for this page only.
+        }
+    };
+    const visits = showCompleted
+        ? allVisits
+        : allVisits.filter((visit) => !isFinishedJob(visit.job.status));
+    const hiddenCount = allVisits.length - visits.length;
     const clock = useClock();
     const locale = useLocale();
     const drag = useRef<DragItem | null>(null);
@@ -316,6 +339,18 @@ export default function CalendarPage({
                             e.target.value && go({ date: e.target.value })
                         }
                     />
+                    <label className="flex min-h-11 items-center gap-2 text-sm">
+                        <Checkbox
+                            checked={showCompleted}
+                            onCheckedChange={(c) => toggleCompleted(c === true)}
+                        />
+                        {t('calendar.show_completed')}
+                        {!showCompleted && hiddenCount > 0 && (
+                            <span className="text-muted-foreground">
+                                ({hiddenCount})
+                            </span>
+                        )}
+                    </label>
                     <p className="text-xs text-muted-foreground">
                         {t('calendar.drag_hint')}{' '}
                         {t('calendar.travel_buffer', {

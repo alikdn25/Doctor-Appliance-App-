@@ -2,6 +2,8 @@ import { usePage } from '@inertiajs/react';
 import { Navigation } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CalendarVisit, Lane } from '@/components/calendar/types';
+import { isFinishedJob } from '@/components/jobs/types';
+import { cn } from '@/lib/utils';
 import { inLane, routeUrl } from '@/components/calendar/types';
 import { Button } from '@/components/ui/button';
 import { NativeSelect } from '@/components/ui/native-select';
@@ -222,7 +224,11 @@ export function DayMap({
                             <li key={visit.id}>
                                 <button
                                     type="button"
-                                    className="flex w-full items-start gap-3 rounded-lg border p-3 text-left hover:bg-muted/50"
+                                    className={cn(
+                                        'flex w-full items-start gap-3 rounded-lg border p-3 text-left hover:bg-muted/50',
+                                        isFinishedJob(visit.job.status) &&
+                                            'opacity-50 grayscale',
+                                    )}
                                     onClick={() => onOpen(visit)}
                                 >
                                     <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm text-primary-foreground">

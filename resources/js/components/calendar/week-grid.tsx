@@ -6,6 +6,7 @@ import { dayLabel, inLane } from '@/components/calendar/types';
 import { useClock } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
+import { isFinishedJob } from '@/components/jobs/types';
 import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
 
@@ -152,6 +153,10 @@ export function WeekGrid({
                                                             : 'border-l-4 border-l-muted-foreground/40 opacity-80',
                                                         visit.conflict &&
                                                             'border-destructive ring-1 ring-destructive',
+                                                        isFinishedJob(
+                                                            visit.job.status,
+                                                        ) &&
+                                                            'opacity-50 grayscale',
                                                     )}
                                                 >
                                                     <span className="flex items-center gap-1 font-medium">

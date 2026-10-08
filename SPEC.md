@@ -96,8 +96,8 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 - **Property:** address in the format of its country (Google Places autocomplete, geocoded), access notes, gate/buzzer code. A customer can have many properties. A strata building can have many **units**.
 - **Appliance** (appliance repair vertical): property, type (washer, dryer, fridge, range, dishwasher, etc.), brand, model number, serial number, photo of the rating plate, install/purchase date, warranty info, full repair history.
 - **Job:** brand, customer, property, appliance(s), job type (per vertical — appliance repair: repair / warranty /
-  maintenance / installation / vent cleaning / inspection; handyman: repair / installation / assembly / mounting /
-  maintenance / inspection), source, assigned user(s), scheduled window, estimated duration, status, notes, photos, checklists, signatures. A job can have several **visits** (diagnosis visit → parts → repair visit).
+  maintenance / inspection; handyman: repair / installation / assembly / mounting /
+  maintenance / inspection), source, assigned user(s), scheduled window, estimated duration, status, notes, photos, checklists, signatures. **A job is one booking**: the interface shows no separate visits. A second trip (diagnosis → parts → repair) is a new time for the same job; the times are stored as visits internally (calendar, On my way / Start / Finish, time on job) and earlier times stay in the job history.
 - **Estimate**, **Invoice**, **Payment**, **Price book item**, **Parts order**, **Warranty claim**, **Service plan**, **Inspection report**, **Message**, **Attachment**, **Activity log**.
 
 ### Job statuses
@@ -129,6 +129,8 @@ return. Each job counts once; access follows company, brand and technician assig
 - Calendar (day / week), drag-and-drop, per-technician lanes.
 - Arrival windows, durations, travel buffer.
 - Map view of the day's jobs.
+- Completed, invoiced and paid jobs are greyed out in every list and hidden from the calendar by default
+  ("Show completed" brings them back, greyed out).
 - Assign to own technicians or pass to a subcontractor.
 
 ### 7.4 Technician mobile view (PWA)
@@ -153,6 +155,12 @@ return. Each job counts once; access follows company, brand and technician assig
 
 - Invoice from job in one tap; line items, taxes, discounts, deposits, partial payments.
 - Each estimate/invoice item can inherit enabled document taxes or select its own subset, including no taxes.
+  Each tax rate sets the line types it is charged on by default (labor / parts / materials, e.g. BC PST on parts and
+  materials only); it can still be ticked or unticked on a single line.
+- Line warranty applies to labor and parts only; materials carry no warranty (not shown, printed or counted).
+- Manual "Mark as paid" from the job and the invoice: Cash / Card / E-transfer (Bank transfer outside Canada) /
+  Crypto / Other / Check, amount = balance, date = today; a partial payment leaves the balance visible. When an
+  invoice is paid in full the app asks "Send Google Review request?" (§8) and then offers "Complete job" in one tap.
   Named rates can be activated/deactivated. Existing documents retain their tax names, rates and selections.
 - Configurable taxes per company (§1.1): several named rates, compound taxes, prices with or without tax. Examples:
   BC — GST 5% + PST 7%; a US city — one combined sales tax rate; UK — VAT 20% with tax-inclusive prices.
@@ -240,7 +248,7 @@ from the company number (provider voice).
 ### 7.11 Price book and materials
 
 - Services and parts catalog with cost and price, categories, per-brand availability.
-- Add to estimates/invoices quickly. Parts and materials use a manually entered customer price and a separate private purchase price. Only the person who entered the purchase price sees it or its generated difference; other technicians, Owners/Admins and customer documents do not. No markup scale or automatic selling-price calculation.
+- Add to estimates/invoices quickly. Parts and materials use a manually entered customer price and a separate private purchase price. Only the person who entered the purchase price sees it or its generated difference; other technicians, Owners/Admins and customer documents do not. Exception: the Owner's profit totals (§7.13) include everyone's costs without showing any line. No markup scale or automatic selling-price calculation.
 
 ### 7.12 Team
 
@@ -251,10 +259,23 @@ from the company number (provider voice).
 ### 7.13 Reports
 
 - Revenue by brand, technician, job type, lead source, period.
+- **Profit** for a day / week / month / year (or any period): revenue without taxes − cost of parts and materials −
+  card processing fees − business expenses (price plus non-recoverable taxes) − mileage at the company rate, with the
+  margin in %. Parts/materials without a cost count as 0 and are listed.
 - Average ticket, estimate conversion rate.
 - Accounts receivable aging.
 - Jobs waiting for parts.
 - Warranty claims outstanding.
+
+#### Mileage log
+
+- Trips: date, from, to, distance, purpose, type (customer / parts store / supplier / other), driver.
+- Trips to customers are created when a job is started: from the job started before it that day (or the person's
+  start address, e.g. home) to the job's address; road distance from Google Distance Matrix (server key in `.env`),
+  editable. Other trips are added by hand with "+ Trip".
+- Distances in the company unit (km or mi; miles by default in the US/UK), a company rate per unit, month and year
+  totals, CSV export of the month or year (date, route, purpose, distance). Technicians see their own trips;
+  Owners/Admins see everyone's.
 
 #### Business expenses (bookkeeping)
 
@@ -266,7 +287,7 @@ from the company number (provider voice).
   No combined expense counter or overall amount. Filter/search/pagination and CSV export for bookkeeping.
 - Owners/Admins can filter company expenses by employee and see price/tax/total per employee and currency; technicians see and manage their own entries. Members manage categories
   they created; the office manages all categories. Archive categories without losing historical records.
-- Expenses do not change a job's margin or appear on customer documents. Receipts and removed records are
+- Expenses do not change a job's margin or appear on customer documents (they are part of the company profit). Receipts and removed records are
   retained privately; changes are audited.
 
 ### 7.14 Integrations
@@ -282,7 +303,8 @@ from the company number (provider voice).
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).
   Each location: name, direct review link, optional brand. Each brand may pick a **default location** (preselected).
-- The **only** way to send a request: after every invoice send (email or SMS), the app asks **"Send Google Review
+- The **only** ways to send a request: after every invoice send (email or SMS), and after an invoice is paid in full,
+  the app asks **"Send Google Review
   request?"** with **Yes** and **No**, nothing preselected. No closes it. Yes shows a **Location** dropdown, a
   **Phone** field (the customer's phone, editable) and **Send**, which sends the chosen location's review link as a
   **separate SMS** (Automatic mode) or opens it on the technician's phone (*From technician's phone* mode). In *Off*

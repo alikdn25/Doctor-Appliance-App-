@@ -11,6 +11,7 @@ use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\JobType;
 use App\Enums\LeadSource;
+use App\Enums\PaymentMethod;
 use App\Enums\PhotoKind;
 use App\Enums\VisitStatus;
 use App\Enums\VisitType;
@@ -386,7 +387,7 @@ class JobController extends Controller
                 'currency' => $job->previousJob->invoices()->value('currency') ?? currentCompany()->currency,
             ] : null,
             'warrantyLines' => $job->invoices->where('status', '!=', InvoiceStatus::Void)
-                ->flatMap(fn (Invoice $invoice) => $invoice->items()->get()->map(fn (InvoiceItem $item) => [
+                ->flatMap(fn (Invoice $invoice) => $invoice->items()->get()->filter(fn (InvoiceItem $item) => $item->hasWarranty())->map(fn (InvoiceItem $item) => [
                     'id' => $item->id,
                     'invoice' => $invoice->number,
                     'description' => $item->description,
@@ -444,6 +445,12 @@ class JobController extends Controller
             'manufacturers' => CustomerController::manufacturers(),
             'today' => CarbonImmutable::now($timezone)->format('Y-m-d'),
             'photoKinds' => PhotoKind::options(),
+            // "Mark as paid": invoices with money owed that this person may take a payment for.
+            'payable' => $job->invoices
+                ->filter(fn (Invoice $i) => ! $i->isVoid() && $i->balance > 0 && Gate::allows('recordPayment', $i))
+                ->map(fn (Invoice $i) => ['id' => $i->id, 'number' => $i->number, 'balance' => $i->balance, 'currency' => $i->currency])
+                ->values(),
+            'paymentMethods' => PaymentMethod::manualOptions(currentCompany()),
         ]);
     }
 

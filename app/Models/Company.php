@@ -121,6 +121,8 @@ class Company extends Model
         'quiet_hours_start',
         'quiet_hours_end',
         'message_templates',
+        'distance_unit',
+        'mileage_rate',
     ];
 
     protected $attributes = [
@@ -150,6 +152,8 @@ class Company extends Model
             $company->currency ??= Countries::currency($company->country);
             $company->locale ??= Countries::locale($company->country);
             $company->timezone ??= Countries::timezone($company->country);
+            // Road distances are in miles in the USA, the UK, Liberia and Myanmar; kilometres elsewhere.
+            $company->distance_unit ??= in_array($company->country, ['US', 'GB', 'LR', 'MM'], true) ? 'mi' : 'km';
         });
     }
 
@@ -160,6 +164,7 @@ class Company extends Model
     {
         return [
             'status' => CompanyStatus::class,
+            'mileage_rate' => 'integer',
             'subscription_status' => SubscriptionStatus::class,
             'vertical' => Vertical::class,
             'default_payment_terms' => PaymentTerms::class,

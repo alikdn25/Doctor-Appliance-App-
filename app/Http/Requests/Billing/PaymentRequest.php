@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * A manual payment: amount (major units of the invoice currency, e.g. dollars), method, reference for the own terminal, note for "other".
+ * A manual payment: amount (major units of the invoice currency, e.g. dollars), method, optional reference, note for "other".
  */
 class PaymentRequest extends FormRequest
 {
@@ -34,7 +34,7 @@ class PaymentRequest extends FormRequest
         return [
             'amount' => ['required', 'numeric', 'gt:0', DocumentRequest::moneyRule($this->currency())],
             'method' => ['required', Rule::in(array_map(fn (PaymentMethod $m) => $m->value, PaymentMethod::manual(currentCompany())))],
-            'reference' => ['nullable', 'string', 'max:100', Rule::requiredIf($this->input('method') === PaymentMethod::CardTerminal->value)],
+            'reference' => ['nullable', 'string', 'max:100'],
             'note' => ['nullable', 'string', 'max:1000', Rule::requiredIf($this->input('method') === PaymentMethod::Other->value)],
             'receipt' => ['nullable', 'file', 'image', 'max:8192'],
             'received_on' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:'.$this->today()],

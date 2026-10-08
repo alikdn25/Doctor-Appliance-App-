@@ -20,6 +20,7 @@ use App\Support\Billing\Warranties;
 use App\Support\Billing\Warranty;
 use App\Support\Locale\Currencies;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -155,8 +156,9 @@ class SaveBillingDocument
         // Lines already saved, to keep their cost when the person editing cannot see costs.
         $previous = $document->exists ? $document->items()->get()->keyBy('id') : collect();
         $services = Service::query()->whereIn('id', array_filter(array_column($data['items'], 'service_id')))->get()->keyBy('id');
+        $rates = TaxRate::query()->whereIn('id', array_filter(array_column($taxes, 'tax_rate_id')))->get();
 
-        $items = array_values(array_map(function (array $item) use ($estimate, $company, $previous, $services, $user, $conversion) {
+        $items = array_values(array_map(function (array $item) use ($estimate, $company, $previous, $services, $user, $conversion, $rates) {
             $kind = $item['kind'] ?? null;
             $kind = $kind instanceof LineKind ? $kind : (LineKind::tryFrom((string) $kind) ?? LineKind::Service);
             $old = isset($item['id']) ? $previous->get($item['id']) : null;
@@ -177,7 +179,7 @@ class SaveBillingDocument
                 'quantity' => (string) $item['quantity'],
                 'unit_price' => (int) $item['unit_price'],
                 'taxable' => (bool) $item['taxable'],
-                'tax_rate_ids' => array_key_exists('tax_rate_ids', $item) ? $item['tax_rate_ids'] : $old?->tax_rate_ids,
+                'tax_rate_ids' => array_key_exists('tax_rate_ids', $item) ? $item['tax_rate_ids'] : ($old !== null ? $old->tax_rate_ids : self::defaultTaxIds($rates, $kind)),
                 'kind' => $kind,
                 'service_id' => $item['service_id'] ?? null,
                 'part_number' => $item['part_number'] ?? null,
@@ -197,6 +199,11 @@ class SaveBillingDocument
             $default = Warranty::default($company, $kind, $line['unit_price'], $services->get($line['service_id']));
             $line['warranty_value'] = isset($item['warranty_value']) ? (int) $item['warranty_value'] : $default['value'];
             $line['warranty_unit'] = $item['warranty_unit'] ?? ($line['warranty_value'] === $default['value'] ? $default['unit'] : WarrantyUnit::Days->value);
+            // Materials have no warranty; a value saved on the line before stays as it was.
+            if ($kind === LineKind::Material) {
+                $line['warranty_value'] = $old?->warranty_value;
+                $line['warranty_unit'] = $old?->warranty_unit;
+            }
 
             return $line;
         }, $data['items']));
@@ -248,6 +255,22 @@ class SaveBillingDocument
         if ($document instanceof Invoice) {
             Warranties::stamp($document);
         }
+    }
+
+    /**
+     * Taxes a new line gets when none were chosen for it: the document's taxes that apply to its type
+     * (null = all of them, as before per-type rules).
+     *
+     * @param  Collection<int, TaxRate>  $rates
+     * @return list<int>|null
+     */
+    private static function defaultTaxIds(Collection $rates, LineKind $kind): ?array
+    {
+        if ($rates->every(fn (TaxRate $rate) => $rate->applies_to === null)) {
+            return null;
+        }
+
+        return $rates->filter(fn (TaxRate $rate) => $rate->appliesTo($kind))->pluck('id')->values()->all();
     }
 
     /**

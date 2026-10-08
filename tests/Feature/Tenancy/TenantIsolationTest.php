@@ -47,6 +47,7 @@ use App\Models\SmsRegistration;
 use App\Models\SupplierReceipt;
 use App\Models\SupplierReceiptLink;
 use App\Models\TaxRate;
+use App\Models\Trip;
 use App\Support\Tenancy\MissingTenantException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -136,6 +137,7 @@ beforeEach(function () {
             $cost->save();
             $receipt = SupplierReceipt::create(['path' => 'x/receipt-'.$job->id.'.pdf', 'original_name' => 'r.pdf', 'mime' => 'application/pdf', 'size' => 10]);
             SupplierReceiptLink::create(['supplier_receipt_id' => $receipt->id, 'service_job_id' => $job->id]);
+            Trip::create(['user_id' => $owner->id, 'trip_date' => now()->toDateString(), 'type' => 'other', 'from_address' => 'Secret from', 'distance_km' => 5]);
             CashMovement::create(['user_id' => $owner->id, 'type' => 'collected', 'amount' => 5000, 'currency' => $invoice->currency, 'occurred_on' => now()->toDateString()]);
             $company = currentCompany();
             $expenseCategory = BusinessExpenseCategory::query()->forceCreate(['name' => 'Fuel', 'created_by' => $owner->id]);
@@ -193,6 +195,7 @@ dataset('tenant models', [
     'supplier receipts' => [SupplierReceipt::class],
     'supplier receipt links' => [SupplierReceiptLink::class],
     'cash movements' => [CashMovement::class],
+    'trips' => [Trip::class],
     'business expenses' => [BusinessExpense::class],
     'business expense categories' => [BusinessExpenseCategory::class],
     'checklist templates' => [ChecklistTemplate::class],
@@ -230,7 +233,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         PaymentProviderConnection::class,
         JobAppliance::class, JobAssignee::class, JobBringItem::class, JobChecklistItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
-        Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class,
+        Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class, Trip::class,
     ])->sort()->values()->all());
 });
 

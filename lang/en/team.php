@@ -4,7 +4,7 @@ return [
     'transfer_jobs' => 'Transfer jobs',
     'transfer_to' => 'Assign unfinished work to',
     'choose_replacement' => 'Choose a team member',
-    'transfer_hint' => 'Move all unfinished jobs from :name, including work waiting for parts or scheduling. Completed visits and history keep their original technician.',
+    'transfer_hint' => 'Move all unfinished jobs from :name, including work waiting for parts or scheduling. Completed work and history keep their original technician.',
     'replace_technician' => 'Replace technician',
     'replace_hint' => 'Reuse this company login for a new technician with a new password. Unfinished jobs move automatically; completed work keeps the previous technician’s name.',
     'login_kept' => 'Login email stays :email.',

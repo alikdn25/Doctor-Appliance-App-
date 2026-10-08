@@ -23,5 +23,8 @@ return [
         'is_compound' => 'Compound tax',
         'is_default' => 'Apply by default on new estimates and invoices',
         'is_active' => 'Active',
+        'applies_to' => 'Charged on',
     ],
+    'applies_to_hint' => 'New lines of these types get this tax. It can still be ticked or unticked on any line.',
+    'applies_to_list' => 'on :kinds',
 ];

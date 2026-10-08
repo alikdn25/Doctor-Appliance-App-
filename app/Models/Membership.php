@@ -33,7 +33,7 @@ class Membership extends Model
 
     protected $table = 'company_user';
 
-    protected $fillable = ['company_id', 'user_id', 'role', 'is_active'];
+    protected $fillable = ['company_id', 'user_id', 'role', 'is_active', 'trip_start_address'];
 
     protected $attributes = [
         'is_active' => true,

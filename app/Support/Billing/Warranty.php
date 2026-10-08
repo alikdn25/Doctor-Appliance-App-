@@ -13,7 +13,7 @@ use Carbon\CarbonInterface;
  * Warranty of a line: a length (0 = no warranty) in days, weeks or months, and the day it ends.
  *
  * Default for a new line: the price book service's warranty → the company's defaults (labour for services and
- * materials; parts, or the "above threshold" warranty for parts priced above the threshold).
+ * materials have none; parts, or the "above threshold" warranty for parts priced above the threshold).
  */
 class Warranty
 {
@@ -22,6 +22,10 @@ class Warranty
      */
     public static function default(Company $company, LineKind $kind, int $unitPrice, ?Service $service = null): array
     {
+        if ($kind === LineKind::Material) {
+            return ['value' => 0, 'unit' => WarrantyUnit::Days->value];
+        }
+
         if ($service?->warranty_value !== null) {
             return ['value' => $service->warranty_value, 'unit' => $service->warranty_unit ?? WarrantyUnit::Days->value];
         }

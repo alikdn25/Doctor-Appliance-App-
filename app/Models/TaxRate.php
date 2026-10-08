@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\LineKind;
 use App\Models\Concerns\BelongsToCompany;
 use Database\Factories\TaxRateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool $is_default
  * @property bool $is_active
  * @property int $sort_order
+ * @property list<string>|null $applies_to Line types (LineKind values) charged by default; null = all
  */
 class TaxRate extends Model
 {
@@ -27,7 +29,7 @@ class TaxRate extends Model
     /** @use HasFactory<TaxRateFactory> */
     use HasFactory;
 
-    protected $fillable = ['name', 'rate', 'is_compound', 'is_default', 'is_active', 'sort_order', 'is_recoverable'];
+    protected $fillable = ['name', 'rate', 'is_compound', 'is_default', 'is_active', 'sort_order', 'is_recoverable', 'applies_to'];
 
     protected $attributes = [
         'is_compound' => false,
@@ -49,6 +51,15 @@ class TaxRate extends Model
             'is_active' => 'boolean',
             'sort_order' => 'integer',
             'is_recoverable' => 'boolean',
+            'applies_to' => 'array',
         ];
+    }
+
+    /**
+     * Whether a new line of this type is charged this tax by default.
+     */
+    public function appliesTo(LineKind $kind): bool
+    {
+        return $this->applies_to === null || in_array($kind->value, $this->applies_to, true);
     }
 }

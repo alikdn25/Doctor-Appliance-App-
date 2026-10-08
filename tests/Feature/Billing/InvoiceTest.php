@@ -57,7 +57,7 @@ test('an invoice is created from a job with the next number', function () {
             ->where('document.balance', 28050)
             ->where('can.recordPayment', true)
             ->where('can.void', true)
-            ->has('paymentMethods', 5));
+            ->has('paymentMethods', 6));
 });
 
 test('numbers already taken are skipped', function () {

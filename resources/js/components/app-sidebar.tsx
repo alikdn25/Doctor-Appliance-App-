@@ -5,6 +5,7 @@ import {
     BookOpen,
     Building,
     Building2,
+    Car,
     MessageSquare,
     CalendarDays,
     ClipboardList,
@@ -46,6 +47,7 @@ import { edit as companySettings } from '@/routes/company/settings';
 import { index as invoices } from '@/routes/invoices';
 import { index as messageInbox } from '@/routes/messages';
 import { index as expenses } from '@/routes/expenses';
+import { index as trips } from '@/routes/trips';
 import {
     create as bookCustomer,
     index as jobs,
@@ -122,6 +124,11 @@ export function AppSidebar() {
                   title: 'nav.business_expenses',
                   href: expenses(),
                   icon: Wallet,
+              },
+              can.viewBusinessExpenses && {
+                  title: 'nav.mileage',
+                  href: trips(),
+                  icon: Car,
               },
           ].filter(Boolean) as NavItem[])
         : [];

@@ -107,7 +107,7 @@ test('an old unfinished repair remains in the backlog and map fallback keeps vis
         }),
     ).toBeVisible();
     await page
-        .getByRole('combobox', { name: 'Visits to show' })
+        .getByRole('combobox', { name: 'Jobs to show' })
         .selectOption({ label: 'Browser Technician' });
     await expect(
         page.getByRole('button', {

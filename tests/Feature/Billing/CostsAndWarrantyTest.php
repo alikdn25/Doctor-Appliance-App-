@@ -76,11 +76,12 @@ test('lines carry kind, cost, supplier tax, units, internal flag and the default
         // Cost: 40 + PST 2.80 (not recoverable); GST is recoverable.
         ->and($pump->totalCost())->toBe(4280)
         ->and($nuts->unit)->toBe('pcs')->and($nuts->bill_to_customer)->toBeFalse()->and($nuts->totalCost())->toBe(100)
-        // Warranty defaults: labour 30 days, parts 90 days, parts above $300: 3 months; materials like labour.
+        // Warranty defaults: labour 30 days, parts 90 days, parts above $300: 3 months; materials have none.
         ->and([$labour->warranty_value, $labour->warranty_unit])->toBe([30, 'days'])
         ->and([$pump->warranty_value, $pump->warranty_unit])->toBe([90, 'days'])
         ->and([$board->warranty_value, $board->warranty_unit])->toBe([3, 'months'])
-        ->and([$nuts->warranty_value, $nuts->warranty_unit])->toBe([30, 'days'])
+        ->and([$nuts->warranty_value, $nuts->warranty_unit])->toBe([null, null])
+        ->and($nuts->warranty_ends_on)->toBeNull()
         // Until the job is closed the warranty runs from the invoice date.
         ->and($pump->warranty_ends_on->toDateString())->toBe('2027-01-12');
 
@@ -168,12 +169,12 @@ test('closing the job sets the warranty dates; the summary changes them, "apply 
 
     $this->get(route('jobs.show', ['job' => $this->job->id, 'warranty' => 1]))->assertInertia(fn (Assert $page) => $page
         ->where('openWarranty', true)
-        ->has('warrantyLines', 4));
+        ->has('warrantyLines', 3));
 
-    $this->put(route('jobs.warranties.update', $this->job), ['items' => $invoice->items->map(fn ($i) => [
+    $this->put(route('jobs.warranties.update', $this->job), ['items' => $invoice->items->filter->hasWarranty()->map(fn ($i) => [
         'id' => $i->id, 'warranty_value' => 6, 'warranty_unit' => 'months',
     ])->all()])->assertRedirect();
-    expect(inCompany($this->company, fn () => $invoice->fresh()->items->pluck('warranty_ends_on')->map->toDateString()->unique()->all()))->toBe(['2027-04-19']);
+    expect(inCompany($this->company, fn () => $invoice->fresh()->items->filter->hasWarranty()->pluck('warranty_ends_on')->map->toDateString()->unique()->values()->all()))->toBe(['2027-04-19']);
 });
 
 test('converting an estimate keeps costs, internal lines and warranties', function () {
@@ -235,4 +236,30 @@ test('supplier receipts are internal, can cover several jobs and are not reachab
     app(CurrentCompany::class)->forget();
     $this->actingAs(memberOf(Company::factory()->create()));
     $this->get(route('receipts.show', $receipt))->assertNotFound();
+});
+
+test('materials carry no warranty: none by default, none printed, an old value kept but not counted', function () {
+    $this->post(route('invoices.store', $this->job), documentPayload(['items' => [
+        ['description' => 'Hose clamp', 'kind' => 'material', 'quantity' => '1', 'unit_price' => '10.00', 'taxable' => true, 'warranty_value' => 30, 'warranty_unit' => 'days'],
+        ['description' => 'Drain pump', 'kind' => 'part', 'quantity' => '1', 'unit_price' => '89.00', 'taxable' => true],
+    ]]))->assertSessionHasNoErrors();
+    $invoice = inCompany($this->company, fn () => Invoice::query()->with('items')->sole());
+    [$clamp] = $invoice->items->all();
+
+    expect($clamp->warranty_value)->toBeNull()->and($clamp->warranty_ends_on)->toBeNull();
+
+    // A material line saved with a warranty before this rule keeps it in the database, unused.
+    inCompany($this->company, fn () => $clamp->forceFill(['warranty_value' => 30, 'warranty_unit' => 'days'])->save());
+    $this->put(route('invoices.update', $invoice), documentPayload(['items' => [
+        ['id' => $clamp->id, 'description' => 'Hose clamp', 'kind' => 'material', 'quantity' => '2', 'unit_price' => '10.00', 'taxable' => true],
+        ['id' => $invoice->items[1]->id, 'description' => 'Drain pump', 'kind' => 'part', 'quantity' => '1', 'unit_price' => '89.00', 'taxable' => true],
+    ]]))->assertSessionHasNoErrors();
+    $clamp = inCompany($this->company, fn () => Invoice::query()->sole()->items()->where('kind', 'material')->sole());
+    expect($clamp->warranty_value)->toBe(30)->and($clamp->warranty_ends_on)->toBeNull();
+
+    $print = inCompany($this->company, fn () => DocumentPrint::data($invoice->fresh()));
+    expect($print['items'][0]['warranty'])->toBeNull()->and($print['items'][1]['warranty'])->toBe('90 days');
+    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
+        ->where('document.items.0.warranty_value', null)
+        ->where('document.items.0.warranty_label', ''));
 });

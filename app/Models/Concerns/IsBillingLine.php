@@ -77,6 +77,14 @@ trait IsBillingLine
         return $cost;
     }
 
+    /**
+     * Materials carry no warranty: a value saved on one before is kept but never shown or counted.
+     */
+    public function hasWarranty(): bool
+    {
+        return $this->kind !== LineKind::Material;
+    }
+
     public function warrantyLabel(): string
     {
         return Warranty::label($this->warranty_value, $this->warranty_unit);

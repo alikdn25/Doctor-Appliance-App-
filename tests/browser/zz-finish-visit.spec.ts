@@ -18,7 +18,7 @@ test('the technician finishes a visit on the Finish visit screen with free-text 
     const tech = await context.newPage();
     await tech.goto(`http://127.0.0.1:8000/jobs/${fixture.job_id}`);
     await tech.getByRole('button', { name: 'Start job', exact: true }).click();
-    await tech.getByRole('link', { name: 'Finish visit', exact: true }).click();
+    await tech.getByRole('link', { name: 'Finish job', exact: true }).click();
     await expect(tech).toHaveURL(/\/visits\/\d+\/finish$/);
     await expect(tech.getByText('Jane Browser').first()).toBeVisible();
     await tech
@@ -31,9 +31,7 @@ test('the technician finishes a visit on the Finish visit screen with free-text 
         path: info.outputPath('finish-visit.png'),
         fullPage: true,
     });
-    await tech
-        .getByRole('button', { name: 'Finish Visit', exact: true })
-        .click();
+    await tech.getByRole('button', { name: 'Finish Job', exact: true }).click();
     await expect(tech).toHaveURL(new RegExp(`/jobs/${fixture.job_id}`));
     await expect(
         tech.getByText('Replaced drain pump. Tested, no leaks.').first(),

@@ -30,10 +30,11 @@ const referenceLabel: Record<string, string> = {
     check: 'payments.fields.check_number',
     bank_transfer: 'payments.fields.transfer_reference',
     card_terminal: 'payments.fields.transaction_reference',
+    crypto: 'payments.fields.transaction_reference',
 };
 
 /**
- * Manual payment: pick the method with one tap, the amount defaults to the full balance.
+ * "Mark as paid": pick the method with one tap; the amount defaults to the balance, the date to today.
  */
 export function PaymentDialog({
     open,
@@ -207,7 +208,6 @@ export function PaymentDialog({
                             <Input
                                 id="payment-reference"
                                 maxLength={100}
-                                required={method === 'card_terminal'}
                                 value={form.data.reference}
                                 onChange={(e) =>
                                     form.setData('reference', e.target.value)

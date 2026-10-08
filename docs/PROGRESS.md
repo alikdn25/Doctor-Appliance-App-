@@ -1,3 +1,36 @@
+# October 8 — owner's list: simpler invoice, taxes per line type, Mark as paid, no Visits, dossier, profit, mileage
+
+1. **New invoice / estimate form**: one dashed "Add item" opens a bottom sheet (price book search with price and
+   L/P/M type letter; "Or custom item" Labor / Part / Material). Items are compact rows (letter, name, "qty × price",
+   amount) that open on tap with a −/+ stepper, price, taxes, warranty, "+ Note", Remove and Done; a new item opens,
+   the rest stay folded. Dates fold into "Oct 8, 2026 · Due on receipt · Edit"; "+ Add discount" is a link; totals
+   list each tax; pinned Cancel + "Save · total". Line data and types unchanged.
+2. **Taxes per line type** (Settings → Taxes, "Charged on" Labor / Part / Material): new lines get the default taxes
+   of their type; a tax can be ticked on one line (e.g. PST on a labor line). Rates without the setting apply to
+   every line as before.
+3. **Materials carry no warranty**: hidden on the form and price book, not printed, not counted (old values kept).
+4. **Mark as paid** on the job page (and invoice): Cash / Card / E-transfer (Bank transfer outside Canada) / Crypto /
+   Other / Check, amount = balance, date. Partial payments keep the balance visible. Paid in full → "Send Google
+   Review request?" → "Complete job" in one tap (or "Finish job" while it is under way).
+5. **Completed jobs** are grey in lists; the calendar hides them unless "Show completed" (remembered per device).
+6. **No Visits in the interface**: a Schedule block on the job (time, Change time / Remove time, "Schedule a new
+   time" for a second trip on the same job); "visit" wording replaced by job/time everywhere. Visits stay in the
+   database and keep driving the calendar and the field steps.
+7. **Customer dossier**: totals (jobs, paid, owes) and a job history (date, appliance, work done, amount,
+   Paid / Partly paid / Unpaid, links to job and invoice), next to contacts, addresses, notes and appliances.
+8. **Profit** in Reports for Day / Week / Month / Year: revenue without taxes − parts/materials cost − card fees −
+   expenses (price + non-recoverable tax) − mileage at the company rate, margin %; items without a cost listed.
+   The Owner's totals include everyone's private costs; an Admin's stay hidden when they would reveal them.
+9. **Mileage log** (menu → Money and reports → Mileage): trips to customers are logged when a job is started
+   (previous job or the person's start address → job address, distance from Google Distance Matrix in the
+   background, editable), "+ Trip" for stores/suppliers/other, month and year totals, CSV of month/year. Company
+   settings: distance unit (km/mi) and rate per unit.
+
+- Tests: new backend tests for every item (taxes per type, warranty, mark as paid, dossier, mileage, profit,
+  tenant isolation of trips) and browser scenarios (invoice form, tax per type, mark as paid, calendar, no visits,
+  dossier, mileage, profit). 863 backend tests pass (the local-only deployment check aside); 67 browser scenarios pass.
+- Next: Stage 10 — online booking bot (plan and database schema sent for the owner's approval first).
+
 # October 6 — SMS right under Call/Navigate, text or call any number
 
 - Job page: the Messages (SMS) block now sits right under Call and Navigate; Appliances come after it.

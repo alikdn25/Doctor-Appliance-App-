@@ -3,6 +3,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { FormField } from '@/components/form-field';
+import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,7 +28,12 @@ type TaxRate = {
     is_default: boolean;
     is_active: boolean;
     sort_order: number;
+    /** Line types charged by default; null = all. */
+    applies_to: LineKind[] | null;
 };
+
+type LineKind = 'service' | 'part' | 'material';
+const KINDS: LineKind[] = ['service', 'part', 'material'];
 
 type TaxForm = {
     name: string;
@@ -37,6 +43,7 @@ type TaxForm = {
     is_default: boolean;
     is_active: boolean;
     sort_order: number;
+    applies_to: LineKind[];
 };
 
 const formatRate = (rate: string) => `${Number(rate)}%`;
@@ -60,6 +67,7 @@ export default function TaxesIndex({
         is_active: true,
         is_recoverable: true,
         sort_order: 0,
+        applies_to: KINDS,
     });
 
     const openForm = (taxRate: TaxRate | null) => {
@@ -75,6 +83,7 @@ export default function TaxesIndex({
                       is_default: taxRate.is_default,
                       is_active: taxRate.is_active,
                       sort_order: taxRate.sort_order,
+                      applies_to: taxRate.applies_to ?? KINDS,
                   }
                 : {
                       name: '',
@@ -84,6 +93,7 @@ export default function TaxesIndex({
                       is_default: taxRates.length === 0,
                       is_active: true,
                       sort_order: taxRates.length,
+                      applies_to: KINDS,
                   },
         );
         setOpen(true);
@@ -151,6 +161,19 @@ export default function TaxesIndex({
                                     )}
                                     {taxRate.is_default && (
                                         <Badge>{t('taxes.default')}</Badge>
+                                    )}
+                                    {taxRate.applies_to !== null && (
+                                        <span className="text-xs text-muted-foreground">
+                                            {t('taxes.applies_to_list', {
+                                                kinds: taxRate.applies_to
+                                                    .map((kind) =>
+                                                        t(
+                                                            `billing.kinds.${kind}`,
+                                                        ),
+                                                    )
+                                                    .join(', '),
+                                            })}
+                                        </span>
                                     )}
                                     {!taxRate.is_active && (
                                         <Badge variant="secondary">
@@ -231,6 +254,42 @@ export default function TaxesIndex({
                                 required
                             />
                         </FormField>
+                        <fieldset className="grid gap-1">
+                            <legend className="text-sm font-medium">
+                                {t('taxes.fields.applies_to')}
+                            </legend>
+                            <p className="text-xs text-muted-foreground">
+                                {t('taxes.applies_to_hint')}
+                            </p>
+                            <div className="flex flex-wrap gap-x-4">
+                                {KINDS.map((kind) => (
+                                    <label
+                                        key={kind}
+                                        className="flex min-h-11 items-center gap-2 text-sm"
+                                    >
+                                        <Checkbox
+                                            checked={form.data.applies_to.includes(
+                                                kind,
+                                            )}
+                                            onCheckedChange={(c) =>
+                                                form.setData(
+                                                    'applies_to',
+                                                    KINDS.filter((k) =>
+                                                        k === kind
+                                                            ? c === true
+                                                            : form.data.applies_to.includes(
+                                                                  k,
+                                                              ),
+                                                    ),
+                                                )
+                                            }
+                                        />
+                                        {t(`billing.kinds.${kind}`)}
+                                    </label>
+                                ))}
+                            </div>
+                            <InputError message={form.errors.applies_to} />
+                        </fieldset>
                         <label className="flex min-h-9 items-start gap-2 text-sm">
                             <Checkbox
                                 checked={form.data.is_compound}

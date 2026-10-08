@@ -19,7 +19,11 @@ Booking, invoice and payment (phone):
    arrival window chips, technician, collapsed "More options" (manufacturer warranty, lead source, note), confirmation
    text checkbox. One "Book job" button that repeats the chosen time.
 7. Invoice — bill to Customer or Manufacturer, item lines (price book or custom line), subtotal, company taxes, total,
-   balance due, repair warranty; pinned "Send" and "Take payment".
+   balance due, repair warranty; pinned "Send" and "Take payment". The edit form (October 8): one dashed full-width
+   "Add item" opening a bottom sheet (price book search with price and type letter, "Or custom item" Labor / Part /
+   Material); items as compact rows with a type letter tile (L dark blue, P orange, M grey), "qty × price" and the
+   amount, opening on tap (stepper, price, taxes, warranty, + Note, Remove, Done); dates folded into one line; discount
+   as a link; totals with each tax; pinned Cancel + "Save · total".
 8. Take payment — large balance, partial payment link, 5 methods (card via Square, cash with change, check, bank
    transfer, payment link); tip chips only for card; one button that names the action and amount.
 9. Paid — green raised check, amount, tip, method, receipt sent, scheduled Google review request, back to My Jobs.
