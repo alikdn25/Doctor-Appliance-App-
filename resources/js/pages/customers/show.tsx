@@ -17,8 +17,14 @@ import { DocumentList } from '@/components/billing/document-list';
 import type { DocumentRow } from '@/components/billing/types';
 import { ApplianceDialog } from '@/components/customers/appliance-dialog';
 import { PropertyDialog } from '@/components/customers/property-dialog';
-import { JobList } from '@/components/jobs/job-list';
-import type { JobRow } from '@/components/jobs/types';
+import {
+    CustomerHistory,
+    CustomerSummaryTiles,
+} from '@/components/customers/customer-history';
+import type {
+    CustomerSummary,
+    HistoryRow,
+} from '@/components/customers/customer-history';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
 import {
@@ -93,7 +99,8 @@ type Customer = {
 
 type Props = {
     customer: Customer;
-    jobs: JobRow[];
+    history: HistoryRow[];
+    summary: CustomerSummary;
     estimates: DocumentRow[];
     invoices: DocumentRow[];
     canCreateJob: boolean;
@@ -106,7 +113,8 @@ type Props = {
 
 export default function CustomerShow({
     customer,
-    jobs,
+    history,
+    summary,
     estimates,
     invoices,
     canCreateJob,
@@ -193,6 +201,7 @@ export default function CustomerShow({
                         />
                     </div>
                 </div>
+                <CustomerSummaryTiles summary={summary} />
                 <CustomerNotes notes={customer.notes} />
 
                 {(primaryPhone || primaryEmail) && (
@@ -506,16 +515,6 @@ export default function CustomerShow({
                 </section>
 
                 <section className="space-y-3">
-                    <h2 className="text-base font-medium">
-                        {t('messages.title')}
-                    </h2>
-                    <MessageHistory
-                        messages={messaging.messages}
-                        showJobLinks
-                    />
-                </section>
-
-                <section className="space-y-3">
                     <div className="flex items-center justify-between">
                         <h2 className="text-base font-medium">
                             {t('customers.sections.jobs')}
@@ -532,7 +531,20 @@ export default function CustomerShow({
                             </Button>
                         )}
                     </div>
-                    <JobList jobs={jobs} empty={t('customers.no_jobs')} />
+                    <CustomerHistory
+                        rows={history}
+                        empty={t('customers.no_jobs')}
+                    />
+                </section>
+
+                <section className="space-y-3">
+                    <h2 className="text-base font-medium">
+                        {t('messages.title')}
+                    </h2>
+                    <MessageHistory
+                        messages={messaging.messages}
+                        showJobLinks
+                    />
                 </section>
 
                 <section className="space-y-2">

@@ -36,6 +36,20 @@ return [
     'has_jobs' => 'This customer has jobs and cannot be deleted.',
     'no_jobs' => 'No jobs yet.',
 
+    'summary' => [
+        'title' => 'Customer totals',
+        'jobs' => 'Jobs',
+        'paid' => 'Paid',
+        'owed' => 'Owes',
+    ],
+    'history' => [
+        'payment' => [
+            'paid' => 'Paid',
+            'partial' => 'Partly paid',
+            'unpaid' => 'Unpaid',
+        ],
+        'open_invoice' => 'Invoice of job #:number',
+    ],
     'sections' => [
         'details' => 'Customer',
         'contacts' => 'Phones and emails',
@@ -43,7 +57,7 @@ return [
         'other' => 'Notes and tags',
         'properties' => 'Properties',
         'appliances' => 'Appliances',
-        'jobs' => 'Jobs',
+        'jobs' => 'Job history',
         'estimates' => 'Estimates',
         'invoices' => 'Invoices',
         'payments' => 'Payments',
