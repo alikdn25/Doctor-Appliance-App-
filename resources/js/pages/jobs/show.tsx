@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     AlarmClock,
+    Banknote,
     CalendarPlus,
     Car,
     CheckCircle2,
@@ -22,6 +23,8 @@ import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { ApplianceImage } from '@/components/appliance-image';
 import { DocumentList } from '@/components/billing/document-list';
+import { useMoney } from '@/components/billing/money';
+import { PaymentDialog } from '@/components/billing/payment-dialog';
 import type { DocumentRow } from '@/components/billing/types';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
@@ -175,6 +178,14 @@ type Props = {
     today: string;
     photoKinds: Option[];
     messaging: JobMessaging;
+    /** Invoices with money owed that this person may mark as paid. */
+    payable: {
+        id: number;
+        number: string;
+        balance: number;
+        currency: string;
+    }[];
+    paymentMethods: Option[];
 };
 
 /** Minutes since an ISO time, refreshed every 30 seconds. */
@@ -208,6 +219,8 @@ export default function JobShow({
     today,
     photoKinds,
     messaging,
+    payable,
+    paymentMethods,
     closureReasons,
     callback,
     warrantyLines,
@@ -224,6 +237,8 @@ export default function JobShow({
     const time = useCompanyTime();
     const [statusOpen, setStatusOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
+    const [paying, setPaying] = useState<Props['payable'][number] | null>(null);
+    const money = useMoney();
     const [warrantyOpen, setWarrantyOpen] = useState(openWarranty);
     const visitUnderWay = job.visits.some((v) =>
         ['on_the_way', 'in_progress'].includes(v.status),
@@ -356,6 +371,30 @@ export default function JobShow({
                         </Button>
                     )}
                 </div>
+
+                {/* Mark as paid: cash, card, e-transfer… with the balance as the amount. */}
+                {payable.length > 0 && (
+                    <div className="grid gap-2">
+                        {payable.map((invoice) => (
+                            <Button
+                                key={invoice.id}
+                                className="h-12 w-full text-base"
+                                onClick={() => setPaying(invoice)}
+                            >
+                                <Banknote />
+                                {payable.length === 1
+                                    ? `${t('payments.record')} · ${money(invoice.balance, invoice.currency)}`
+                                    : t('payments.mark_paid_invoice', {
+                                          number: invoice.number,
+                                          amount: money(
+                                              invoice.balance,
+                                              invoice.currency,
+                                          ),
+                                      })}
+                            </Button>
+                        ))}
+                    </div>
+                )}
 
                 {warrantyLines.length > 0 && can.work && (
                     <Button
@@ -1120,6 +1159,18 @@ export default function JobShow({
                     jobId={job.id}
                     lines={warrantyLines}
                     units={warrantyUnits}
+                />
+            )}
+
+            {paying && (
+                <PaymentDialog
+                    open={paying !== null}
+                    onOpenChange={(open) => !open && setPaying(null)}
+                    invoiceId={paying.id}
+                    balance={paying.balance}
+                    currency={paying.currency}
+                    methods={paymentMethods}
+                    today={today}
                 />
             )}
 

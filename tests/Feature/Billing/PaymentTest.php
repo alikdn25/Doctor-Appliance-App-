@@ -60,11 +60,12 @@ test('every manual method can be recorded, as partial payments', function () {
         ->paid_at->not->toBeNull();
 });
 
-test('the own terminal needs a transaction number and other needs a note', function () {
-    $this->post(route('payments.store', $this->invoice), ['amount' => '10', 'method' => 'card_terminal'])->assertSessionHasErrors('reference');
+test('a card payment needs no transaction number; other needs a note', function () {
     $this->post(route('payments.store', $this->invoice), ['amount' => '10', 'method' => 'other'])->assertSessionHasErrors('note');
+    $this->post(route('payments.store', $this->invoice), ['amount' => '10', 'method' => 'card_terminal'])->assertSessionHasNoErrors();
+    $this->post(route('payments.store', $this->invoice), ['amount' => '10', 'method' => 'crypto', 'reference' => '0xabc'])->assertSessionHasNoErrors();
 
-    expect(paymentsOf($this->invoice))->toHaveCount(0);
+    expect(paymentsOf($this->invoice)->pluck('method')->all())->toBe([PaymentMethod::CardTerminal, PaymentMethod::Crypto]);
 });
 
 test('a payment needs a positive amount, a manual method and no more than the balance', function () {
@@ -118,7 +119,7 @@ test('the invoice page shows payments with who took them', function () {
     $this->actingAs($this->owner)->get(route('invoices.show', $this->invoice))
         ->assertInertia(fn ($page) => $page
             ->has('document.payments', 1)
-            ->where('document.payments.0.method_label', 'Card (own terminal)')
+            ->where('document.payments.0.method_label', 'Card')
             ->where('document.payments.0.reference', 'T1')
             ->where('document.payments.0.user', $this->tech->name)
             ->where('document.amount_paid', 2000)

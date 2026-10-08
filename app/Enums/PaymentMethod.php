@@ -4,6 +4,7 @@ namespace App\Enums;
 
 use App\Enums\Concerns\HasOptions;
 use App\Models\Company;
+use App\Support\Tenancy\CurrentCompany;
 
 /**
  * How a payment was made. The manual methods are available in every company;
@@ -17,11 +18,17 @@ enum PaymentMethod: string
     case Check = 'check';
     case BankTransfer = 'bank_transfer';
     case CardTerminal = 'card_terminal';
+    case Crypto = 'crypto';
     case Other = 'other';
     case Online = 'online';
 
     public function label(): string
     {
+        // Canadian bank transfers are Interac e-Transfers; elsewhere the generic name is used.
+        if ($this === self::BankTransfer && app(CurrentCompany::class)->get()?->country === 'CA') {
+            return __('payments.methods.e_transfer');
+        }
+
         return __("payments.methods.{$this->value}");
     }
 
@@ -32,7 +39,7 @@ enum PaymentMethod: string
      */
     public static function manual(?Company $company = null): array
     {
-        $methods = [self::Cash, self::Check, self::BankTransfer, self::CardTerminal, self::Other];
+        $methods = [self::Cash, self::CardTerminal, self::BankTransfer, self::Crypto, self::Other, self::Check];
 
         return $company !== null && $company->accepts_cash === false
             ? array_values(array_filter($methods, fn (self $m) => $m !== self::Cash))
@@ -45,11 +52,6 @@ enum PaymentMethod: string
     public static function manualOptions(?Company $company = null): array
     {
         return array_map(fn (self $m) => ['value' => $m->value, 'label' => $m->label()], self::manual($company));
-    }
-
-    public function requiresReference(): bool
-    {
-        return $this === self::CardTerminal;
     }
 
     public function requiresNote(): bool

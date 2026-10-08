@@ -11,6 +11,7 @@ use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\JobType;
 use App\Enums\LeadSource;
+use App\Enums\PaymentMethod;
 use App\Enums\PhotoKind;
 use App\Enums\VisitStatus;
 use App\Enums\VisitType;
@@ -444,6 +445,12 @@ class JobController extends Controller
             'manufacturers' => CustomerController::manufacturers(),
             'today' => CarbonImmutable::now($timezone)->format('Y-m-d'),
             'photoKinds' => PhotoKind::options(),
+            // "Mark as paid": invoices with money owed that this person may take a payment for.
+            'payable' => $job->invoices
+                ->filter(fn (Invoice $i) => ! $i->isVoid() && $i->balance > 0 && Gate::allows('recordPayment', $i))
+                ->map(fn (Invoice $i) => ['id' => $i->id, 'number' => $i->number, 'balance' => $i->balance, 'currency' => $i->currency])
+                ->values(),
+            'paymentMethods' => PaymentMethod::manualOptions(currentCompany()),
         ]);
     }
 

@@ -2,7 +2,16 @@
 
 return [
     'title' => 'Payments',
-    'record' => 'Record payment',
+    'record' => 'Mark as paid',
+    'paid_in_full' => [
+        'title' => 'Paid in full',
+        'description' => ':number is paid. Close the job now?',
+        'complete' => 'Complete job',
+        'finish' => 'Finish visit',
+        'finish_hint' => 'A visit is still under way: finish it to close the job.',
+        'not_now' => 'Not now',
+    ],
+    'mark_paid_invoice' => 'Mark :number as paid · :amount',
     'empty' => 'No payments yet.',
     'recorded' => 'Payment of :amount (:method) recorded.',
     'voided' => 'Payment voided.',
@@ -22,7 +31,9 @@ return [
         'cash' => 'Cash',
         'check' => 'Check',
         'bank_transfer' => 'Bank transfer',
-        'card_terminal' => 'Card (own terminal)',
+        'e_transfer' => 'E-transfer',
+        'card_terminal' => 'Card',
+        'crypto' => 'Crypto',
         'other' => 'Other',
         'online' => 'Online',
     ],
@@ -42,7 +53,7 @@ return [
 
     'hints' => [
         'reference' => 'Optional reference number.',
-        'card_terminal' => 'Transaction number from the terminal receipt.',
+        'card_terminal' => 'Optional transaction number from the terminal receipt.',
         'other' => 'How was it paid?',
     ],
 
