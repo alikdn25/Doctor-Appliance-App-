@@ -151,13 +151,15 @@ return [
 
     'tabs' => [
         'today' => 'Today',
-        'upcoming' => 'Upcoming',
-        'recent' => 'Recent',
+        'completed' => 'Completed',
+        'previous_day' => 'Previous day',
+        'next_day' => 'Next day',
+        'trip' => '+ Trip',
     ],
     'mine_empty' => [
         'today' => 'No jobs today.',
-        'upcoming' => 'No upcoming jobs.',
-        'recent' => 'No jobs in the last 30 days.',
+        'day' => 'No jobs on :date.',
+        'completed' => 'No jobs completed in the last 30 days.',
     ],
 
     'sections' => [

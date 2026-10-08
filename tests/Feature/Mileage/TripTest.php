@@ -7,6 +7,7 @@ use App\Models\Membership;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\Trip;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -153,4 +154,50 @@ test('another company cannot touch a trip', function () {
 
     $this->actingAs($stranger)
         ->delete(route('trips.destroy', $trip))->assertNotFound();
+});
+
+test('+ Trip on My Jobs: only the store is typed; the start is the phone position', function () {
+    // Replace the default fake of beforeEach with one that names the GPS point's street.
+    Http::swap(new Factory);
+    Http::fake([
+        'maps.googleapis.com/maps/api/distancematrix/*' => Http::response([
+            'status' => 'OK', 'origin_addresses' => ['10 First Ave, Vancouver, BC'], 'destination_addresses' => ['4320 Dawson St, Burnaby, BC'],
+            'rows' => [['elements' => [['status' => 'OK', 'distance' => ['value' => 8400]]]]],
+        ]),
+        'maps.googleapis.com/maps/api/geocode/*' => Http::response(['status' => 'ZERO_RESULTS', 'results' => []]),
+    ]);
+
+    $this->actingAs($this->tech)->post(route('trips.quick'), [
+        'to_address' => 'Reliable Parts, Dawson Street, Burnaby', 'to_point' => '49.25,-123.0', 'latitude' => 49.26, 'longitude' => -123.11,
+    ])->assertSessionHasNoErrors();
+
+    $trip = tripsOf($this->company)->sole();
+    expect($trip)
+        ->type->toBe('parts_store')
+        ->from_address->toBe('10 First Ave, Vancouver, BC')
+        ->to_address->toBe('Reliable Parts, Dawson Street, Burnaby')
+        ->distance_km->toBe('8.4');
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'origins=49.26%2C-123.11') && str_contains($request->url(), 'destinations=49.25%2C-123.0'));
+
+    // The next job is counted from the store, not from home.
+    $this->post(route('visits.start', $this->visitA));
+    expect(tripsOf($this->company)->last()->from_address)->toBe('Reliable Parts, Dawson Street, Burnaby');
+});
+
+test('+ Trip without GPS, or pressed on arrival, starts from the last point of the day', function () {
+    $this->actingAs($this->tech)->post(route('trips.quick'), ['to_address' => 'Supplier Inc'])->assertSessionHasNoErrors();
+    expect(tripsOf($this->company)->sole()->from_address)->toBe('1 Home St, Burnaby');
+
+    // Pressed already at the store: Google finds 0.1 km from the phone, so the last point is used instead.
+    Http::swap(new Factory);
+    Http::fake(['maps.googleapis.com/*' => Http::sequence()
+        ->push(['status' => 'OK', 'origin_addresses' => ['Store'], 'rows' => [['elements' => [['status' => 'OK', 'distance' => ['value' => 100]]]]]])
+        ->push(['status' => 'OK', 'origin_addresses' => ['x'], 'rows' => [['elements' => [['status' => 'OK', 'distance' => ['value' => 5000]]]]]])]);
+    $this->post(route('trips.quick'), ['to_address' => 'Parts Depot', 'latitude' => 49.2, 'longitude' => -123.1]);
+
+    expect(tripsOf($this->company)->last())
+        ->from_address->toBe('Supplier Inc')
+        ->distance_km->toBe('5.0');
+
+    $this->post(route('trips.quick'), ['to_address' => ''])->assertSessionHasErrors('to_address');
 });

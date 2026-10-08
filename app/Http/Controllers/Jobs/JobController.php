@@ -145,46 +145,48 @@ class JobController extends Controller
         Gate::authorize('viewMine', ServiceJob::class);
 
         $user = $request->user();
-        $tab = in_array($request->query('tab'), ['today', 'upcoming', 'recent'], true) ? $request->query('tab') : 'today';
+        // Two tabs: one day at a time (arrows move the day; today by default) and the work completed lately.
+        $tab = $request->query('tab') === 'completed' ? 'completed' : 'day';
         $timezone = currentCompany()->timezone;
-        $todayStart = CarbonImmutable::now($timezone)->startOfDay()->utc();
-        $todayEnd = CarbonImmutable::now($timezone)->endOfDay()->utc();
+        $today = CarbonImmutable::now($timezone)->startOfDay();
+        $date = $request->filled('date') && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query('date'))
+            ? CarbonImmutable::parse((string) $request->query('date'), $timezone)->startOfDay()
+            : $today;
+        $dayStart = $date->utc();
+        $dayEnd = $date->endOfDay()->utc();
         $search = trim((string) $request->query('search', ''));
         $active = [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value];
+        $finished = [JobStatus::Completed->value, JobStatus::Invoiced->value, JobStatus::Paid->value];
 
-        // One query per tab; the counts are shown on the tabs. A search applies to every tab (and its count).
-        // A visit started on an earlier day and still open stays in Today only, not also in Recent.
+        // One query per tab; a search applies to every tab.
+        // Today also keeps a visit started on an earlier day that is still open.
         $tabQuery = fn (string $name) => JobVisit::query()
             ->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
             ->whereHas('job', fn (Builder $q) => $q->visibleTo($user)->when($search !== '', fn (Builder $j) => $j->search($search)))
-            ->when($name === 'today', fn ($q) => $q
+            ->when($name === 'day', fn ($q) => $q
                 ->where(fn ($w) => $w
-                    ->whereBetween('scheduled_start', [$todayStart, $todayEnd])
-                    ->orWhereIn('status', $active))
+                    ->whereBetween('scheduled_start', [$dayStart, $dayEnd])
+                    ->when($date->equalTo($today), fn ($o) => $o->orWhereIn('status', $active)))
+                ->where('status', '!=', VisitStatus::Cancelled->value)
                 ->orderBy('scheduled_start'))
-            ->when($name === 'upcoming', fn ($q) => $q
-                ->where('scheduled_start', '>', $todayEnd)
-                ->where('status', VisitStatus::Scheduled->value)
-                ->orderBy('scheduled_start'))
-            ->when($name === 'recent', fn ($q) => $q
-                ->where('scheduled_start', '<', $todayStart)
-                ->where('scheduled_start', '>=', $todayStart->subDays(30))
-                ->whereNotIn('status', $active)
+            ->when($name === 'completed', fn ($q) => $q
+                ->whereHas('job', fn (Builder $j) => $j->whereIn('status', $finished))
+                ->whereBetween('scheduled_start', [$today->subDays(30)->utc(), $today->endOfDay()->utc()])
+                ->whereNotIn('status', [...$active, VisitStatus::Cancelled->value])
                 ->orderByDesc('scheduled_start'));
 
         $visits = $tabQuery($tab)
             ->with(['assignees', 'job.customer.primaryPhone', 'job.property', 'job.appliances', 'job.bringItems'])
             ->limit(100)
             ->get();
-        $counts = collect(['today', 'upcoming', 'recent'])
-            ->mapWithKeys(fn (string $name) => [$name => $tabQuery($name)->reorder()->count()]);
 
         $messaging = app(MessagingPresenter::class);
 
         return Inertia::render('jobs/mine', [
             'tab' => $tab,
+            'date' => $date->toDateString(),
+            'today' => $today->toDateString(),
             'search' => $search,
-            'counts' => $counts,
             // Cash this person collected and has not handed in yet.
             'cashOnHand' => CashLedger::balances()[$user->id] ?? [],
             'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging) {

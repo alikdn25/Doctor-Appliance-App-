@@ -21,7 +21,7 @@ beforeEach(function () {
     $this->job = ServiceJob::factory()->for($property)->create(['brand_id' => $this->brand->id]);
     $appliance = inCompany($this->company, fn () => Appliance::factory()->for($property)->create(['manufacturer' => 'Blomberg', 'type' => 'dishwasher']));
     inCompany($this->company, fn () => $this->job->appliances()->attach($appliance));
-    // A visit next week: on the Upcoming tab, not Today.
+    // A visit next week: on its own day, not Today.
     $this->upcoming = JobVisit::factory()->for($this->job, 'job')->assignedTo($this->tech)
         ->create(['scheduled_start' => now()->addDays(7), 'scheduled_end' => now()->addDays(7)->addHours(2)]);
 
@@ -31,33 +31,34 @@ beforeEach(function () {
     $this->actingAs($this->tech);
 });
 
-test('a search covers every tab and updates the tab counts', function (string $term) {
-    $this->get(route('jobs.mine', ['tab' => 'today', 'search' => $term]))->assertInertia(fn (Assert $page) => $page
+test('a search applies to the chosen day', function (string $term) {
+    $day = $this->upcoming->scheduled_start->timezone('America/Vancouver')->toDateString();
+
+    $this->get(route('jobs.mine', ['search' => $term]))->assertInertia(fn (Assert $page) => $page
         ->where('search', $term)
-        ->where('counts.today', 0)
-        ->where('counts.upcoming', 1)
         ->has('visits', 0));
 
-    $this->get(route('jobs.mine', ['tab' => 'upcoming', 'search' => $term]))->assertInertia(fn (Assert $page) => $page
+    $this->get(route('jobs.mine', ['date' => $day, 'search' => $term]))->assertInertia(fn (Assert $page) => $page
+        ->where('date', $day)
         ->where('visits.0.id', $this->upcoming->id));
 })->with(['778-300-2070', '(778) 300 2070', 'Blomberg', 'dishwasher', 'Sasha']);
 
-test('without a search every tab is counted as before', function () {
+test('without a search the day shows its own jobs', function () {
     $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page
-        ->where('counts.today', 1)
-        ->where('counts.upcoming', 1)
+        ->where('tab', 'day')
+        ->where('date', '2030-06-12')
+        ->where('today', '2030-06-12')
         ->has('visits', 1));
 });
 
-test('an open visit from an earlier day stays in Today and is not repeated in Recent', function () {
+test('an open visit from an earlier day stays in Today, not on that earlier day', function () {
     $visit = JobVisit::factory()->for($this->job, 'job')->assignedTo($this->tech)
         ->create(['scheduled_start' => now()->subDay(), 'scheduled_end' => now()->subDay()->addHours(2), 'status' => VisitStatus::InProgress]);
 
-    $this->get(route('jobs.mine', ['tab' => 'today']))->assertInertia(fn (Assert $page) => $page
+    $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page
         ->where('visits', fn ($visits) => collect($visits)->contains('id', $visit->id)));
-    $this->get(route('jobs.mine', ['tab' => 'recent']))->assertInertia(fn (Assert $page) => $page
-        ->where('visits', fn ($visits) => ! collect($visits)->contains('id', $visit->id))
-        ->where('counts.recent', 0));
+    $this->get(route('jobs.mine', ['tab' => 'completed']))->assertInertia(fn (Assert $page) => $page
+        ->where('visits', fn ($visits) => ! collect($visits)->contains('id', $visit->id)));
 });
 
 test('the customer list finds a customer by appliance brand', function () {

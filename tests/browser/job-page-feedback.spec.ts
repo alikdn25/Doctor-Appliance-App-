@@ -107,7 +107,7 @@ test('the menu shows the everyday sections and opens money and settings on tap',
     await page.screenshot({ path: info.outputPath('menu.png') });
 });
 
-test('my jobs follows the mockup: tab counts, card with Navigate, Call and View job, Book customer', async ({
+test('my jobs: day with arrows, Completed, + Trip, card with Navigate, Call and View job', async ({
     page,
     browser,
 }, info) => {
@@ -117,8 +117,26 @@ test('my jobs follows the mockup: tab counts, card with Navigate, Call and View 
     });
     const tech = await context.newPage();
     await tech.goto('http://127.0.0.1:8000/my-jobs');
-    const today = tech.getByRole('link', { name: /^Today \d+$/ });
+    const today = tech.getByRole('link', { name: 'Today', exact: true });
     await expect(today).toBeVisible();
+    await expect(tech.getByRole('link', { name: 'Completed' })).toBeVisible();
+    await expect(tech.getByRole('button', { name: '+ Trip' })).toBeVisible();
+    await expect(tech.getByRole('link', { name: 'Upcoming' })).toHaveCount(0);
+
+    // The arrows move one day; the label becomes the date, and back again.
+    await tech.getByRole('link', { name: 'Next day' }).click();
+    await expect(
+        tech.getByRole('link', { name: 'Today', exact: true }),
+    ).toHaveCount(0);
+    await tech.getByRole('link', { name: 'Previous day' }).click();
+    await expect(today).toBeVisible();
+
+    const widths = await tech.evaluate(() => ({
+        page: document.documentElement.scrollWidth,
+        viewport: window.innerWidth,
+    }));
+    expect(widths.page).toBeLessThanOrEqual(widths.viewport);
+
     const card = tech.locator('li', { hasText: 'Jane Browser' }).first();
     await expect(card.getByRole('link', { name: /Navigate/ })).toBeVisible();
     await expect(card.getByRole('link', { name: /Call/ })).toBeVisible();

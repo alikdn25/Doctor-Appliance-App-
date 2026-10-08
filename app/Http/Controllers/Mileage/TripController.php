@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Mileage;
 
+use App\Actions\Mileage\RecordRouteTrip;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Membership;
 use App\Models\Trip;
+use App\Support\Maps\DistanceMatrix;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -91,6 +93,52 @@ class TripController extends Controller
         $data = $this->validated($request);
         $trip->update([...$data, 'distance_edited' => $trip->distance_edited || (string) $trip->distance_km !== (string) $data['distance_km']]);
         Inertia::flash('toast', ['type' => 'success', 'message' => __('trips.saved')]);
+
+        return back();
+    }
+
+    /**
+     * "+ Trip" on My Jobs: only the destination is typed. The start is where the phone is (GPS); when that is
+     * missing or already at the destination (the button pressed on arrival), the last point of the day is used.
+     * The road distance comes from the map service; the next job's trip then starts from this stop.
+     */
+    public function quick(Request $request, DistanceMatrix $distances): RedirectResponse
+    {
+        Gate::authorize('create', Trip::class);
+
+        $data = $request->validate([
+            'to_address' => ['required', 'string', 'max:255'],
+            'to_point' => ['nullable', 'string', 'regex:/^-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?$/'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+        ], [], ['to_address' => __('trips.fields.to')]);
+        $user = $request->user();
+        $to = trim($data['to_address']);
+        $destination = $data['to_point'] ?? $to;
+        $fallback = RecordRouteTrip::lastPoint($user);
+
+        $route = isset($data['latitude'])
+            ? $distances->route(round((float) $data['latitude'], 6).','.round((float) $data['longitude'], 6), $destination)
+            : null;
+        // Pressed on arrival (under 300 m away): the drive started at the last point instead.
+        if ($route !== null && $route['km'] < 0.3) {
+            $route = null;
+        }
+        $from = $route['from'] ?? $fallback;
+        $route ??= $from ? $distances->route($from, $destination) : null;
+
+        Trip::create([
+            'user_id' => $user->id,
+            'trip_date' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
+            'type' => 'parts_store',
+            'from_address' => $from,
+            'to_address' => $to,
+            'distance_km' => $route['km'] ?? null,
+        ]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => $route
+            ? __('trips.quick_saved', ['distance' => number_format(self::toUnit($route['km']), 1).' '.__('trips.units.'.currentCompany()->distance_unit)])
+            : __('trips.quick_saved_no_distance')]);
 
         return back();
     }

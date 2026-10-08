@@ -11,7 +11,8 @@ use Carbon\CarbonImmutable;
 
 /**
  * When a technician starts a job, the trip that brought them there is added to their mileage log: from the
- * address of the job they started before it that day (or their start address, e.g. home) to this job's address.
+ * address of the job they started before it that day, or the stop they drove to since (a parts store), or their
+ * start address (e.g. home), to this job's address.
  * The distance comes from the map service (in the background) and can be corrected by hand. One trip per visit.
  */
 class RecordRouteTrip
@@ -27,18 +28,7 @@ class RecordRouteTrip
         $to = $job->property?->fullAddress();
         $day = CarbonImmutable::now($company->timezone);
 
-        // The job started before this one today by the same person.
-        $previous = JobVisit::query()
-            ->whereKeyNot($visit->id)
-            ->whereNotNull('started_at')
-            ->where('started_at', '>=', $day->startOfDay()->utc())
-            ->where('started_at', '<=', $visit->started_at ?? now())
-            ->whereIn('status', [VisitStatus::InProgress->value, VisitStatus::Completed->value])
-            ->whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))
-            ->with('job.property')
-            ->latest('started_at')
-            ->first();
-        $from = $previous?->job?->property?->fullAddress() ?? $user->currentMembership()?->trip_start_address;
+        $from = self::lastPoint($user, $visit);
 
         $trip = Trip::create([
             'user_id' => $user->id,
@@ -57,5 +47,36 @@ class RecordRouteTrip
         }
 
         return $trip;
+    }
+
+    /**
+     * Where the person was last today: the stop of their latest trip (e.g. a parts store) or the job they started
+     * last, whichever came later; otherwise their start address (e.g. home).
+     */
+    public static function lastPoint(User $user, ?JobVisit $except = null): ?string
+    {
+        $dayStart = CarbonImmutable::now(currentCompany()->timezone)->startOfDay()->utc();
+        $previous = JobVisit::query()
+            ->when($except, fn ($q) => $q->whereKeyNot($except->id))
+            ->whereNotNull('started_at')
+            ->where('started_at', '>=', $dayStart)
+            ->whereIn('status', [VisitStatus::InProgress->value, VisitStatus::Completed->value])
+            ->whereHas('assignees', fn ($q) => $q->where('users.id', $user->id))
+            ->with('job.property')
+            ->latest('started_at')
+            ->first();
+        $stop = Trip::query()
+            ->where('user_id', $user->id)
+            ->whereNull('job_visit_id')
+            ->whereNotNull('to_address')
+            ->where('created_at', '>=', $dayStart)
+            ->latest('created_at')
+            ->first();
+
+        if ($stop !== null && ($previous === null || $stop->created_at->greaterThan($previous->started_at))) {
+            return $stop->to_address;
+        }
+
+        return $previous?->job?->property?->fullAddress() ?? $user->currentMembership()?->trip_start_address;
     }
 }

@@ -1,6 +1,8 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Banknote,
+    ChevronLeft,
+    ChevronRight,
     Download,
     PackageCheck,
     Plus,
@@ -12,6 +14,7 @@ import { formatMoney } from '@/components/billing/money';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { StrictBadge } from '@/components/jobs/job-outcome';
 import { JobCard, StatusCircles } from '@/components/jobs/job-card';
+import { QuickTripSheet } from '@/components/jobs/quick-trip-sheet';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { Input } from '@/components/ui/input';
 import type { Visit } from '@/components/jobs/types';
@@ -45,7 +48,15 @@ type MyVisit = Visit & {
     };
 };
 
-const tabs = ['today', 'upcoming', 'recent'] as const;
+type Tab = 'day' | 'completed';
+
+/** "2026-10-09" moved by whole days. */
+const shiftDay = (ymd: string, by: number) => {
+    const date = new Date(`${ymd}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + by);
+
+    return date.toISOString().slice(0, 10);
+};
 
 /**
  * My jobs, as on the approved mockup: tabs with counts, one card per visit (avatar, number and status,
@@ -54,14 +65,16 @@ const tabs = ['today', 'upcoming', 'recent'] as const;
  */
 export default function MyJobs({
     tab,
+    date,
+    today,
     search: initialSearch = '',
-    counts = { today: 0, upcoming: 0, recent: 0 },
     visits,
     cashOnHand = {},
 }: {
-    tab: (typeof tabs)[number];
+    tab: Tab;
+    date: string;
+    today: string;
     search?: string;
-    counts?: Record<(typeof tabs)[number], number>;
     visits: MyVisit[];
     cashOnHand?: Record<string, number>;
 }) {
@@ -83,7 +96,11 @@ export default function MyJobs({
         const timer = setTimeout(() => {
             router.get(
                 mine().url,
-                { tab, ...(search.trim() ? { search: search.trim() } : {}) },
+                {
+                    tab,
+                    ...(tab === 'day' && date !== today ? { date } : {}),
+                    ...(search.trim() ? { search: search.trim() } : {}),
+                },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         }, 350);
@@ -91,6 +108,24 @@ export default function MyJobs({
     }, [search]);
     const term = search.trim();
     const [status, setStatus] = useState('');
+    const [tripOpen, setTripOpen] = useState(false);
+    const dayLabel =
+        date === today
+            ? t('jobs.tabs.today')
+            : new Intl.DateTimeFormat(auth.company?.locale ?? 'en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  timeZone: 'UTC',
+              }).format(new Date(`${date}T00:00:00Z`));
+    const dayHref = (day: string) =>
+        mine({
+            query: {
+                tab: 'day',
+                ...(day !== today ? { date: day } : {}),
+                ...(term ? { search: term } : {}),
+            },
+        });
+    const title = tab === 'day' ? dayLabel : t('jobs.tabs.completed');
 
     // Count circles per status of this tab's jobs; tapping one shows only that status.
     const statusCounts: Record<string, number> = {};
@@ -110,9 +145,13 @@ export default function MyJobs({
 
             <ScreenHeader
                 title={t('jobs.my_jobs')}
-                subtitle={t('jobs.today_subtitle', {
-                    date: time.fullDay(new Date().toISOString()),
-                })}
+                subtitle={
+                    date === today
+                        ? t('jobs.today_subtitle', {
+                              date: time.fullDay(new Date().toISOString()),
+                          })
+                        : time.dateOnly(date)
+                }
                 actions={
                     <>
                         <button
@@ -185,47 +224,74 @@ export default function MyJobs({
                         </p>
                     ))}
 
-                <nav
-                    aria-label={t('jobs.my_jobs')}
-                    className="grid grid-cols-3 gap-2"
-                >
-                    {tabs.map((name) => (
+                {/* One day at a time (arrows move the day), the work completed lately, and + Trip. */}
+                <nav aria-label={t('jobs.my_jobs')} className="flex gap-2">
+                    <div
+                        data-state={tab === 'day' ? 'on' : 'off'}
+                        className="da-chip flex min-h-12 min-w-0 flex-[1.4] items-center rounded-2xl"
+                    >
                         <Link
-                            key={name}
-                            href={mine({
-                                query: term
-                                    ? { tab: name, search: term }
-                                    : { tab: name },
-                            })}
-                            preserveState
+                            href={dayHref(shiftDay(date, -1))}
                             preserveScroll
-                            aria-current={tab === name ? 'page' : undefined}
-                            className="da-chip da-press flex min-h-12 items-center justify-center gap-2 rounded-2xl px-2 text-center text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            aria-label={t('jobs.tabs.previous_day')}
+                            className="flex h-12 w-10 shrink-0 items-center justify-center rounded-l-2xl"
                         >
-                            {t(`jobs.tabs.${name}`)}
-                            <span
-                                className={cn(
-                                    'min-w-6 rounded-full px-1.5 text-xs leading-5 tabular-nums',
-                                    tab === name
-                                        ? 'bg-white/25'
-                                        : 'bg-[#E3EAF4] text-[#334155]',
-                                )}
-                            >
-                                {counts[name]}
-                            </span>
+                            <ChevronLeft className="size-5" />
                         </Link>
-                    ))}
+                        <Link
+                            href={dayHref(date)}
+                            preserveScroll
+                            aria-current={tab === 'day' ? 'page' : undefined}
+                            className="flex h-12 min-w-0 flex-1 items-center justify-center text-sm font-semibold whitespace-nowrap"
+                        >
+                            {dayLabel}
+                        </Link>
+                        <Link
+                            href={dayHref(shiftDay(date, 1))}
+                            preserveScroll
+                            aria-label={t('jobs.tabs.next_day')}
+                            className="flex h-12 w-10 shrink-0 items-center justify-center rounded-r-2xl"
+                        >
+                            <ChevronRight className="size-5" />
+                        </Link>
+                    </div>
+                    <Link
+                        href={mine({
+                            query: term
+                                ? { tab: 'completed', search: term }
+                                : { tab: 'completed' },
+                        })}
+                        preserveState
+                        preserveScroll
+                        aria-current={tab === 'completed' ? 'page' : undefined}
+                        className="da-chip da-press flex min-h-12 min-w-0 flex-1 items-center justify-center rounded-2xl px-2 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >
+                        {t('jobs.tabs.completed')}
+                    </Link>
+                    <button
+                        type="button"
+                        className="da-trip da-press flex min-h-12 shrink-0 items-center justify-center rounded-2xl px-3 text-sm font-semibold whitespace-nowrap"
+                        onClick={() => setTripOpen(true)}
+                    >
+                        {t('jobs.tabs.trip')}
+                    </button>
                 </nav>
 
                 <h2 className="pt-1 text-lg font-bold">
-                    {t(`jobs.tabs.${tab}`)} ({shown.length})
+                    {title} ({shown.length})
                 </h2>
 
                 {shown.length === 0 && (
                     <p className="da-card p-10 text-center text-sm text-muted-foreground">
                         {term
                             ? t('jobs.search_empty', { search: term })
-                            : t(`jobs.mine_empty.${tab}`)}
+                            : tab === 'completed'
+                              ? t('jobs.mine_empty.completed')
+                              : date === today
+                                ? t('jobs.mine_empty.today')
+                                : t('jobs.mine_empty.day', {
+                                      date: time.dateOnly(date),
+                                  })}
                     </p>
                 )}
 
@@ -237,7 +303,7 @@ export default function MyJobs({
                             href={show(visit.job.id)}
                             highlight={visit.status === 'in_progress'}
                             time={
-                                tab === 'today' &&
+                                tab === 'day' &&
                                 time.isToday(visit.scheduled_start)
                                     ? time.timeRange(
                                           visit.scheduled_start,
@@ -283,6 +349,8 @@ export default function MyJobs({
                     </Button>
                 )}
             </div>
+
+            <QuickTripSheet open={tripOpen} onOpenChange={setTripOpen} />
         </>
     );
 }

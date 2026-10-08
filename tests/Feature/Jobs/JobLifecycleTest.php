@@ -257,7 +257,8 @@ describe('visit types', function () {
         $this->actingAs($this->tech)->put(route('jobs.bring.toggle', [$return, $item]), ['is_checked' => true])->assertRedirect();
         expect(inCompany($this->company, fn () => $item->fresh()))->is_checked->toBeTrue()->checked_by->toBe($this->tech->id);
 
-        $visits = collect($this->get(route('jobs.mine', ['tab' => 'upcoming']))->viewData('page')['props']['visits']);
+        $day = $return->visits->sole()->scheduled_start->timezone($this->company->timezone)->toDateString();
+        $visits = collect($this->get(route('jobs.mine', ['date' => $day]))->viewData('page')['props']['visits']);
         $visit = $visits->firstWhere('job.id', $return->id);
         expect($visit['job']['bring'])->toBe(['done' => 1, 'total' => 2])
             ->and($visit['strict_arrival'])->toBeTrue();
