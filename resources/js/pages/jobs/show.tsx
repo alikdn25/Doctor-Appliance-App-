@@ -254,6 +254,13 @@ export default function JobShow({
     const [actionError, setActionError] = useState<string | undefined>();
 
     const myVisit = job.visits.find((v) => v.id === myVisitId) ?? null;
+    // The time the job is booked for now: the latest one not finished or cancelled.
+    const current =
+        [...job.visits]
+            .reverse()
+            .find((v) =>
+                ['scheduled', 'on_the_way', 'in_progress'].includes(v.status),
+            ) ?? null;
     const elapsed = useElapsedMinutes(
         myVisit?.status === 'in_progress' ? myVisit.started_at : null,
     );
@@ -918,137 +925,115 @@ export default function JobShow({
                     />
                 )}
 
-                {/* Visits */}
+                {/* Schedule: a job is one booking on the calendar. A second trip (parts arrived) is a new time
+                    for the same job; earlier times stay in the job history. */}
                 <section className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-base font-medium">
-                            {t('jobs.sections.visits')}
-                        </h2>
-                        {can.update && job.status !== 'cancelled' && (
+                    <h2 className="text-base font-medium">
+                        {t('jobs.sections.visits')}
+                    </h2>
+                    {current ? (
+                        <div className="da-card space-y-1 p-3">
+                            <div className="flex items-start gap-2">
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                                        {time.window(
+                                            current.scheduled_start,
+                                            current.scheduled_end,
+                                        )}
+                                        {current.strict_arrival && (
+                                            <StrictBadge />
+                                        )}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        {current.assignees.length > 0
+                                            ? current.assignees
+                                                  .map((a) => a.name)
+                                                  .join(', ')
+                                            : t('jobs.unassigned')}
+                                        {current.estimated_duration_minutes &&
+                                            ` · ${t('jobs.estimated_on_site', { time: formatMinutes(current.estimated_duration_minutes, t) })}`}
+                                    </div>
+                                </div>
+                                {can.update && (
+                                    <div className="flex">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            aria-label={t('jobs.edit_visit')}
+                                            onClick={() =>
+                                                setVisitDialog({
+                                                    open: true,
+                                                    visit: current,
+                                                })
+                                            }
+                                        >
+                                            <Pencil />
+                                        </Button>
+                                        {current.status === 'scheduled' && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label={t(
+                                                    'jobs.delete_visit',
+                                                )}
+                                                onClick={() =>
+                                                    removeVisit(current)
+                                                }
+                                            >
+                                                <Trash2 />
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            {(current.on_the_way_at || current.started_at) && (
+                                <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                    {(
+                                        ['on_the_way_at', 'started_at'] as const
+                                    ).map(
+                                        (field) =>
+                                            current[field] && (
+                                                <div key={field}>
+                                                    <dt className="inline">
+                                                        {t(
+                                                            `jobs.visit_times.${field}`,
+                                                        )}
+                                                        :{' '}
+                                                    </dt>
+                                                    <dd className="inline">
+                                                        {time.time(
+                                                            current[field],
+                                                        )}
+                                                    </dd>
+                                                </div>
+                                            ),
+                                    )}
+                                </dl>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            {t('jobs.no_visits')}
+                        </p>
+                    )}
+                    {!current &&
+                        can.update &&
+                        !['cancelled', 'invoiced', 'paid'].includes(
+                            job.status,
+                        ) && (
                             <Button
                                 variant="outline"
-                                size="sm"
+                                className="h-11 w-full"
                                 onClick={() =>
                                     setVisitDialog({ open: true, visit: null })
                                 }
                             >
-                                <CalendarPlus /> {t('jobs.add_visit')}
+                                <CalendarPlus />{' '}
+                                {job.visits.length > 0
+                                    ? t('jobs.schedule_again')
+                                    : t('jobs.add_visit')}
                             </Button>
                         )}
-                    </div>
-                    {job.visits.length === 0 ? (
-                        <p className="rounded-lg border p-4 text-sm text-muted-foreground">
-                            {t('jobs.no_visits')}
-                        </p>
-                    ) : (
-                        <ul className="divide-y rounded-lg border">
-                            {job.visits.map((v) => (
-                                <li key={v.id} className="space-y-1 p-3">
-                                    <div className="flex items-start gap-2">
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                                                {time.window(
-                                                    v.scheduled_start,
-                                                    v.scheduled_end,
-                                                )}
-                                                <StatusBadge
-                                                    status={v.status}
-                                                    label={v.status_label}
-                                                />
-                                                {v.strict_arrival && (
-                                                    <StrictBadge />
-                                                )}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {v.assignees.length > 0
-                                                    ? v.assignees
-                                                          .map((a) => a.name)
-                                                          .join(', ')
-                                                    : t('jobs.unassigned')}
-                                                {v.estimated_duration_minutes &&
-                                                    ` · ${t('jobs.estimated_on_site', { time: formatMinutes(v.estimated_duration_minutes, t) })}`}
-                                            </div>
-                                        </div>
-                                        {can.update && (
-                                            <div className="flex">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-9"
-                                                    aria-label={t(
-                                                        'jobs.edit_visit',
-                                                    )}
-                                                    onClick={() =>
-                                                        setVisitDialog({
-                                                            open: true,
-                                                            visit: v,
-                                                        })
-                                                    }
-                                                >
-                                                    <Pencil />
-                                                </Button>
-                                                {v.status === 'scheduled' && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="size-9"
-                                                        aria-label={t(
-                                                            'jobs.delete_visit',
-                                                        )}
-                                                        onClick={() =>
-                                                            removeVisit(v)
-                                                        }
-                                                    >
-                                                        <Trash2 />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {(v.on_the_way_at ||
-                                        v.started_at ||
-                                        v.finished_at) && (
-                                        <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                                            {(
-                                                [
-                                                    'on_the_way_at',
-                                                    'started_at',
-                                                    'finished_at',
-                                                ] as const
-                                            ).map(
-                                                (field) =>
-                                                    v[field] && (
-                                                        <div key={field}>
-                                                            <dt className="inline">
-                                                                {t(
-                                                                    `jobs.visit_times.${field}`,
-                                                                )}
-                                                                :{' '}
-                                                            </dt>
-                                                            <dd className="inline">
-                                                                {time.time(
-                                                                    v[field],
-                                                                )}
-                                                            </dd>
-                                                        </div>
-                                                    ),
-                                            )}
-                                            {v.minutes_on_job !== null && (
-                                                <div>
-                                                    {t('jobs.time_on_job', {
-                                                        time: formatMinutes(
-                                                            v.minutes_on_job,
-                                                            t,
-                                                        ),
-                                                    })}
-                                                </div>
-                                            )}
-                                        </dl>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
                 </section>
 
                 {/* Estimates and invoices */}

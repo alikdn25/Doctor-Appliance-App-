@@ -23,7 +23,7 @@ return [
     'no_expiry' => 'No expiry date',
     'expired_on' => 'Expired :date',
     'convert_approved' => 'Convert to invoice',
-    'schedule_visit' => 'Schedule visit',
+    'schedule_visit' => 'Schedule',
     'revise' => 'Revise',
     'confirm_revise' => 'Make a new version of this signed estimate? The approval is reset; the signed version stays in the history and the customer gets a new link.',
     'revised' => 'New version :number created. Change it and send it to the customer.',

@@ -32,7 +32,7 @@ return [
     'closure_reasons_hint' => 'Reasons offered when a job is closed without a repair or cancelled. One per line; empty = the default list.',
     'estimate_followup_days_hint' => 'Send one reminder this many days after an estimate is sent, while it is still awaiting a decision and has not expired. Empty = off. Uses your messaging settings.',
     'estimate_valid_days_hint' => 'Fills in "Valid until" on new estimates. After that day the customer can no longer approve online. Empty = no expiry.',
-    'travel_buffer_hint' => 'Time kept free after each visit to drive to the next one. The calendar warns when visits overlap.',
+    'travel_buffer_hint' => 'Time kept free after each job to drive to the next one. The calendar warns when jobs overlap.',
     'timezone_detected' => 'Time zone set to :timezone from your browser. You can change it in company settings.',
     'payments' => 'Payments',
     'payments_hint' => 'Cash, check, bank transfer, your own card terminal and other payments can always be recorded by hand. An online provider adds card payments by link or QR code.',

@@ -38,7 +38,7 @@ return [
     'invoice_count' => 'Invoices',
     'average_ticket' => 'Average invoice',
     'revenue_title' => 'Revenue and average ticket',
-    'revenue_hint' => 'Invoices issued in the selected period, excluding void invoices, taxes and tips. Settled refunds reduce revenue. Each currency is reported separately. The technician is the first assignee on the latest started visit, or the latest scheduled visit when none has started.',
+    'revenue_hint' => 'Invoices issued in the selected period, excluding void invoices, taxes and tips. Settled refunds reduce revenue. Each currency is reported separately. The technician is the first assignee on the latest started time of the job, or the latest scheduled one when none has started.',
     'no_invoices' => 'No invoices issued in this period.',
     'conversion_title' => 'Estimate conversion',
     'conversion_hint' => 'Current estimate versions issued in the selected period that were sent or have a customer decision. Approved and invoiced estimates count as converted; unsent drafts and replaced versions are excluded.',

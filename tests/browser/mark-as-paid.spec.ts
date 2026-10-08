@@ -54,7 +54,7 @@ test('cash on site: Mark as paid from the job, then the review question and Comp
     await page.getByRole('button', { name: 'No', exact: true }).click();
     await expect(page.getByText('Paid in full')).toBeVisible();
     await expect(
-        page.getByRole('button', { name: /Complete job|Finish visit/ }),
+        page.getByRole('button', { name: /Complete job|Finish job/ }),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Not now' }).click();
     await expect(
