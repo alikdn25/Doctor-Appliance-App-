@@ -123,8 +123,8 @@ test('a technician sees the customer of their job, limited to that job\'s addres
         ->assertInertia(fn (Assert $page) => $page
             ->where('customer.properties', fn ($properties) => collect($properties)->pluck('id')->all() === [$this->property->id])
             ->has('customer.properties.0.appliances', 2)
-            ->where('jobs.0.id', $this->job->id)
-            ->has('jobs', 1)
+            ->where('history.0.id', $this->job->id)
+            ->has('history', 1)
             ->where('canUpdate', false)
             ->where('canDelete', false)
             ->where('canCreateJob', false));

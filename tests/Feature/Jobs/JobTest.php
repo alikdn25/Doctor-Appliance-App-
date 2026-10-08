@@ -326,8 +326,8 @@ test('the customer card lists the customer\'s jobs', function () {
 
     $this->get(route('customers.show', $this->customer))
         ->assertInertia(fn (Assert $page) => $page
-            ->has('jobs', 1)
-            ->where('jobs.0.id', $job->id)
+            ->has('history', 1)
+            ->where('history.0.id', $job->id)
             ->where('canCreateJob', true));
 });
 
