@@ -29,6 +29,10 @@ class Warranties
         $start = self::start($invoice);
 
         $invoice->items()->get()->each(function (InvoiceItem $item) use ($start) {
+            if (! $item->hasWarranty()) {
+                return;
+            }
+
             $ends = Warranty::endsOn($start, $item->warranty_value, $item->warranty_unit)?->toDateString();
 
             if ($item->warranty_ends_on?->toDateString() !== $ends) {
@@ -53,7 +57,7 @@ class Warranties
 
         foreach ($job->invoices()->where('status', '!=', 'void')->with('items')->get() as $invoice) {
             foreach ($invoice->items as $item) {
-                if (! $item->bill_to_customer) {
+                if (! $item->bill_to_customer || ! $item->hasWarranty()) {
                     continue;
                 }
 

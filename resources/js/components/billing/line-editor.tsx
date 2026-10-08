@@ -277,7 +277,7 @@ export function LineEditor({
 
     // Default warranty follows kind / price / price book item until set by hand.
     useEffect(() => {
-        if (line.warranty_touched) {
+        if (line.warranty_touched || line.kind === 'material') {
             return;
         }
 
@@ -706,50 +706,53 @@ export function LineEditor({
                 </fieldset>
             )}
 
-            <div className="grid grid-cols-[1fr_2fr] gap-2">
-                <div>
-                    <label className="text-xs text-muted-foreground">
-                        {t('billing.warranty')}
-                    </label>
-                    <Input
-                        aria-label={t('billing.warranty')}
-                        inputMode="numeric"
-                        value={line.warranty_value}
-                        onChange={(e) =>
-                            onChange({
-                                warranty_value: e.target.value.replace(
-                                    /\D/g,
-                                    '',
-                                ),
-                                warranty_touched: true,
-                            })
-                        }
-                    />
+            {/* Materials carry no warranty. */}
+            {line.kind !== 'material' && (
+                <div className="grid grid-cols-[1fr_2fr] gap-2">
+                    <div>
+                        <label className="text-xs text-muted-foreground">
+                            {t('billing.warranty')}
+                        </label>
+                        <Input
+                            aria-label={t('billing.warranty')}
+                            inputMode="numeric"
+                            value={line.warranty_value}
+                            onChange={(e) =>
+                                onChange({
+                                    warranty_value: e.target.value.replace(
+                                        /\D/g,
+                                        '',
+                                    ),
+                                    warranty_touched: true,
+                                })
+                            }
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs text-muted-foreground">
+                            {Number(line.warranty_value) === 0
+                                ? t('billing.no_warranty')
+                                : ' '}
+                        </label>
+                        <NativeSelect
+                            aria-label={t('billing.warranty_unit')}
+                            value={line.warranty_unit}
+                            onChange={(e) =>
+                                onChange({
+                                    warranty_unit: e.target.value,
+                                    warranty_touched: true,
+                                })
+                            }
+                        >
+                            {setup.warranty_units.map((u) => (
+                                <option key={u.value} value={u.value}>
+                                    {u.label}
+                                </option>
+                            ))}
+                        </NativeSelect>
+                    </div>
                 </div>
-                <div>
-                    <label className="text-xs text-muted-foreground">
-                        {Number(line.warranty_value) === 0
-                            ? t('billing.no_warranty')
-                            : ' '}
-                    </label>
-                    <NativeSelect
-                        aria-label={t('billing.warranty_unit')}
-                        value={line.warranty_unit}
-                        onChange={(e) =>
-                            onChange({
-                                warranty_unit: e.target.value,
-                                warranty_touched: true,
-                            })
-                        }
-                    >
-                        {setup.warranty_units.map((u) => (
-                            <option key={u.value} value={u.value}>
-                                {u.label}
-                            </option>
-                        ))}
-                    </NativeSelect>
-                </div>
-            </div>
+            )}
 
             {estimate && (
                 <div className="flex flex-wrap gap-x-4">

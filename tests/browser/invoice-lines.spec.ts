@@ -26,6 +26,10 @@ test('one "Add item" sheet adds labor, part and material rows whose prices add u
         ).toHaveCount(1);
         await page.getByLabel('Description', { exact: true }).fill(name);
         await page.getByLabel('Price', { exact: true }).fill(price);
+        // Materials carry no warranty.
+        await expect(page.getByLabel('Warranty', { exact: true })).toHaveCount(
+            kind === 'Material' ? 0 : 1,
+        );
         await page.getByRole('button', { name: 'Done' }).click();
     };
 

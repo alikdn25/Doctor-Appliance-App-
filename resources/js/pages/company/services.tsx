@@ -434,48 +434,51 @@ export default function Services({
                                                 }
                                             />
                                         )}
-                                        <div className="col-span-2 grid grid-cols-[6rem_1fr] gap-2 sm:col-span-1">
-                                            <Input
-                                                aria-label={t(
-                                                    'billing.warranty',
-                                                )}
-                                                placeholder={t(
-                                                    'services.warranty_default',
-                                                )}
-                                                inputMode="numeric"
-                                                value={row.warranty_value}
-                                                onChange={(e) =>
-                                                    setRow(i, {
-                                                        warranty_value:
-                                                            e.target.value.replace(
-                                                                /\D/g,
-                                                                '',
-                                                            ),
-                                                    })
-                                                }
-                                            />
-                                            <NativeSelect
-                                                aria-label={t(
-                                                    'billing.warranty',
-                                                )}
-                                                value={row.warranty_unit}
-                                                onChange={(e) =>
-                                                    setRow(i, {
-                                                        warranty_unit:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                            >
-                                                {warrantyUnits.map((u) => (
-                                                    <option
-                                                        key={u.value}
-                                                        value={u.value}
-                                                    >
-                                                        {u.label}
-                                                    </option>
-                                                ))}
-                                            </NativeSelect>
-                                        </div>
+                                        {/* Materials carry no warranty. */}
+                                        {row.kind !== 'material' && (
+                                            <div className="col-span-2 grid grid-cols-[6rem_1fr] gap-2 sm:col-span-1">
+                                                <Input
+                                                    aria-label={t(
+                                                        'billing.warranty',
+                                                    )}
+                                                    placeholder={t(
+                                                        'services.warranty_default',
+                                                    )}
+                                                    inputMode="numeric"
+                                                    value={row.warranty_value}
+                                                    onChange={(e) =>
+                                                        setRow(i, {
+                                                            warranty_value:
+                                                                e.target.value.replace(
+                                                                    /\D/g,
+                                                                    '',
+                                                                ),
+                                                        })
+                                                    }
+                                                />
+                                                <NativeSelect
+                                                    aria-label={t(
+                                                        'billing.warranty',
+                                                    )}
+                                                    value={row.warranty_unit}
+                                                    onChange={(e) =>
+                                                        setRow(i, {
+                                                            warranty_unit:
+                                                                e.target.value,
+                                                        })
+                                                    }
+                                                >
+                                                    {warrantyUnits.map((u) => (
+                                                        <option
+                                                            key={u.value}
+                                                            value={u.value}
+                                                        >
+                                                            {u.label}
+                                                        </option>
+                                                    ))}
+                                                </NativeSelect>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex gap-4">
                                         <label className="flex min-h-9 items-center gap-2 text-sm">

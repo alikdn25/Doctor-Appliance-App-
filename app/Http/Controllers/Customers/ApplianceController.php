@@ -56,7 +56,7 @@ class ApplianceController extends Controller
                 // Warranties of the billed lines (no prices).
                 'warranties' => $job->invoices->where('status', '!=', InvoiceStatus::Void)
                     ->flatMap(fn ($invoice) => $invoice->items)
-                    ->filter(fn ($item) => $item->bill_to_customer && $item->warranty_ends_on !== null)
+                    ->filter(fn ($item) => $item->bill_to_customer && $item->hasWarranty() && $item->warranty_ends_on !== null)
                     ->map(fn ($item) => [
                         'description' => $item->description,
                         'warranty' => $item->warrantyLabel(),

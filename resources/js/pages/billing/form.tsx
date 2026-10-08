@@ -397,11 +397,13 @@ export default function BillingForm({
                 unit:
                     line.kind === 'material' ? line.unit.trim() || null : null,
                 bill_to_customer: line.bill_to_customer,
+                // Materials carry no warranty.
                 warranty_value:
-                    line.warranty_value === ''
+                    line.kind === 'material' || line.warranty_value === ''
                         ? null
                         : Number(line.warranty_value),
-                warranty_unit: line.warranty_unit,
+                warranty_unit:
+                    line.kind === 'material' ? null : line.warranty_unit,
                 // A service has no purchase price: values typed while the line was a part are not sent.
                 ...(lineSetup.costs_visible && line.costs_editable
                     ? line.kind === 'service'

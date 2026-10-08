@@ -386,7 +386,7 @@ class JobController extends Controller
                 'currency' => $job->previousJob->invoices()->value('currency') ?? currentCompany()->currency,
             ] : null,
             'warrantyLines' => $job->invoices->where('status', '!=', InvoiceStatus::Void)
-                ->flatMap(fn (Invoice $invoice) => $invoice->items()->get()->map(fn (InvoiceItem $item) => [
+                ->flatMap(fn (Invoice $invoice) => $invoice->items()->get()->filter(fn (InvoiceItem $item) => $item->hasWarranty())->map(fn (InvoiceItem $item) => [
                     'id' => $item->id,
                     'invoice' => $invoice->number,
                     'description' => $item->description,

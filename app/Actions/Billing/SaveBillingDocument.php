@@ -199,6 +199,11 @@ class SaveBillingDocument
             $default = Warranty::default($company, $kind, $line['unit_price'], $services->get($line['service_id']));
             $line['warranty_value'] = isset($item['warranty_value']) ? (int) $item['warranty_value'] : $default['value'];
             $line['warranty_unit'] = $item['warranty_unit'] ?? ($line['warranty_value'] === $default['value'] ? $default['unit'] : WarrantyUnit::Days->value);
+            // Materials have no warranty; a value saved on the line before stays as it was.
+            if ($kind === LineKind::Material) {
+                $line['warranty_value'] = $old?->warranty_value;
+                $line['warranty_unit'] = $old?->warranty_unit;
+            }
 
             return $line;
         }, $data['items']));
