@@ -1,5 +1,5 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { CalendarDays, Plus } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useRef, useState } from 'react';
 import {
@@ -14,7 +14,12 @@ import {
 } from '@/components/billing/money';
 import { NumberHint } from '@/components/billing/number-hint';
 import { depositFor } from '@/components/billing/estimate-approval';
-import { LineEditor, newLine } from '@/components/billing/line-editor';
+import { AddItemSheet } from '@/components/billing/add-item-sheet';
+import {
+    LineEditor,
+    newLine,
+    servicePatch,
+} from '@/components/billing/line-editor';
 import type {
     Line,
     LineKind,
@@ -32,10 +37,10 @@ import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
+import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import {
     show as showEstimate,
@@ -63,7 +68,8 @@ type FormData = {
 };
 
 /**
- * Estimate or invoice form. One line per card so it works with one hand on a phone;
+ * Estimate or invoice form: compact item rows that open on tap, one "Add item" sheet (price book or custom line),
+ * dates folded into one line and the totals above a pinned Save button. Works with one hand on a phone;
  * totals update as you type (the server recalculates them on save).
  */
 export default function BillingForm({
@@ -108,6 +114,7 @@ export default function BillingForm({
     existingInvoices?: DocumentRow[];
 }) {
     const t = useTrans();
+    const time = useCompanyTime();
     const { auth } = usePage().props;
     // A document keeps the currency and tax mode it was created with.
     const currency = document?.currency ?? auth.company?.currency ?? 'USD';
@@ -195,7 +202,7 @@ export default function BillingForm({
                             : {}),
                     }),
                 )
-              : [newLine()],
+              : [],
         deposit_type: document?.deposit_type ?? '',
         deposit_value:
             document?.deposit_type && document.deposit_value
@@ -205,9 +212,18 @@ export default function BillingForm({
     const { data, errors } = form;
     const fieldErrors = errors as Record<string, string | undefined>;
 
+    // The taxes each line is charged: its own selection, or the document's taxes (lines saved before
+    // per-line selection). The document carries every tax used by a line.
+    const lineTaxIds = (line: Line): number[] =>
+        line.taxable ? (line.tax_rate_ids ?? data.tax_rate_ids) : [];
+    const documentTaxIds = taxRates
+        .map((r) => r.id)
+        .filter((id) =>
+            data.items.some((line) => lineTaxIds(line).includes(id)),
+        );
     // Taxes as on the document (rates kept from when it was made), new ones at today's rate.
     const selectedTaxes = taxRates
-        .filter((r) => data.tax_rate_ids.includes(r.id))
+        .filter((r) => documentTaxIds.includes(r.id))
         .map(
             (r) =>
                 document?.taxes.find((tax) => tax.tax_rate_id === r.id) ?? {
@@ -220,6 +236,7 @@ export default function BillingForm({
     const totals = computeTotals({
         items: data.items.map((line) => ({
             ...line,
+            tax_rate_ids: lineTaxIds(line),
             included:
                 (!line.optional || line.selected) && line.bill_to_customer,
         })),
@@ -230,21 +247,26 @@ export default function BillingForm({
         prices_include_tax: pricesIncludeTax,
     });
 
-    const [addedKey, setAddedKey] = useState<number | null>(null);
-    // A new empty line of that type: its price starts blank and is added to the total.
-    const addLine = (lineKind: LineKind) => {
-        const line = newLine({ kind: lineKind });
-        setAddedKey(line.key);
-        form.setData((d) => {
-            // The untouched first line of a new document is reused instead of leaving an empty line behind.
-            const [only] = d.items;
-            const blank =
-                d.items.length === 1 &&
-                only.description.trim() === '' &&
-                only.unit_price.trim() === '';
-
-            return { ...d, items: blank ? [line] : [...d.items, line] };
-        });
+    // Rows are collapsed; a new line opens so its name and price can be typed straight away.
+    const [openKeys, setOpenKeys] = useState<number[]>([]);
+    const [adding, setAdding] = useState(false);
+    const [datesOpen, setDatesOpen] = useState(false);
+    const [discountOpen, setDiscountOpen] = useState(false);
+    const [notesOpen, setNotesOpen] = useState(false);
+    const lineTaxOptions = taxRates.map((r) => ({
+        id: r.id,
+        name: r.name,
+        rate: r.rate,
+    }));
+    const addLine = (line: Line) => {
+        setOpenKeys([line.key]);
+        form.setData((d) => ({ ...d, items: [...d.items, line] }));
+    };
+    const addCustom = (lineKind: LineKind) =>
+        addLine(newLine({ kind: lineKind }));
+    const addService = (service: ServiceOption) => {
+        const line = newLine({ kind: service.kind });
+        addLine({ ...line, ...servicePatch(service, currency, line) });
     };
 
     // Updates always start from the latest lines: two quick changes (a typed price and the default
@@ -257,14 +279,6 @@ export default function BillingForm({
             ),
         }));
 
-    const toggleTax = (id: number, on: boolean) =>
-        form.setData(
-            'tax_rate_ids',
-            on
-                ? [...data.tax_rate_ids, id]
-                : data.tax_rate_ids.filter((x) => x !== id),
-        );
-
     const fmt = (value: number) =>
         money(Math.round(value * 10 ** currencyDecimals(currency)));
 
@@ -272,6 +286,11 @@ export default function BillingForm({
     const clientErrors = (): Record<string, string> => {
         const found: Record<string, string> = {};
         const invalid = t('billing.number.invalid', { example: '150.50' });
+
+        if (data.items.length === 0) {
+            found.items = t('billing.no_items');
+        }
+
         data.items.forEach((line, i) => {
             if (parseNumber(line.quantity).normalized === null) {
                 found[`items.${i}.quantity`] = invalid;
@@ -341,6 +360,7 @@ export default function BillingForm({
 
         form.transform((d) => ({
             ...d,
+            tax_rate_ids: documentTaxIds,
             valid_until:
                 kind === 'estimate' ? d.valid_until || null : undefined,
             due_on: kind === 'invoice' ? d.due_on || null : undefined,
@@ -354,12 +374,11 @@ export default function BillingForm({
                 quantity: normalizeNumber(line.quantity),
                 unit_price: normalizeNumber(line.unit_price),
                 taxable: line.taxable,
-                tax_rate_ids:
-                    line.tax_rate_ids === null
-                        ? null
-                        : line.tax_rate_ids.filter((id) =>
-                              d.tax_rate_ids.includes(id),
-                          ),
+                tax_rate_ids: line.taxable
+                    ? lineTaxIds(line).filter((id) =>
+                          documentTaxIds.includes(id),
+                      )
+                    : null,
                 kind: line.kind,
                 service_id: line.service_id,
                 part_number: line.part_number || null,
@@ -440,11 +459,29 @@ export default function BillingForm({
             : showEstimate(document.id)
         : showJob(job.id);
 
+    const datesError =
+        errors.issued_on ?? errors.due_on ?? errors.valid_until ?? undefined;
+    const dueLabel =
+        kind === 'invoice'
+            ? !data.due_on
+                ? t('invoices.no_due_date')
+                : data.due_on <= data.issued_on
+                  ? t('invoices.terms.due_on_receipt')
+                  : t('invoices.due_date', {
+                        date: time.dateOnly(data.due_on),
+                    })
+            : data.valid_until
+              ? t('estimates.valid_until_date', {
+                    date: time.dateOnly(data.valid_until),
+                })
+              : t('estimates.no_expiry');
+    const discountShown = discountOpen || data.discount_type !== '';
+
     return (
         <>
             <Head title={title} />
 
-            <form onSubmit={submit} className="max-w-3xl space-y-6 p-4 pb-28">
+            <form onSubmit={submit} className="max-w-3xl space-y-5 p-4 pb-32">
                 <PageHeader
                     title={title}
                     back={back}
@@ -473,66 +510,90 @@ export default function BillingForm({
                     </p>
                 )}
 
-                <section className="grid grid-cols-2 gap-3">
-                    <FormField
-                        id="issued_on"
-                        label={t('billing.fields.issued_on')}
-                        error={errors.issued_on}
-                    >
-                        <Input
+                {/* Dates fold into one line: "Oct 8, 2026 · Due on receipt · Edit". */}
+                {datesOpen || datesError ? (
+                    <section className="grid grid-cols-2 gap-3">
+                        <FormField
                             id="issued_on"
-                            type="date"
-                            value={data.issued_on}
-                            onChange={(e) =>
-                                form.setData('issued_on', e.target.value)
-                            }
-                        />
-                    </FormField>
-                    {kind === 'invoice' ? (
-                        <FormField
-                            id="due_on"
-                            label={t('invoices.fields.due_on')}
-                            hint={
-                                paymentTerms &&
-                                t('invoices.terms_hint', {
-                                    terms: paymentTerms,
-                                })
-                            }
-                            error={errors.due_on}
+                            label={t('billing.fields.issued_on')}
+                            error={errors.issued_on}
                         >
                             <Input
+                                id="issued_on"
+                                type="date"
+                                value={data.issued_on}
+                                onChange={(e) =>
+                                    form.setData('issued_on', e.target.value)
+                                }
+                            />
+                        </FormField>
+                        {kind === 'invoice' ? (
+                            <FormField
                                 id="due_on"
-                                type="date"
-                                value={data.due_on}
-                                onChange={(e) =>
-                                    form.setData('due_on', e.target.value)
+                                label={t('invoices.fields.due_on')}
+                                hint={
+                                    paymentTerms &&
+                                    t('invoices.terms_hint', {
+                                        terms: paymentTerms,
+                                    })
                                 }
-                            />
-                        </FormField>
-                    ) : (
-                        <FormField
-                            id="valid_until"
-                            label={t('estimates.fields.valid_until')}
-                            error={errors.valid_until}
-                        >
-                            <Input
+                                error={errors.due_on}
+                            >
+                                <Input
+                                    id="due_on"
+                                    type="date"
+                                    value={data.due_on}
+                                    onChange={(e) =>
+                                        form.setData('due_on', e.target.value)
+                                    }
+                                />
+                            </FormField>
+                        ) : (
+                            <FormField
                                 id="valid_until"
-                                type="date"
-                                value={data.valid_until}
-                                onChange={(e) =>
-                                    form.setData('valid_until', e.target.value)
-                                }
-                            />
-                        </FormField>
-                    )}
-                </section>
+                                label={t('estimates.fields.valid_until')}
+                                error={errors.valid_until}
+                            >
+                                <Input
+                                    id="valid_until"
+                                    type="date"
+                                    value={data.valid_until}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'valid_until',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                            </FormField>
+                        )}
+                    </section>
+                ) : (
+                    <button
+                        type="button"
+                        className="flex min-h-11 w-full items-center gap-2 text-left text-sm"
+                        onClick={() => setDatesOpen(true)}
+                    >
+                        <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1 truncate">
+                            {data.issued_on
+                                ? time.dateOnly(data.issued_on)
+                                : t('billing.fields.issued_on')}
+                            {' · '}
+                            {dueLabel}
+                        </span>
+                        <span className="font-medium text-primary">
+                            {t('common.edit')}
+                        </span>
+                    </button>
+                )}
 
-                <section className="space-y-3">
+                <section className="space-y-2">
                     <h2 className="text-base font-medium">
                         {t('billing.items')}
                     </h2>
                     <InputError message={errors.items} />
-                    <ul className="space-y-3">
+                    <ul className="space-y-2">
                         {data.items.map((line, i) => (
                             <LineEditor
                                 key={line.key}
@@ -543,12 +604,21 @@ export default function BillingForm({
                                 total={totals.itemTotals[i] ?? 0}
                                 setup={lineSetup}
                                 services={services}
-                                taxRates={selectedTaxes}
+                                taxes={lineTaxOptions}
+                                activeTaxIds={lineTaxIds(line)}
                                 estimate={kind === 'estimate'}
-                                canRemove={data.items.length > 1}
-                                autoFocus={line.key === addedKey}
+                                open={openKeys.includes(line.key)}
                                 errors={fieldErrors}
                                 money={money}
+                                onOpen={(open) =>
+                                    setOpenKeys((keys) =>
+                                        open
+                                            ? [...keys, line.key]
+                                            : keys.filter(
+                                                  (key) => key !== line.key,
+                                              ),
+                                    )
+                                }
                                 onChange={(patch) => {
                                     const touched = Object.keys(patch).map(
                                         (field) => `items.${i}.${field}`,
@@ -564,139 +634,127 @@ export default function BillingForm({
 
                                     setLine(line.key, patch);
                                 }}
-                                onRemove={() =>
+                                onRemove={() => {
+                                    form.clearErrors();
                                     form.setData((d) => ({
                                         ...d,
                                         items: d.items.filter(
                                             (item) => item.key !== line.key,
                                         ),
-                                    }))
-                                }
+                                    }));
+                                }}
                             />
                         ))}
                     </ul>
-                    {/* Labor, parts and materials are separate lines that add up: one button per type. */}
-                    <div className="grid grid-cols-3 gap-2">
-                        {(['service', 'part', 'material'] as const).map(
-                            (lineKind) => (
-                                <Button
-                                    key={lineKind}
-                                    type="button"
-                                    variant="outline"
-                                    className="h-11 px-2"
-                                    onClick={() => addLine(lineKind)}
-                                >
-                                    <Plus /> {t(`billing.add_kind.${lineKind}`)}
-                                </Button>
-                            ),
-                        )}
-                    </div>
-                </section>
-
-                <section className="grid gap-3 sm:grid-cols-2">
-                    <FormField
-                        id="discount_type"
-                        label={t('billing.fields.discount')}
-                        error={errors.discount_value ?? errors.discount_type}
+                    <button
+                        type="button"
+                        className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 text-base font-semibold text-primary active:translate-y-0.5"
+                        onClick={() => {
+                            form.clearErrors('items');
+                            setAdding(true);
+                        }}
                     >
-                        <div className="flex gap-2">
-                            <NativeSelect
-                                id="discount_type"
-                                value={data.discount_type}
-                                onChange={(e) => {
-                                    form.clearErrors('discount_value');
-                                    form.setData(
-                                        'discount_type',
-                                        e.target
-                                            .value as FormData['discount_type'],
-                                    );
-                                }}
-                            >
-                                <option value="">
-                                    {t('billing.discount_types.none')}
-                                </option>
-                                <option value="amount">
-                                    {t('billing.discount_types.amount', {
-                                        symbol,
-                                    })}
-                                </option>
-                                <option value="percent">
-                                    {t('billing.discount_types.percent')}
-                                </option>
-                            </NativeSelect>
-                            {data.discount_type && (
-                                <Input
-                                    aria-label={t('billing.fields.discount')}
-                                    inputMode="decimal"
-                                    className="w-28"
-                                    value={data.discount_value}
+                        <Plus className="size-5" /> {t('billing.add_item')}
+                    </button>
+
+                    {discountShown ? (
+                        <FormField
+                            id="discount_type"
+                            label={t('billing.fields.discount')}
+                            error={
+                                errors.discount_value ?? errors.discount_type
+                            }
+                        >
+                            <div className="flex gap-2">
+                                <NativeSelect
+                                    id="discount_type"
+                                    value={data.discount_type}
                                     onChange={(e) => {
                                         form.clearErrors('discount_value');
                                         form.setData(
-                                            'discount_value',
-                                            e.target.value,
+                                            'discount_type',
+                                            e.target
+                                                .value as FormData['discount_type'],
                                         );
                                     }}
+                                >
+                                    <option value="">
+                                        {t('billing.discount_types.none')}
+                                    </option>
+                                    <option value="amount">
+                                        {t('billing.discount_types.amount', {
+                                            symbol,
+                                        })}
+                                    </option>
+                                    <option value="percent">
+                                        {t('billing.discount_types.percent')}
+                                    </option>
+                                </NativeSelect>
+                                {data.discount_type && (
+                                    <Input
+                                        aria-label={t(
+                                            'billing.fields.discount',
+                                        )}
+                                        inputMode="decimal"
+                                        className="w-28"
+                                        value={data.discount_value}
+                                        onChange={(e) => {
+                                            form.clearErrors('discount_value');
+                                            form.setData(
+                                                'discount_value',
+                                                e.target.value,
+                                            );
+                                        }}
+                                    />
+                                )}
+                            </div>
+                            {data.discount_type === 'amount' && (
+                                <NumberHint
+                                    text={data.discount_value}
+                                    format={fmt}
                                 />
                             )}
-                        </div>
-                        {data.discount_type === 'amount' && (
-                            <NumberHint
-                                text={data.discount_value}
-                                format={fmt}
-                            />
-                        )}
-                    </FormField>
-
-                    <div className="grid gap-2">
-                        <span className="text-sm font-medium">
-                            {t('billing.taxes')}
-                        </span>
-                        {taxRates.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">
-                                {t('billing.no_taxes')}
-                            </p>
-                        ) : (
-                            <div className="flex flex-wrap gap-x-4">
-                                {taxRates.map((rate) => (
-                                    <label
-                                        key={rate.id}
-                                        className="flex min-h-10 items-center gap-2 text-sm"
-                                    >
-                                        <Checkbox
-                                            checked={data.tax_rate_ids.includes(
-                                                rate.id,
-                                            )}
-                                            onCheckedChange={(c) =>
-                                                toggleTax(rate.id, c === true)
-                                            }
-                                        />
-                                        {t('billing.tax_line', {
-                                            name: rate.name,
-                                            rate: rate.rate,
-                                        })}
-                                    </label>
-                                ))}
-                            </div>
-                        )}
-                        <InputError message={errors.tax_rate_ids} />
-                    </div>
+                        </FormField>
+                    ) : (
+                        <button
+                            type="button"
+                            className="min-h-11 text-sm font-medium text-primary"
+                            onClick={() => {
+                                setDiscountOpen(true);
+                                form.setData('discount_type', 'amount');
+                            }}
+                        >
+                            {t('billing.add_discount')}
+                        </button>
+                    )}
                 </section>
 
-                <FormField
-                    id="notes"
-                    label={t('billing.fields.notes')}
-                    hint={t('billing.notes_hint')}
-                    error={errors.notes}
-                >
-                    <Textarea
+                {notesOpen || data.notes !== '' || errors.notes ? (
+                    <FormField
                         id="notes"
-                        rows={3}
-                        maxLength={5000}
-                        value={data.notes}
-                        onChange={(e) => form.setData('notes', e.target.value)}
-                    />
-                </FormField>
+                        label={t('billing.fields.notes')}
+                        hint={t('billing.notes_hint')}
+                        error={errors.notes}
+                    >
+                        <Textarea
+                            id="notes"
+                            rows={3}
+                            maxLength={5000}
+                            value={data.notes}
+                            onChange={(e) =>
+                                form.setData('notes', e.target.value)
+                            }
+                        />
+                    </FormField>
+                ) : (
+                    <button
+                        type="button"
+                        className="-mt-3 block min-h-11 text-sm font-medium text-primary"
+                        onClick={() => setNotesOpen(true)}
+                    >
+                        {t('billing.add_notes')}
+                    </button>
+                )}
 
                 {kind === 'estimate' && (
                     <FormField
@@ -752,7 +810,10 @@ export default function BillingForm({
                     </FormField>
                 )}
 
-                <dl className="ml-auto max-w-xs space-y-1 text-sm">
+                <dl
+                    className="da-card space-y-1 p-4 text-sm"
+                    aria-label={t('billing.totals')}
+                >
                     <div className="flex justify-between">
                         <dt>{t('billing.subtotal')}</dt>
                         <dd className="tabular-nums">
@@ -780,7 +841,7 @@ export default function BillingForm({
                             </dd>
                         </div>
                     ))}
-                    <div className="flex justify-between border-t pt-1 text-base font-semibold">
+                    <div className="flex justify-between border-t pt-2 text-base font-semibold">
                         <dt>{t('billing.total')}</dt>
                         <dd className="tabular-nums">{money(totals.total)}</dd>
                     </div>
@@ -819,14 +880,14 @@ export default function BillingForm({
                     <Button
                         type="button"
                         variant="outline"
-                        className="h-12 md:h-9"
+                        className="h-12 md:h-11"
                         asChild
                     >
                         <Link href={back}>{t('common.cancel')}</Link>
                     </Button>
                     <Button
                         type="submit"
-                        className="h-12 flex-1 md:h-9 md:flex-none"
+                        className="h-12 flex-1 md:h-11 md:flex-none"
                         disabled={
                             form.processing || Object.keys(blocking).length > 0
                         }
@@ -835,6 +896,15 @@ export default function BillingForm({
                     </Button>
                 </div>
             </form>
+
+            <AddItemSheet
+                open={adding}
+                services={services}
+                money={money}
+                onOpenChange={setAdding}
+                onPick={addService}
+                onCustom={addCustom}
+            />
         </>
     );
 }

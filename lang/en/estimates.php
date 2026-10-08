@@ -20,6 +20,7 @@ return [
     'declined_at' => 'Declined :date',
     'invoiced_as' => 'Invoiced as :number',
     'valid_until_date' => 'Valid until :date',
+    'no_expiry' => 'No expiry date',
     'expired_on' => 'Expired :date',
     'convert_approved' => 'Convert to invoice',
     'schedule_visit' => 'Schedule visit',

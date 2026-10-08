@@ -1,4 +1,4 @@
-import { BookPlus, ChevronDown, History, Trash2 } from 'lucide-react';
+import { BookPlus, History, Minus, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
     currencyDecimals,
@@ -17,6 +17,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import {
     history as historyRoute,
     store as storeToPriceBook,
@@ -71,6 +72,9 @@ export type LineSetup = {
         recoverable: boolean;
     }[];
 };
+
+/** A tax the line can be charged: the document's taxes and any other active company rate. */
+export type LineTax = { id: number; name: string; rate: string };
 
 // Keys for React lists only; never sent to the server.
 let lineKey = 0;
@@ -128,10 +132,79 @@ export function defaultWarranty(
     return setup.warranty.labor;
 }
 
+/** The fields a price book item fills in on a line of its kind. */
+export function servicePatch(
+    service: ServiceOption,
+    currency: string,
+    line: Line,
+): Partial<Line> {
+    return {
+        kind: service.kind,
+        service_id: service.id,
+        description: [service.name, service.description]
+            .filter(Boolean)
+            .join(' — '),
+        taxable: service.taxable,
+        part_number: service.part_number ?? line.part_number,
+        unit: service.unit ?? line.unit,
+        supplier: service.supplier ?? line.supplier,
+        ...(service.unit_cost !== null && service.currency === currency
+            ? { unit_cost: fromMinor(service.unit_cost, currency) }
+            : {}),
+        ...(service.unit_price !== null && service.currency === currency
+            ? {
+                  unit_price: fromMinor(service.unit_price, currency),
+                  price_touched: true,
+              }
+            : {}),
+        warranty_touched: false,
+    };
+}
+
+/** L / P / M: a small raised tile in the colour of the line type (dark blue, orange, grey). */
+export function KindBadge({
+    kind,
+    className,
+    decorative = false,
+}: {
+    kind: LineKind;
+    className?: string;
+    /** The type is already written next to it: hide the letter from screen readers. */
+    decorative?: boolean;
+}) {
+    const t = useTrans();
+
+    return (
+        <span
+            className={cn(
+                `da-kind da-kind-${kind} flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold`,
+                className,
+            )}
+            title={t(`billing.kinds.${kind}`)}
+            {...(decorative
+                ? { 'aria-hidden': true }
+                : { role: 'img', 'aria-label': t(`billing.kinds.${kind}`) })}
+        >
+            {t(`billing.kind_letters.${kind}`)}
+        </span>
+    );
+}
+
+// The description holds the item name on its first line and an optional note below it.
+const splitDescription = (description: string) => {
+    const at = description.indexOf('\n');
+
+    return at === -1
+        ? { name: description, note: null }
+        : { name: description.slice(0, at), note: description.slice(at + 1) };
+};
+
+const joinDescription = (name: string, note: string | null) =>
+    note === null ? name : `${name}\n${note}`;
+
 /**
- * One line of an estimate or invoice: a card that works one-handed on a phone. Services keep the short form;
- * parts and materials add part number, supplier, private purchase price, unit, supplier tax.
- * Per-line taxes, cost, warranty and "bill to customer" are under "Taxes, cost & warranty".
+ * One line of an estimate or invoice. Collapsed it is a compact row (type letter, name, "qty × price", amount);
+ * a tap opens it to edit quantity, price, taxes, warranty and a note, with Remove and Done at the bottom.
  */
 export function LineEditor({
     line,
@@ -141,14 +214,15 @@ export function LineEditor({
     total,
     setup,
     services,
-    taxRates,
+    taxes,
+    activeTaxIds,
     estimate,
-    canRemove,
+    open,
     errors,
     money,
+    onOpen,
     onChange,
     onRemove,
-    autoFocus = false,
 }: {
     line: Line;
     index: number;
@@ -157,20 +231,22 @@ export function LineEditor({
     total: number;
     setup: LineSetup;
     services: ServiceOption[];
-    taxRates: { tax_rate_id: number | null; name: string; rate: string }[];
+    /** Taxes that can be ticked on the line. */
+    taxes: LineTax[];
+    /** The taxes the line is charged now. */
+    activeTaxIds: number[];
     estimate: boolean;
-    canRemove: boolean;
+    open: boolean;
     errors: Record<string, string | undefined>;
     money: (minor: number, currency?: string) => string;
+    onOpen: (open: boolean) => void;
     onChange: (patch: Partial<Line>) => void;
     onRemove: () => void;
-    /** A line just added with "+ Labor / Part / Material": the cursor goes to its description. */
-    autoFocus?: boolean;
 }) {
     const t = useTrans();
     const time = useCompanyTime();
     const goods = line.kind !== 'service';
-    const [open, setOpen] = useState(!line.bill_to_customer);
+    const [more, setMore] = useState(!line.bill_to_customer);
     const [history, setHistory] = useState<
         {
             description: string;
@@ -182,8 +258,10 @@ export function LineEditor({
         }[]
     >([]);
     const [saved, setSaved] = useState(false);
-    const [changingKind, setChangingKind] = useState(false);
     const err = (field: string) => errors[`items.${index}.${field}`];
+    const lineErrors = Object.keys(errors).some(
+        (key) => key.startsWith(`items.${index}.`) && errors[key],
+    );
     const costMinor = toMinor(line.unit_cost, currency);
     const priceMinor = toMinor(line.unit_price, currency);
     const privateCosts = setup.costs_visible && line.costs_editable;
@@ -191,10 +269,11 @@ export function LineEditor({
         privateCosts && line.unit_cost !== '' && line.unit_price !== ''
             ? Math.round((priceMinor - costMinor) * toNumber(line.quantity))
             : null;
-    // The price book offers items of this line's kind only: picking never switches a part into a service.
-    const options = services.filter((s) => s.kind === line.kind);
     const fmt = (value: number) =>
         money(Math.round(value * 10 ** currencyDecimals(currency)));
+    const { name, note } = splitDescription(line.description);
+    // A line with a problem stays open so the message can be seen.
+    const expanded = open || lineErrors;
 
     // Default warranty follows kind / price / price book item until set by hand.
     useEffect(() => {
@@ -223,9 +302,9 @@ export function LineEditor({
 
     // Earlier costs of this part / material (as the part number or name is typed).
     useEffect(() => {
-        const term = (line.part_number || line.description).trim();
+        const term = (line.part_number || name).trim();
 
-        if (!goods || !privateCosts || term.length < 2) {
+        if (!expanded || !goods || !privateCosts || term.length < 2) {
             setHistory([]);
 
             return;
@@ -246,37 +325,20 @@ export function LineEditor({
             clearTimeout(timer);
             controller.abort();
         };
-    }, [line.part_number, line.description, goods, privateCosts]);
+    }, [line.part_number, name, goods, privateCosts, expanded]);
 
     const setCost = (value: string) => onChange({ unit_cost: value });
 
-    const pickService = (id: string) => {
-        const service = services.find((s) => String(s.id) === id);
+    const step = (delta: number) => {
+        const next = Math.max(0, toNumber(line.quantity) + delta);
+        onChange({ quantity: String(Math.round(next * 100) / 100) });
+    };
 
-        if (!service) {
-            return;
-        }
-
-        onChange({
-            service_id: service.id,
-            description: [service.name, service.description]
-                .filter(Boolean)
-                .join(' — '),
-            taxable: service.taxable,
-            part_number: service.part_number ?? line.part_number,
-            unit: service.unit ?? line.unit,
-            supplier: service.supplier ?? line.supplier,
-            ...(service.unit_cost !== null && service.currency === currency
-                ? { unit_cost: fromMinor(service.unit_cost, currency) }
-                : {}),
-            ...(service.unit_price !== null && service.currency === currency
-                ? {
-                      unit_price: fromMinor(service.unit_price, currency),
-                      price_touched: true,
-                  }
-                : {}),
-            warranty_touched: false,
-        });
+    const toggleTax = (id: number, on: boolean) => {
+        const ids = on
+            ? [...new Set([...activeTaxIds, id])]
+            : activeTaxIds.filter((x) => x !== id);
+        onChange({ tax_rate_ids: ids, taxable: ids.length > 0 });
     };
 
     const saveToPriceBook = () => {
@@ -291,7 +353,7 @@ export function LineEditor({
             },
             body: JSON.stringify({
                 kind: line.kind,
-                name: line.description.trim(),
+                name: name.trim(),
                 part_number: line.part_number || null,
                 supplier: line.supplier || null,
                 unit: line.unit || null,
@@ -309,123 +371,113 @@ export function LineEditor({
         });
     };
 
+    const amount =
+        line.optional && !line.selected ? (
+            <span className="text-sm text-muted-foreground tabular-nums">
+                {t('billing.line.optional_extra', { amount: money(total) })}
+            </span>
+        ) : (
+            <span
+                className={
+                    !line.bill_to_customer
+                        ? 'text-muted-foreground tabular-nums line-through'
+                        : 'font-semibold tabular-nums'
+                }
+            >
+                {money(total)}
+            </span>
+        );
+
+    if (!expanded) {
+        return (
+            <li>
+                <button
+                    type="button"
+                    className={cn(
+                        'da-card da-press flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left',
+                        !line.bill_to_customer && 'opacity-70',
+                    )}
+                    aria-expanded={false}
+                    onClick={() => onOpen(true)}
+                >
+                    <KindBadge kind={line.kind} />
+                    <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">
+                            {name.trim() || t('billing.line.untitled')}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground tabular-nums">
+                            {t('billing.qty_times_price', {
+                                quantity: line.quantity || '0',
+                                price: fmt(toNumber(line.unit_price)),
+                            })}
+                            {!line.bill_to_customer &&
+                                ` · ${t('billing.line.internal')}`}
+                        </span>
+                    </span>
+                    {amount}
+                </button>
+            </li>
+        );
+    }
+
     return (
         <li
-            className={
-                line.bill_to_customer
-                    ? 'space-y-3 rounded-lg border p-3'
-                    : 'space-y-3 rounded-lg border border-dashed bg-muted/40 p-3'
-            }
+            className={cn(
+                'da-card space-y-3 p-3',
+                !line.bill_to_customer && 'border border-dashed',
+            )}
         >
-            {/* The type is picked when the line is added. A filled line shows its type and changes it only on
-                request, so typing a part after labor never re-labels the labor line and its price. */}
-            {changingKind ||
-            (line.description === '' && line.unit_price === '') ? (
-                <div className="grid grid-cols-3 gap-1">
-                    {(['service', 'part', 'material'] as const).map((kind) => (
-                        <Button
-                            key={kind}
-                            type="button"
-                            size="sm"
-                            variant={line.kind === kind ? 'default' : 'outline'}
-                            onClick={() => {
-                                const picked = services.find(
-                                    (s) => s.id === line.service_id,
-                                );
-                                onChange({
-                                    kind,
-                                    ...(picked && picked.kind !== kind
-                                        ? { service_id: null }
-                                        : {}),
-                                });
-                                setChangingKind(false);
-                            }}
-                        >
-                            {t(`billing.kinds.${kind}`)}
-                        </Button>
-                    ))}
-                </div>
-            ) : (
-                <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold tracking-wide text-primary uppercase">
-                        {t(`billing.kinds.${line.kind}`)}
-                    </span>
-                    <button
-                        type="button"
-                        className="h-8 text-xs text-muted-foreground underline"
-                        onClick={() => setChangingKind(true)}
-                    >
-                        {t('billing.change_kind')}
-                    </button>
-                </div>
-            )}
-
-            {options.length > 0 && (
-                <NativeSelect
-                    aria-label={t('billing.pick_service')}
-                    value={
-                        options.some((s) => s.id === line.service_id)
-                            ? String(line.service_id)
-                            : ''
-                    }
-                    onChange={(e) => pickService(e.target.value)}
-                >
-                    <option value="">{t('billing.pick_service')}</option>
-                    {[...new Set(options.map((service) => service.category))]
-                        .sort((a, b) => (a ?? '').localeCompare(b ?? ''))
-                        .map((category) => (
-                            <optgroup
-                                key={category ?? ''}
-                                label={category ?? t('services.uncategorized')}
-                            >
-                                {options
-                                    .filter(
-                                        (service) =>
-                                            service.category === category,
-                                    )
-                                    .map((service) => (
-                                        <option
-                                            key={service.id}
-                                            value={service.id}
-                                        >
-                                            {service.unit_price !== null
-                                                ? `${service.name} · ${money(service.unit_price, service.currency)}`
-                                                : service.name}
-                                        </option>
-                                    ))}
-                            </optgroup>
-                        ))}
-                </NativeSelect>
-            )}
-
-            <div className="flex items-start gap-2">
-                <div className="flex-1">
-                    <Textarea
-                        autoFocus={autoFocus}
-                        aria-label={t('billing.fields.description')}
-                        placeholder={t('billing.fields.description')}
-                        rows={2}
-                        maxLength={500}
-                        value={line.description}
-                        onChange={(e) =>
-                            onChange({ description: e.target.value })
-                        }
-                    />
-                    <InputError message={err('description')} />
-                </div>
-                {canRemove && (
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-10"
-                        aria-label={t('billing.remove_item')}
-                        onClick={onRemove}
-                    >
-                        <Trash2 />
-                    </Button>
-                )}
+            <div className="flex items-center gap-3">
+                <KindBadge kind={line.kind} decorative />
+                <span className="flex-1 text-sm font-semibold">
+                    {t(`billing.kinds.${line.kind}`)}
+                </span>
+                {amount}
             </div>
+
+            <div>
+                <Input
+                    aria-label={t('billing.fields.description')}
+                    placeholder={t('billing.fields.description')}
+                    maxLength={500}
+                    value={name}
+                    autoFocus={name === ''}
+                    onChange={(e) =>
+                        onChange({
+                            description: joinDescription(
+                                e.target.value.replace(/\n/g, ' '),
+                                note,
+                            ),
+                        })
+                    }
+                />
+                <InputError message={err('description')} />
+            </div>
+
+            {note === null ? (
+                <button
+                    type="button"
+                    className="min-h-11 text-sm font-medium text-primary"
+                    onClick={() =>
+                        onChange({ description: joinDescription(name, '') })
+                    }
+                >
+                    {t('billing.line.add_note')}
+                </button>
+            ) : (
+                <Textarea
+                    aria-label={t('billing.line.note')}
+                    placeholder={t('billing.line.note')}
+                    rows={2}
+                    maxLength={Math.max(0, 499 - name.length)}
+                    value={note}
+                    onChange={(e) =>
+                        onChange({
+                            description: joinDescription(name, e.target.value),
+                        })
+                    }
+                />
+            )}
 
             {goods && (
                 <div className="grid grid-cols-2 gap-2">
@@ -465,7 +517,7 @@ export function LineEditor({
                             <li key={i}>
                                 <button
                                     type="button"
-                                    className="w-full text-left hover:underline"
+                                    className="min-h-8 w-full text-left hover:underline"
                                     onClick={() => {
                                         onChange({
                                             supplier:
@@ -502,23 +554,46 @@ export function LineEditor({
                 </div>
             )}
 
-            <div className="grid grid-cols-[4.5rem_1fr] gap-2">
+            <div className="grid grid-cols-[auto_1fr] gap-2">
                 <div>
                     <label className="text-xs text-muted-foreground">
                         {t('billing.fields.quantity')}
                     </label>
-                    <Input
-                        aria-label={t('billing.fields.quantity')}
-                        inputMode="decimal"
-                        value={line.quantity}
-                        onChange={(e) => onChange({ quantity: e.target.value })}
-                    />
+                    <div className="flex items-center gap-1">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label={t('billing.line.less')}
+                            onClick={() => step(-1)}
+                        >
+                            <Minus />
+                        </Button>
+                        <Input
+                            aria-label={t('billing.fields.quantity')}
+                            inputMode="decimal"
+                            className="w-14 text-center"
+                            value={line.quantity}
+                            onChange={(e) =>
+                                onChange({ quantity: e.target.value })
+                            }
+                        />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label={t('billing.line.more_quantity')}
+                            onClick={() => step(1)}
+                        >
+                            <Plus />
+                        </Button>
+                    </div>
                     <NumberHint text={line.quantity} format={String} />
                     <InputError message={err('quantity')} />
                 </div>
-                <div>
+                <div className="min-w-0">
                     <label className="text-xs text-muted-foreground">
-                        {t('billing.line.customer_price')}
+                        {t('billing.fields.unit_price')}
                     </label>
                     <MoneyInput
                         symbol={symbol}
@@ -575,38 +650,7 @@ export function LineEditor({
                         }
                     />
                 )}
-            <div className="flex min-h-10 items-center justify-between gap-3">
-                {taxRates.length > 0 ? (
-                    <label className="flex min-h-10 items-center gap-2 text-sm">
-                        <Checkbox
-                            checked={line.taxable}
-                            onCheckedChange={(c) =>
-                                onChange({ taxable: c === true })
-                            }
-                        />
-                        {t('billing.taxable')}
-                    </label>
-                ) : (
-                    <span />
-                )}
-                {line.optional && !line.selected ? (
-                    <span className="text-sm text-muted-foreground tabular-nums">
-                        {t('billing.line.optional_extra', {
-                            amount: money(total),
-                        })}
-                    </span>
-                ) : (
-                    <span
-                        className={
-                            !line.bill_to_customer
-                                ? 'text-muted-foreground tabular-nums line-through'
-                                : 'font-medium tabular-nums'
-                        }
-                    >
-                        {money(total)}
-                    </span>
-                )}
-            </div>
+
             {goods && privateCosts && (
                 <div className="rounded-xl border border-dashed bg-muted/40 p-3">
                     <label className="text-xs font-medium">
@@ -634,9 +678,82 @@ export function LineEditor({
                 </div>
             )}
 
+            {taxes.length > 0 && (
+                <fieldset className="space-y-1">
+                    <legend className="text-xs text-muted-foreground">
+                        {t('billing.line.taxes')}
+                    </legend>
+                    <div className="flex flex-wrap gap-x-4">
+                        {taxes.map((tax) => (
+                            <label
+                                key={tax.id}
+                                className="flex min-h-11 items-center gap-2 text-sm"
+                            >
+                                <Checkbox
+                                    checked={activeTaxIds.includes(tax.id)}
+                                    onCheckedChange={(c) =>
+                                        toggleTax(tax.id, c === true)
+                                    }
+                                />
+                                {t('billing.tax_line', {
+                                    name: tax.name,
+                                    rate: tax.rate,
+                                })}
+                            </label>
+                        ))}
+                    </div>
+                    <InputError message={err('tax_rate_ids')} />
+                </fieldset>
+            )}
+
+            <div className="grid grid-cols-[1fr_2fr] gap-2">
+                <div>
+                    <label className="text-xs text-muted-foreground">
+                        {t('billing.warranty')}
+                    </label>
+                    <Input
+                        aria-label={t('billing.warranty')}
+                        inputMode="numeric"
+                        value={line.warranty_value}
+                        onChange={(e) =>
+                            onChange({
+                                warranty_value: e.target.value.replace(
+                                    /\D/g,
+                                    '',
+                                ),
+                                warranty_touched: true,
+                            })
+                        }
+                    />
+                </div>
+                <div>
+                    <label className="text-xs text-muted-foreground">
+                        {Number(line.warranty_value) === 0
+                            ? t('billing.no_warranty')
+                            : ' '}
+                    </label>
+                    <NativeSelect
+                        aria-label={t('billing.warranty_unit')}
+                        value={line.warranty_unit}
+                        onChange={(e) =>
+                            onChange({
+                                warranty_unit: e.target.value,
+                                warranty_touched: true,
+                            })
+                        }
+                    >
+                        {setup.warranty_units.map((u) => (
+                            <option key={u.value} value={u.value}>
+                                {u.label}
+                            </option>
+                        ))}
+                    </NativeSelect>
+                </div>
+            </div>
+
             {estimate && (
                 <div className="flex flex-wrap gap-x-4">
-                    <label className="flex min-h-10 items-center gap-2 text-sm">
+                    <label className="flex min-h-11 items-center gap-2 text-sm">
                         <Checkbox
                             checked={line.optional}
                             onCheckedChange={(c) =>
@@ -652,7 +769,7 @@ export function LineEditor({
                         </span>
                     </label>
                     {line.optional && (
-                        <label className="flex min-h-10 items-center gap-2 text-sm">
+                        <label className="flex min-h-11 items-center gap-2 text-sm">
                             <Checkbox
                                 checked={line.selected}
                                 onCheckedChange={(c) =>
@@ -667,72 +784,52 @@ export function LineEditor({
 
             <button
                 type="button"
-                className="flex min-h-9 items-center gap-1 text-sm text-muted-foreground"
-                onClick={() => setOpen((o) => !o)}
+                className="min-h-11 text-sm text-muted-foreground underline"
+                aria-expanded={more}
+                onClick={() => setMore((m) => !m)}
             >
-                <ChevronDown
-                    className={open ? 'size-4 rotate-180' : 'size-4'}
-                />
-                {t('billing.line.more')}
-                {!open && line.warranty_value !== '' && (
-                    <span>
-                        {' · '}
-                        {Number(line.warranty_value) === 0
-                            ? t('billing.no_warranty')
-                            : `${line.warranty_value} ${t(`billing.warranty_units.${line.warranty_unit}`)}`}
-                    </span>
-                )}
+                {t('billing.line.more_options')}
             </button>
 
-            {open && (
+            {more && (
                 <div className="space-y-3">
-                    <div className="grid grid-cols-[1fr_2fr] gap-2">
-                        <div>
-                            <label className="text-xs text-muted-foreground">
-                                {t('billing.warranty')}
-                            </label>
-                            <Input
-                                aria-label={t('billing.warranty')}
-                                inputMode="numeric"
-                                value={line.warranty_value}
-                                onChange={(e) =>
-                                    onChange({
-                                        warranty_value: e.target.value.replace(
-                                            /\D/g,
-                                            '',
-                                        ),
-                                        warranty_touched: true,
-                                    })
-                                }
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs text-muted-foreground">
-                                &nbsp;
-                            </label>
-                            <NativeSelect
-                                aria-label={t('billing.warranty')}
-                                value={line.warranty_unit}
-                                onChange={(e) =>
-                                    onChange({
-                                        warranty_unit: e.target.value,
-                                        warranty_touched: true,
-                                    })
-                                }
-                            >
-                                {setup.warranty_units.map((u) => (
-                                    <option key={u.value} value={u.value}>
-                                        {u.label}
-                                    </option>
-                                ))}
-                            </NativeSelect>
+                    <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                            {t('billing.change_kind')}
+                        </p>
+                        <div className="grid grid-cols-3 gap-1">
+                            {(['service', 'part', 'material'] as const).map(
+                                (kind) => (
+                                    <Button
+                                        key={kind}
+                                        type="button"
+                                        size="sm"
+                                        className="h-11"
+                                        variant={
+                                            line.kind === kind
+                                                ? 'default'
+                                                : 'outline'
+                                        }
+                                        aria-pressed={line.kind === kind}
+                                        onClick={() => {
+                                            const picked = services.find(
+                                                (s) => s.id === line.service_id,
+                                            );
+                                            onChange({
+                                                kind,
+                                                ...(picked &&
+                                                picked.kind !== kind
+                                                    ? { service_id: null }
+                                                    : {}),
+                                            });
+                                        }}
+                                    >
+                                        {t(`billing.kinds.${kind}`)}
+                                    </Button>
+                                ),
+                            )}
                         </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                        {Number(line.warranty_value) === 0
-                            ? t('billing.no_warranty')
-                            : null}
-                    </p>
 
                     {goods &&
                         privateCosts &&
@@ -795,85 +892,7 @@ export function LineEditor({
                             </div>
                         )}
 
-                    {line.taxable && taxRates.length > 1 && (
-                        <fieldset className="space-y-2 rounded-md border p-3">
-                            <legend className="px-1 text-sm">
-                                {t('billing.line.taxes')}
-                            </legend>
-                            <label className="flex min-h-10 items-center gap-2 text-sm">
-                                <Checkbox
-                                    checked={line.tax_rate_ids === null}
-                                    onCheckedChange={(checked) =>
-                                        onChange({
-                                            tax_rate_ids:
-                                                checked === true ? null : [],
-                                        })
-                                    }
-                                />
-                                {t('billing.line.document_taxes')}
-                            </label>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1">
-                                {taxRates.map(
-                                    (tax) =>
-                                        tax.tax_rate_id !== null && (
-                                            <label
-                                                key={tax.tax_rate_id}
-                                                className="flex min-h-10 items-center gap-2 text-sm"
-                                            >
-                                                <Checkbox
-                                                    checked={
-                                                        line.tax_rate_ids ===
-                                                            null ||
-                                                        line.tax_rate_ids.includes(
-                                                            tax.tax_rate_id,
-                                                        )
-                                                    }
-                                                    onCheckedChange={(
-                                                        checked,
-                                                    ) => {
-                                                        const ids =
-                                                            line.tax_rate_ids ??
-                                                            taxRates.flatMap(
-                                                                (rate) =>
-                                                                    rate.tax_rate_id ===
-                                                                    null
-                                                                        ? []
-                                                                        : [
-                                                                              rate.tax_rate_id,
-                                                                          ],
-                                                            );
-                                                        onChange({
-                                                            tax_rate_ids:
-                                                                checked === true
-                                                                    ? [
-                                                                          ...ids,
-                                                                          tax.tax_rate_id!,
-                                                                      ]
-                                                                    : ids.filter(
-                                                                          (
-                                                                              id,
-                                                                          ) =>
-                                                                              id !==
-                                                                              tax.tax_rate_id,
-                                                                      ),
-                                                        });
-                                                    }}
-                                                />
-                                                {tax.name} ({tax.rate}%)
-                                            </label>
-                                        ),
-                                )}
-                            </div>
-                            {taxRates.length === 0 && (
-                                <p className="text-xs text-muted-foreground">
-                                    {t('billing.line.enable_taxes')}
-                                </p>
-                            )}
-                            <InputError message={err('tax_rate_ids')} />
-                        </fieldset>
-                    )}
-
-                    <label className="flex min-h-10 items-start gap-2 text-sm">
+                    <label className="flex min-h-11 items-start gap-2 text-sm">
                         <Checkbox
                             className="mt-0.5"
                             checked={line.bill_to_customer}
@@ -894,11 +913,12 @@ export function LineEditor({
                     {goods &&
                         privateCosts &&
                         line.service_id === null &&
-                        line.description.trim() !== '' && (
+                        name.trim() !== '' && (
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
+                                className="h-11"
                                 disabled={saved}
                                 onClick={saveToPriceBook}
                             >
@@ -910,6 +930,24 @@ export function LineEditor({
                         )}
                 </div>
             )}
+
+            <div className="flex gap-2 pt-1">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 text-destructive"
+                    onClick={onRemove}
+                >
+                    <Trash2 /> {t('billing.line.remove')}
+                </Button>
+                <Button
+                    type="button"
+                    className="h-11 flex-1"
+                    onClick={() => onOpen(false)}
+                >
+                    {t('billing.line.done')}
+                </Button>
+            </div>
         </li>
     );
 }
