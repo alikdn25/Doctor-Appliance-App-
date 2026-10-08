@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { useMoney } from '@/components/billing/money';
 import { PageHeader } from '@/components/page-header';
 import { BusinessReport } from '@/components/reports/business-report';
+import { ProfitSummary } from '@/components/reports/profit-summary';
+import type { ProfitData } from '@/components/reports/profit-summary';
 import type { BusinessReportData } from '@/components/reports/business-report';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +36,11 @@ export default function Reports({
     callbacks,
     noCharge,
     business,
+    profit,
+    today,
 }: {
+    profit: ProfitData;
+    today: string;
     from: string;
     to: string;
     currency: string;
@@ -57,6 +63,27 @@ export default function Reports({
     const t = useTrans();
     const money = useMoney(currency);
     const [period, setPeriod] = useState({ from, to });
+
+    // Day / week (from Monday) / month / year, each up to today.
+    const presets = (() => {
+        const [y, m, d] = today.split('-').map(Number);
+        const date = new Date(Date.UTC(y, m - 1, d));
+        const monday = new Date(date);
+        monday.setUTCDate(d - ((date.getUTCDay() + 6) % 7));
+
+        return {
+            day: today,
+            week: monday.toISOString().slice(0, 10),
+            month: `${today.slice(0, 7)}-01`,
+            year: `${today.slice(0, 4)}-01-01`,
+        } as const;
+    })();
+    const choose = (start: string) =>
+        router.get(
+            index().url,
+            { from: start, to: today },
+            { preserveState: false },
+        );
 
     const apply = (e: FormEvent) => {
         e.preventDefault();
@@ -150,6 +177,24 @@ export default function Reports({
                     description={t('reports.period_hint')}
                 />
 
+                <div
+                    className="da-track grid grid-cols-4 gap-1 p-1"
+                    role="group"
+                    aria-label={t('reports.profit_summary.period')}
+                >
+                    {(['day', 'week', 'month', 'year'] as const).map((key) => (
+                        <button
+                            key={key}
+                            type="button"
+                            className="da-chip min-h-11 rounded-xl text-sm font-medium"
+                            aria-pressed={from === presets[key] && to === today}
+                            onClick={() => choose(presets[key])}
+                        >
+                            {t(`reports.profit_summary.periods.${key}`)}
+                        </button>
+                    ))}
+                </div>
+
                 <form
                     onSubmit={apply}
                     className="flex flex-wrap items-end gap-2"
@@ -176,6 +221,8 @@ export default function Reports({
                     </label>
                     <Button type="submit">{t('reports.apply')}</Button>
                 </form>
+
+                <ProfitSummary data={profit} currency={currency} />
 
                 <BusinessReport data={business} />
 

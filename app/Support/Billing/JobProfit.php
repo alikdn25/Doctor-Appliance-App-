@@ -21,7 +21,11 @@ class JobProfit
     /**
      * @return array{revenue: int, cost: int|null, fees: int, profit: int|null, margin: float|null}
      */
-    public static function for(ServiceJob $job): array
+    /**
+     * @param  bool  $allCosts  Count every purchase cost (the Owner's company totals); otherwise the result is
+     *                          hidden when it includes another person's private cost.
+     */
+    public static function for(ServiceJob $job, bool $allCosts = false): array
     {
         $currency = currentCompany()->currency;
         $invoices = Invoice::query()->where('service_job_id', $job->id)->where('currency', $currency)
@@ -41,7 +45,7 @@ class JobProfit
             ->get()->sum(fn (JobCostItem $item) => $item->totalCost());
         $fees = (int) Payment::query()->valid()->whereIn('invoice_id', $invoices->pluck('id'))->sum('processing_fee');
         $profit = $revenue - $cost - $fees;
-        $private = $invoices->contains(fn (Invoice $invoice) => $invoice->items->contains(fn (InvoiceItem $item) => $item->unit_cost !== null && ! CostAccess::owns(auth()->user(), $item)));
+        $private = ! $allCosts && $invoices->contains(fn (Invoice $invoice) => $invoice->items->contains(fn (InvoiceItem $item) => $item->unit_cost !== null && ! CostAccess::owns(auth()->user(), $item)));
 
         return [
             'revenue' => $revenue,
