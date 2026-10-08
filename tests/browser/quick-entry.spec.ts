@@ -117,9 +117,7 @@ test('New invoice opens from the list and a new caller proceeds directly to invo
     await expect(
         page.getByRole('heading', { name: 'New invoice', exact: true }),
     ).toBeVisible();
-    await expect(
-        page.getByRole('textbox', { name: 'Price', exact: true }).first(),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add item' })).toBeVisible();
     await page.screenshot({
         path: info.outputPath('invoice-entry.png'),
         fullPage: true,
