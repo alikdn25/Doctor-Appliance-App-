@@ -135,7 +135,8 @@ return. Each job counts once; access follows company, brand and technician assig
 
 ### 7.4 Technician mobile view (PWA)
 
-- Today's jobs list: customer, address, appliance, status, ticket size.
+- Today's jobs list: customer, address, appliance, status, ticket size. My Jobs shows one day at a time (‹ › to
+  other days), a Completed tab and "+ Trip".
 - One-tap navigation (opens Google Maps).
 - Status buttons: On my way (sends SMS with ETA), Started, Waiting for parts, Completed. Time on job is tracked automatically.
 - Photos before/after with upload retry when signal is weak.
@@ -272,7 +273,9 @@ from the company number (provider voice).
 - Trips: date, from, to, distance, purpose, type (customer / parts store / supplier / other), driver.
 - Trips to customers are created when a job is started: from the job started before it that day (or the person's
   start address, e.g. home) to the job's address; road distance from Google Distance Matrix (server key in `.env`),
-  editable. Other trips are added by hand with "+ Trip".
+  editable. Other trips: "+ Trip" on My Jobs — only the destination is typed; the start is the phone's GPS position
+  (or the last point of the day), and the next job's trip starts from that stop. The Mileage page also adds and edits
+  trips by hand.
 - Distances in the company unit (km or mi; miles by default in the US/UK), a company rate per unit, month and year
   totals, CSV export of the month or year (date, route, purpose, distance). Technicians see their own trips;
   Owners/Admins see everyone's.

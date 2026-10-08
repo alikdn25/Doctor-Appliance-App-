@@ -54,17 +54,24 @@ test('my jobs lists only the user\'s own visits by day', function () {
         ->whereKeyNot([$today->id, $past->id])->sole();
     $upcoming->forceFill(['scheduled_start' => now()->addDays(2), 'scheduled_end' => now()->addDays(2)->addHour()])->saveQuietly();
 
-    $ids = fn (string $tab) => collect($this->get(route('jobs.mine', ['tab' => $tab]))->viewData('page')['props']['visits'])
+    $ids = fn (array $query) => collect($this->get(route('jobs.mine', $query))->viewData('page')['props']['visits'])
         ->pluck('id')->all();
+    $day = fn ($at) => $at->timezone($this->company->timezone)->toDateString();
 
-    expect($ids('today'))->toBe([$today->id])
-        ->and($ids('upcoming'))->toBe([$upcoming->id])
-        ->and($ids('recent'))->toBe([$past->id]);
+    // One day at a time; the arrows move to the other days.
+    expect($ids([]))->toBe([$today->id])
+        ->and($ids(['date' => $day($upcoming->scheduled_start)]))->toBe([$upcoming->id])
+        ->and($ids(['date' => $day($past->scheduled_start)]))->toBe([$past->id])
+        // Completed lists only finished jobs.
+        ->and($ids(['tab' => 'completed']))->toBe([]);
+
+    inCompany($this->company, fn () => $this->job->forceFill(['status' => JobStatus::Completed])->save());
+    expect($ids(['tab' => 'completed']))->toBe([$today->id, $past->id]);
 
     $this->get(route('jobs.mine'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('jobs/mine')
-            ->where('tab', 'today')
+            ->where('tab', 'day')
             ->where('visits.0.job.customer', 'Mine Owner')
             ->where('visits.0.job.phone', '+16045550101')
             ->where('visits.0.job.appliances', ['LG Washer']));
@@ -226,7 +233,8 @@ test('an owner assigned to a visit sees it in my jobs and can work on it', funct
 
     $this->actingAs($owner);
 
-    expect(collect($this->get(route('jobs.mine', ['tab' => 'upcoming']))->viewData('page')['props']['visits'])->pluck('id')->all())
+    $day = $visit->scheduled_start->timezone($this->company->timezone)->toDateString();
+    expect(collect($this->get(route('jobs.mine', ['date' => $day]))->viewData('page')['props']['visits'])->pluck('id')->all())
         ->toBe([$visit->id]);
 
     $this->get(route('jobs.show', $job))->assertInertia(fn (Assert $page) => $page->where('myVisitId', $visit->id));

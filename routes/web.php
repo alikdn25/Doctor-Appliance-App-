@@ -184,6 +184,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('trips', [TripController::class, 'index'])->name('trips.index');
         Route::get('trips/export.csv', [TripController::class, 'export'])->name('trips.export');
         Route::post('trips', [TripController::class, 'store'])->name('trips.store');
+        Route::post('trips/quick', [TripController::class, 'quick'])->name('trips.quick');
         Route::put('trips/start-address', [TripController::class, 'startAddress'])->name('trips.start-address');
         Route::put('trips/{trip}', [TripController::class, 'update'])->name('trips.update');
         Route::delete('trips/{trip}', [TripController::class, 'destroy'])->name('trips.destroy');

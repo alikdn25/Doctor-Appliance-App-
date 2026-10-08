@@ -17,6 +17,16 @@ class DistanceMatrix
      */
     public function kilometres(string $from, string $to): ?float
     {
+        return $this->route($from, $to)['km'] ?? null;
+    }
+
+    /**
+     * Road distance and the addresses Google matched (a GPS point "49.2,-123.1" comes back as a street address).
+     *
+     * @return array{km: float, from: string|null, to: string|null}|null
+     */
+    public function route(string $from, string $to): ?array
+    {
         if (! Geocoder::enabled() || trim($from) === '' || trim($to) === '') {
             return null;
         }
@@ -43,6 +53,10 @@ class DistanceMatrix
             return null;
         }
 
-        return round($metres / 1000, 1);
+        return [
+            'km' => round($metres / 1000, 1),
+            'from' => $response->json('origin_addresses.0') ?: null,
+            'to' => $response->json('destination_addresses.0') ?: null,
+        ];
     }
 }

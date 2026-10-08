@@ -22,6 +22,13 @@ return [
     'start_saved' => 'Start address saved.',
     'distance_unknown' => 'Distance not found — tap to enter it',
     'auto' => 'From the route',
+    'quick_title' => 'Trip',
+    'quick_hint' => 'Where are you driving? The distance is counted from where you are now, and your next job is counted from there.',
+    'quick_to' => 'Store or address',
+    'quick_save' => 'Save trip',
+    'quick_saved' => 'Trip saved: :distance.',
+    'quick_saved_no_distance' => 'Trip saved. The distance could not be found; you can add it in Mileage.',
+    'locating' => 'Finding where you are…',
     'everyone' => 'Everyone',
     'client_purpose' => 'Service call #:number :customer',
     'units' => [

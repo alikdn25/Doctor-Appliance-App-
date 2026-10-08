@@ -1,3 +1,14 @@
+# October 8 (second round) — My Jobs by day, Completed and + Trip
+
+- My Jobs tabs: the day with ‹ › arrows ("Today", other days as "Oct 9"), **Completed** (jobs completed, invoiced or
+  paid in the last 30 days) instead of Upcoming/Recent, and a teal **+ Trip** button.
+- **+ Trip**: type a store or address (Google suggestions), Save. The start is the phone's GPS position (asked when
+  the sheet opens); without GPS, or when pressed already at the destination (under 300 m), the last point of the day
+  is used (the latest stop, the job started last, or the start address). Google measures the road distance; the
+  next "Start job" trip is counted from this stop. The trip is in Mileage as a parts store run, editable there.
+- Tests: day navigation, Completed, quick trip with GPS / without GPS / on arrival, next job from the stop; browser
+  scenarios for the tabs (390 px width) and + Trip.
+
 # October 8 — owner's list: simpler invoice, taxes per line type, Mark as paid, no Visits, dossier, profit, mileage
 
 1. **New invoice / estimate form**: one dashed "Add item" opens a bottom sheet (price book search with price and

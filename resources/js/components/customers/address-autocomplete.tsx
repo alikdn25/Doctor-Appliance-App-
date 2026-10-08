@@ -151,7 +151,8 @@ export function AddressAutocomplete({
 }: Omit<ComponentProps<typeof Input>, 'value' | 'onChange'> & {
     value: string;
     onChange: (value: string) => void;
-    onPick: (address: PickedAddress) => void;
+    /** `text` is the suggestion as shown, e.g. "Reliable Parts, Dawson Street, Burnaby, BC, Canada". */
+    onPick: (address: PickedAddress, text: string) => void;
     /** ISO 3166-1 alpha-2; suggestions are limited to it. */
     country: string;
 }) {
@@ -223,7 +224,7 @@ export function AddressAutocomplete({
             });
             // The pick ends the billing session; the next search starts a new one.
             session.current = null;
-            onPick(toAddress(place, country));
+            onPick(toAddress(place, country), prediction.text.text);
         } catch {
             onChange(prediction.mainText?.text ?? prediction.text.text);
         }

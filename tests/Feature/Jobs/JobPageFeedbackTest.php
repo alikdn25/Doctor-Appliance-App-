@@ -232,7 +232,7 @@ test('a full name typed in the quick booking is split and gets a face', function
         ->and(NameAvatar::suggest('Oleksandr Mykhailychenko'))->toBe('man');
 });
 
-test('my jobs shows tab counts, the problem and the appliance picture', function () {
+test('my jobs shows the day, the problem and the appliance picture', function () {
     $microwave = Appliance::factory()->for($this->property)->create(['type' => 'microwave']);
     inCompany($this->company, function () use ($microwave) {
         $this->job->appliances()->attach($microwave->id);
@@ -246,8 +246,8 @@ test('my jobs shows tab counts, the problem and the appliance picture', function
 
     $this->actingAs($this->tech)->get(route('jobs.mine'))->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('counts.today', 1)
-            ->where('counts.upcoming', 0)
+            ->where('tab', 'day')
+            ->has('visits', 1)
             ->where('visits.0.job.picture', 'microwave')
             ->where('visits.0.job.problem', 'Not heating')
             ->where('visits.0.job.appliance_types', ['Microwave']));

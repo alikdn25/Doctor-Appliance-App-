@@ -456,8 +456,9 @@ test('the job list, search and my jobs only show jobs of the current company', f
             ->assertInertia(fn (Assert $page) => $page->where('jobs.data', fn ($rows) => collect($rows)->pluck('id')->doesntContain($this->jobB->id)));
     }
 
+    $visitA = JobVisit::withoutCompanyScope()->where('service_job_id', $this->jobA->id)->sole();
     $this->actingAs($this->techA)
-        ->get(route('jobs.mine', ['tab' => 'upcoming']))
+        ->get(route('jobs.mine', ['date' => $visitA->scheduled_start->timezone($this->companyA->timezone)->toDateString()]))
         ->assertInertia(fn (Assert $page) => $page->has('visits', 1)->where('visits.0.job.id', $this->jobA->id));
 });
 
