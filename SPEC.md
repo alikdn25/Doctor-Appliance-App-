@@ -136,8 +136,8 @@ return. Each job counts once; access follows company, brand and technician assig
 ### 7.4 Technician mobile view (PWA)
 
 - Today's jobs list: customer, address, appliance, status, ticket size. My Jobs shows one day at a time (‹ › to
-  other days), a Completed tab and "+ Trip". For office roles a day also says how many jobs others (or nobody yet)
-  have that day, with a link to the calendar: My Jobs lists only the person's own jobs.
+  other days), a Completed tab and "+ Trip". For office roles a day also lists the jobs nobody is assigned to yet
+  (marked "Not assigned") and says how many jobs other people have that day, with a link to the calendar.
 - One-tap navigation (opens Google Maps).
 - Status buttons: On my way (sends SMS with ETA), Started, Waiting for parts, Completed. Time on job is tracked automatically.
 - Photos before/after with upload retry when signal is weak.
