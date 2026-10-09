@@ -23,6 +23,7 @@ import { useInstallPrompt } from '@/hooks/use-install-prompt';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { calendar } from '@/routes';
 import { create as bookCustomer, mine, show } from '@/routes/jobs';
 
 type MyVisit = Visit & {
@@ -70,8 +71,10 @@ export default function MyJobs({
     search: initialSearch = '',
     visits,
     cashOnHand = {},
+    othersOnDay = 0,
 }: {
     tab: Tab;
+    othersOnDay?: number;
     date: string;
     today: string;
     search?: string;
@@ -340,6 +343,21 @@ export default function MyJobs({
                         />
                     ))}
                 </ul>
+
+                {othersOnDay > 0 && (
+                    <Link
+                        href={calendar({ query: { view: 'day', date } })}
+                        className="da-card da-press flex min-h-12 items-center justify-between gap-3 p-4 text-sm"
+                    >
+                        <span className="text-muted-foreground">
+                            {t('jobs.others_on_day', { count: othersOnDay })}
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1 font-semibold text-primary">
+                            {t('nav.calendar')}
+                            <ChevronRight className="size-4" />
+                        </span>
+                    </Link>
+                )}
 
                 {canBook && (
                     <Button asChild className="h-14 w-full text-lg">

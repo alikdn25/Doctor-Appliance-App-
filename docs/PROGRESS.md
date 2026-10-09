@@ -1,3 +1,18 @@
+# October 9 — support access 403, trip navigation, My Jobs empty days
+
+- **Support access 403**: "Return to admin" pressed twice (or in an old tab) and admin pages left open while support
+  access is on no longer show a bare 403: they go home with a hint to press "Return to admin". "Support access" is
+  no longer offered for platform admins who are also company members (it could not work for them).
+- **Platform → Companies** in the menu is shown only to platform admins (Alex), by design; company owners never see
+  it, including during support access.
+- **+ Trip → Navigate**: saves the trip and opens Google Maps turn-by-turn to the store; "Save only" for a trip
+  already driven. "+ Trip" on Mileage opens the same sheet; "Enter by hand" opens the full form.
+- **My Jobs** lists only the person's own jobs. For owners/admins/dispatchers each day now says how many jobs others
+  (or nobody yet) have that day, with a Calendar link, so an empty day is not mistaken for an empty schedule.
+- Tests: double Return to admin, old admin tab, no support access for platform admins, others-on-day count (tenant
+  isolated, office only); browser scenarios for Navigate and Enter by hand.
+- Next: owner to confirm whether unassigned jobs should also appear in My Jobs.
+
 # October 8 (second round) — My Jobs by day, Completed and + Trip
 
 - My Jobs tabs: the day with ‹ › arrows ("Today", other days as "Oct 9"), **Completed** (jobs completed, invoiced or

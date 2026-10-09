@@ -1,12 +1,14 @@
 import { expect, test } from '@playwright/test';
 
-test('+ Trip logs a parts store run in one dialog and the month total follows', async ({
+test('+ Trip → Enter by hand logs a parts store run and the month total follows', async ({
     page,
 }, info) => {
     await page.goto('/trips');
     await expect(page.getByRole('heading', { name: 'Mileage' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Trip', exact: true }).click();
+    // + Trip opens the navigation sheet; a past trip is entered by hand from it.
+    await page.getByRole('button', { name: 'Enter by hand' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByRole('radio', { name: 'Parts store' }).click();
     await dialog.getByLabel('From', { exact: true }).fill('Shop');

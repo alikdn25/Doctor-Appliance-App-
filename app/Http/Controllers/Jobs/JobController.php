@@ -182,8 +182,20 @@ class JobController extends Controller
 
         $messaging = app(MessagingPresenter::class);
 
+        // My Jobs lists only this person's visits; the office is told how many others (other people's and
+        // unassigned) the calendar has that day, so an empty day here is not mistaken for an empty schedule.
+        $othersOnDay = $tab === 'day' && $search === '' && Gate::allows('dispatch', ServiceJob::class)
+            ? JobVisit::query()
+                ->whereBetween('scheduled_start', [$dayStart, $dayEnd])
+                ->where('status', '!=', VisitStatus::Cancelled->value)
+                ->whereDoesntHave('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
+                ->whereHas('job', fn (Builder $q) => $q->visibleTo($user))
+                ->count()
+            : 0;
+
         return Inertia::render('jobs/mine', [
             'tab' => $tab,
+            'othersOnDay' => $othersOnDay,
             'date' => $date->toDateString(),
             'today' => $today->toDateString(),
             'search' => $search,

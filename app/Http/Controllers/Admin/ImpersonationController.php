@@ -23,11 +23,16 @@ class ImpersonationController extends Controller
         return redirect()->route('dashboard');
     }
 
-    public function destroy(Impersonation $impersonation): RedirectResponse
+    public function destroy(Request $request, Impersonation $impersonation): RedirectResponse
     {
         $companyId = $impersonation->companyId();
 
-        abort_unless($impersonation->isActive(), 403);
+        // Already ended (Return to admin pressed twice, or in an old tab): just go where it would have led.
+        if (! $impersonation->isActive()) {
+            return $request->user()?->isSuperAdmin()
+                ? redirect()->route('admin.companies.index')
+                : redirect()->route('dashboard');
+        }
 
         $admin = $impersonation->stop();
 

@@ -67,3 +67,32 @@ test('the customer list finds a customer by appliance brand', function () {
     $this->get(route('customers.index', ['search' => 'blomberg']))->assertInertia(fn (Assert $page) => $page
         ->where('customers.data.0.display_name', fn ($name) => str_contains($name, 'Sasha')));
 });
+
+test('an owner whose day is empty is told how many jobs others have that day', function () {
+    $owner = memberOf($this->company, UserRole::Owner);
+    $day = $this->upcoming->scheduled_start->timezone('America/Vancouver')->toDateString();
+    // Not assigned to anyone yet: still counted.
+    JobVisit::factory()->for($this->job, 'job')->create(['scheduled_start' => $this->upcoming->scheduled_start->addHours(3), 'scheduled_end' => $this->upcoming->scheduled_start->addHours(4)]);
+    JobVisit::factory()->for($this->job, 'job')->create(['scheduled_start' => $this->upcoming->scheduled_start->addHour(), 'scheduled_end' => $this->upcoming->scheduled_start->addHours(2), 'status' => VisitStatus::Cancelled]);
+
+    $this->actingAs($owner)->get(route('jobs.mine', ['date' => $day]))->assertInertia(fn (Assert $page) => $page
+        ->has('visits', 0)
+        ->where('othersOnDay', 2));
+
+    // Another company's visits that day are not counted.
+    $foreign = Company::factory()->create(['timezone' => 'America/Vancouver']);
+    inCompany($foreign, function () use ($foreign) {
+        $foreignJob = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($foreign)->withPhone('604-555-0199')->create()))
+            ->create(['brand_id' => Brand::factory()->create(['company_id' => $foreign->id])->id]);
+        JobVisit::factory()->for($foreignJob, 'job')->create(['scheduled_start' => $this->upcoming->scheduled_start, 'scheduled_end' => $this->upcoming->scheduled_end]);
+    });
+
+    $this->get(route('jobs.mine', ['date' => $day]))->assertInertia(fn (Assert $page) => $page->where('othersOnDay', 2));
+});
+
+test('a technician is not shown other people\'s jobs count', function () {
+    $day = $this->upcoming->scheduled_start->timezone('America/Vancouver')->toDateString();
+    JobVisit::factory()->for($this->job, 'job')->create(['scheduled_start' => $this->upcoming->scheduled_start, 'scheduled_end' => $this->upcoming->scheduled_end]);
+
+    $this->get(route('jobs.mine', ['date' => $day]))->assertInertia(fn (Assert $page) => $page->where('othersOnDay', 0));
+});

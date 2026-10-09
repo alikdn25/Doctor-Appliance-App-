@@ -136,7 +136,8 @@ return. Each job counts once; access follows company, brand and technician assig
 ### 7.4 Technician mobile view (PWA)
 
 - Today's jobs list: customer, address, appliance, status, ticket size. My Jobs shows one day at a time (‹ › to
-  other days), a Completed tab and "+ Trip".
+  other days), a Completed tab and "+ Trip". For office roles a day also says how many jobs others (or nobody yet)
+  have that day, with a link to the calendar: My Jobs lists only the person's own jobs.
 - One-tap navigation (opens Google Maps).
 - Status buttons: On my way (sends SMS with ETA), Started, Waiting for parts, Completed. Time on job is tracked automatically.
 - Photos before/after with upload retry when signal is weak.
@@ -273,9 +274,10 @@ from the company number (provider voice).
 - Trips: date, from, to, distance, purpose, type (customer / parts store / supplier / other), driver.
 - Trips to customers are created when a job is started: from the job started before it that day (or the person's
   start address, e.g. home) to the job's address; road distance from Google Distance Matrix (server key in `.env`),
-  editable. Other trips: "+ Trip" on My Jobs — only the destination is typed; the start is the phone's GPS position
-  (or the last point of the day), and the next job's trip starts from that stop. The Mileage page also adds and edits
-  trips by hand.
+  editable. Other trips: "+ Trip" on My Jobs and Mileage — only the destination is typed; "Navigate" saves the trip
+  and opens Google Maps turn-by-turn to it ("Save only" for a trip already driven); the start is the phone's GPS
+  position (or the last point of the day), and the next job's trip starts from that stop. "Enter by hand" on the
+  same sheet adds a trip with any date and distance; trips are edited on the Mileage page.
 - Distances in the company unit (km or mi; miles by default in the US/UK), a company rate per unit, month and year
   totals, CSV export of the month or year (date, route, purpose, distance). Technicians see their own trips;
   Owners/Admins see everyone's.

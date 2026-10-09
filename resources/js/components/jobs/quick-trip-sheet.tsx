@@ -1,7 +1,8 @@
 import { useForm, usePage } from '@inertiajs/react';
-import { Car, LocateFixed } from 'lucide-react';
+import { Car, LocateFixed, Navigation } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import { navigateUrl } from '@/components/calendar/types';
 import { AddressAutocomplete } from '@/components/customers/address-autocomplete';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -16,15 +17,19 @@ import { useTrans } from '@/lib/i18n';
 import { quick } from '@/routes/trips';
 
 /**
- * "+ Trip" on My Jobs: type where you are driving (a parts store), Save. The phone's position is the start;
- * the server measures the road distance and counts the next job from this stop.
+ * "+ Trip": type where you are driving (a parts store) and tap Navigate: the trip is saved and Google Maps
+ * opens with turn-by-turn directions. The phone's position is the start; the server measures the road
+ * distance and counts the next job from this stop. "Save only" is for a trip already driven.
  */
 export function QuickTripSheet({
     open,
     onOpenChange,
+    onManual,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    /** Opens the full form (another day, a known distance). */
+    onManual?: () => void;
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -67,13 +72,29 @@ export function QuickTripSheet({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 
-    const submit = (e: FormEvent) => {
-        e.preventDefault();
+    const save = () =>
         form.post(quick().url, {
             preserveScroll: true,
             onSuccess: () => onOpenChange(false),
         });
+
+    // Maps is opened inside the tap itself (a phone blocks it after a network wait); the trip saves meanwhile.
+    const navigate = (e: FormEvent) => {
+        e.preventDefault();
+
+        if (form.processing || form.data.to_address.trim() === '') {
+            return;
+        }
+
+        window.open(
+            navigateUrl(form.data.to_point || form.data.to_address),
+            '_blank',
+            'noopener',
+        );
+        save();
     };
+
+    const empty = form.processing || form.data.to_address.trim() === '';
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -87,7 +108,7 @@ export function QuickTripSheet({
                     </SheetTitle>
                     <SheetDescription>{t('trips.quick_hint')}</SheetDescription>
                 </SheetHeader>
-                <form onSubmit={submit} className="space-y-3">
+                <form onSubmit={navigate} className="space-y-3">
                     <div>
                         <AddressAutocomplete
                             id="quick-trip-to"
@@ -126,13 +147,35 @@ export function QuickTripSheet({
                     <Button
                         type="submit"
                         className="h-14 w-full text-base"
-                        disabled={
-                            form.processing ||
-                            form.data.to_address.trim() === ''
-                        }
+                        disabled={empty}
                     >
-                        {t('trips.quick_save')}
+                        <Navigation className="size-5" />
+                        {t('trips.quick_navigate')}
                     </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-12 flex-1"
+                            disabled={empty}
+                            onClick={save}
+                        >
+                            {t('trips.quick_save')}
+                        </Button>
+                        {onManual && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                className="h-12 flex-1"
+                                onClick={() => {
+                                    onOpenChange(false);
+                                    onManual();
+                                }}
+                            >
+                                {t('trips.quick_manual')}
+                            </Button>
+                        )}
+                    </div>
                 </form>
             </SheetContent>
         </Sheet>

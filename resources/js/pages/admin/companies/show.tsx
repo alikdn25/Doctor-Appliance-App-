@@ -39,6 +39,7 @@ type Props = {
         email: string;
         role: string;
         is_active: boolean;
+        can_impersonate: boolean;
         last_login_at: string | null;
         last_support_at: string | null;
     }[];
@@ -240,15 +241,18 @@ export default function AdminCompanyShow({
                                         </p>
                                     )}
                                 </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        startImpersonation(m.user_id)
-                                    }
-                                >
-                                    <UserCheck /> {t('admin.support_access')}
-                                </Button>
+                                {m.can_impersonate && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            startImpersonation(m.user_id)
+                                        }
+                                    >
+                                        <UserCheck />{' '}
+                                        {t('admin.support_access')}
+                                    </Button>
+                                )}
                             </li>
                         ))}
                     </ul>
