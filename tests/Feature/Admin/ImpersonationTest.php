@@ -105,8 +105,53 @@ test('company users cannot impersonate', function () {
         ->assertForbidden();
 });
 
-test('stopping without an active impersonation is refused', function () {
-    $this->actingAs($this->owner)->delete(route('impersonation.stop'))->assertForbidden();
+test('stopping without an active impersonation changes nothing and just goes home', function () {
+    $this->actingAs($this->owner)->delete(route('impersonation.stop'))->assertRedirect(route('dashboard'));
+    $this->assertAuthenticatedAs($this->owner);
+
+    $this->actingAs($this->admin)->delete(route('impersonation.stop'))->assertRedirect(route('admin.companies.index'));
+    $this->assertAuthenticatedAs($this->admin);
+});
+
+test('pressing Return to admin twice does not show an error', function () {
+    $this->actingAs($this->admin)
+        ->post(route('admin.companies.impersonate', [$this->company, $this->owner]));
+
+    $this->delete(route('impersonation.stop'))->assertRedirect(route('admin.companies.show', $this->company));
+    $this->delete(route('impersonation.stop'))->assertRedirect(route('admin.companies.index'));
+
+    $this->assertAuthenticatedAs($this->admin);
+    expect(ImpersonationLog::sole()->ended_at)->not->toBeNull();
+});
+
+test('an admin page left open during support access explains how to get back instead of a 403', function () {
+    $other = memberOf($this->company, UserRole::Technician);
+    $this->actingAs($this->admin)
+        ->post(route('admin.companies.impersonate', [$this->company, $this->owner]));
+
+    // The old admin tab presses Support access for another member.
+    $this->post(route('admin.companies.impersonate', [$this->company, $other]))
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionHas('inertia.flash_data.toast.message', __('admin.return_to_admin_first'));
+
+    $this->assertAuthenticatedAs($this->owner);
+    expect(ImpersonationLog::count())->toBe(1);
+});
+
+test('support access is not offered for platform admins who are company members', function () {
+    $admin = User::factory()->superAdmin()->memberOf($this->company, UserRole::Owner)->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.companies.show', $this->company))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('members', fn ($members) => collect($members)->every(
+                fn ($m) => $m['can_impersonate'] === ($m['user_id'] !== $admin->id),
+            )));
+});
+
+test('company users still cannot open the admin panel', function () {
+    $this->actingAs($this->owner)->get(route('admin.companies.index'))->assertForbidden();
 });
 
 test('support start records the target and real administrator rather than the administrator twice', function () {

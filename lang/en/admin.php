@@ -77,6 +77,7 @@ return [
     'impersonating' => 'You are logged in as :user (:company).',
     'stop_impersonating' => 'Return to admin',
     'impersonation_stopped' => 'You are back in the admin panel.',
+    'return_to_admin_first' => 'Support access is on in this browser. Press "Return to admin" to open the admin panel.',
     'impersonation_log' => 'Support log-ins',
     'impersonation_entry' => ':admin logged in as :user',
     'audit_log' => 'Audit log',

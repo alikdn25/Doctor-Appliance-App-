@@ -141,6 +141,8 @@ class CompanyController extends Controller
                     'email' => $m->user->email,
                     'role' => $m->role->label(),
                     'is_active' => $m->is_active,
+                    // Platform admins sign in as themselves; support access is only for the company's own people.
+                    'can_impersonate' => ! $m->user->isSuperAdmin(),
                     'last_login_at' => $m->user->last_login_at?->toIso8601String(),
                     'last_support_at' => $supportAccess->has($m->user_id) ? CarbonImmutable::parse($supportAccess->get($m->user_id), 'UTC')->toIso8601String() : null,
                 ]),

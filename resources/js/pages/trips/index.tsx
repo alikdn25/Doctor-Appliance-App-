@@ -12,6 +12,7 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { useMoney } from '@/components/billing/money';
 import { FormField } from '@/components/form-field';
+import { QuickTripSheet } from '@/components/jobs/quick-trip-sheet';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import {
@@ -104,6 +105,7 @@ export default function Trips({
     const [editing, setEditing] = useState<TripRow | null>(null);
     const [open, setOpen] = useState(false);
     const [startOpen, setStartOpen] = useState(false);
+    const [quickOpen, setQuickOpen] = useState(false);
     const start = useForm({ address: startAddress ?? '' });
     const unitLabel = t(`trips.units.${unit}`);
     const typeLabel = (value: string) =>
@@ -199,7 +201,10 @@ export default function Trips({
                     title={t('trips.title')}
                     description={t('trips.description')}
                     actions={
-                        <Button className="h-11" onClick={() => openForm(null)}>
+                        <Button
+                            className="h-11"
+                            onClick={() => setQuickOpen(true)}
+                        >
                             <Plus /> {t('trips.add').replace('+ ', '')}
                         </Button>
                     }
@@ -398,6 +403,12 @@ export default function Trips({
                     </Button>
                 </div>
             </div>
+
+            <QuickTripSheet
+                open={quickOpen}
+                onOpenChange={setQuickOpen}
+                onManual={() => openForm(null)}
+            />
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="top-4 translate-y-0 sm:top-[8vh] sm:max-w-md">

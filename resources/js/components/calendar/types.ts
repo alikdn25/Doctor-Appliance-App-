@@ -93,3 +93,14 @@ export const routeUrl = (addresses: string[]) => {
 
     return `https://www.google.com/maps/dir/?${params}`;
 };
+
+/**
+ * Turn-by-turn driving to one place in Google Maps (opens the Maps app on a phone), from the current location.
+ */
+export const navigateUrl = (destination: string) =>
+    `https://www.google.com/maps/dir/?${new URLSearchParams({
+        api: '1',
+        travelmode: 'driving',
+        dir_action: 'navigate',
+        destination,
+    })}`;
