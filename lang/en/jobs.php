@@ -156,7 +156,8 @@ return [
         'next_day' => 'Next day',
         'trip' => '+ Trip',
     ],
-    'others_on_day' => '1 more job this day for someone else or not assigned yet|:count more jobs this day for others or not assigned yet',
+    'others_on_day' => '1 more job this day for someone else|:count more jobs this day for other people',
+    'not_assigned' => 'Not assigned',
     'mine_empty' => [
         'today' => 'No jobs today.',
         'day' => 'No jobs on :date.',

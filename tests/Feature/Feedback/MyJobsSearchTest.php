@@ -68,31 +68,43 @@ test('the customer list finds a customer by appliance brand', function () {
         ->where('customers.data.0.display_name', fn ($name) => str_contains($name, 'Sasha')));
 });
 
-test('an owner whose day is empty is told how many jobs others have that day', function () {
+test('an owner sees the day\'s unassigned jobs and how many jobs other people have', function () {
     $owner = memberOf($this->company, UserRole::Owner);
     $day = $this->upcoming->scheduled_start->timezone('America/Vancouver')->toDateString();
-    // Not assigned to anyone yet: still counted.
-    JobVisit::factory()->for($this->job, 'job')->create(['scheduled_start' => $this->upcoming->scheduled_start->addHours(3), 'scheduled_end' => $this->upcoming->scheduled_start->addHours(4)]);
+    // Not assigned to anyone yet: listed in the owner's day.
+    $unassigned = JobVisit::factory()->for($this->job, 'job')->create(['scheduled_start' => $this->upcoming->scheduled_start->addHours(3), 'scheduled_end' => $this->upcoming->scheduled_start->addHours(4)]);
     JobVisit::factory()->for($this->job, 'job')->create(['scheduled_start' => $this->upcoming->scheduled_start->addHour(), 'scheduled_end' => $this->upcoming->scheduled_start->addHours(2), 'status' => VisitStatus::Cancelled]);
 
+    // The technician's visit that day is counted, not listed.
     $this->actingAs($owner)->get(route('jobs.mine', ['date' => $day]))->assertInertia(fn (Assert $page) => $page
-        ->has('visits', 0)
-        ->where('othersOnDay', 2));
+        ->has('visits', 1)
+        ->where('visits.0.id', $unassigned->id)
+        ->where('visits.0.assignees', [])
+        ->where('othersOnDay', 1));
 
-    // Another company's visits that day are not counted.
+    // Completed lists only the owner's own work.
+    $this->get(route('jobs.mine', ['tab' => 'completed']))->assertInertia(fn (Assert $page) => $page->has('visits', 0));
+
+    // Another company's visits that day are neither listed nor counted.
     $foreign = Company::factory()->create(['timezone' => 'America/Vancouver']);
     inCompany($foreign, function () use ($foreign) {
         $foreignJob = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($foreign)->withPhone('604-555-0199')->create()))
             ->create(['brand_id' => Brand::factory()->create(['company_id' => $foreign->id])->id]);
         JobVisit::factory()->for($foreignJob, 'job')->create(['scheduled_start' => $this->upcoming->scheduled_start, 'scheduled_end' => $this->upcoming->scheduled_end]);
+        JobVisit::factory()->for($foreignJob, 'job')->assignedTo(memberOf($foreign, UserRole::Technician))->create(['scheduled_start' => $this->upcoming->scheduled_start, 'scheduled_end' => $this->upcoming->scheduled_end]);
     });
 
-    $this->get(route('jobs.mine', ['date' => $day]))->assertInertia(fn (Assert $page) => $page->where('othersOnDay', 2));
+    $this->get(route('jobs.mine', ['date' => $day]))->assertInertia(fn (Assert $page) => $page
+        ->has('visits', 1)
+        ->where('othersOnDay', 1));
 });
 
-test('a technician is not shown other people\'s jobs count', function () {
+test('a technician sees neither unassigned jobs nor other people\'s count', function () {
     $day = $this->upcoming->scheduled_start->timezone('America/Vancouver')->toDateString();
     JobVisit::factory()->for($this->job, 'job')->create(['scheduled_start' => $this->upcoming->scheduled_start, 'scheduled_end' => $this->upcoming->scheduled_end]);
 
-    $this->get(route('jobs.mine', ['date' => $day]))->assertInertia(fn (Assert $page) => $page->where('othersOnDay', 0));
+    $this->get(route('jobs.mine', ['date' => $day]))->assertInertia(fn (Assert $page) => $page
+        ->has('visits', 1)
+        ->where('visits.0.id', $this->upcoming->id)
+        ->where('othersOnDay', 0));
 });

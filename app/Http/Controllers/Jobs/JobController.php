@@ -158,10 +158,15 @@ class JobController extends Controller
         $active = [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value];
         $finished = [JobStatus::Completed->value, JobStatus::Invoiced->value, JobStatus::Paid->value];
 
+        // The office (owner, admin, dispatcher) also sees the day's jobs nobody is assigned to yet.
+        $office = Gate::allows('dispatch', ServiceJob::class);
+
         // One query per tab; a search applies to every tab.
         // Today also keeps a visit started on an earlier day that is still open.
         $tabQuery = fn (string $name) => JobVisit::query()
-            ->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
+            ->where(fn (Builder $q) => $q
+                ->whereHas('assignees', fn (Builder $a) => $a->where('users.id', $user->id))
+                ->when($office && $name === 'day', fn (Builder $o) => $o->orWhereDoesntHave('assignees')))
             ->whereHas('job', fn (Builder $q) => $q->visibleTo($user)->when($search !== '', fn (Builder $j) => $j->search($search)))
             ->when($name === 'day', fn ($q) => $q
                 ->where(fn ($w) => $w
@@ -182,12 +187,13 @@ class JobController extends Controller
 
         $messaging = app(MessagingPresenter::class);
 
-        // My Jobs lists only this person's visits; the office is told how many others (other people's and
-        // unassigned) the calendar has that day, so an empty day here is not mistaken for an empty schedule.
-        $othersOnDay = $tab === 'day' && $search === '' && Gate::allows('dispatch', ServiceJob::class)
+        // My Jobs lists this person's visits (and unassigned ones for the office); the office is told how many
+        // other people have that day, so an empty day here is not mistaken for an empty schedule.
+        $othersOnDay = $tab === 'day' && $search === '' && $office
             ? JobVisit::query()
                 ->whereBetween('scheduled_start', [$dayStart, $dayEnd])
                 ->where('status', '!=', VisitStatus::Cancelled->value)
+                ->whereHas('assignees')
                 ->whereDoesntHave('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
                 ->whereHas('job', fn (Builder $q) => $q->visibleTo($user))
                 ->count()

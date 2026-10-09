@@ -11,7 +11,10 @@
   (or nobody yet) have that day, with a Calendar link, so an empty day is not mistaken for an empty schedule.
 - Tests: double Return to admin, old admin tab, no support access for platform admins, others-on-day count (tenant
   isolated, office only); browser scenarios for Navigate and Enter by hand.
-- Next: owner to confirm whether unassigned jobs should also appear in My Jobs.
+- **Unassigned jobs in My Jobs** (owner's answer: yes): owners/admins/dispatchers see the day's jobs nobody is
+  assigned to yet, marked "Not assigned"; the Calendar line then counts only other people's jobs. Technicians and
+  the Completed tab still show only the person's own work.
+- Next: owner's feedback from the phone.
 
 # October 8 (second round) — My Jobs by day, Completed and + Trip
 

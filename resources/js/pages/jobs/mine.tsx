@@ -8,6 +8,7 @@ import {
     Plus,
     Search,
     SlidersHorizontal,
+    UserX,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { formatMoney } from '@/components/billing/money';
@@ -319,6 +320,12 @@ export default function MyJobs({
                             }
                             extra={
                                 <>
+                                    {visit.assignees.length === 0 && (
+                                        <div className="flex items-center gap-1 font-medium text-amber-700">
+                                            <UserX className="size-3.5" />
+                                            {t('jobs.not_assigned')}
+                                        </div>
+                                    )}
                                     {visit.strict_arrival && <StrictBadge />}
                                     {visit.job.bring && (
                                         <div
