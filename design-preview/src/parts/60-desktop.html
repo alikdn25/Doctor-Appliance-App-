@@ -1,0 +1,202 @@
+<section class="vsec" id="desktop" data-short="Десктоп">
+<h2>Десктоп (1440×900)</h2>
+<p class="lead">Таблицы и две колонки вместо растянутых мобильных карточек в узкой полосе. Сайдбар — постоянный, как сейчас. Пилюля незавершённых работ — справа в шапке, в том числе на Jobs (P0 №17).</p>
+<div class="vgrid">
+
+<!-- ============ Desktop Jobs ============ -->
+<article class="pair">
+<header><b>Jobs — таблица</b><code>/jobs?tab=open</code></header>
+<div class="pz">
+<div class="side before d"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:d-jobs}}" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f dk">
+  {{INC:dside-jobs}}
+  <div class="dmain">
+    <div class="dbar"><h1>Jobs</h1><span class="grow"></span>{{INC:pill}}<div class="inp pl" style="height:40px;width:320px;font-size:14px"><svg class="i"><use href="#i-search"/></svg>Search jobs, customers, phones…<span class="grow"></span><span class="xs" style="border:1px solid var(--border);border-radius:4px;padding:2px 6px">/</span></div><span class="btn sec sm"><svg class="i"><use href="#i-more"/></svg></span><span class="btn pri sm"><svg class="i"><use href="#i-plus"/></svg>Book customer</span></div>
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px">
+      <span class="seg" style="align-self:flex-start"><span class="on">Open <b class="num">4</b></span><span>All</span><span>Deleted</span></span>
+        <div class="chips" style="flex-wrap:wrap"><span class="chip red">Overdue <span class="c">2</span></span><span class="chip">Needs scheduling <span class="c">1</span></span><span class="chip">Waiting for parts <span class="c">1</span></span><span class="chip">Scheduled / in progress <span class="c">2</span></span><span class="chip zero">Waiting for customer 0</span><span class="chip zero">On hold 0</span></div>
+      <div class="card" style="overflow:hidden">
+        <table class="tbl wrap">
+          <thead><tr><th>#</th><th>Status</th><th>Date / window ↑</th><th>Customer</th><th>Address</th><th>Appliance</th><th>Technician</th><th class="r">Total</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="num b">1002</td><td><span class="hstack gap4"><span class="bdg parts"><svg class="i"><use href="#i-package"/></svg>Waiting for parts</span><span class="bdg overdue">Overdue</span></span></td><td>Last visit Wed, Oct 7 · 1–3 p.m.</td><td><span class="hstack"><span class="av av24 biz"><svg class="i s14"><use href="#i-building"/></svg></span>Westside Property Mgmt</span></td><td class="muted">Unit 204, 4120 Main St</td><td>Bosch Dishwasher</td><td><span class="hstack"><span class="ini t av24">TT</span>Tom Technician</span></td><td class="r num">$106.40</td><td><svg class="i muted"><use href="#i-more"/></svg></td></tr>
+            <tr><td class="num b">1003</td><td><span class="hstack gap4"><span class="bdg new"><svg class="i"><use href="#i-sparkle"/></svg>New</span><span class="bdg overdue">Overdue</span></span></td><td class="muted">Needs scheduling</td><td><span class="hstack"><img class="av av24" src="{{IMG:av-man}}" alt="">Robert Fox</span></td><td class="muted">6200 McKay Ave, Burnaby</td><td>Installation · range</td><td class="muted">Unassigned</td><td class="r muted">—</td><td><svg class="i muted"><use href="#i-more"/></svg></td></tr>
+            <tr><td class="num b">1001</td><td><span class="bdg scheduled"><svg class="i"><use href="#i-cal"/></svg>Scheduled</span></td><td>Today · 9–11 a.m.</td><td><span class="hstack"><img class="av av24" src="{{IMG:av-woman}}" alt="">Jane Cooper</span></td><td class="muted">8450 128 St, Surrey</td><td>LG Washer</td><td><span class="hstack"><span class="ini t av24">TT</span>Tom Technician</span></td><td class="r muted">—</td><td><svg class="i muted"><use href="#i-more"/></svg></td></tr>
+            <tr><td class="num b">1004</td><td><span class="bdg scheduled"><svg class="i"><use href="#i-cal"/></svg>Scheduled</span></td><td>Today · 1–3 p.m.</td><td><span class="hstack"><img class="av av24" src="{{IMG:av-woman}}" alt="">Jane Cooper</span></td><td class="muted">8450 128 St, Surrey</td><td>Samsung Refrigerator</td><td><span class="hstack"><span class="ini a av24">AO</span>Alex Owner</span></td><td class="r muted">—</td><td><svg class="i muted"><use href="#i-more"/></svg></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="small muted">4 open jobs · sorted by urgency · click a column to sort</div>
+    </div>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Колонки: # · Status · Date / window · Customer · Address · Appliance · Technician · Total; сортировка по клику, закреплённый заголовок. Hover по строке — превью, «⋯» строки — Open, Call, Reschedule, Delete.</li><li>Горячие клавиши (опционально): N — Book customer, / — поиск.</li></ul>
+</article>
+
+<!-- ============ Desktop Job page ============ -->
+<article class="pair">
+<header><b>Job page — две колонки</b><code>/jobs/2 · #1002</code></header>
+<div class="pz">
+<div class="side before d"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:d-job2}}" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f dk">
+  {{INC:dside-jobs}}
+  <div class="dmain">
+    <div class="dbar"><span class="ibtn" style="margin-left:-12px"><svg class="i"><use href="#i-back"/></svg></span><h1>#1002 · Repair</h1><span class="bdg parts"><svg class="i"><use href="#i-package"/></svg>Waiting for parts</span><span class="bdg overdue">Overdue</span><span class="grow"></span>{{INC:pill}}<span class="btn sec sm"><svg class="i"><use href="#i-more"/></svg>More</span></div>
+    <div style="display:flex;gap:24px;padding:24px;align-items:flex-start">
+      <div class="vstack gap24" style="flex:1;min-width:0">
+        <div class="card p vstack gap12">
+          <div class="between"><div class="hstack gap12"><span class="av av40 biz"><svg class="i"><use href="#i-building"/></svg></span><div><b style="font-size:18px">Westside Property Management</b><div class="small muted">Property manager · Mark Lee · (604) 555-0177 · Net 30</div></div></div>
+            <div class="hstack"><span class="btn sec sm"><svg class="i"><use href="#i-nav"/></svg>Navigate</span><span class="btn sec sm"><svg class="i"><use href="#i-phone"/></svg>Call</span><span class="btn sec sm"><svg class="i"><use href="#i-msg"/></svg>Text</span></div></div>
+          <div class="hstack gap16"><div class="grow"><div class="xs muted">SERVICE ADDRESS · RENTAL ON MAIN</div>Unit 204, 4120 Main St, Vancouver, BC V5V 3P6</div><span class="btn sec sm"><svg class="i"><use href="#i-phone"/></svg>Call Sam (on-site)</span></div>
+          <div class="noteY">Call the tenant 30 minutes before arrival.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+          <section><div class="sech"><h2>Problem</h2></div><div class="card p">Dishwasher not draining.</div></section>
+          <section><div class="sech"><h2>Appliance</h2><span class="btn ghost xs"><svg class="i s16"><use href="#i-plus"/></svg>Add</span></div>
+            <div class="card p vstack gap8"><div class="hstack gap12"><img class="apimg l" src="{{IMG:ap-dishwasher}}" alt=""><div class="grow"><b>Bosch Dishwasher</b><div class="small muted hstack gap4">Model SHPM88Z75N <svg class="i s14"><use href="#i-copy"/></svg></div><div class="small muted">S/N not recorded</div></div></div><span class="btn sec sm"><svg class="i"><use href="#i-scan"/></svg>Scan rating plate</span></div></section>
+        </div>
+        <section><div class="sech"><h2>Work done</h2><span class="xs green hstack gap4"><svg class="i s14"><use href="#i-check"/></svg>Saved</span></div><div class="inp area">Drain pump seized. Ordered replacement pump.</div></section>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+          <section><div class="sech"><h2>Checklist</h2><span class="small muted num">0/5</span></div>
+            <div class="list"><div class="row"><span class="cbx"></span>Confirm the problem with the customer</div><div class="row"><span class="cbx"></span>Record brand, model and serial</div><div class="row"><span class="cbx"></span>Check for error codes</div><div class="row"><span class="cbx"></span>Test run after the repair</div><div class="row"><span class="cbx"></span>Clean up the work area</div></div></section>
+          <section><div class="sech"><h2>Photos</h2></div><div class="card p vstack"><span class="small muted">No photos yet.</span><div class="btnrow"><span class="btn sec sm"><svg class="i"><use href="#i-camera"/></svg>Before</span><span class="btn sec sm"><svg class="i"><use href="#i-camera"/></svg>After</span></div></div>
+            <div class="sech mt24"><h2>Customer signature</h2></div><div class="card p between"><span class="small muted">Not signed yet.</span><span class="btn sec sm"><svg class="i"><use href="#i-sign"/></svg>Get signature</span></div></section>
+        </div>
+      </div>
+      <div class="vstack gap16" style="width:380px;flex:none;position:sticky;top:0">
+        <div class="card p vstack gap12">
+          <div class="small muted">Drain pump ordered · Wed, Oct 7 · Tom Technician</div>
+          <span class="btn pri sm full"><svg class="i"><use href="#i-cal"/></svg>Schedule next time</span>
+          <span class="btn sec sm full"><svg class="i"><use href="#i-play"/></svg>Start job</span>
+        </div>
+        <div class="card p"><div class="sech" style="margin:0"><h2>Schedule</h2></div><div class="small">Not scheduled yet</div><div class="small muted">Last visit: Wed, Oct 7 · 1–3 p.m. · Tom Technician</div></div>
+        <div class="card"><div class="sech px" style="padding-top:12px;margin:0"><h2>Money</h2><span class="btn ghost xs"><svg class="i s16"><use href="#i-plus"/></svg>New</span></div>
+          <div class="row" style="border-top:1px solid var(--border)"><svg class="i muted"><use href="#i-file"/></svg><div class="grow">INV-1<div class="small muted">Oct 7</div></div><b class="num">$106.40</b><span class="bdg paid">Paid</span></div>
+          <div class="row"><svg class="i muted"><use href="#i-file"/></svg><div class="grow">EST-1<div class="small muted">Oct 7</div></div><b class="num">$262.65</b><span class="bdg draft">Draft</span></div></div>
+        <div class="card p"><div class="sech" style="margin:0"><h2><svg class="i s16 muted"><use href="#i-lock"/></svg>Costs &amp; profit <svg class="i s16 muted"><use href="#i-info"/></svg></h2></div>
+          <div class="kv"><span class="muted">Revenue (without tax)</span><span class="v">$95.00</span></div><div class="kv"><span class="muted">Costs</span><span class="v">$0.00</span></div><div class="kv b"><span>Profit</span><span class="v">$95.00 · 100%</span></div>
+          <div class="hstack mt8"><span class="btn ghost xs" style="padding:0">Add cost</span><span class="btn ghost xs">Add supplier receipt</span></div></div>
+        <div class="card p"><div class="sech" style="margin:0"><h2>Activity</h2></div>
+          <div class="vstack gap8 small">
+            <div><span class="bdg parts">Waiting for parts</span> <span class="muted">Oct 7 · Tom Technician</span><div>Drain pump ordered.</div></div>
+            <div><span class="bdg prog">In progress</span> <span class="muted">Oct 7 · Tom Technician</span></div>
+            <div><span class="bdg scheduled">Scheduled</span> <span class="muted">Oct 7 · Alex Owner</span></div>
+            <div><span class="bdg new">New</span> <span class="muted">Job created · Alex Owner</span></div>
+          </div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Слева — клиент, проблема, техника, Work done, чек-лист, фото, подпись. Справа (закреплена при скролле) — главное действие по статусу, расписание, деньги, Costs &amp; profit (замок = Internal), история.</li><li>Бейдж «Invoice INV-1 · Paid» убран из строки статуса: статус работы — один бейдж, деньги — в Money. Edit / Change status / Close job / Set repair warranty / Delete → «More» (как «⋯» на телефоне); большая красная Delete job внизу убрана.</li><li>«Sam Tenant» → «Call Sam (on-site)».</li></ul>
+</article>
+
+<!-- ============ Desktop Calendar week ============ -->
+<article class="pair">
+<header><b>Calendar — Week</b><code>/calendar?view=week</code></header>
+<div class="pz">
+<div class="side before d"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:d-cal-week}}" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f dk">
+  {{INC:dside-cal}}
+  <div class="dmain">
+    <div class="dbar"><h1>Calendar</h1><span class="seg" style="margin-left:16px"><span>Day</span><span class="on">Week</span><span>Map</span></span><span class="hstack gap4" style="margin-left:8px"><span class="ibtn bd" style="width:36px;height:36px"><svg class="i"><use href="#i-left"/></svg></span><span class="btn sec xs">Today</span><span class="ibtn bd" style="width:36px;height:36px"><svg class="i"><use href="#i-right"/></svg></span></span><b style="margin-left:8px">Oct 5 – 11, 2026</b><span class="grow"></span>{{INC:pill}}<span class="btn sec sm"><svg class="i"><use href="#i-filter"/></svg>Filters</span><span class="btn pri sm"><svg class="i"><use href="#i-plus"/></svg>Book customer</span></div>
+    <div style="display:flex;gap:16px;padding:20px 24px;align-items:flex-start">
+      <div class="card" style="flex:1;overflow:hidden">
+        <div style="display:grid;grid-template-columns:128px repeat(5,minmax(120px,1fr)) repeat(2,64px)">
+          <div class="xs muted" style="padding:12px;border-bottom:1px solid var(--border)">PEOPLE</div>
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);border-left:1px solid var(--border)"><b>Mon</b> <span class="muted">5</span></div>
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);border-left:1px solid var(--border)"><b>Tue</b> <span class="muted">6</span></div>
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);border-left:1px solid var(--border)"><b>Wed</b> <span class="muted">7</span></div>
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);border-left:1px solid var(--border)"><b>Thu</b> <span class="muted">8</span></div>
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);border-left:1px solid var(--border);background:var(--accent-10);color:var(--accent)"><b>Fri 9</b> · Today</div>
+          <div class="hatch" style="padding:10px 8px;border-bottom:1px solid var(--border);border-left:1px solid var(--border)"><b>Sat</b> <span class="muted">10</span></div>
+          <div class="hatch" style="padding:10px 8px;border-bottom:1px solid var(--border);border-left:1px solid var(--border)"><b>Sun</b> <span class="muted">11</span></div>
+          <!-- Tom -->
+          <div class="hstack" style="padding:12px;border-bottom:1px solid var(--border)"><span class="ini t av24">TT</span><b class="small">Tom Technician</b></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px"><div class="cal" style="border:0;background:none;display:block"><div class="blk" style="--c:var(--s-parts);position:static;opacity:.85"><b>1–3 p.m.</b>Westside Property… · #1002</div></div></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;background:#F8FAFF"><div class="cal" style="border:0;background:none;display:block"><div class="blk" style="--c:var(--s-scheduled);position:static"><b>9–11 a.m.</b>Jane Cooper · Washer</div></div></div>
+          <div class="hatch" style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+          <div class="hatch" style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+          <!-- Alex -->
+          <div class="hstack" style="padding:12px;border-bottom:1px solid var(--border)"><span class="ini a av24">AO</span><b class="small">Alex Owner</b></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;background:#F8FAFF"><div class="cal" style="border:0;background:none;display:block"><div class="blk" style="--c:var(--s-scheduled);position:static"><b>1–3 p.m.</b>Jane Cooper · Refrigerator</div></div></div>
+          <div class="hatch" style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+          <div class="hatch" style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
+          <!-- Unassigned -->
+          <div class="hstack" style="padding:12px"><span class="ini av24">—</span><span class="small muted">Unassigned</span></div>
+          <div style="border-left:1px solid var(--border);min-height:56px"></div><div style="border-left:1px solid var(--border)"></div><div style="border-left:1px solid var(--border)"></div><div style="border-left:1px solid var(--border)"></div><div style="border-left:1px solid var(--border);background:#F8FAFF"></div><div class="hatch" style="border-left:1px solid var(--border)"></div><div class="hatch" style="border-left:1px solid var(--border)"></div>
+        </div>
+      </div>
+      <div class="vstack gap12" style="width:256px;flex:none">
+        <div class="sech" style="margin:0"><h2>To schedule <span class="bdg new">2</span></h2></div>
+        <div class="card p12 vstack gap4"><div class="hstack"><span class="jcnum">#1002</span><span class="bdg parts">Waiting for parts</span></div><b class="small">Westside Property Management</b><span class="small muted">Repair · Bosch Dishwasher</span><span class="small muted">Unit 204, 4120 Main St</span></div>
+        <div class="card p12 vstack gap4"><div class="hstack"><span class="jcnum">#1003</span><span class="bdg new">New</span></div><b class="small">Robert Fox</b><span class="small muted">Installation · range</span><span class="small muted">6200 McKay Ave, Burnaby</span></div>
+        <p class="small muted">Drag a job onto a day, or click it to pick a time.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Все 7 дней видны (сейчас Sat обрезан, Sun нет): будни от 120 px, выходные по business hours — уже и заштрихованы.</li><li>Цвет блока — по статусу (сейчас все синие). Высота строк — по содержимому, без пустых метров. Today подсвечен.</li><li>To schedule — правая колонка, drag-and-drop остаётся; тап по пустой ячейке — Book customer с этим днём и человеком.</li></ul>
+</article>
+
+<!-- ============ Desktop Invoice ============ -->
+<article class="pair">
+<header><b>Invoice — лист + колонка действий</b><code>/invoices/3 · INV-2</code></header>
+<div class="pz">
+<div class="side before d"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:d-invoice-unpaid}}" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f dk">
+  {{INC:dside-inv}}
+  <div class="dmain">
+    <div class="dbar"><span class="ibtn" style="margin-left:-12px"><svg class="i"><use href="#i-back"/></svg></span><h1>Invoice INV-2</h1><span class="bdg unpaid"><svg class="i"><use href="#i-clock"/></svg>Unpaid</span><span class="small muted">Not sent yet</span><span class="grow"></span>{{INC:pill}}<span class="btn sec sm"><svg class="i"><use href="#i-download"/></svg>PDF</span><span class="btn sec sm"><svg class="i"><use href="#i-more"/></svg>More</span></div>
+    <div style="display:flex;gap:24px;padding:24px;justify-content:center;align-items:flex-start;background:#EEF0F3;flex:1">
+      <div style="width:760px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:48px 56px;font-size:14px">
+        <div class="between" style="align-items:flex-start">
+          <div class="hstack gap12"><span style="width:44px;height:44px;border-radius:10px;background:#0E7490;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">DA</span><div><b style="font-size:18px;color:#0E7490">Doctor Appliance</b><div class="muted">100 King George Blvd, Surrey, BC V3T 1A1</div><div class="muted">(604) 555-0100 · doctor-appliance@example.com</div></div></div>
+          <div style="text-align:right"><div style="font:700 24px Inter">Invoice</div><div class="muted">INV-2</div></div>
+        </div>
+        <div class="between mt24" style="align-items:flex-start">
+          <div><div class="xs muted">BILL TO</div><b>Jane Cooper</b><div class="muted">8450 128 St, Surrey, BC V3W 4G1</div><div class="muted">(604) 555-0142 · jane.cooper@example.com</div></div>
+          <div style="text-align:right"><div><span class="muted">Issued</span> Oct 9, 2026</div><div><span class="muted">Due</span> on receipt</div><div><span class="muted">Job</span> #1001 · LG Washer</div></div>
+        </div>
+        <table class="tbl mt24" style="font-size:14px"><thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Price</th><th>Taxes</th><th class="r">Amount</th></tr></thead>
+          <tbody><tr><td>Diagnostic service call<div class="xs muted">Warranty 30 days (until Nov 8, 2026)</div></td><td class="r num">1</td><td class="r num">$95.00</td><td>GST, PST</td><td class="r num">$95.00</td></tr>
+          <tr><td>Labour: clean drain filter and hose<div class="xs muted">Warranty 30 days (until Nov 8, 2026)</div></td><td class="r num">1</td><td class="r num">$65.00</td><td>GST, PST</td><td class="r num">$65.00</td></tr></tbody></table>
+        <div style="width:300px;margin:16px 0 0 auto">
+          <div class="kv"><span class="muted">Subtotal</span><span class="v">$160.00</span></div><div class="kv"><span class="muted">GST 5%</span><span class="v">$8.00</span></div><div class="kv"><span class="muted">PST 7%</span><span class="v">$11.20</span></div>
+          <div class="kv b" style="font-size:16px;border-top:1px solid var(--border);padding-top:10px"><span>Total</span><span class="v">$179.20</span></div><div class="kv"><span class="muted">Paid</span><span class="v">$0.00</span></div>
+          <div class="kv b" style="font-size:16px"><span>Balance due</span><span class="v">CAD $179.20</span></div>
+        </div>
+      </div>
+      <div class="vstack gap16" style="width:320px;flex:none">
+        <div class="card p vstack gap12">
+          <div><div class="small muted">Balance due · on receipt</div><div class="num" style="font:700 28px/1.2 Inter">$179.20</div></div>
+          <span class="btn pri sm full"><svg class="i"><use href="#i-card"/></svg>Take payment</span>
+          <span class="btn sec sm full"><svg class="i"><use href="#i-send"/></svg>Send<svg class="i s16"><use href="#i-down"/></svg></span>
+          <span class="btn ghost sm"><svg class="i"><use href="#i-copy"/></svg>Copy customer link</span>
+        </div>
+        <div class="card p"><div class="sech" style="margin:0"><h2>Customer signature</h2></div><div class="between"><span class="small muted">Not signed yet.</span><span class="btn sec xs"><svg class="i s16"><use href="#i-sign"/></svg>Get signature</span></div></div>
+        <div class="card p"><div class="sech" style="margin:0"><h2>Payments</h2></div><span class="small muted">No payments yet.</span></div>
+        <div class="card p"><div class="sech" style="margin:0"><h2>History</h2></div><div class="small"><b>Created</b> <span class="muted">Oct 9, 10:14 a.m. · Tom Technician</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Документ — лист слева (как его увидит клиент), справа — сумма, Take payment, Send ▾, Copy customer link, подпись, оплаты, история.</li><li>Сырой «Customer link: http://127.0.0.1:8000/d/…» убран (P0 №4). Edit, Void, Refund — в «More».</li></ul>
+</article>
+
+</div>
+</section>

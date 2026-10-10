@@ -1,0 +1,231 @@
+<section class="vsec" id="style" data-short="Стиль">
+<h2>Стиль</h2>
+<p class="lead">Плоский спокойный язык из раздела 4 UX-REDESIGN: белые поверхности, рамка 1 px, один акцентный цвет, цвет — только для смысла. Тени только у шторок, поповеров и FAB. Все кнопки, бейджи и карточки ниже — общие компоненты, экраны собраны только из них.</p>
+<div class="vgrid">
+
+<article class="pair">
+<header><b>Кнопки — 4 вида</b><code>Button · IconButton</code></header>
+<div class="pz"><div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f board">
+  <div class="lbl">Телефон · 48 px, радиус 12</div>
+  <div class="hstack gap16" style="flex-wrap:wrap">
+    <div class="vstack"><span class="btn pri"><svg class="i"><use href="#i-car"/></svg>On my way</span><span class="xs muted">Primary — одно на видимую область</span></div>
+    <div class="vstack"><span class="btn sec"><svg class="i"><use href="#i-play"/></svg>Start job</span><span class="xs muted">Secondary — белый, рамка 1 px</span></div>
+    <div class="vstack"><span class="btn ghost"><svg class="i"><use href="#i-pencil"/></svg>Edit</span><span class="xs muted">Ghost / Link — третичные</span></div>
+    <div class="vstack"><span class="btn dng"><svg class="i"><use href="#i-trash"/></svg>Delete job</span><span class="xs muted">Destructive — красный текст</span></div>
+  </div>
+  <div class="lbl mt24">Состояния</div>
+  <div class="hstack gap16" style="flex-wrap:wrap">
+    <div class="vstack"><span class="btn pri dis">Book</span><span class="xs muted">Disabled = тот же вид, 40%</span></div>
+    <div class="vstack"><span class="btn pri"><svg class="i" style="animation:none"><use href="#i-history"/></svg>Saving…</span><span class="xs muted">В процессе: спиннер, повторный тап заблокирован</span></div>
+    <div class="vstack"><span class="btn dngfill">Void invoice</span><span class="xs muted">Красный фон — только в диалоге подтверждения</span></div>
+  </div>
+  <div class="lbl mt24">Десктоп · 40 px</div>
+  <div class="hstack" style="flex-wrap:wrap">
+    <span class="btn pri sm">Take payment</span><span class="btn sec sm"><svg class="i"><use href="#i-send"/></svg>Send<svg class="i s16"><use href="#i-down"/></svg></span><span class="btn ghost sm">Add discount</span><span class="btn dng sm">Remove</span>
+  </div>
+  <div class="lbl mt24">IconButton · тап-цель 44×44, иконка 20</div>
+  <div class="hstack">
+    <span class="ibtn bd" aria-label="Navigate"><svg class="i"><use href="#i-nav"/></svg></span>
+    <span class="ibtn bd" aria-label="Call"><svg class="i"><use href="#i-phone"/></svg></span>
+    <span class="ibtn bd" aria-label="Text"><svg class="i"><use href="#i-msg"/></svg></span>
+    <span class="ibtn" aria-label="Search"><svg class="i"><use href="#i-search"/></svg></span>
+    <span class="ibtn" aria-label="More"><svg class="i"><use href="#i-more"/></svg></span>
+    <span class="ibtn" aria-label="Messages"><svg class="i"><use href="#i-msg"/></svg><span class="cnt">2</span></span>
+    <span class="fab" style="position:static"><svg class="i s24"><use href="#i-plus"/></svg></span>
+    <span class="fab sec" style="position:static"><svg class="i s24"><use href="#i-car"/></svg></span>
+    <span class="xs muted">FAB — единственное место с тенью вне шторок</span>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Градиенты, «подушки» и синие свечения убраны полностью (4.1).</li><li>Зазор между кнопками 8 px, радиус 12, иконка 20.</li></ul>
+</article>
+
+<article class="pair">
+<header><b>Бейджи статусов</b><code>StatusBadge · OverdueFlag</code></header>
+<div class="pz"><div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f board">
+  <div class="lbl">Статусы работы — один словарь для бейджей, полос календаря и фильтр-чипов</div>
+  <div class="hstack" style="flex-wrap:wrap;gap:10px">
+    <span class="bdg new"><svg class="i"><use href="#i-sparkle"/></svg>New</span>
+    <span class="bdg scheduled"><svg class="i"><use href="#i-cal"/></svg>Scheduled</span>
+    <span class="bdg otw"><svg class="i"><use href="#i-car"/></svg>On the way</span>
+    <span class="bdg prog"><svg class="i"><use href="#i-wrench"/></svg>In progress</span>
+    <span class="bdg parts"><svg class="i"><use href="#i-package"/></svg>Waiting for parts</span>
+    <span class="bdg cust"><svg class="i"><use href="#i-user"/></svg>Waiting for customer</span>
+    <span class="bdg hold"><svg class="i"><use href="#i-pause"/></svg>On hold</span>
+    <span class="bdg done"><svg class="i"><use href="#i-check"/></svg>Completed</span>
+    <span class="bdg inv"><svg class="i"><use href="#i-file"/></svg>Invoiced</span>
+    <span class="bdg paid"><svg class="i"><use href="#i-cash"/></svg>Paid</span>
+    <span class="bdg cancel"><svg class="i"><use href="#i-x"/></svg>Cancelled</span>
+  </div>
+  <div class="lbl mt24">Overdue — не статус, а флажок поверх любого статуса</div>
+  <div class="hstack" style="flex-wrap:wrap;gap:10px">
+    <span class="bdg parts"><svg class="i"><use href="#i-package"/></svg>Waiting for parts</span><span class="bdg overdue"><svg class="i"><use href="#i-alert"/></svg>Overdue</span>
+    <span style="width:24px"></span>
+    <span class="strike small">#1009 Cancelled в списке — текст зачёркнут</span>
+  </div>
+  <div class="lbl mt24">Документы (счёт, смета)</div>
+  <div class="hstack" style="flex-wrap:wrap;gap:10px">
+    <span class="bdg draft"><svg class="i"><use href="#i-pencil"/></svg>Draft</span>
+    <span class="bdg new"><svg class="i"><use href="#i-send"/></svg>Sent</span>
+    <span class="bdg done"><svg class="i"><use href="#i-check"/></svg>Approved</span>
+    <span class="bdg cancel"><svg class="i"><use href="#i-x"/></svg>Declined</span>
+    <span class="bdg unpaid"><svg class="i"><use href="#i-clock"/></svg>Due Oct 9</span>
+    <span class="bdg overdue"><svg class="i"><use href="#i-alert"/></svg>Overdue 3 days</span>
+    <span class="bdg paid"><svg class="i"><use href="#i-cash"/></svg>Paid</span>
+  </div>
+  <div class="lbl mt24">Фильтр-чипы используют те же цвета и счётчики</div>
+  <div class="chips">
+    <span class="chip red on">Overdue <span class="c">2</span></span><span class="chip">Needs scheduling <span class="c">1</span></span><span class="chip">Waiting for parts <span class="c">1</span></span><span class="chip zero">On hold 0</span>
+  </div>
+  <p class="small muted mt16">Бейдж: фон 10% цвета, насыщенный текст, иконка 14 px, всегда с текстом — статус никогда не передаётся только цветом.</p>
+</div>
+</div></div>
+</article>
+
+<article class="pair">
+<header><b>Цвета и шрифты</b><code>tokens · Inter</code></header>
+<div class="pz"><div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f board">
+  <div class="lbl">Токены интерфейса</div>
+  <div class="hstack gap16" style="flex-wrap:wrap;align-items:flex-start">
+    <div class="sw"><i style="background:#F6F7F9"></i><b>bg</b>#F6F7F9</div>
+    <div class="sw"><i style="background:#FFFFFF"></i><b>surface</b>#FFFFFF</div>
+    <div class="sw"><i style="background:#E4E7EC"></i><b>border</b>#E4E7EC</div>
+    <div class="sw"><i style="background:#101828"></i><b>text</b>#101828</div>
+    <div class="sw"><i style="background:#667085"></i><b>text-muted</b>#667085</div>
+    <div class="sw"><i style="background:#1D4ED8"></i><b>accent</b>#1D4ED8</div>
+    <div class="sw"><i style="background:#D92D20"></i><b>danger</b>#D92D20</div>
+    <div class="sw"><i style="background:#079455"></i><b>success</b>#079455</div>
+    <div class="sw"><i style="background:#DC6803"></i><b>warning</b>#DC6803</div>
+  </div>
+  <div class="lbl mt24">Статусы</div>
+  <div class="hstack" style="flex-wrap:wrap;gap:8px">
+    <div class="sw" style="width:72px"><i style="background:#2563EB;height:28px"></i>new</div>
+    <div class="sw" style="width:72px"><i style="background:#4F46E5;height:28px"></i>scheduled</div>
+    <div class="sw" style="width:72px"><i style="background:#0891B2;height:28px"></i>on the way</div>
+    <div class="sw" style="width:72px"><i style="background:#B45309;height:28px"></i>in progress</div>
+    <div class="sw" style="width:72px"><i style="background:#7C3AED;height:28px"></i>parts</div>
+    <div class="sw" style="width:72px"><i style="background:#C2410C;height:28px"></i>customer</div>
+    <div class="sw" style="width:72px"><i style="background:#475569;height:28px"></i>on hold</div>
+    <div class="sw" style="width:72px"><i style="background:#079455;height:28px"></i>completed</div>
+    <div class="sw" style="width:72px"><i style="background:#0D9488;height:28px"></i>invoiced</div>
+    <div class="sw" style="width:72px"><i style="background:#166534;height:28px"></i>paid</div>
+    <div class="sw" style="width:72px"><i style="background:#6B7280;height:28px"></i>cancelled</div>
+  </div>
+  <div class="lbl mt24">Inter — шкала (минимум 14 px на телефоне; 12 px только метки и бейджи)</div>
+  <div class="vstack gap12">
+    <div class="between"><span class="num" style="font:700 28px/1.2 Inter">$179.20</span><span class="xs muted">28 / 700 — только крупные суммы, tabular-nums</span></div>
+    <div class="between"><span style="font:600 20px/1.2 Inter">Job #1001 · Repair</span><span class="xs muted">20 / 600 — заголовок экрана</span></div>
+    <div class="between"><span style="font:600 16px/1.3 Inter">Work done</span><span class="xs muted">16 / 600 — заголовок секции</span></div>
+    <div class="between"><span style="font:400 16px/1.4 Inter">Washer stops mid-cycle with OE error.</span><span class="xs muted">16 / 400 — текст</span></div>
+    <div class="between"><span style="font:400 14px/1.4 Inter;color:#667085">8450 128 St, Surrey, BC V3W 4G1</span><span class="xs muted">14 / 400 — вторичный</span></div>
+    <div class="between"><span style="font:500 12px/1 Inter;color:#667085;letter-spacing:.04em">GATE / BUZZER</span><span class="xs muted">12 / 500 — метки, бейджи</span></div>
+  </div>
+  <div class="lbl mt24">Аватары клиентов — иллюстрации из приложения, без обводки и тени (4.7)</div>
+  <div class="hstack gap16">
+    <img class="av av56" src="{{IMG:av-woman}}" alt="Jane Cooper"><span class="xs muted">56 — шапка досье</span>
+    <img class="av av40" src="{{IMG:av-woman}}" alt=""><img class="av av40" src="{{IMG:av-man}}" alt=""><span class="av av40 biz"><svg class="i"><use href="#i-building"/></svg></span><span class="xs muted">40 — списки (бизнес — иконка здания, как сейчас)</span>
+    <img class="apimg l" src="{{IMG:ap-washer}}" alt=""><img class="apimg" src="{{IMG:ap-washer}}" alt=""><span class="xs muted">техника 64 / 48</span>
+  </div>
+</div>
+</div></div>
+</article>
+
+<article class="pair">
+<header><b>Карточка работы</b><code>JobCard (техник / офис)</code></header>
+<div class="pz"><div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f board" style="width:860px">
+<div class="hstack gap24" style="align-items:flex-start">
+<div style="width:358px" class="vstack gap12">
+  <div class="lbl">Техник · следующая работа (рамка акцента + On my way)</div>
+  <div class="jc next" style="flex-direction:column">
+    <div class="hstack gap12" style="align-items:flex-start">
+      <img class="av av40" src="{{IMG:av-woman}}" alt="">
+      <div class="main">
+        <div class="l1"><span class="win">9–11 a.m.</span><span class="bdg scheduled"><svg class="i"><use href="#i-cal"/></svg>Scheduled</span></div>
+        <div class="nm ell">Jane Cooper</div>
+        <div class="ln">8450 128 St, Surrey, BC V3W 4G1</div>
+        <div class="ln">Washer · stops mid-cycle, OE error</div>
+      </div>
+      <div class="side"><img class="apimg" src="{{IMG:ap-washer}}" alt=""></div>
+    </div>
+    <div class="hstack"><span class="btn pri grow"><svg class="i"><use href="#i-car"/></svg>On my way</span><span class="ibtn bd" aria-label="Navigate"><svg class="i"><use href="#i-nav"/></svg></span><span class="ibtn bd" aria-label="Call"><svg class="i"><use href="#i-phone"/></svg></span></div>
+  </div>
+  <div class="lbl mt8">Техник · обычная</div>
+  <div class="jc">
+    <img class="av av40" src="{{IMG:av-woman}}" alt="">
+    <div class="main">
+      <div class="l1"><span class="win">1–3 p.m.</span><span class="bdg scheduled"><svg class="i"><use href="#i-cal"/></svg>Scheduled</span></div>
+      <div class="nm ell">Jane Cooper</div>
+      <div class="ln">8450 128 St, Surrey, BC V3W 4G1</div>
+      <div class="ln">Refrigerator · not cooling</div>
+    </div>
+    <div class="side"><img class="apimg" src="{{IMG:ap-refrigerator}}" alt=""><div class="acts"><span class="ibtn bd" aria-label="Navigate"><svg class="i"><use href="#i-nav"/></svg></span><span class="ibtn bd" aria-label="Call"><svg class="i"><use href="#i-phone"/></svg></span></div></div>
+  </div>
+  <p class="xs muted">≈120 px. Тап по карточке открывает работу; «View job» и шеврон убраны.</p>
+</div>
+<div style="width:358px" class="vstack gap12">
+  <div class="lbl">Офис (Jobs) · компактнее, без Navigate</div>
+  <div class="jc">
+    <span class="av av40 biz"><svg class="i"><use href="#i-building"/></svg></span>
+    <div class="main">
+      <div class="l1"><span class="jcnum">#1002</span><span class="bdg parts"><svg class="i"><use href="#i-package"/></svg>Waiting for parts</span><span class="bdg overdue">Overdue</span></div>
+      <div class="nm ell">Westside Property Management</div>
+      <div class="ln">Wed, Oct 7 · 1–3 p.m. · Unit 204, 4120 Main St</div>
+      <div class="ln">Dishwasher · not draining</div>
+    </div>
+    <div class="side"><span class="ini t av32">TT</span><span class="ibtn" aria-label="Call"><svg class="i"><use href="#i-phone"/></svg></span></div>
+  </div>
+  <p class="xs muted">Исполнитель — инициалы справа, Call — иконкой, OverdueFlag рядом со статусом.</p>
+  <div class="lbl mt8">AppBar + пилюля незавершённых</div>
+  <div class="appbar" style="border:1px solid var(--border);border-radius:12px">
+    <div class="ttl"><h1>Jobs</h1></div>
+    <span class="openpill"><span class="dot"></span>4 open · 2 overdue</span>
+    <span class="ibtn" aria-label="Search"><svg class="i"><use href="#i-search"/></svg></span>
+  </div>
+  <p class="xs muted">Плашка «Not completed jobs» (45 px) встроена в AppBar — постоянна на каждом экране (SPEC §6). Тап → Jobs › Open.</p>
+</div>
+</div>
+</div>
+</div></div>
+</article>
+
+<article class="pair">
+<header><b>Нижняя панель для каждой роли</b><code>BottomNav</code></header>
+<div class="pz"><div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f board" style="width:470px">
+  <div class="lbl">Technician — My Jobs · Mileage · Expenses · More</div>
+  <div class="bnav" style="border:1px solid var(--border);border-radius:12px">
+    <a class="on"><span class="ic"><svg class="i"><use href="#i-today"/></svg></span>My Jobs</a>
+    <a><span class="ic"><svg class="i"><use href="#i-route"/></svg></span>Mileage</a>
+    <a><span class="ic"><svg class="i"><use href="#i-receipt"/></svg></span>Expenses</a>
+    <a><span class="ic"><svg class="i"><use href="#i-more"/></svg></span>More</a>
+  </div>
+  <div class="lbl mt24">Owner / Office — Today · Calendar · ＋ Book · Jobs · More</div>
+  <div class="bnav" style="border:1px solid var(--border);border-radius:12px">
+    <a class="on"><span class="ic"><svg class="i"><use href="#i-today"/></svg></span>Today</a>
+    <a><span class="ic"><svg class="i"><use href="#i-cal"/></svg></span>Calendar</a>
+    <a class="book"><span class="ic"><svg class="i s24"><use href="#i-plus"/></svg></span>Book</a>
+    <a><span class="ic"><svg class="i"><use href="#i-jobs"/></svg></span>Jobs</a>
+    <a><span class="ic"><svg class="i"><use href="#i-more"/></svg></span>More</a>
+  </div>
+  <div class="lbl mt24">Collector (Stage 2) — Invoices · Messages · More</div>
+  <div class="bnav" style="border:1px solid var(--border);border-radius:12px">
+    <a class="on"><span class="ic"><svg class="i"><use href="#i-file"/></svg></span>Invoices</a>
+    <a><span class="ic"><svg class="i"><use href="#i-msg"/></svg></span>Messages</a>
+    <a><span class="ic"><svg class="i"><use href="#i-more"/></svg></span>More</a>
+  </div>
+  <div class="lbl mt24">Subcontractor — My Jobs · More</div>
+  <div class="bnav" style="border:1px solid var(--border);border-radius:12px">
+    <a class="on"><span class="ic"><svg class="i"><use href="#i-today"/></svg></span>My Jobs</a>
+    <a><span class="ic"><svg class="i"><use href="#i-more"/></svg></span>More</a>
+  </div>
+  <p class="small muted mt16">Активный пункт подсвечен всегда. Гамбургера в шапке нет — More открывает то же меню шторкой. Map — вкладка календаря. Центральная «＋» — Book customer (SPEC §9), в календаре предзаполняет выбранный день.</p>
+</div>
+</div></div>
+</article>
+
+</div>
+</section>

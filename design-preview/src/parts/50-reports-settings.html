@@ -1,0 +1,199 @@
+<section class="vsec" id="reports" data-short="Отчёты, расходы, настройки, вход">
+<h2>Отчёты, расходы, настройки, вход (телефон)</h2>
+<p class="lead">Период выбирается одним тапом, цифры с разными базами подписаны явно, фильтры не занимают первый экран. Настройки — хаб из коротких подстраниц вместо одной страницы в 10 000 px.</p>
+<div class="vgrid">
+
+<!-- ============ Reports ============ -->
+<article class="pair">
+<header><b>Reports</b><code>/reports</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-reports}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>Reports</h1></div>{{INC:pill-c}}</div>
+  <div class="content">
+    <div class="vstack gap12">
+      <span class="seg full"><span>Day</span><span>Week</span><span class="on">Month</span><span>Year</span><span>Custom</span></span>
+      <div class="between"><span class="ibtn bd" style="width:40px;height:40px"><svg class="i"><use href="#i-left"/></svg></span><b>Oct 1 – 9, 2026</b><span class="ibtn bd" style="width:40px;height:40px"><svg class="i"><use href="#i-right"/></svg></span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="card p12"><div class="xs muted">REVENUE</div><div class="num b" style="font-size:22px">$95.00</div><div class="small muted">1 invoice issued</div></div>
+      <div class="card p12"><div class="xs muted">PROFIT</div><div class="num b" style="font-size:22px">$0.00</div><div class="small muted">0 jobs closed</div></div>
+      <div class="card p12"><div class="xs muted">AVERAGE TICKET</div><div class="num b" style="font-size:22px">$95.00</div><div class="small muted">per invoice</div></div>
+      <div class="card p12"><div class="xs muted">ESTIMATE CONVERSION</div><div class="small muted mt4">No data for this period</div></div>
+    </div>
+    <section><div class="sech"><h2>Revenue · invoices issued <svg class="i s16 muted"><use href="#i-info"/></svg></h2></div>
+      <div class="card p"><div class="num b" style="font-size:20px">$95.00 <span class="xs muted">CAD</span></div><div class="small muted">Based on 1 invoice issued Oct 1–9</div></div></section>
+    <section><div class="sech"><h2>Profit · jobs closed <svg class="i s16 muted"><use href="#i-info"/></svg></h2></div>
+      <div class="card p">
+        <div class="num b" style="font-size:20px">$0.00</div><div class="small muted">Based on 0 jobs closed Oct 1–9</div>
+        <div class="divider mt12"></div>
+        <div class="kv"><span>Revenue (without taxes)</span><span class="v">$0.00</span></div>
+        <div class="kv"><span>Parts and materials (cost)</span><span class="v">$0.00</span></div>
+        <div class="kv"><span>Card processing fees</span><span class="v">$0.00</span></div>
+        <div class="kv"><span>Business expenses</span><span class="v">$0.00</span></div>
+        <div class="kv"><span>Mileage · 0.0 km</span><span style="color:var(--accent);font-weight:500">Set rate</span></div>
+      </div></section>
+    <section>
+      <div class="list">
+        <div class="row" style="align-items:flex-start;flex-direction:column;gap:6px"><div class="between" style="width:100%"><b>By brand</b><svg class="i chev" style="transform:rotate(180deg)"><use href="#i-down"/></svg></div>
+          <div class="between small" style="width:100%"><span>Doctor Appliance</span><span class="num">1 invoice · <b>$95.00</b> · avg $95.00</span></div></div>
+        <div class="row"><b class="grow">By technician</b><svg class="i chev"><use href="#i-down"/></svg></div>
+        <div class="row"><b class="grow">By job type</b><svg class="i chev"><use href="#i-down"/></svg></div>
+        <div class="row"><b class="grow">By lead source</b><svg class="i chev"><use href="#i-down"/></svg></div>
+        <div class="row"><b class="grow">Estimate conversion</b><span class="small muted">no data</span><svg class="i chev"><use href="#i-down"/></svg></div>
+        <div class="row"><b class="grow">Profit by technician and appliance</b><span class="small muted">no data</span><svg class="i chev"><use href="#i-down"/></svg></div>
+        <div class="row"><b class="grow">Warranty callbacks</b><span class="small muted">0</span><svg class="i chev"><use href="#i-down"/></svg></div>
+        <div class="row"><b class="grow">No-charge jobs</b><span class="small muted">0</span><svg class="i chev"><use href="#i-down"/></svg></div>
+        <div class="row"><svg class="i muted"><use href="#i-download"/></svg><div class="grow"><b>For the bookkeeper</b><div class="small muted">Expenses (CSV) · Supplier receipts (ZIP)</div></div><svg class="i chev"><use href="#i-down"/></svg></div>
+      </div></section>
+  </div>
+  {{INC:nav-owner-none}}
+</div>
+</div></div>
+<ul class="notes"><li>Period: Day · Week · Month · Year · Custom, ‹ › сдвигает период, применяется сразу. Кнопка Show и поля From/To (кроме Custom) убраны.</li><li>Две базы подписаны явно: «Revenue · invoices issued» ($95) и «Profit · jobs closed» ($0) — больше не выглядят как ошибка (P0 №11). Расчёт не меняется.</li><li>Таблицы «Group / Invoices / Revenue / Average» → строки «Doctor Appliance — 1 invoice · $95.00 · avg $95.00». «1 Invoices» → «1 invoice». Методические абзацы — в (i).</li></ul>
+</article>
+
+<!-- ============ Expenses ============ -->
+<article class="pair">
+<header><b>Business expenses</b><code>/business-expenses</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-expenses}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>Business expenses</h1></div>{{INC:pill-c}}<span class="ibtn" aria-label="More"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content" style="gap:12px">
+    <span class="seg full"><span>Day</span><span>Week</span><span class="on">Month</span><span>Year</span><span>Custom</span></span>
+    <div class="between"><span class="ibtn bd" style="width:40px;height:40px"><svg class="i"><use href="#i-left"/></svg></span><b>Oct 1 – 9, 2026</b><span class="ibtn bd" style="width:40px;height:40px"><svg class="i"><use href="#i-right"/></svg></span></div>
+    <div class="hstack"><div class="inp pl grow" style="height:44px"><svg class="i"><use href="#i-search"/></svg>Description or merchant</div><span class="btn sec" style="height:44px"><svg class="i"><use href="#i-filter"/></svg>Filters</span></div>
+    <div class="card p vstack" style="align-items:center;text-align:center;padding:32px 16px;margin-top:8px">
+      <svg class="i s24 muted"><use href="#i-receipt"/></svg>
+      <b>No expenses in this period</b>
+      <span class="small muted">Fuel, meals, tools and other costs outside customer jobs. Snap the receipt — the rest is filled in.</span>
+      <span class="btn sec mt8"><svg class="i"><use href="#i-camera"/></svg>Snap a receipt</span>
+    </div>
+    <section><div class="sech"><h2>By category</h2></div><div class="card p small muted">Categories appear with your first expense.</div></section>
+    <div class="list"><div class="row"><svg class="i muted"><use href="#i-users"/></svg><b class="grow">Expenses by employee</b><svg class="i chev"><use href="#i-down"/></svg></div></div>
+  </div>
+  <span class="fab" style="bottom:80px" aria-label="New expense"><svg class="i s24"><use href="#i-plus"/></svg></span>
+  {{INC:nav-owner-none}}
+</div>
+</div></div>
+<ul class="notes"><li>From, To, Category, Employee, Search и Clear занимали весь первый экран → тот же контрол периода, что в Reports, живой поиск и «Filters» (шторка). Активные фильтры — чипами с ✕.</li><li>Суммы по категориям (price / tax / total, отдельно по валютам) — сверху. <b>Общего итога нет</b> — SPEC §7.13.</li><li>Export CSV → «⋯». New expense → FAB «＋» (сначала камера). «New category» — внутри выбора категории в форме расхода. «Expenses by employee» — свёрнуто, только Owner/Admin.</li></ul>
+</article>
+
+<!-- ============ Expenses filters ============ -->
+<article class="pair">
+<header><b>Expenses — Filters и «⋯»</b><code>/business-expenses · Filters</code></header>
+<div class="pz">
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>Business expenses</h1></div>{{INC:pill-c}}<span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content"></div>
+  <div class="scrim"></div>
+  <div class="menu" style="right:8px;top:52px"><div class="mi"><svg class="i"><use href="#i-download"/></svg>Export CSV</div></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="between"><h3>Filters</h3><span class="btn ghost xs">Clear</span></div>
+    <div class="fld mt12"><label>Category</label><div class="inp">All categories<span class="grow"></span><svg class="i s16 muted"><use href="#i-down"/></svg></div></div>
+    <div class="lbl mt16">Employee</div>
+    <div class="chips" style="flex-wrap:wrap;white-space:normal"><span class="chip on">Everyone</span><span class="chip"><span class="ini a av24">AO</span>Alex Owner</span><span class="chip">Olivia Office</span><span class="chip"><span class="ini t av24">TT</span>Tom Technician</span></div>
+    <span class="btn pri full mt16">Show expenses</span>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>«⋯» в шапке показан вместе со шторкой только для экономии кадров: в приложении это два отдельных действия.</li></ul>
+</article>
+
+<!-- ============ Settings hub ============ -->
+<article class="pair">
+<header><b>Хаб настроек</b><code>/company/settings</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-settings}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>Company settings</h1><div class="sub">Doctor Appliance Group</div></div>{{INC:pill-c}}</div>
+  <div class="content" style="gap:16px">
+    <div class="inp pl" style="height:44px"><svg class="i"><use href="#i-search"/></svg>Search settings</div>
+    <div class="list">
+      <div class="row"><svg class="i muted"><use href="#i-globe"/></svg><div class="grow"><b>Company &amp; region</b><div class="small muted">Canada · Vancouver · CAD</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-file"/></svg><div class="grow"><b>Invoices &amp; estimates</b><div class="small muted">Due on receipt · next INV-3</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-clock"/></svg><div class="grow"><b>Business hours &amp; scheduling</b><div class="small muted">Mon–Fri 8 a.m.–5 p.m. · buffer 30 min</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-jobs"/></svg><div class="grow"><b>Jobs</b><div class="small muted">Diagnostic fee: none</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-shield"/></svg><div class="grow"><b>Warranty</b><div class="small muted">Labour 30 days · parts 90 days</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-route"/></svg><div class="grow"><b>Mileage</b><div class="small muted">km · rate not set</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-card"/></svg><div class="grow"><b>Payments</b><div class="small muted">Manual only · cash on</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+    </div>
+    <div class="list">
+      <div class="row"><svg class="i muted"><use href="#i-percent"/></svg><div class="grow"><b>Taxes</b><div class="small muted">GST 5% · PST 7%</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-wrench"/></svg><div class="grow"><b>Services</b><div class="small muted">9 services</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-list"/></svg><div class="grow"><b>Checklists</b><div class="small muted">6 job types</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-msg"/></svg><div class="grow"><b>Messaging</b><div class="small muted">From technician's phone</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-star"/></svg><div class="grow"><b>Google reviews</b><div class="small muted">1 location · ask 2 h after payment</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-tag"/></svg><div class="grow"><b>Brands</b><div class="small muted">Doctor Appliance · Duct Works</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      <div class="row"><svg class="i muted"><use href="#i-users"/></svg><div class="grow"><b>Team</b><div class="small muted">3 people</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+    </div>
+  </div>
+  {{INC:nav-owner-none}}
+</div>
+</div></div>
+<ul class="notes"><li>Одна страница 10 000 px с единственной Save внизу → список подстраниц с текущим значением в подписи. Ни одно поле не пропадает: каждое переезжает на свою подстраницу (таблица 12.1).</li><li>Taxes, Services, Checklists, Messaging, Google reviews, Brands, Team — существующие страницы, теперь собраны здесь же.</li></ul>
+</article>
+
+<!-- ============ Settings subpage ============ -->
+<article class="pair">
+<header><b>Подстраница настроек — появилась Save</b><code>/company/settings/scheduling</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-settings}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>Business hours</h1><div class="sub">and scheduling</div></div>{{INC:pill-c}}</div>
+  <div class="content" style="gap:20px">
+    <section><div class="sech"><h2>Business hours</h2></div>
+      <div class="list">
+        <div class="row"><div class="grow">Same hours on weekdays</div><span class="toggle on"></span></div>
+        <div class="row"><div class="grow"><b>Mon – Fri</b></div><div class="inp" style="height:40px;width:96px">8:00 a.m.</div>–<div class="inp" style="height:40px;width:96px">5:00 p.m.</div></div>
+        <div class="row"><div class="grow"><b>Saturday</b><div class="small muted">Closed</div></div><span class="toggle"></span></div>
+        <div class="row"><div class="grow"><b>Sunday</b><div class="small muted">Closed</div></div><span class="toggle"></span></div>
+      </div>
+      <span class="btn ghost xs mt4" style="padding:0">Custom hours per day</span></section>
+    <section><div class="sech"><h2>Scheduling</h2></div>
+      <div class="vstack gap12">
+        <div class="fld"><label>Travel buffer between jobs</label><div class="inp focus">45<span class="grow"></span><span class="muted">min</span></div><span class="hint">Was 30 min. Shown as hatching on the calendar.</span></div>
+        <div class="fld"><label>Strict-arrival reminder</label><div class="inp">60<span class="grow"></span><span class="muted">min before</span></div></div>
+      </div></section>
+    <div class="grow"></div>
+  </div>
+  <div class="sbar" style="background:#101828;border-color:#101828;color:#fff"><span class="stat" style="color:#D0D5DD">Unsaved changes</span><span class="btn" style="flex:none;color:#fff;background:none">Discard</span><span class="btn pri" style="flex:none;width:96px">Save</span></div>
+  {{INC:nav-owner-none}}
+</div>
+</div></div>
+<ul class="notes"><li>Панель «Unsaved changes · Discard · Save» появляется только после изменения (здесь: travel buffer 30 → 45). Уход с несохранёнными изменениями — подтверждение.</li><li>Семь рядов по два поля → «Same hours on weekdays» + тумблер Closed для выходных; по дням — в режиме «Custom hours per day».</li></ul>
+</article>
+
+<!-- ============ Login ============ -->
+<article class="pair">
+<header><b>Log in</b><code>/login</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:login}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph" style="background:var(--surface)">
+  <div class="content" style="padding:72px 24px 24px;gap:24px">
+    <div class="vstack" style="align-items:center;gap:12px">
+      <span style="width:56px;height:56px;border-radius:14px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center"><svg class="i s24"><use href="#i-wrench"/></svg></span>
+      <div style="font:600 20px Inter">Doctor Appliance</div>
+    </div>
+    <div><h1 style="font-size:24px;font-weight:600">Log in</h1><p class="muted mt4">Welcome back.</p></div>
+    <div class="fld"><label>Email</label><div class="inp focus pl">you@company.com</div></div>
+    <div class="fld"><label>Password</label><div class="inp"><span class="grow"></span><svg class="i muted" aria-label="Show password"><use href="#i-eye"/></svg></div><span class="btn ghost xs" style="align-self:flex-end;padding:0;margin-top:2px">Forgot password?</span></div>
+    <div class="hstack"><span class="cbx on"><svg class="i"><use href="#i-check"/></svg></span>Remember me</div>
+    <span class="btn pri full">Log in</span>
+    <p class="small muted" style="text-align:center">New to Doctor Appliance? <span style="color:var(--accent);font-weight:500">Create account</span></p>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Форма во всю ширину, без «карточки в карточке». Название — «Doctor Appliance» из APP_NAME (позже — имя платформы).</li><li>«Forgot password?» под полем пароля (P0 №5). Email: type=email, autocomplete=username, автофокус; пароль: autocomplete=current-password; Enter отправляет.</li></ul>
+</article>
+
+</div>
+</section>

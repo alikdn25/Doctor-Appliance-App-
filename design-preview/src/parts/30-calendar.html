@@ -1,0 +1,130 @@
+<section class="vsec" id="calendar" data-short="Календарь">
+<h2>Календарь (телефон)</h2>
+<p class="lead">Один тулбар: [Day | Week | Map] + ‹ Today › + дата (тап — выбор даты). Отдельное поле даты, «Show completed» и выбор людей ушли в «Filters». Запись — центральной «＋» (предзаполняет выбранный день) или тапом по пустому слоту.</p>
+<div class="vgrid">
+
+<!-- ============ Day ============ -->
+<article class="pair">
+<header><b>Calendar — Day</b><code>/calendar?view=day</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-cal-day}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  <div class="appbar"><div class="ttl"><h1>Calendar</h1></div>{{INC:pill}}<span class="ibtn" aria-label="Filters"><svg class="i"><use href="#i-filter"/></svg></span></div>
+  <div class="content" style="gap:12px">
+    <span class="seg full"><span class="on">Day</span><span>Week</span><span>Map</span></span>
+    <div class="between"><span class="hstack gap4"><span class="ibtn bd" style="width:40px;height:40px"><svg class="i"><use href="#i-left"/></svg></span><span class="btn sec xs">Today</span><span class="ibtn bd" style="width:40px;height:40px"><svg class="i"><use href="#i-right"/></svg></span></span><span class="b hstack gap4">Fri, Oct 9<svg class="i s16 muted"><use href="#i-down"/></svg></span></div>
+    <div class="noteB hstack" style="padding:8px 12px"><span class="grow small">Tap an empty slot to book. Press and hold a job to move it.</span><span class="btn ghost xs">Got it</span></div>
+    <div class="list"><div class="row" style="min-height:48px"><span class="bdg new">2</span><b class="grow">to schedule</b><span class="small muted">#1002, #1003</span><svg class="i chev"><use href="#i-down"/></svg></div></div>
+    <div class="cal" style="margin-right:-16px;border-right:0;border-radius:12px 0 0 12px">
+      <div class="hrs"><div style="height:44px;border-bottom:1px solid var(--border)"></div><div>8 a.m.</div><div>9 a.m.</div><div>10 a.m.</div><div>11 a.m.</div><div>12 p.m.</div><div>1 p.m.</div><div>2 p.m.</div><div>3 p.m.</div><div>4 p.m.</div><div>5 p.m.</div></div>
+      <div class="lane"><div class="lh"><span class="ini t av24">TT</span>Tom Technician</div>
+        <div class="blk" style="--c:var(--s-scheduled);top:92px;height:94px"><b>9–11 · Jane Cooper</b>Washer · #1001</div>
+        <div class="buf" style="top:188px"></div>
+      </div>
+      <div class="lane"><div class="lh"><span class="ini a av24">AO</span>Alex Owner</div>
+        <div class="blk" style="--c:var(--s-scheduled);top:284px;height:94px"><b>1–3 · Jane Cooper</b>Refrigerator · #1004</div>
+        <div class="buf" style="top:380px"></div>
+      </div>
+      <div class="lane" style="width:40px;border-right:0"><div class="lh" style="padding:0 4px;color:var(--muted)">+1 →</div></div>
+      <div class="now" style="top:76px;left:48px"></div>
+    </div>
+    <section><div class="sech"><h2>Route of the day</h2></div>
+      <div class="list">
+        <div class="row"><span class="ini t av32">TT</span><div class="grow"><b>Tom Technician</b><div class="small muted">1 · 9–11 a.m. · 8450 128 St, Surrey</div></div><span class="btn sec xs"><svg class="i s16"><use href="#i-nav"/></svg>Route</span></div>
+        <div class="row"><span class="ini a av32">AO</span><div class="grow"><b>Alex Owner</b><div class="small muted">1 · 1–3 p.m. · 8450 128 St, Surrey</div></div><span class="btn sec xs"><svg class="i s16"><use href="#i-nav"/></svg>Route</span></div>
+      </div><div class="hint mt4">Route opens in Google Maps.</div></section>
+  </div>
+  {{INC:nav-owner-cal}}
+</div>
+</div></div>
+<ul class="notes"><li>Дорожки только для тех, кто выезжает (флаг «Shows in calendar»): Tom и Alex; Olivia Office убрана, Tom больше не уходит за экран. Порядок: с работами → остальные → Unassigned («+1 →»).</li><li>Блок работы — полоса цвета статуса, «9–11 · Jane Cooper», вторая строка — техника. Красная линия «сейчас». Штриховка — travel buffer 30 min.</li><li>«To schedule» — свёрнутая панель НАД сеткой; тап → шторка выбора времени и человека, long-press drag остаётся.</li><li>«Book on this day» убрана: «＋ Book» предзаполняет выбранный день, тап по слоту — день, время и человека. Подсказка про drag — один раз, с «Got it».</li></ul>
+</article>
+
+<!-- ============ Filters sheet ============ -->
+<article class="pair">
+<header><b>Calendar — шторка Filters</b><code>/calendar · Filters</code></header>
+<div class="pz">
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar"><div class="ttl"><h1>Calendar</h1></div>{{INC:pill}}<span class="ibtn"><svg class="i"><use href="#i-filter"/></svg></span></div>
+  <div class="content"></div>
+  {{INC:nav-owner-cal}}
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="between"><h3>Filters</h3><span class="btn ghost xs">Reset</span></div>
+    <div class="between mt12" style="min-height:48px"><div><div>Show completed</div><div class="small muted">Completed and paid jobs stay on the calendar</div></div><span class="toggle"></span></div>
+    <div class="lbl mt16">People</div>
+    <div class="mi"><span class="cbx on"><svg class="i"><use href="#i-check"/></svg></span><span class="ini t av24">TT</span>Tom Technician</div>
+    <div class="mi"><span class="cbx on"><svg class="i"><use href="#i-check"/></svg></span><span class="ini a av24">AO</span>Alex Owner</div>
+    <div class="mi"><span class="cbx on"><svg class="i"><use href="#i-check"/></svg></span><span class="ini av24">—</span>Unassigned</div>
+    <div class="lbl mt16">Legend</div>
+    <div class="hstack small"><span class="hatch" style="width:40px;height:20px;border-radius:4px;border:1px solid var(--border)"></span>Travel buffer · 30 min</div>
+    <div class="hstack small mt8"><span style="width:40px;height:2px;background:var(--danger)"></span>Now</div>
+    <span class="btn pri full mt16">Show 2 people</span>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Логика «Show completed» (SPEC §7.3) не меняется. Цвета блоков — словарь статусов из раздела «Стиль».</li></ul>
+</article>
+
+<!-- ============ Week (agenda) ============ -->
+<article class="pair">
+<header><b>Calendar — Week (повестка по дням)</b><code>/calendar?view=week</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-cal-week}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar"><div class="ttl"><h1>Calendar</h1></div>{{INC:pill}}<span class="ibtn"><svg class="i"><use href="#i-filter"/></svg></span></div>
+  <div class="content" style="gap:12px">
+    <span class="seg full"><span>Day</span><span class="on">Week</span><span>Map</span></span>
+    <div class="between"><span class="hstack gap4"><span class="ibtn bd" style="width:40px;height:40px"><svg class="i"><use href="#i-left"/></svg></span><span class="btn sec xs">Today</span><span class="ibtn bd" style="width:40px;height:40px"><svg class="i"><use href="#i-right"/></svg></span></span><span class="b hstack gap4">Oct 5 – 11<svg class="i s16 muted"><use href="#i-down"/></svg></span></div>
+    <div class="list"><div class="row" style="min-height:48px"><span class="bdg new">2</span><b class="grow">to schedule</b><svg class="i chev"><use href="#i-down"/></svg></div></div>
+    <div class="small muted">Mon, Oct 5 · Tue, Oct 6 — no jobs</div>
+    <section><div class="sech"><h2>Wed, Oct 7 <span class="muted" style="font-weight:400">· 1 job</span></h2></div>
+      <div class="list"><div class="row"><span class="b num" style="width:64px">1–3 p.m.</span><div class="grow" style="min-width:0"><div class="ell"><b>Westside Property Mgmt</b></div><div class="small muted">#1002 · Dishwasher</div></div><span class="ini t av32">TT</span><span class="ibtn" aria-label="More"><svg class="i"><use href="#i-more"/></svg></span></div></div></section>
+    <div class="small muted">Thu, Oct 8 — no jobs</div>
+    <section><div class="sech"><h2 style="color:var(--accent)">Fri, Oct 9 · Today <span class="muted" style="font-weight:400">· 2 jobs</span></h2></div>
+      <div class="list">
+        <div class="row" style="border-left:4px solid var(--s-scheduled)"><span class="b num" style="width:64px">9–11 a.m.</span><div class="grow"><b>Jane Cooper</b><div class="small muted">#1001 · Washer</div></div><span class="ini t av32">TT</span><span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+        <div class="row" style="border-left:4px solid var(--s-scheduled)"><span class="b num" style="width:64px">1–3 p.m.</span><div class="grow"><b>Jane Cooper</b><div class="small muted">#1004 · Refrigerator</div></div><span class="ini a av32">AO</span><span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+      </div></section>
+    <div class="small muted">Sat, Oct 10 · Sun, Oct 11 — closed</div>
+    <div class="grow"></div>
+  </div>
+  {{INC:nav-owner-cal}}
+</div>
+</div></div>
+<ul class="notes"><li>Сетка «люди × 7 дней» не помещалась (видно Mon и Tue, пятница за экраном). На ширине &lt;768 px Week — повестка: секция на день и строки работ, при открытии — прокрутка к сегодня.</li><li>Пустые дни схлопнуты в одну строку. Цвет полосы — статус.</li><li>Перенос — «⋯ → Reschedule» (следующий кадр). Сетка с drag-and-drop остаётся на планшете и десктопе.</li></ul>
+</article>
+
+<!-- ============ Reschedule sheet ============ -->
+<article class="pair">
+<header><b>Week — «⋯ → Reschedule»</b><code>/calendar?view=week · ⋯</code></header>
+<div class="pz">
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar"><div class="ttl"><h1>Calendar</h1></div>{{INC:pill}}<span class="ibtn"><svg class="i"><use href="#i-filter"/></svg></span></div>
+  <div class="content"></div>
+  {{INC:nav-owner-cal}}
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="between"><div><h3>Reschedule #1001</h3><div class="small muted">Jane Cooper · now Fri, Oct 9 · 9–11 a.m.</div></div><span class="ibtn"><svg class="i"><use href="#i-x"/></svg></span></div>
+    <div class="lbl mt16">Day</div>
+    <div class="chips" style="margin-right:-16px"><span class="chip">Today</span><span class="chip">Sat, Oct 10</span><span class="chip">Sun, Oct 11</span><span class="chip on">Mon, Oct 12</span><span class="chip">Pick date</span></div>
+    <div class="lbl mt16">Arrival window</div>
+    <div class="chips" style="flex-wrap:wrap;white-space:normal"><span class="chip on">9–11 a.m.</span><span class="chip">11 a.m.–1 p.m.</span><span class="chip">1–3 p.m.</span><span class="chip">3–5 p.m.</span></div>
+    <span class="btn ghost" style="padding:0;height:32px;font-size:14px">Custom time</span>
+    <div class="lbl mt8">Technician</div>
+    <div class="chips" style="flex-wrap:wrap;white-space:normal"><span class="chip on"><span class="ini t av24">TT</span>Tom · free</span><span class="chip"><span class="ini a av24">AO</span>Alex · free</span><span class="chip">Unassigned</span></div>
+    <div class="mt16 btnrow"><span class="btn sec">Open job</span><span class="btn pri">Move to Mon 9–11</span></div>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>В «⋯» строки работы также: Open job, Call, Navigate. Те же DateChips / TimeWindowChips, что в Book customer.</li></ul>
+</article>
+
+</div>
+</section>

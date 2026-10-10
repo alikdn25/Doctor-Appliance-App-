@@ -1,0 +1,168 @@
+<section class="vsec" id="money" data-short="Деньги">
+<h2>Деньги: счёт и смета (телефон)</h2>
+<p class="lead">У каждого документа одна главная кнопка по его состоянию; редкое и опасное — в «⋯». Счёт INV-2 на #1001 (Jane Cooper, $179.20) — состояние после работы техника; смета EST-1 на #1002 — из демо-данных.</p>
+<div class="vgrid">
+
+<!-- ============ Invoice unpaid ============ -->
+<article class="pair">
+<header><b>Invoice — не оплачен</b><code>/invoices/3 · INV-2</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-invoice-unpaid}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  {{INC:inv2-bar}}
+  <div class="content">{{INC:inv2-body}}</div>
+  {{INC:inv2-sbar}}
+  {{INC:nav-owner-none}}
+</div>
+</div></div>
+<ul class="notes"><li>Статус крупно сверху: сумма и срок. Primary — Take payment (шторка); оплаченный счёт главной кнопки не имеет.</li><li>PDF / Send by email / Send by SMS → одна «Send ▾» + иконка PDF в шапке. Edit, Void, Refund → «⋯». Красная «Void invoice» больше не на виду.</li><li>Позиции — компактные строки с буквой типа (L / P / M), как в утверждённой форме счёта.</li></ul>
+</article>
+
+<!-- ============ Send menu ============ -->
+<article class="pair">
+<header><b>Invoice — «Send ▾»</b><code>/invoices/3 · Send</code></header>
+<div class="pz">
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  {{INC:inv2-bar}}
+  <div class="content">{{INC:inv2-body}}</div>
+  {{INC:inv2-sbar}}
+  {{INC:nav-owner-none}}
+  <div class="scrim"></div>
+  <div class="menu" style="right:16px;bottom:140px;min-width:300px">
+    <div class="mi"><svg class="i"><use href="#i-mail"/></svg><span>Email<span class="small muted" style="display:block;line-height:1.2">jane.cooper@example.com</span></span></div>
+    <div class="mi"><svg class="i"><use href="#i-msg"/></svg><span>Text message<span class="small muted" style="display:block;line-height:1.2">(604) 555-0142</span></span></div>
+    <div class="mi"><svg class="i"><use href="#i-copy"/></svg>Copy customer link</div>
+  </div>
+  <div class="toast" style="top:68px">Customer link copied</div>
+</div>
+</div></div>
+<ul class="notes"><li>«Customer link: http://127.0.0.1:8000/d/…» → «Copy customer link» + toast; ссылка строится от APP_URL.</li><li>После отправки счёта (и после полной оплаты) — диалог «Send Google review request?» (SPEC §8). Больше нигде его нет.</li></ul>
+</article>
+
+<!-- ============ Invoice ⋯ ============ -->
+<article class="pair">
+<header><b>Invoice — меню «⋯»</b><code>/invoices/3 · ⋯</code></header>
+<div class="pz">
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  {{INC:inv2-bar}}
+  <div class="content">{{INC:inv2-body}}</div>
+  {{INC:nav-owner-none}}
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 style="padding:4px 12px 8px">Invoice INV-2</h3>
+    <div class="mi"><svg class="i"><use href="#i-pencil"/></svg>Edit invoice</div>
+    <div class="mi"><svg class="i"><use href="#i-download"/></svg>Download PDF</div>
+    <div class="mi"><svg class="i"><use href="#i-sign"/></svg>Get signature</div>
+    <div class="mi"><svg class="i"><use href="#i-jobs"/></svg>Open job #1001</div>
+    <div class="msep"></div>
+    <div class="mi dng" style="opacity:.4"><svg class="i"><use href="#i-undo"/></svg>Refund<span class="r">no payments yet</span></div>
+    <div class="mi dng"><svg class="i"><use href="#i-x"/></svg>Void invoice</div>
+    <p class="small muted" style="padding:4px 12px 0">Void and Refund ask to confirm. Editing a paid invoice warns that the customer already has it.</p>
+  </div>
+</div>
+</div></div>
+</article>
+
+<!-- ============ Take payment ============ -->
+<article class="pair">
+<header><b>Invoice — шторка Take payment</b><code>/invoices/3 · Take payment</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-takepay}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  {{INC:inv2-bar}}
+  <div class="content">{{INC:inv2-body}}</div>
+  <div class="scrim"></div>
+  <div class="sheet" style="padding-bottom:0">
+    <div class="handle"></div>
+    <div class="between"><div><h3>Take payment</h3><div class="small muted">INV-2 · Jane Cooper</div></div><span class="ibtn"><svg class="i"><use href="#i-x"/></svg></span></div>
+    <div class="num mt8" style="font:700 28px/1.2 Inter">$179.20</div>
+    <div class="noteB mt12 hstack small" style="padding:8px 12px"><svg class="i"><use href="#i-card"/></svg><span class="grow">Card payments with Square are coming soon. Record payments by hand for now.</span></div>
+    <div class="lbl mt16">Mark as paid</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <span class="chip on" style="justify-content:center;height:44px"><svg class="i s16"><use href="#i-cash"/></svg>Cash</span>
+      <span class="chip" style="justify-content:center;height:44px"><svg class="i s16"><use href="#i-card"/></svg>Card</span>
+      <span class="chip" style="justify-content:center;height:44px">E-transfer</span>
+      <span class="chip" style="justify-content:center;height:44px"><svg class="i s16"><use href="#i-file"/></svg>Cheque</span>
+      <span class="chip" style="justify-content:center;height:44px">Crypto</span>
+      <span class="chip" style="justify-content:center;height:44px">Other</span>
+    </div>
+    <div class="hstack mt16" style="align-items:flex-end">
+      <div class="fld grow"><label>Amount</label><div class="inp num">$ 179.20</div></div>
+      <div class="fld grow"><label>Received</label><div class="inp">Today, Oct 9<span class="grow"></span><svg class="i s16 muted"><use href="#i-cal"/></svg></div></div>
+    </div>
+    <div class="hstack mt8"><span class="btn ghost xs" style="padding:0">Add note</span><span class="small muted">· partial payment: change the amount</span></div>
+    <div class="sbar" style="margin:12px -16px 0;"><span class="btn pri">Mark as paid · $179.20</span></div>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Если провайдер подключён — сверху ссылка на оплату и QR; в демо Square не подключён, поэтому честная строка вместо «недоступно в вашей стране» (P0 №6).</li><li>Способы — Cash / Card / E-transfer / Cheque / Crypto / Other (SPEC §7.6). «Cheque» — орфография en-CA компании; для en-US будет «Check».</li><li>Дата — чипом «Today», нативный пикер по тапу. Кнопка называет действие и сумму; во время записи — спиннер и блок повторного тапа.</li></ul>
+</article>
+
+<!-- ============ Estimate draft ============ -->
+<article class="pair">
+<header><b>Estimate — Draft</b><code>/estimates/1 · EST-1</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-estimate}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>Estimate EST-1</h1><div class="sub">Doctor Appliance · by Tom</div></div>{{INC:pill-c}}<span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content">
+    <div class="vstack gap4">
+      <div class="hstack"><span class="bdg draft"><svg class="i"><use href="#i-pencil"/></svg>Draft</span><span class="small muted">Not sent yet</span></div>
+      <div class="num" style="font:700 28px/1.2 Inter">$262.65</div>
+      <div class="small muted">Issued Oct 7, 2026 · valid until Nov 6, 2026</div>
+    </div>
+    <div class="card p small vstack gap4"><b style="font-size:16px">Westside Property Management</b><span class="muted">Unit 204, 4120 Main St, Vancouver, BC V5V 3P6</span><span class="muted">(604) 555-0177 · ap@westside-pm.example.com</span><span style="color:var(--accent);font-weight:500">Job #1002 · Bosch Dishwasher</span></div>
+    <section><div class="sech"><h2>Items</h2></div>
+    <div class="list">
+      <div class="row" style="align-items:flex-start"><span class="ini av32" style="border-radius:8px;background:#FEF0C7;color:#B54708">P</span><div class="grow"><div>Drain pump (OEM)</div><div class="small muted">1 × $189.50 · GST · PST · Warranty 30 days</div></div><b class="num">$189.50</b></div>
+      <div class="row" style="align-items:flex-start"><span class="ini av32" style="border-radius:8px;background:#E8EEFC;color:#1E3A8A">L</span><div class="grow"><div>Labour: replace drain pump</div><div class="small muted">1 × $140.00 · GST · PST · Warranty 30 days</div></div><b class="num">$140.00</b></div>
+      <div class="row" style="align-items:flex-start"><span class="ini av32" style="border-radius:8px;background:#F2F4F7;color:#475467">−</span><div class="grow"><div>Diagnostic fee credit</div><div class="small muted">1 × −$95.00 · GST · PST</div></div><b class="num">−$95.00</b></div>
+    </div>
+    <div class="mt12" style="padding:0 4px">
+      <div class="kv"><span class="muted">Subtotal</span><span class="v">$234.50</span></div>
+      <div class="kv"><span class="muted">GST 5%</span><span class="v">$11.73</span></div>
+      <div class="kv"><span class="muted">PST 7%</span><span class="v">$16.42</span></div>
+      <div class="kv" style="font-size:16px;font-weight:600;border-top:1px solid var(--border);margin-top:4px;padding-top:10px"><span>Total</span><span class="v">$262.65</span></div>
+    </div></section>
+    <section><div class="sech"><h2>Notes</h2></div><div class="card p small">Diagnostic fee credited when the repair is done.</div></section>
+  </div>
+  <div class="sbar"><span class="btn pri"><svg class="i"><use href="#i-send"/></svg>Send<svg class="i s16"><use href="#i-down"/></svg></span><span class="btn sec" style="flex:none"><svg class="i"><use href="#i-pencil"/></svg>Edit</span></div>
+  {{INC:nav-owner-none}}
+</div>
+</div></div>
+<ul class="notes"><li>7 кнопок во всю ширину → по стадии: Draft — Send ▾ (Email / SMS / Copy link) + Edit; Sent — Mark approved / Mark declined; Approved — Create invoice.</li><li>У кредита «Diagnostic fee credit» гарантия больше не выводится (P0 №8).</li><li>Варианты Good / Better / Best (SPEC §7.5) появятся вкладками с итогом каждого — у EST-1 вариант один.</li></ul>
+</article>
+
+<!-- ============ Estimate ⋯ ============ -->
+<article class="pair">
+<header><b>Estimate — меню «⋯»</b><code>/estimates/1 · ⋯</code></header>
+<div class="pz">
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>Estimate EST-1</h1><div class="sub">Doctor Appliance · by Tom</div></div>{{INC:pill-c}}<span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content"></div>
+  {{INC:nav-owner-none}}
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 style="padding:4px 12px 8px">Estimate EST-1 · Draft</h3>
+    <div class="mi"><svg class="i"><use href="#i-download"/></svg>Download PDF</div>
+    <div class="mi"><svg class="i"><use href="#i-check"/></svg>Customer approved</div>
+    <div class="mi"><svg class="i"><use href="#i-x"/></svg>Customer declined</div>
+    <div class="mi"><svg class="i"><use href="#i-file"/></svg>Create invoice</div>
+    <div class="msep"></div>
+    <div class="mi dng"><svg class="i"><use href="#i-trash"/></svg>Delete estimate</div>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>В таблице 10.4 для Draft в «⋯» только PDF и Delete. Чтобы ничего не пропало (клиент может согласиться по телефону до отправки), Approved / Declined / Create invoice в черновике тоже лежат в «⋯» — моё решение, проверьте.</li></ul>
+</article>
+
+</div>
+</section>

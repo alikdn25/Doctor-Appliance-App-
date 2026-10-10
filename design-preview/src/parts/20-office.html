@@ -1,0 +1,356 @@
+<section class="vsec" id="office" data-short="Владелец и офис">
+<h2>Владелец и офис (телефон 390×844)</h2>
+<p class="lead">Владелец тоже выезжает: его стартовый экран — Today (тот же My Jobs). Запись клиента — центральная «＋» нижней панели.</p>
+<div class="vgrid">
+
+<!-- ============ Today (owner) ============ -->
+<article class="pair">
+<header><b>Today — владелец</b><code>/my-jobs</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-today}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar"><div class="ttl"><h1>Today</h1><div class="sub">Fri, Oct 9</div></div>{{INC:pill}}<span class="ibtn"><svg class="i"><use href="#i-search"/></svg></span></div>
+  <div class="content" style="gap:12px">
+    <div class="between"><span class="seg"><span class="on">Day</span><span>Completed</span></span><span class="hstack gap4"><span class="ibtn"><svg class="i"><use href="#i-left"/></svg></span><span class="b small">Today, Oct 9</span><span class="ibtn"><svg class="i"><use href="#i-right"/></svg></span></span></div>
+    <div class="small muted">1 job · next at 1 p.m.</div>
+    <div class="jc next" style="flex-direction:column">
+      <div class="hstack gap12" style="align-items:flex-start">
+        <img class="av av40" src="{{IMG:av-woman}}" alt="">
+        <div class="main">
+          <div class="l1"><span class="win">1–3 p.m.</span><span class="bdg scheduled"><svg class="i"><use href="#i-cal"/></svg>Scheduled</span></div>
+          <div class="nm ell">Jane Cooper</div>
+          <div class="ln">8450 128 St, Surrey, BC V3W 4G1</div>
+          <div class="ln">Refrigerator · not cooling</div>
+        </div>
+        <div class="side"><img class="apimg" src="{{IMG:ap-refrigerator}}" alt=""></div>
+      </div>
+      <div class="hstack"><span class="btn pri grow"><svg class="i"><use href="#i-car"/></svg>On my way</span><span class="ibtn bd"><svg class="i"><use href="#i-nav"/></svg></span><span class="ibtn bd"><svg class="i"><use href="#i-phone"/></svg></span></div>
+    </div>
+    <div class="list"><div class="row"><svg class="i muted"><use href="#i-users"/></svg><div class="grow small">1 more job this day for someone else</div><span class="small b" style="color:var(--accent)">Calendar</span><svg class="i chev"><use href="#i-right"/></svg></div></div>
+    <div class="grow"></div>
+  </div>
+  <span class="fab sec" style="bottom:80px"><svg class="i s24"><use href="#i-car"/></svg></span>
+  {{INC:nav-owner-today}}
+</div>
+</div></div>
+<ul class="notes"><li>Тот же экран, что у техника, плюс строка «1 more job this day for someone else → Calendar» (SPEC §7.4). Неназначенные работы дня, если есть, идут списком с пометкой «Not assigned».</li><li>Большая «Book customer» внизу → центральная «＋ Book» в нижней панели (есть на каждом экране).</li><li>#1004 — Refrigerator: в сидере сейчас ошибка «Washer • Fridge not cooling» (P0 №18), на макете уже исправлено.</li></ul>
+</article>
+
+<!-- ============ More (owner) ============ -->
+<article class="pair">
+<header><b>More — владелец</b><code>More</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-more}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar"><div class="ttl"><h1>Today</h1><div class="sub">Fri, Oct 9</div></div>{{INC:pill}}<span class="ibtn"><svg class="i"><use href="#i-search"/></svg></span></div>
+  <div class="content"></div>
+  {{INC:nav-owner-more}}
+  <div class="scrim" style="bottom:64px"></div>
+  <div class="sheet" style="bottom:64px;top:40px;overflow:hidden">
+    <div class="handle"></div>
+    <div class="inp pl" style="height:44px"><svg class="i"><use href="#i-search"/></svg>Search menu</div>
+    <div class="lbl mt12">Main</div>
+    <div class="mi"><svg class="i"><use href="#i-user"/></svg>Customers</div>
+    <div class="mi"><svg class="i"><use href="#i-file"/></svg>Invoices</div>
+    <div class="mi"><svg class="i"><use href="#i-msg"/></svg>Messages</div>
+    <div class="lbl mt8">Money and reports</div>
+    <div class="mi"><svg class="i"><use href="#i-chart"/></svg>Reports</div>
+    <div class="mi"><svg class="i"><use href="#i-cash"/></svg>Cash on hand</div>
+    <div class="mi"><svg class="i"><use href="#i-receipt"/></svg>Business expenses</div>
+    <div class="mi"><svg class="i"><use href="#i-route"/></svg>Mileage</div>
+    <div class="lbl mt8">Company settings</div>
+    <div class="mi"><svg class="i"><use href="#i-gear"/></svg>Company settings<span class="r">all settings</span></div>
+    <div class="mi"><svg class="i"><use href="#i-users"/></svg>Team</div>
+    <div class="msep"></div>
+    <div class="mi"><span class="ini a av32">AO</span><span><b>Alex Owner</b><span class="small muted" style="display:block;line-height:1.2">Profile · Security · Appearance</span></span><svg class="i r"><use href="#i-right"/></svg></div>
+    <div class="mi"><svg class="i"><use href="#i-logout"/></svg>Log out</div>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Группы как сейчас, у Owner раскрыты. Today, Calendar, Book, Jobs — в нижней панели, здесь не повторяются.</li><li>Messages — пункт More, потому что режим SMS у демо-компании «From technician's phone». В режиме Automatic появится иконка-пузырь с бейджем в AppBar Today и Jobs.</li><li>Brands, Taxes, Services, Checklists, Messaging, Google reviews собраны в хаб Company settings (раздел «Настройки»). Team оставлен отдельно — часто нужен.</li></ul>
+</article>
+
+<!-- ============ Jobs Open ============ -->
+<article class="pair">
+<header><b>Jobs — вкладка Open с фильтрами</b><code>/jobs?tab=open (было /jobs/not-completed)</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-notcompleted}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar"><div class="ttl"><h1>Jobs</h1></div>{{INC:pill}}<span class="ibtn" aria-label="Sort and more"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content" style="gap:12px">
+    <span class="seg full"><span class="on">Open <b class="num">4</b></span><span>All</span><span>Deleted</span></span>
+    <div class="inp pl" style="height:44px"><svg class="i"><use href="#i-search"/></svg>Search jobs, customers, phones…</div>
+    <div class="chips" style="margin-right:-16px">
+      <span class="chip red">Overdue <span class="c">2</span></span><span class="chip">Needs scheduling <span class="c">1</span></span><span class="chip">Waiting for parts <span class="c">1</span></span><span class="chip">Scheduled / in progress <span class="c">2</span></span><span class="chip zero">Waiting for customer 0</span><span class="chip zero">On hold 0</span>
+    </div>
+    <div class="small muted">4 jobs · most urgent first</div>
+    <div class="vstack">
+      <div class="jc">
+        <span class="av av40 biz"><svg class="i"><use href="#i-building"/></svg></span>
+        <div class="main"><div class="l1"><span class="jcnum">#1002</span><span class="bdg parts"><svg class="i"><use href="#i-package"/></svg>Waiting for parts</span><span class="bdg overdue">Overdue</span></div>
+          <div class="nm ell">Westside Property Management</div><div class="ln">Last visit Wed, Oct 7 · Unit 204, 4120 Main St</div><div class="ln">Dishwasher · not draining</div></div>
+        <div class="side"><span class="ini t av32">TT</span><span class="ibtn"><svg class="i"><use href="#i-phone"/></svg></span></div>
+      </div>
+      <div class="jc">
+        <img class="av av40" src="{{IMG:av-man}}" alt="">
+        <div class="main"><div class="l1"><span class="jcnum">#1003</span><span class="bdg new"><svg class="i"><use href="#i-sparkle"/></svg>New</span><span class="bdg overdue">Overdue</span></div>
+          <div class="nm ell">Robert Fox</div><div class="ln">Needs scheduling · 6200 McKay Ave, Burnaby</div><div class="ln">Installation · install new range</div></div>
+        <div class="side"><span class="ini av32">—</span><span class="ibtn"><svg class="i"><use href="#i-phone"/></svg></span></div>
+      </div>
+      <div class="jc">
+        <img class="av av40" src="{{IMG:av-woman}}" alt="">
+        <div class="main"><div class="l1"><span class="jcnum">#1001</span><span class="bdg scheduled"><svg class="i"><use href="#i-cal"/></svg>Scheduled</span></div>
+          <div class="nm ell">Jane Cooper</div><div class="ln">Today · 9–11 a.m. · 8450 128 St, Surrey</div><div class="ln">Washer · stops mid-cycle, OE error</div></div>
+        <div class="side"><span class="ini t av32">TT</span><span class="ibtn"><svg class="i"><use href="#i-phone"/></svg></span></div>
+      </div>
+      <div class="jc">
+        <img class="av av40" src="{{IMG:av-woman}}" alt="">
+        <div class="main"><div class="l1"><span class="jcnum">#1004</span><span class="bdg scheduled"><svg class="i"><use href="#i-cal"/></svg>Scheduled</span></div>
+          <div class="nm ell">Jane Cooper</div><div class="ln">Today · 1–3 p.m. · 8450 128 St, Surrey</div><div class="ln">Refrigerator · not cooling</div></div>
+        <div class="side"><span class="ini a av32">AO</span><span class="ibtn"><svg class="i"><use href="#i-phone"/></svg></span></div>
+      </div>
+    </div>
+  </div>
+  {{INC:nav-owner-jobs}}
+</div>
+</div></div>
+<ul class="notes"><li>Jobs, Not completed jobs и Deleted jobs — один экран с вкладками Open · All · Deleted; старые адреса редиректят на вкладки. Jobs появился в нижней панели и подсвечен.</li><li>Фильтр-чипы одной лентой (горизонтальный скролл), нули приглушены и в конце. Поиск живой, без кнопки.</li><li>Сортировка Open — по срочности; сменить — в «⋯» (следующий кадр). На экране помещаются 4 работы.</li><li>Какие работы считаются overdue — по текущей логике; на макете флажок стоит у #1002 и #1003, как пример.</li></ul>
+</article>
+
+<!-- ============ Jobs ⋯ ============ -->
+<article class="pair">
+<header><b>Jobs — меню «⋯» (сортировка)</b><code>/jobs · ⋯</code></header>
+<div class="pz">
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar"><div class="ttl"><h1>Jobs</h1></div>{{INC:pill}}<span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content"></div>
+  {{INC:nav-owner-jobs}}
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 style="padding:4px 12px 8px">Sort open jobs</h3>
+    <div class="mi"><span class="radio on"></span>Most urgent first<span class="r">default</span></div>
+    <div class="mi"><span class="radio"></span>Next visit</div>
+    <p class="small muted" style="padding:0 12px 4px">Most urgent: overdue → needs scheduling → waiting → next visit.</p>
+    <div class="mi"><span class="radio"></span>Newest first</div>
+    <div class="mi"><span class="radio"></span>Job number</div>
+    <div class="msep"></div>
+    <div class="mi"><svg class="i"><use href="#i-plus"/></svg>New job (full form)</div>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Новое: сортировка была только по номеру. «New job (full form)» — полная форма /jobs/create; быстрая запись — «＋ Book».</li></ul>
+</article>
+
+<!-- ============ Book: empty ============ -->
+<article class="pair">
+<header><b>Book customer — пустая форма</b><code>/jobs/create?book=1</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-book}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  <div class="appbar child"><span class="ibtn" aria-label="Cancel"><svg class="i"><use href="#i-x"/></svg></span><div class="ttl"><h1>Book customer</h1></div>{{INC:pill-c}}<span class="ibtn" aria-label="More"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content" style="gap:20px">
+    <div class="fld"><label>Phone</label><div class="inp focus"><svg class="i muted"><use href="#i-phone"/></svg><span style="color:#98A2B3">(604) 555-0100</span></div><span class="hint">Finds existing customers as you type.</span></div>
+    <div class="fld"><label>Name</label><div class="inp"><span class="grow"></span><svg class="i muted" aria-label="Find by name"><use href="#i-search"/></svg></div></div>
+    <div class="fld"><label>Appliance</label>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+        <div class="aptile"><img src="{{IMG:ap-refrigerator}}" alt="">Refrigerator</div><div class="aptile"><img src="{{IMG:ap-freezer}}" alt="">Freezer</div><div class="aptile"><img src="{{IMG:ap-wine_cooler}}" alt="">Wine cooler</div><div class="aptile"><img src="{{IMG:ap-washer}}" alt="">Washer</div>
+        <div class="aptile"><img src="{{IMG:ap-dryer}}" alt="">Dryer</div><div class="aptile"><img src="{{IMG:ap-washer_dryer_combo}}" alt="">Washer/dryer</div><div class="aptile"><img src="{{IMG:ap-dishwasher}}" alt="">Dishwasher</div><div class="aptile"><img src="{{IMG:ap-range}}" alt="">Range</div>
+        <div class="aptile"><img src="{{IMG:ap-oven}}" alt="">Wall oven</div><div class="aptile"><img src="{{IMG:ap-cooktop}}" alt="">Cooktop</div><div class="aptile"><img src="{{IMG:ap-microwave}}" alt="">Microwave</div><div class="aptile"><img src="{{IMG:ap-range_hood}}" alt="">Range hood</div>
+        <div class="aptile"><img src="{{IMG:ap-other}}" alt="">Other</div>
+      </div>
+      <span class="hint">Not sure yet? Leave it — the technician adds it on site.</span></div>
+    <div class="fld"><label>Problem</label><div class="inp area pl" style="min-height:64px">E.g. washer not draining</div></div>
+    <div class="fld"><label>When</label>
+      <div class="chips" style="margin-right:-16px"><span class="chip">Today</span><span class="chip">Tomorrow</span><span class="chip">Sun, Oct 11</span><span class="chip">Mon, Oct 12</span><span class="chip">Tue, Oct 13</span><span class="chip">Wed</span></div>
+      <div class="chips mt4" style="flex-wrap:wrap;white-space:normal"><span class="chip">9–11 a.m.</span><span class="chip">11 a.m.–1 p.m.</span><span class="chip">1–3 p.m.</span><span class="chip">3–5 p.m.</span></div>
+      <span class="btn ghost" style="align-self:flex-start;padding:0;height:32px;font-size:14px">Custom time</span></div>
+    <div class="fld"><label>Technician</label>
+      <div class="chips" style="flex-wrap:wrap;white-space:normal"><span class="chip on">Unassigned</span><span class="chip"><span class="ini a av24">AO</span>Alex Owner</span><span class="chip"><span class="ini t av24">TT</span>Tom Technician</span></div>
+      <span class="hint">Pick a time to see who is free.</span></div>
+    <div class="fld"><label>Address</label><div class="inp pl"><svg class="i"><use href="#i-pin"/></svg>Start typing an address</div><span class="hint">Optional — can be added later. <span style="color:var(--accent);font-weight:500">Enter manually</span></span></div>
+    <div class="list"><div class="row"><div class="grow"><b>More details</b><div class="small muted">About the customer · Brand · Source · Notes for the team</div></div><svg class="i chev"><use href="#i-down"/></svg></div></div>
+  </div>
+  <div class="sbar"><span class="stat">Add phone and name to book</span><span class="btn pri dis" style="flex:none;width:120px">Book</span></div>
+  {{INC:nav-owner-book}}
+</div>
+</div></div>
+<ul class="notes"><li>Одна страница вместо четырёх экранов: Phone → Name → Appliance → Problem → When → Technician → Address → More details (свёрнуто).</li><li>Плитки техники — сетка 4×4, иконки 36 px вместо 13 крупных плиток на целый экран. Повторный тап снимает выбор.</li><li>Дата и время — только чипы; поля Date / Arrival from / to — под ссылкой «Custom time». В выборе — только те, кто выезжает (Alex и Tom), Olivia Office нет.</li><li>«Open full job form» — в «⋯» шапки, с переносом введённых данных. Cancel — ✕ (с подтверждением, если что-то введено).</li></ul>
+</article>
+
+<!-- ============ Book: existing customer found ============ -->
+<article class="pair">
+<header><b>Book customer — найден клиент по телефону</b><code>/jobs/create?book=1</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-book}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-x"/></svg></span><div class="ttl"><h1>Book customer</h1></div>{{INC:pill-c}}<span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content" style="gap:20px">
+    <div class="fld"><label>Phone</label><div class="inp focus"><svg class="i muted"><use href="#i-phone"/></svg>(604) 555-01|</div>
+      <div class="card" style="overflow:hidden">
+        <div class="row" style="border:0"><img class="av av40" src="{{IMG:av-woman}}" alt=""><div class="grow"><b>Jane Cooper</b><div class="small muted ell">(604) 555-0142 · 8450 128 St · 2 jobs</div></div><span class="btn sec sm">Use</span></div>
+      </div></div>
+    <div class="fld"><label>Name</label><div class="inp"><span class="grow"></span><svg class="i muted"><use href="#i-search"/></svg></div></div>
+    <div class="small muted">After “Use”:</div>
+    <div class="card p vstack gap8" style="border-style:dashed">
+      <div class="hstack gap12"><img class="av av40" src="{{IMG:av-woman}}" alt=""><div class="grow"><b>Jane Cooper</b><div class="small muted">(604) 555-0142 · 8450 128 St, Surrey</div></div><span class="btn ghost xs">Change</span></div>
+      <div class="hint">Name, address and “About the customer” are filled in. The address can still be changed below.</div>
+    </div>
+    <div class="fld"><label>Appliance</label>
+      <div class="chips"><span class="chip on"><img src="{{IMG:ap-washer}}" style="width:22px;height:22px" alt="">LG Washer</span><span class="chip"><img src="{{IMG:ap-refrigerator}}" style="width:22px;height:22px" alt="">Samsung Refrigerator</span></div>
+      <span class="hint">Jane's appliances first. <span style="color:var(--accent);font-weight:500">Other appliance</span></span></div>
+    <div class="fld"><label>When</label>
+      <div class="chips" style="margin-right:-16px"><span class="chip">Today</span><span class="chip on">Tomorrow</span><span class="chip">Sun, Oct 11</span><span class="chip">Mon, Oct 12</span></div>
+      <div class="chips mt4" style="flex-wrap:wrap;white-space:normal"><span class="chip on">9–11 a.m.</span><span class="chip">11 a.m.–1 p.m.</span><span class="chip">1–3 p.m.</span><span class="chip">3–5 p.m.</span></div></div>
+    <div class="fld"><label>Technician</label>
+      <div class="chips" style="flex-wrap:wrap;white-space:normal"><span class="chip">Unassigned</span><span class="chip"><span class="ini a av24">AO</span>Alex · free</span><span class="chip on"><span class="ini t av24">TT</span>Tom · free</span></div></div>
+    <div class="grow"></div>
+  </div>
+  <div class="sbar"><span class="stat" style="color:var(--success)">Ready · Tomorrow 9–11 a.m.</span><span class="btn pri" style="flex:none;width:120px">Book</span></div>
+  {{INC:nav-owner-book}}
+  <div class="toast" style="bottom:152px">Booked #1005 · Tomorrow 9–11<b>Open job</b></div>
+</div>
+</div></div>
+<ul class="notes"><li>После 3 цифр под полем — карточка совпадения [Use]: имя, адрес и «About the customer» подставляются, поля клиента сворачиваются в строку с «Change». Кнопка «Find existing customer» → лупа в поле Name.</li><li>Существующий клиент: Use → техника → Tomorrow → 9–11 → Book = 5 тапов. Рядом с людьми — «free» / «busy 1–3» для выбранного окна.</li><li>Пунктирная карточка и toast «Booked #1005» показаны на одном кадре для наглядности: в приложении это следующие шаги.</li></ul>
+</article>
+
+<!-- ============ Customer dossier ============ -->
+<article class="pair">
+<header><b>Досье клиента</b><code>/customers/1 · Jane Cooper</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-customer}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>Customer</h1></div>{{INC:pill-c}}<span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content">
+    <div class="vstack gap12">
+      <div class="hstack gap12"><img class="av av56" src="{{IMG:av-woman}}" alt=""><div><h2 style="font-size:20px;font-weight:600">Jane Cooper</h2><div class="hstack gap4 mt4"><span class="bdg grey">Residential</span><span class="bdg grey">VIP</span></div></div></div>
+      <div class="hstack"><span class="ibtn bd" aria-label="Call"><svg class="i"><use href="#i-phone"/></svg></span><span class="ibtn bd" aria-label="Text"><svg class="i"><use href="#i-msg"/></svg></span><span class="ibtn bd" aria-label="Email"><svg class="i"><use href="#i-mail"/></svg></span><span class="btn pri grow"><svg class="i"><use href="#i-plus"/></svg>New job</span></div>
+      <div class="small"><b class="num">2</b> jobs · Paid <b class="num">$0.00</b> · <span class="red">Owes <b class="num">$179.20</b> ›</span></div>
+    </div>
+    <section><div class="sech"><h2>Contacts</h2><span class="btn ghost xs">Edit</span></div>
+      <div class="list">
+        <div class="row"><svg class="i muted"><use href="#i-phone"/></svg><div class="grow"><span class="num">(604) 555-0142</span><div class="small muted">Mobile</div></div><span class="bdg new"><svg class="i"><use href="#i-star"/></svg>Primary</span></div>
+        <div class="row"><svg class="i muted"><use href="#i-mail"/></svg><div class="grow ell">jane.cooper@example.com<div class="small muted">Personal</div></div></div>
+      </div></section>
+    <section><div class="sech"><h2>About the customer</h2></div>
+      <div class="card p small muted">Nothing yet. <span style="color:var(--accent);font-weight:500">Add notes for your team</span></div></section>
+    <section><div class="sech"><h2>Properties</h2><span class="btn ghost xs"><svg class="i s16"><use href="#i-plus"/></svg>Add</span></div>
+      <div class="list"><div class="row"><svg class="i muted"><use href="#i-home"/></svg><div class="grow"><div>8450 128 St, Surrey, BC V3W 4G1</div><div class="small muted">Gate / buzzer #1234</div></div><span class="ibtn bd" aria-label="Navigate"><svg class="i"><use href="#i-nav"/></svg></span></div></div></section>
+    <section><div class="sech"><h2>Appliances</h2><span class="btn ghost xs"><svg class="i s16"><use href="#i-plus"/></svg>Add</span></div>
+      <div class="list">
+        <div class="row"><img class="apimg" src="{{IMG:ap-refrigerator}}" alt=""><div class="grow"><b>Samsung Refrigerator</b><div class="small muted">RF28R7351SR · S/N 0B4R4BAN500123</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+        <div class="row"><img class="apimg" src="{{IMG:ap-washer}}" alt=""><div class="grow"><b class="hstack gap4">LG Washer <svg class="i s16 green"><use href="#i-shield"/></svg></b><div class="small muted">WM3900HWA · S/N 912KWPX4B123</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      </div></section>
+    <section><div class="sech"><h2>Jobs</h2></div>
+      <div class="list">
+        <div class="row"><div class="grow"><div class="hstack"><span class="jcnum">#1004</span><span class="bdg scheduled">Scheduled</span></div><div class="small">Today · 1–3 p.m. · Refrigerator · not cooling</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+        <div class="row"><div class="grow"><div class="hstack"><span class="jcnum">#1001</span><span class="bdg inv">Invoiced</span></div><div class="small">Today · 9–11 a.m. · Washer · OE error</div></div><svg class="i chev"><use href="#i-right"/></svg></div>
+      </div></section>
+    <section><div class="sech"><h2>Estimates &amp; invoices</h2></div>
+      <div class="list"><div class="row"><svg class="i muted"><use href="#i-file"/></svg><div class="grow"><b>INV-2</b><div class="small muted">Job #1001 · Oct 9</div></div><div style="text-align:right"><div class="b num">$179.20</div><span class="bdg unpaid">Unpaid</span></div></div></div></section>
+    <section><div class="sech"><h2>Messages</h2></div><div class="card p small muted">No messages yet.</div></section>
+    <section><div class="list"><div class="row"><svg class="i muted"><use href="#i-info"/></svg><div class="grow"><b>Details</b><div class="small muted">Google Business Profile · since Oct 9, 2026 · Due on receipt</div></div><svg class="i chev"><use href="#i-down"/></svg></div></div></section>
+  </div>
+  {{INC:nav-owner-none}}
+</div>
+</div></div>
+<ul class="notes"><li>Ряд действий сразу под именем: Call · Text · Email · <b>New job</b> (Primary). Сейчас New job спрятан у истории работ, а SMS нет. Если клиент ответил STOP — бейдж «SMS off» у телефона, Text неактивна.</li><li>Jobs / Paid / Owes — одной строкой, Owes красным, тап → неоплаченные счета (на макете — состояние после INV-2).</li><li>Edit и Delete customer → «⋯» (следующий кадр). Источник лида — в Details.</li></ul>
+</article>
+
+<!-- ============ Customer ⋯ ============ -->
+<article class="pair">
+<header><b>Досье — меню «⋯»</b><code>/customers/1 · ⋯</code></header>
+<div class="pz">
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>Customer</h1></div>{{INC:pill-c}}<span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content"><div class="hstack gap12"><img class="av av56" src="{{IMG:av-woman}}" alt=""><h2 style="font-size:20px;font-weight:600">Jane Cooper</h2></div></div>
+  {{INC:nav-owner-none}}
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 style="padding:4px 12px 8px">Jane Cooper</h3>
+    <div class="mi"><svg class="i"><use href="#i-pencil"/></svg>Edit customer</div>
+    <div class="mi"><img src="{{IMG:av-woman}}" style="width:20px;height:20px;border-radius:50%" alt="">Change icon<span class="r">Woman</span></div>
+    <div class="mi"><svg class="i"><use href="#i-plus"/></svg>Add property</div>
+    <div class="mi"><svg class="i"><use href="#i-plus"/></svg>Add appliance</div>
+    <div class="msep"></div>
+    <div class="mi dng"><svg class="i"><use href="#i-trash"/></svg>Delete customer</div>
+    <p class="small muted" style="padding:4px 12px 0">Asks to confirm with the customer's name.</p>
+  </div>
+</div>
+</div></div>
+</article>
+
+<!-- ============ New customer ============ -->
+<article class="pair">
+<header><b>New customer</b><code>/customers/create</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:owner-newcustomer}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-x"/></svg></span><div class="ttl"><h1>New customer</h1></div>{{INC:pill-c}}</div>
+  <div class="content" style="gap:20px">
+    <div class="hstack gap12"><span class="ini av56" style="font-size:18px">JC</span><div><b>Customer icon · Automatic</b><div class="small muted">Tap to choose Man, Woman or Couple</div></div></div>
+    <div class="hstack" style="align-items:flex-start"><div class="fld grow"><label>First name</label><div class="inp">Jane</div></div><div class="fld grow"><label>Last name</label><div class="inp">Cooper</div></div></div>
+    <section><div class="sech"><h2>Phones &amp; emails</h2></div>
+      <div class="vstack">
+        <div class="hstack"><div class="inp" style="width:104px;flex:none">Mobile<svg class="i s16 muted"><use href="#i-down"/></svg></div><div class="inp focus grow num">(604) 555-0142</div><span class="ibtn" aria-label="Primary" style="color:var(--warning)"><svg class="i" style="fill:currentColor"><use href="#i-star"/></svg></span></div>
+        <div class="noteY hstack" style="padding:8px 12px"><svg class="i"><use href="#i-alert"/></svg><span class="grow">Already a customer: <b>Jane Cooper</b></span><span class="btn ghost xs">Open</span></div>
+        <div class="hstack"><div class="inp" style="width:104px;flex:none">Personal<svg class="i s16 muted"><use href="#i-down"/></svg></div><div class="inp pl grow">Email</div><span class="ibtn muted" aria-label="Make primary"><svg class="i"><use href="#i-star"/></svg></span></div>
+        <div class="hstack" style="flex-wrap:wrap;gap:0"><span class="btn ghost xs"><svg class="i s16"><use href="#i-plus"/></svg>Add phone</span><span class="btn ghost xs"><svg class="i s16"><use href="#i-plus"/></svg>Add email</span><span class="btn ghost xs"><svg class="i s16"><use href="#i-plus"/></svg>Add second person</span></div>
+        <span class="hint">★ marks the primary contact.</span>
+      </div></section>
+    <section><div class="sech"><h2>Service address</h2></div>
+      <div class="vstack">
+        <div class="inp pl"><svg class="i"><use href="#i-pin"/></svg>Start typing an address</div>
+        <div class="hstack"><div class="fld grow"><label>Unit</label><div class="inp"></div></div><div class="fld grow"><label>Gate / buzzer</label><div class="inp"></div></div></div>
+        <div class="fld"><label>Country</label><div class="inp">Canada<span class="grow"></span><svg class="i s16 muted"><use href="#i-down"/></svg></div></div>
+        <div class="fld"><label>Label</label><div class="chips"><span class="chip">Home</span><span class="chip">Rental</span><span class="chip">Office</span><span class="chip">Cabin</span></div></div>
+        <div class="list"><div class="row"><div class="grow small">Access notes · On-site contact</div><svg class="i chev"><use href="#i-down"/></svg></div></div>
+      </div></section>
+    <div class="fld"><label>About the customer</label><div class="inp area pl">Preferences, arrival expectations…</div><span class="hint">Shown when booking and on every job.</span></div>
+    <div class="fld"><label>Tags</label><div class="inp"><span class="chip" style="height:28px">VIP <svg class="i s14"><use href="#i-x"/></svg></span><span style="color:#98A2B3">Add tag</span></div></div>
+    <div class="list"><div class="row"><div class="grow"><b>More</b><div class="small muted">Customer type · Lead source · Payment terms · Icon</div></div><svg class="i chev"><use href="#i-down"/></svg></div></div>
+  </div>
+  <div class="sbar"><span class="btn sec" style="flex:none">Cancel</span><span class="btn pri">Save customer</span></div>
+  {{INC:nav-owner-none}}
+</div>
+</div></div>
+<ul class="notes"><li>Начинается с имени и телефона, а не с иконки и абзаца объяснения. Иконка — аватар сверху, тап → шторка (следующий кадр).</li><li>Проверка дублей — в момент ввода телефона/email: «Already a customer: Jane Cooper [Open]».</li><li>Адрес — одно поле с автодополнением; Unit/Gate/Country/Label — под ним; Country — список стран, по умолчанию страна компании. «Address autocomplete comes later» убрано.</li><li>Type, Lead source, Payment terms (подсказка «Net 30 for stratas and property managers») — в свёрнутом More. Tags — чипами.</li></ul>
+</article>
+
+<!-- ============ Avatar sheet ============ -->
+<article class="pair">
+<header><b>New customer — шторка иконки</b><code>/customers/create · icon</code></header>
+<div class="pz">
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-x"/></svg></span><div class="ttl"><h1>New customer</h1></div>{{INC:pill-c}}</div>
+  <div class="content"></div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="between"><h3>Customer icon</h3><span class="ibtn" aria-label="About automatic"><svg class="i muted"><use href="#i-info"/></svg></span></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;text-align:center" class="small">
+      <div class="vstack" style="align-items:center"><img class="av av56" src="{{IMG:av-man}}" alt="">Man</div>
+      <div class="vstack" style="align-items:center"><img class="av av56" src="{{IMG:av-woman}}" alt="">Woman</div>
+      <div class="vstack" style="align-items:center"><span class="av av56" style="position:relative;overflow:hidden"><img src="{{IMG:av-woman}}" style="position:absolute;width:40px;left:2px;top:8px" alt=""><img src="{{IMG:av-man}}" style="position:absolute;width:40px;right:2px;top:12px" alt=""></span>Couple</div>
+      <div class="vstack" style="align-items:center"><span class="ini av56" style="box-shadow:0 0 0 2px var(--accent);font-size:18px">JC</span><b style="color:var(--accent)">Automatic</b></div>
+    </div>
+    <p class="small muted mt16">Automatic picks the face from the first name; a couple when a second person is added.</p>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Иллюстрации те же, что в приложении (man.png, woman.png, пара — две фигуры в одном круге). Длинное объяснение «Automatic: …» — одной строкой и (i).</li></ul>
+</article>
+
+</div>
+</section>

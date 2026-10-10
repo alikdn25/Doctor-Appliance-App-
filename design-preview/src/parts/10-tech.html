@@ -1,0 +1,243 @@
+<section class="vsec" id="tech" data-short="Техник">
+<h2>Техник (телефон 390×844)</h2>
+<p class="lead">Техник открывает приложение и за 1–2 тапа нажимает «On my way»; дальше карточка работы ведёт его по шагам. Демо-время на макетах — пятница, Oct 9, 8:40 a.m.</p>
+<div class="vgrid">
+
+<!-- ============ My Jobs ============ -->
+<article class="pair">
+<header><b>My Jobs — техник</b><code>/my-jobs</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:tech-myjobs}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar"><div class="ttl"><h1>My Jobs</h1><div class="sub">Fri, Oct 9</div></div>{{INC:pill-tech}}<span class="ibtn" aria-label="Search"><svg class="i"><use href="#i-search"/></svg></span><span class="ibtn" aria-label="Filter"><svg class="i"><use href="#i-filter"/></svg></span></div>
+  <div class="content" style="gap:12px">
+    <div class="between"><span class="seg"><span class="on">Day</span><span>Completed</span></span><span class="hstack gap4"><span class="ibtn" aria-label="Previous day"><svg class="i"><use href="#i-left"/></svg></span><span class="b small">Today, Oct 9</span><span class="ibtn" aria-label="Next day"><svg class="i"><use href="#i-right"/></svg></span></span></div>
+    <div class="small muted">1 job · next at 9 a.m.</div>
+    <div class="jc next" style="flex-direction:column">
+      <div class="hstack gap12" style="align-items:flex-start">
+        <img class="av av40" src="{{IMG:av-woman}}" alt="">
+        <div class="main">
+          <div class="l1"><span class="win">9–11 a.m.</span><span class="bdg scheduled"><svg class="i"><use href="#i-cal"/></svg>Scheduled</span></div>
+          <div class="nm ell">Jane Cooper</div>
+          <div class="ln">8450 128 St, Surrey, BC V3W 4G1</div>
+          <div class="ln">Washer · stops mid-cycle, OE error</div>
+        </div>
+        <div class="side"><img class="apimg" src="{{IMG:ap-washer}}" alt=""></div>
+      </div>
+      <div class="hstack"><span class="btn pri grow"><svg class="i"><use href="#i-car"/></svg>On my way</span><span class="ibtn bd" aria-label="Navigate"><svg class="i"><use href="#i-nav"/></svg></span><span class="ibtn bd" aria-label="Call"><svg class="i"><use href="#i-phone"/></svg></span></div>
+    </div>
+    <div class="grow"></div>
+  </div>
+  <span class="fab sec" style="bottom:80px" aria-label="Add trip"><svg class="i s24"><use href="#i-car"/></svg></span>
+  {{INC:nav-tech}}
+</div>
+</div></div>
+<ul class="notes"><li>Ряд «1 Scheduled ⌄» и ряд «‹ Today › / Completed / + Trip» → одна строка: [Day | Completed] и ‹ дата ›. Тап по дате — выбор дня.</li><li>«+ Trip» → вторичный FAB с машиной. Фильтр-чипы по статусам появляются только при &gt;3 работах.</li><li>Следующая работа — рамка акцента и «On my way» прямо в карточке: 1 тап от открытия.</li><li>«Today (1)» и кнопка View job убраны (дублировали шапку и тап по карточке).</li></ul>
+</article>
+
+<!-- ============ More (tech) ============ -->
+<article class="pair">
+<header><b>My Jobs — меню More («⋯»)</b><code>/my-jobs · More</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:tech-more}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar"><div class="ttl"><h1>My Jobs</h1><div class="sub">Fri, Oct 9</div></div>{{INC:pill-tech}}<span class="ibtn"><svg class="i"><use href="#i-search"/></svg></span><span class="ibtn"><svg class="i"><use href="#i-filter"/></svg></span></div>
+  <div class="content"></div>
+  {{INC:nav-tech-more}}
+  <div class="scrim" style="bottom:64px"></div>
+  <div class="sheet" style="bottom:64px">
+    <div class="handle"></div>
+    <div class="inp pl" style="height:44px"><svg class="i"><use href="#i-search"/></svg>Search menu</div>
+    <div class="lbl mt8">Company settings</div>
+    <div class="mi"><svg class="i"><use href="#i-tag"/></svg>Brands</div>
+    <div class="mi"><svg class="i"><use href="#i-percent"/></svg>Taxes</div>
+    <div class="msep"></div>
+    <div class="mi"><span class="ini t av32">TT</span><span><b>Tom Technician</b><span class="small muted" style="display:block;line-height:1.2">Profile · Security · Appearance</span></span><svg class="i r"><use href="#i-right"/></svg></div>
+    <div class="mi"><svg class="i"><use href="#i-building"/></svg>Doctor Appliance Group<span class="r">Switch company</span></div>
+    <div class="mi"><svg class="i"><use href="#i-logout"/></svg>Log out</div>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Гамбургер в шапке убран: More открывает то же меню шторкой снизу (одна рука).</li><li>Пункты из нижней панели (My Jobs, Mileage, Business expenses) в More не дублируются, поэтому группа «Money and reports» у техника пустая и скрыта.</li><li>Сверху поиск по пунктам; внизу профиль, переключение компании (Tom работает в двух компаниях), выход.</li></ul>
+</article>
+
+<!-- ============ Job: scheduled ============ -->
+<article class="pair">
+<header><b>Работа техника — scheduled</b><code>/jobs/1 · #1001</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:tech-job-scheduled}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  <div class="appbar child"><span class="ibtn" aria-label="Back"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>#1001 · Repair</h1><div class="sub">Today · 9–11 a.m. · Tom</div></div>{{INC:pill-tech-c}}<span class="ibtn" aria-label="More actions"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content">
+    <div class="hstack"><span class="bdg scheduled"><svg class="i"><use href="#i-cal"/></svg>Scheduled</span></div>
+    {{INC:cust-jane}}
+    {{INC:problem-1001}}
+    {{INC:appliance-1001}}
+    <section><div class="sech"><h2>Checklist</h2><span class="small muted num">0/5</span></div>
+      <div class="list">
+        <div class="row"><span class="cbx"></span>Confirm the problem with the customer</div>
+        <div class="row"><span class="cbx"></span>Record brand, model and serial from the rating plate</div>
+        <div class="row"><span class="cbx"></span>Check for error codes</div>
+        <div class="row"><span class="cbx"></span>Test run after the repair</div>
+        <div class="row"><span class="cbx"></span>Clean up the work area</div>
+      </div></section>
+    <section><div class="sech"><h2>Photos</h2></div>
+      <div class="btnrow"><span class="btn sec"><svg class="i"><use href="#i-camera"/></svg>Before</span><span class="btn sec"><svg class="i"><use href="#i-camera"/></svg>After</span></div></section>
+    <section><div class="sech"><h2>Work done</h2></div>
+      <div class="inp area pl">What was found and done</div><div class="hint mt4">Saves as you type. Shown in the appliance repair history.</div></section>
+    <section><div class="sech"><h2>Estimates &amp; invoices</h2></div>
+      <div class="card p vstack"><span class="small muted">No estimates or invoices yet.</span><div class="hstack"><span class="btn ghost"><svg class="i"><use href="#i-plus"/></svg>New estimate</span><span class="btn ghost"><svg class="i"><use href="#i-plus"/></svg>New invoice</span></div></div></section>
+    <section><div class="sech"><h2>Customer signature</h2></div>
+      <div class="card p between"><span class="small muted">Not signed yet.</span><span class="btn sec sm"><svg class="i"><use href="#i-sign"/></svg>Get signature</span></div></section>
+    {{INC:activity}}
+  </div>
+  <div class="sbar"><span class="btn pri"><svg class="i"><use href="#i-car"/></svg>On my way</span><span class="btn sec"><svg class="i"><use href="#i-play"/></svg>Start job</span></div>
+  {{INC:nav-tech}}
+</div>
+</div></div>
+<ul class="notes"><li>Порядок по ходу работы: клиент (gate/buzzer крупно) → проблема → техника → чек-лист → фото → Work done → документы → подпись → Activity (свёрнуто).</li><li>Close job, Change status, Set repair warranty, Edit, Delete → «⋯» (следующий кадр). Источник лида и бренд из подзаголовка → Details.</li><li>Чек-лист виден всегда (сейчас его на экране нет). Work done — автосохранение, кнопка Save убрана.</li><li>Нижняя панель действий по статусу: On my way / Start job. Дата и время — в шапке.</li></ul>
+</article>
+
+<!-- ============ Job ⋯ ============ -->
+<article class="pair">
+<header><b>Работа — меню «⋯»</b><code>/jobs/1 · ⋯</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:tech-job-scheduled}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>#1001 · Repair</h1><div class="sub">Today · 9–11 a.m. · Tom</div></div>{{INC:pill-tech-c}}<span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content">
+    <div class="hstack"><span class="bdg scheduled"><svg class="i"><use href="#i-cal"/></svg>Scheduled</span></div>
+    {{INC:cust-jane}}
+  </div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 class="px" style="padding:4px 12px 8px">Job #1001</h3>
+    <div class="mi"><svg class="i"><use href="#i-flag"/></svg>Close job<span class="r">with a reason</span></div>
+    <div class="mi"><svg class="i"><use href="#i-list"/></svg>Change status</div>
+    <div class="mi"><svg class="i"><use href="#i-shield"/></svg>Set repair warranty</div>
+    <div class="mi"><svg class="i"><use href="#i-pencil"/></svg>Edit job</div>
+    <div class="mi"><svg class="i"><use href="#i-info"/></svg>Details<span class="r">source, brand</span></div>
+    <div class="msep"></div>
+    <div class="mi dng" style="opacity:.4"><svg class="i"><use href="#i-trash"/></svg>Delete job<span class="r">off for technicians</span></div>
+    <p class="small muted" style="padding:4px 12px 0">When allowed: asks to confirm, then shows “Job deleted · Undo”. Deleted jobs can be restored for 30 days.</p>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Шторка снизу, а не поповер в углу — дотягивается одной рукой (15.4).</li><li>Delete job для техника зависит от настройки «Technicians can delete jobs» (в демо выключена — пункт неактивен с пояснением; можно и скрыть, решите).</li></ul>
+</article>
+
+<!-- ============ Job: in progress ============ -->
+<article class="pair">
+<header><b>Работа техника — in_progress</b><code>/jobs/1 · #1001</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:tech-job-inprogress}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>#1001 · Repair</h1><div class="sub">Started 9:04 a.m. · 36 min on job</div></div>{{INC:pill-tech-c}}<span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content">
+    <div class="hstack"><span class="bdg prog"><svg class="i"><use href="#i-wrench"/></svg>In progress</span></div>
+    {{INC:cust-jane}}
+    {{INC:problem-1001}}
+    {{INC:appliance-1001}}
+    <section><div class="sech"><h2>Checklist</h2><span class="small b num" style="color:var(--accent)">2/5</span></div>
+      <div style="height:4px;border-radius:2px;background:#EAECF0;margin:-2px 0 10px"><div style="width:40%;height:4px;border-radius:2px;background:var(--accent)"></div></div>
+      <div class="list">
+        <div class="row"><span class="cbx on"><svg class="i"><use href="#i-check"/></svg></span><span class="muted">Confirm the problem with the customer</span></div>
+        <div class="row"><span class="cbx on"><svg class="i"><use href="#i-check"/></svg></span><span class="muted">Record brand, model and serial from the rating plate</span></div>
+        <div class="row"><span class="cbx"></span>Check for error codes</div>
+        <div class="row"><span class="cbx"></span>Test run after the repair</div>
+        <div class="row"><span class="cbx"></span>Clean up the work area</div>
+      </div></section>
+    <section><div class="sech"><h2>Photos</h2><span class="small muted">1 waiting for signal</span></div>
+      <div class="hstack" style="align-items:stretch">
+        <div style="width:96px;height:96px;border-radius:12px;background:#EAECF0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative" class="small muted"><svg class="i"><use href="#i-image"/></svg>Before<div style="position:absolute;left:8px;right:8px;bottom:8px;height:4px;border-radius:2px;background:#fff"><div style="width:60%;height:4px;border-radius:2px;background:var(--warning)"></div></div></div>
+        <div class="vstack grow"><span class="btn sec"><svg class="i"><use href="#i-camera"/></svg>Before</span><span class="btn sec"><svg class="i"><use href="#i-camera"/></svg>After</span></div>
+      </div>
+      <div class="hint mt4">Uploads again by itself when the signal is back.</div></section>
+    <section><div class="sech"><h2>Work done</h2><span class="xs green hstack gap4"><svg class="i s14"><use href="#i-check"/></svg>Saved</span></div>
+      <div class="inp area focus">Drain filter clogged with a sock.|</div></section>
+    <section><div class="sech"><h2>Estimates &amp; invoices</h2></div>
+      <div class="card p vstack"><span class="small muted">No estimates or invoices yet.</span><div class="hstack"><span class="btn ghost"><svg class="i"><use href="#i-plus"/></svg>New estimate</span><span class="btn ghost"><svg class="i"><use href="#i-plus"/></svg>New invoice</span></div></div></section>
+    <section><div class="sech"><h2>Customer signature</h2></div>
+      <div class="card p between"><span class="small muted">Not signed yet.</span><span class="btn sec sm"><svg class="i"><use href="#i-sign"/></svg>Get signature</span></div></section>
+    {{INC:activity}}
+  </div>
+  <div class="sbar"><span class="btn pri"><svg class="i"><use href="#i-check"/></svg>Complete</span><span class="btn sec"><svg class="i"><use href="#i-package"/></svg>Waiting for parts</span></div>
+  {{INC:nav-tech}}
+</div>
+</div></div>
+<ul class="notes"><li>Панель по статусу: Complete / Waiting for parts. Остальные переходы — «⋯ › Change status».</li><li>Прогресс чек-листа «2/5»; фото при слабой сети стоит в очереди с индикатором и догружается само (SPEC §7.4).</li><li>Work done сохраняется сам через 1 с после ввода — метка «Saved».</li></ul>
+</article>
+
+<!-- ============ Job: invoiced ============ -->
+<article class="pair">
+<header><b>Работа техника — invoiced</b><code>/jobs/1 · #1001</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:tech-job-invoiced}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph long">
+  <div class="appbar child"><span class="ibtn"><svg class="i"><use href="#i-back"/></svg></span><div class="ttl"><h1>#1001 · Repair</h1><div class="sub">Completed 10:12 a.m. · 1 h 8 min</div></div>{{INC:pill-tech-c}}<span class="ibtn"><svg class="i"><use href="#i-more"/></svg></span></div>
+  <div class="content">
+    <div class="hstack"><span class="bdg inv"><svg class="i"><use href="#i-file"/></svg>Invoiced</span></div>
+    <section><div class="sech"><h2>Money</h2></div>
+      <div class="list">
+        <div class="row"><svg class="i muted"><use href="#i-file"/></svg><div class="grow"><b>INV-2</b><div class="small muted">Due on receipt · not sent yet</div></div><div style="text-align:right"><div class="b num">$179.20</div><span class="bdg unpaid">Unpaid</span></div></div>
+      </div>
+      <div class="hstack mt8"><span class="btn ghost"><svg class="i"><use href="#i-plus"/></svg>New estimate</span><span class="btn ghost"><svg class="i"><use href="#i-plus"/></svg>New invoice</span></div></section>
+    {{INC:cust-jane}}
+    {{INC:problem-1001}}
+    {{INC:appliance-1001}}
+    <section><div class="sech"><h2>Checklist</h2><span class="small b num green">5/5</span></div>
+      <div class="list"><div class="row"><span class="cbx on"><svg class="i"><use href="#i-check"/></svg></span><span class="muted">All 5 steps done</span><span class="grow"></span><svg class="i chev"><use href="#i-down"/></svg></div></div></section>
+    <section><div class="sech"><h2>Work done</h2><span class="xs green hstack gap4"><svg class="i s14"><use href="#i-check"/></svg>Saved</span></div>
+      <div class="inp area">Drain filter clogged with a sock. Cleaned filter and hose, ran a full test cycle.</div></section>
+    <section><div class="sech"><h2>Photos</h2></div>
+      <div class="btnrow"><span class="btn sec"><svg class="i"><use href="#i-camera"/></svg>Before</span><span class="btn sec"><svg class="i"><use href="#i-camera"/></svg>After</span></div></section>
+    <section><div class="sech"><h2>Customer signature</h2></div>
+      <div class="card p between"><span class="small muted">Not signed yet.</span><span class="btn sec sm"><svg class="i"><use href="#i-sign"/></svg>Get signature</span></div></section>
+    {{INC:activity}}
+  </div>
+  <div class="sbar"><span class="btn pri"><svg class="i"><use href="#i-card"/></svg>Take payment</span><span class="btn sec"><svg class="i"><use href="#i-send"/></svg>Send invoice</span></div>
+  {{INC:nav-tech}}
+</div>
+</div></div>
+<ul class="notes"><li>С выставленным счётом главное — деньги: секция Money поднимается сразу под статус, «Take payment» — 1 тап.</li><li>Take payment открывает ту же шторку, что и в счёте (см. раздел «Деньги»).</li><li>Чек-лист 5/5 сворачивается в одну строку.</li></ul>
+</article>
+
+<!-- ============ Trip sheet ============ -->
+<article class="pair">
+<header><b>Trip sheet</b><code>/my-jobs · + Trip</code></header>
+<div class="pz">
+<div class="side before"><span class="tag">БЫЛО</span><img class="shot" src="{{BEFORE:tech-trip}}" width="390" alt=""></div>
+<div class="side after"><span class="tag new">СТАЛО</span>
+<div class="f ph">
+  <div class="appbar"><div class="ttl"><h1>My Jobs</h1><div class="sub">Fri, Oct 9</div></div>{{INC:pill-tech}}<span class="ibtn"><svg class="i"><use href="#i-search"/></svg></span><span class="ibtn"><svg class="i"><use href="#i-filter"/></svg></span></div>
+  <div class="content"></div>
+  {{INC:nav-tech}}
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="between"><h3 class="hstack"><svg class="i"><use href="#i-car"/></svg>Trip</h3><span class="ibtn" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></span></div>
+    <p class="small muted">Distance is counted from where you are now.</p>
+    <div class="inp focus mt12"><svg class="i muted"><use href="#i-pin"/></svg><span class="pl" style="color:#98A2B3">Store or address</span></div>
+    <div class="hint mt8 hstack gap4"><svg class="i s16"><use href="#i-pin"/></svg>Your location: found</div>
+    <div class="lbl mt16">Recent</div>
+    <p class="small muted">Your last 5 stores and suppliers appear here.</p>
+    <div class="vstack mt16">
+      <span class="btn pri full"><svg class="i"><use href="#i-nav"/></svg>Navigate</span>
+      <span class="btn sec full">Save only</span>
+      <span class="btn ghost full">Enter by hand</span>
+    </div>
+  </div>
+</div>
+</div></div>
+<ul class="notes"><li>Объяснение — одна строка. Автодополнение адреса + чипы «Recent» (в демо поездок ещё нет, поэтому пусто).</li><li>«Enter by hand» (SPEC §7.13) виден без скролла — сейчас его на листе не видно.</li></ul>
+</article>
+
+</div>
+</section>
