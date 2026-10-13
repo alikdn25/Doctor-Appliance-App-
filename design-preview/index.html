@@ -235,6 +235,124 @@ body.only-new .side.before{display:none}
 .f .sw{display:flex;flex-direction:column;gap:6px;width:120px;font-size:12px}
 .f .sw i{display:block;height:56px;border-radius:12px;border:1px solid var(--border)}
 .f .lbl{font:600 11px/1 Inter;letter-spacing:.06em;text-transform:uppercase;color:#98A2B3;margin-bottom:8px}
+/* ================= Volumetric skin (docs/DESIGN.md): gradients, soft shadows, raised controls.
+   Glow (blue shadow) only on the main button of a screen: .btn.pri ================= */
+.f{--bg:#EEF3FA;--surface:#FFFFFF;--border:#E1E8F2;--text:#0F1B2D;--muted:#5B6779;--accent:#0A6CF5;--accent-10:#E6F0FE;
+  --navy:linear-gradient(180deg,#0F3270 0%,#0A2453 100%);
+  --hl:linear-gradient(180deg,rgba(255,255,255,.3) 0%,rgba(255,255,255,0) 55%,rgba(0,20,80,.14) 100%);
+  --g-blue:linear-gradient(90deg,#4CBDFE 0%,#1E8CFD 35%,#0567F5 65%,#0046CC 100%);
+  --sh-raise:inset 0 2px 1px #fff,inset 0 -3px 6px rgba(0,36,73,.13),inset 3px 0 5px rgba(255,255,255,.9),inset -4px 0 8px rgba(0,36,73,.09),0 0 0 1px rgba(0,36,73,.07),0 9px 16px -6px rgba(0,36,73,.32),0 2px 4px rgba(0,36,73,.12);
+  --sh-blue-in:inset 0 2px 2px rgba(255,255,255,.55),inset 0 -4px 8px rgba(0,30,110,.38),inset 4px 0 8px rgba(255,255,255,.22),inset -5px 0 10px rgba(0,20,90,.3);
+  --sh-card:inset 0 1px 0 #fff,0 2px 4px rgba(0,36,73,.06),0 14px 28px -8px rgba(0,36,73,.16);
+  --sh-sunken:inset 0 2px 4px rgba(16,42,79,.08)}
+/* AppBar: compact navy header (56–64 px), white text, raised header buttons */
+.f .appbar{background:var(--navy);border-bottom:0;color:#fff}
+.f .appbar .sub{color:rgba(255,255,255,.72)}
+.f .appbar .ibtn{width:40px;height:40px;border-radius:14px;color:#fff;margin-left:4px;
+  background:linear-gradient(180deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,0) 60%),linear-gradient(90deg,rgba(255,255,255,.26) 0%,rgba(255,255,255,.06) 100%);
+  box-shadow:inset 0 2px 1px rgba(255,255,255,.35),inset 0 -3px 6px rgba(0,0,0,.25),inset -3px 0 6px rgba(0,0,0,.15),0 8px 14px -4px rgba(0,0,0,.45)}
+.f .appbar .openpill{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.22);color:#fff;box-shadow:inset 0 1px 1px rgba(255,255,255,.25)}
+.f .appbar .openpill .dot{background:#FF5A6E;box-shadow:0 0 0 2px rgba(255,90,110,.25)}
+.f .openpill{box-shadow:var(--sh-raise);border:0}
+.f .dbar{background:var(--navy);border-bottom:0;color:#fff}
+.f .dbar .muted{color:rgba(255,255,255,.7)}
+.f .dbar .btn.sec,.f .dbar .ibtn{color:#fff;background:linear-gradient(180deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,0) 60%),linear-gradient(90deg,rgba(255,255,255,.26) 0%,rgba(255,255,255,.06) 100%);box-shadow:inset 0 2px 1px rgba(255,255,255,.35),inset 0 -3px 6px rgba(0,0,0,.25),0 8px 14px -4px rgba(0,0,0,.45)}
+.f .dbar .ibtn.bd{border:0}
+.f .dbar .seg{background:rgba(0,0,0,.22);box-shadow:inset 0 2px 4px rgba(0,0,0,.3)}
+.f .dbar .seg span{color:rgba(255,255,255,.8)}
+.f .dbar .seg span.on{color:var(--text)}
+.f .dbar .inp{background:rgba(255,255,255,.95)}
+/* Buttons */
+.f .btn{border-radius:16px;border:0}
+.f .btn.pri{background:var(--hl),var(--g-blue);color:#fff;text-shadow:0 1px 2px rgba(0,30,90,.45);
+  box-shadow:var(--sh-blue-in),0 12px 20px -6px rgba(5,103,245,.6),0 3px 6px rgba(0,50,140,.25)}
+.f .btn.sec{background:linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,0) 55%,rgba(0,36,73,.05) 100%),linear-gradient(90deg,#FFFFFF 0%,#E1EAF6 100%);color:var(--text);box-shadow:var(--sh-raise)}
+.f .btn.ghost{color:var(--accent)}
+.f .btn.dng{color:#D92D20}
+.f .btn.dngfill{background:linear-gradient(180deg,rgba(255,255,255,.3) 0%,rgba(255,255,255,0) 55%,rgba(80,0,0,.14) 100%),linear-gradient(90deg,#FF7A6B 0%,#E5372A 55%,#B91C1C 100%);text-shadow:0 1px 2px rgba(90,0,0,.4);
+  box-shadow:inset 0 2px 2px rgba(255,255,255,.45),inset 0 -4px 8px rgba(110,0,0,.3),0 6px 12px -6px rgba(120,20,20,.45)}
+.f .btn.dis{opacity:.45;box-shadow:var(--sh-blue-in)}
+.f .btn.sm,.f .btn.xs{border-radius:14px}
+.f .ibtn.bd{border:0;border-radius:14px;color:#0F3270;
+  background:linear-gradient(180deg,rgba(255,255,255,.85) 0%,rgba(255,255,255,0) 55%,rgba(0,40,120,.06) 100%),linear-gradient(90deg,#F4FAFF 0%,#CBE0FA 100%);
+  box-shadow:inset 0 2px 1px #fff,inset 0 -3px 6px rgba(0,50,140,.14),inset -3px 0 6px rgba(0,50,140,.08),0 0 0 1px rgba(0,50,140,.08),0 8px 14px -6px rgba(0,36,73,.35)}
+.f .fab{border-radius:18px;background:var(--hl),var(--g-blue);box-shadow:var(--sh-blue-in),0 12px 20px -6px rgba(5,103,245,.6),0 3px 6px rgba(0,50,140,.25)}
+.f .fab.sec{border:0;color:#0F3270;background:linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,0) 55%,rgba(0,36,73,.05) 100%),linear-gradient(90deg,#FFFFFF 0%,#E1EAF6 100%);box-shadow:var(--sh-raise),0 14px 24px -8px rgba(0,36,73,.4)}
+/* Badges — status gradients */
+.f .bdg{color:var(--t);background:linear-gradient(90deg,var(--a),var(--b));box-shadow:inset 0 1px 1px rgba(255,255,255,.7),inset 0 -1px 2px rgba(0,36,73,.1),0 1px 3px rgba(0,36,73,.16)}
+.f .bdg.new{--a:#F3FAFF;--b:#B7E0FF;--t:#075985}
+.f .bdg.scheduled{--a:#F3F5FF;--b:#B7C6FF;--t:#3730A3}
+.f .bdg.otw{--a:#FFFBE9;--b:#FFEC9F;--t:#92400E}
+.f .bdg.prog{--a:#FFF8EE;--b:#FFDCAC;--t:#9A3412}
+.f .bdg.parts{--a:#FBF6FF;--b:#DFC0FF;--t:#6B21A8}
+.f .bdg.cust{--a:#EBFDFF;--b:#A5F7FF;--t:#155E75}
+.f .bdg.hold{--a:#FFF4F5;--b:#FFBCC1;--t:#9F1239}
+.f .bdg.done{--a:#ECFDF4;--b:#A3FFCF;--t:#065F46}
+.f .bdg.inv{--a:#EBFDFA;--b:#9FFFED;--t:#115E59}
+.f .bdg.paid{--a:#F1FEF5;--b:#B0FFCB;--t:#166534}
+.f .bdg.cancel{--a:#F4F4F5;--b:#CCCCD6;--t:#3F3F46}
+.f .bdg.draft,.f .bdg.grey{--a:#FAFBFC;--b:#D1DCF0;--t:#334155}
+.f .bdg.unpaid{--a:#FFFBE9;--b:#FFEC9F;--t:#92400E}
+.f .bdg.overdue{--a:#FF7A6B;--b:#D92D20;--t:#fff;text-shadow:0 1px 1px rgba(90,0,0,.35)}
+/* Surfaces */
+.f .card,.f .list,.f .jc{border:0;border-radius:18px;background:linear-gradient(90deg,#FFFFFF 0%,#F3F7FD 100%);box-shadow:var(--sh-card)}
+.f .list .row{background:transparent;border-bottom-color:#E8EEF6}
+.f .row{background:transparent}
+.f .jc.next{border:2px solid var(--accent);padding:11px;box-shadow:var(--sh-card),0 0 0 4px rgba(10,108,245,.10)}
+.f .noteY{border:0;background:linear-gradient(90deg,#FFFBEB 0%,#FDEFC4 100%);box-shadow:inset 0 1px 0 #fff,0 6px 14px -8px rgba(146,64,14,.35)}
+.f .noteB{border:0;background:linear-gradient(90deg,#F2F9FF 0%,#D6E7FC 100%);color:#0F3270;box-shadow:inset 0 1px 0 #fff,0 6px 14px -8px rgba(0,36,73,.3)}
+.f .gate{background:linear-gradient(180deg,#E9EFF7 0%,#F6F9FD 100%);box-shadow:var(--sh-sunken)}
+/* Inputs are sunken */
+.f .inp{border:1px solid #D5DEEA;border-radius:14px;background:linear-gradient(180deg,#F4F7FB 0%,#FFFFFF 40%);box-shadow:var(--sh-sunken)}
+.f .inp.focus{border-color:var(--accent);box-shadow:var(--sh-sunken),0 0 0 3px rgba(10,108,245,.16)}
+/* Chips & segmented */
+.f .chip{border:0;background:linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,0) 60%),linear-gradient(90deg,#FFFFFF 0%,#EAF0F8 100%);box-shadow:inset 0 1px 1px #fff,inset 0 -2px 4px rgba(0,36,73,.1),0 0 0 1px rgba(0,36,73,.06),0 5px 10px -5px rgba(0,36,73,.3)}
+.f .chip.on{background:var(--hl),var(--g-blue);color:#fff;text-shadow:0 1px 1px rgba(0,30,90,.4);box-shadow:var(--sh-blue-in),0 4px 8px -4px rgba(0,50,140,.45)}
+.f .chip.on .c{color:rgba(255,255,255,.85)}
+.f .chip.red{color:#C0261B;box-shadow:inset 0 1px 1px #fff,inset 0 -2px 4px rgba(0,36,73,.1),0 0 0 1px rgba(217,45,32,.35),0 5px 10px -5px rgba(0,36,73,.3)}
+.f .chip.zero{color:#98A2B3;box-shadow:inset 0 1px 1px #fff,0 0 0 1px rgba(0,36,73,.06)}
+.f .seg{border-radius:14px;padding:4px;background:linear-gradient(90deg,#E3EAF4 0%,#D3DDEB 100%);box-shadow:inset 0 2px 4px rgba(16,42,79,.14)}
+.f .seg span{border-radius:11px;color:#3D4B60}
+.f .seg span.on{background:linear-gradient(180deg,#fff 0%,#fff 50%,#F1F5FB 100%);box-shadow:inset 0 1px 1px #fff,inset 0 -2px 4px rgba(0,36,73,.08),0 4px 8px -4px rgba(0,36,73,.35)}
+/* Switches, checkboxes */
+.f .toggle{background:linear-gradient(90deg,#D3DDEB,#C2CFE1);box-shadow:inset 0 2px 4px rgba(16,42,79,.2)}
+.f .toggle::after{background:linear-gradient(180deg,#fff,#EEF3FA);box-shadow:0 2px 4px rgba(0,36,73,.3)}
+.f .toggle.on{background:var(--g-blue);box-shadow:inset 0 2px 4px rgba(0,20,90,.35)}
+.f .cbx{border-color:#C7D3E3;box-shadow:var(--sh-sunken)}
+.f .cbx.on{border:0;background:var(--hl),var(--g-blue);box-shadow:inset 0 1px 1px rgba(255,255,255,.5),0 2px 4px rgba(0,50,140,.3)}
+.f .radio.on{border-color:var(--accent)}
+/* Avatars & images: raised with a white outline */
+.f .av{box-shadow:0 0 0 2px #fff,0 4px 10px -2px rgba(0,36,73,.3);background:linear-gradient(90deg,#F1F7FF,#B3D4FF)}
+.f .av.biz{color:#0F3270}
+.f .ini{background:linear-gradient(90deg,#F1F7FF,#B3D4FF);color:#0F3270;box-shadow:0 0 0 2px #fff,0 3px 6px -2px rgba(0,36,73,.3)}
+.f .ini.t{background:linear-gradient(90deg,#EEF2FF,#C3CCFF);color:#3730A3}.f .ini.a{background:linear-gradient(90deg,#FFF1FA,#FBC7E8);color:#9D174D}
+.f .apimg{background:linear-gradient(180deg,#FFFFFF 0%,#E9EFF7 100%);box-shadow:inset 0 1px 0 #fff,0 4px 10px -4px rgba(0,36,73,.3);border-radius:12px}
+.f .aptile{border:0;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,0) 55%,rgba(0,36,73,.04) 100%),linear-gradient(90deg,#FFFFFF 0%,#E8EFF8 100%);box-shadow:var(--sh-raise)}
+/* Bottom nav, sticky bar, overlays */
+.f .bnav{border-top:0;background:#fff;box-shadow:0 -6px 18px rgba(16,42,79,.08)}
+.f .bnav a.on .ic{background:linear-gradient(90deg,#F2F9FF 0%,#C6DDFB 100%);box-shadow:inset 0 1px 1px #fff,inset 0 -2px 4px rgba(0,50,140,.12),0 4px 8px -4px rgba(0,36,73,.35)}
+.f .bnav a.on{color:#0050D0}
+.f .bnav a.book .ic{background:var(--hl),var(--g-blue);box-shadow:var(--sh-blue-in),0 4px 8px -3px rgba(0,50,140,.4);border-radius:14px}
+.f .sbar{border-top:1px solid #E1E8F2;box-shadow:0 -6px 18px rgba(16,42,79,.08)}
+.f .sbar .btn.pri{height:56px}
+.f .sheet{border-radius:22px 22px 0 0;background:linear-gradient(180deg,#FFFFFF 0%,#F6F9FD 100%);box-shadow:0 -12px 30px rgba(10,36,83,.25)}
+.f .menu{border:0;border-radius:18px;background:linear-gradient(90deg,#FFFFFF 0%,#F3F7FD 100%);box-shadow:0 0 0 1px rgba(0,36,73,.06),0 18px 36px -8px rgba(10,36,83,.35)}
+.f .scrim{background:rgba(10,36,83,.45)}
+.f .toast{border-radius:16px;background:linear-gradient(90deg,#16233A,#0A1628);box-shadow:0 12px 24px -6px rgba(10,36,83,.5)}
+/* Calendar */
+.f .cal{border:0;border-radius:18px;box-shadow:var(--sh-card)}
+.f .cal .blk{border-left:0;border-radius:10px;background:linear-gradient(90deg,var(--a,#F3F5FF),var(--b,#B7C6FF));color:var(--t,#3730A3);box-shadow:inset 0 1px 1px rgba(255,255,255,.7),inset 0 -2px 4px rgba(0,36,73,.1),0 4px 10px -4px rgba(0,36,73,.35)}
+.f .cal .blk.sch{--a:#F3F5FF;--b:#B7C6FF;--t:#3730A3}
+.f .cal .blk.parts{--a:#FBF6FF;--b:#DFC0FF;--t:#6B21A8}
+.f .cal .now{background:#E11D48}.f .cal .now::before{background:#E11D48}
+/* Desktop */
+.f .side-nav{background:linear-gradient(180deg,#F5F9FF 0%,#EAF1FB 100%);border-right:0;box-shadow:4px 0 16px -8px rgba(0,36,73,.2)}
+.f .side-nav a.on{background:var(--hl),var(--g-blue);color:#fff;box-shadow:var(--sh-blue-in),0 4px 8px -4px rgba(0,50,140,.4)}
+.f .side-nav a.bookbtn{border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,0) 55%,rgba(0,36,73,.05) 100%),linear-gradient(90deg,#F2F9FF 0%,#C6DDFB 100%);color:#0050D0;box-shadow:var(--sh-raise)}
+.f .tbl{background:transparent}
+.f .tbl th{background:linear-gradient(180deg,#F6F9FD,#EDF2F9)}
+/* Style board swatches */
+.f .sw i{border:0;box-shadow:var(--sh-card)}
 </style>
 </head>
 <body>
@@ -326,7 +444,8 @@ body.only-new .side.before{display:none}
 <p>Тап по паре — полный размер; ‹ › или стрелки клавиатуры — листание; Esc — закрыть. Zoom и «Only “Стало”» — вверху.</p>
 <p><b>Решения, которых нет в UX-REDESIGN.md (проверьте):</b></p>
 <ul>
-<li>Стиль плоский, как в UX-REDESIGN §4. Это противоречит правилу CLAUDE.md «volumetric, never flat» и docs/DESIGN.md — их надо обновить перед фазой 2.</li>
+<li>Стиль — объёмный, как сейчас (docs/DESIGN.md): градиенты, тени, выпуклые кнопки. Синее свечение — только у главной кнопки экрана (UX-REDESIGN §4.1); вторичные кнопки, чипы, активные пункты меню — выпуклые без свечения. Разделы 4.1–4.6 UX-REDESIGN про плоский стиль (рамки 1 px, «без градиентов и теней») для этого превью не применялись.</li>
+<li>Тёмно-синяя шапка оставлена (как сейчас), но компактная: 56–64 px вместо 110–150, с выпуклыми кнопками; на десктопе — такая же полоса. Статусы — цвета из docs/DESIGN.md (on hold — розовый, а не серый из UX-REDESIGN §4.3).</li>
 <li>Демо-время — пятница, Oct 9, 8:40 a.m. Состояния in_progress / invoiced для #1001 и счёт INV-2 ($179.20) я создал в локальной базе. Флажок Overdue стоит у #1002 и #1003 как пример.</li>
 <li>На дочерних экранах (← и «⋯») пилюля незавершённых сжата до иконки, числа и красной точки, иначе обрезается заголовок. Шапка с подзаголовком — 64 px, а не 56: подзаголовок 14 px.</li>
 <li>Меню «⋯» на My Jobs — это шторка More (в AppBar по 6.1 только поиск и фильтр). Меню действий («⋯» работы, клиента, документа) — шторкой снизу, под одну руку; Send ▾ — поповером над кнопкой.</li>
@@ -345,25 +464,25 @@ body.only-new .side.before{display:none}
 
 <section class="vsec" id="style" data-short="Стиль">
 <h2>Стиль</h2>
-<p class="lead">Плоский спокойный язык из раздела 4 UX-REDESIGN: белые поверхности, рамка 1 px, один акцентный цвет, цвет — только для смысла. Тени только у шторок, поповеров и FAB. Все кнопки, бейджи и карточки ниже — общие компоненты, экраны собраны только из них.</p>
+<p class="lead">Объёмный стиль, как сейчас (docs/DESIGN.md): градиенты слева направо, блик сверху, мягкие тени, выпуклые кнопки и карточки, поля ввода утоплены. Тёмно-синяя шапка осталась, но стала компактной (56–64 px вместо 110–150). Синее свечение — только у одной главной кнопки экрана; остальные кнопки выпуклые без свечения — так видна иерархия (UX-REDESIGN §4.1). Все экраны собраны из этих общих компонентов.</p>
 <div class="vgrid">
 
 <article class="pair">
 <header><b>Кнопки — 4 вида</b><code>Button · IconButton</code></header>
 <div class="pz"><div class="side after"><span class="tag new">СТАЛО</span>
 <div class="f board">
-  <div class="lbl">Телефон · 48 px, радиус 12</div>
+  <div class="lbl">Телефон · 48 px (главная в нижней панели — 56), радиус 16</div>
   <div class="hstack gap16" style="flex-wrap:wrap">
-    <div class="vstack"><span class="btn pri"><svg class="i"><use href="#i-car"/></svg>On my way</span><span class="xs muted">Primary — одно на видимую область</span></div>
-    <div class="vstack"><span class="btn sec"><svg class="i"><use href="#i-play"/></svg>Start job</span><span class="xs muted">Secondary — белый, рамка 1 px</span></div>
+    <div class="vstack"><span class="btn pri"><svg class="i"><use href="#i-car"/></svg>On my way</span><span class="xs muted">Primary — синий градиент + свечение; одна на экран</span></div>
+    <div class="vstack"><span class="btn sec"><svg class="i"><use href="#i-play"/></svg>Start job</span><span class="xs muted">Secondary — выпуклая белая, без свечения</span></div>
     <div class="vstack"><span class="btn ghost"><svg class="i"><use href="#i-pencil"/></svg>Edit</span><span class="xs muted">Ghost / Link — третичные</span></div>
     <div class="vstack"><span class="btn dng"><svg class="i"><use href="#i-trash"/></svg>Delete job</span><span class="xs muted">Destructive — красный текст</span></div>
   </div>
   <div class="lbl mt24">Состояния</div>
   <div class="hstack gap16" style="flex-wrap:wrap">
-    <div class="vstack"><span class="btn pri dis">Book</span><span class="xs muted">Disabled = тот же вид, 40%</span></div>
+    <div class="vstack"><span class="btn pri dis">Book</span><span class="xs muted">Disabled — приглушённый градиент, без свечения</span></div>
     <div class="vstack"><span class="btn pri"><svg class="i" style="animation:none"><use href="#i-history"/></svg>Saving…</span><span class="xs muted">В процессе: спиннер, повторный тап заблокирован</span></div>
-    <div class="vstack"><span class="btn dngfill">Void invoice</span><span class="xs muted">Красный фон — только в диалоге подтверждения</span></div>
+    <div class="vstack"><span class="btn dngfill">Void invoice</span><span class="xs muted">Красная выпуклая — только в диалоге подтверждения</span></div>
   </div>
   <div class="lbl mt24">Десктоп · 40 px</div>
   <div class="hstack" style="flex-wrap:wrap">
@@ -379,11 +498,11 @@ body.only-new .side.before{display:none}
     <span class="ibtn" aria-label="Messages"><svg class="i"><use href="#i-msg"/></svg><span class="cnt">2</span></span>
     <span class="fab" style="position:static"><svg class="i s24"><use href="#i-plus"/></svg></span>
     <span class="fab sec" style="position:static"><svg class="i s24"><use href="#i-car"/></svg></span>
-    <span class="xs muted">FAB — единственное место с тенью вне шторок</span>
+    <span class="xs muted">FAB: главный — синий со свечением, вторичный (Trip) — белый</span>
   </div>
 </div>
 </div></div>
-<ul class="notes"><li>Градиенты, «подушки» и синие свечения убраны полностью (4.1).</li><li>Зазор между кнопками 8 px, радиус 12, иконка 20.</li></ul>
+<ul class="notes"><li>Объём как сейчас: градиент, блик сверху, внутренние тени, мягкая тень снизу.</li><li>Свечение (синяя тень) — только у главной кнопки экрана. Сейчас светятся почти все кнопки, поэтому глаз не видит главную.</li><li>Зазор между кнопками 8 px, радиус 16, иконка 20, тап-цель от 44×44.</li></ul>
 </article>
 
 <article class="pair">
@@ -424,7 +543,7 @@ body.only-new .side.before{display:none}
   <div class="chips">
     <span class="chip red on">Overdue <span class="c">2</span></span><span class="chip">Needs scheduling <span class="c">1</span></span><span class="chip">Waiting for parts <span class="c">1</span></span><span class="chip zero">On hold 0</span>
   </div>
-  <p class="small muted mt16">Бейдж: фон 10% цвета, насыщенный текст, иконка 14 px, всегда с текстом — статус никогда не передаётся только цветом.</p>
+  <p class="small muted mt16">Бейдж — пилюля со светлым градиентом и мягкой выпуклой тенью (цвета из docs/DESIGN.md), иконка 14 px и всегда текст: статус никогда не передаётся только цветом.</p>
 </div>
 </div></div>
 </article>
@@ -435,29 +554,30 @@ body.only-new .side.before{display:none}
 <div class="f board">
   <div class="lbl">Токены интерфейса</div>
   <div class="hstack gap16" style="flex-wrap:wrap;align-items:flex-start">
-    <div class="sw"><i style="background:#F6F7F9"></i><b>bg</b>#F6F7F9</div>
-    <div class="sw"><i style="background:#FFFFFF"></i><b>surface</b>#FFFFFF</div>
-    <div class="sw"><i style="background:#E4E7EC"></i><b>border</b>#E4E7EC</div>
-    <div class="sw"><i style="background:#101828"></i><b>text</b>#101828</div>
-    <div class="sw"><i style="background:#667085"></i><b>text-muted</b>#667085</div>
-    <div class="sw"><i style="background:#1D4ED8"></i><b>accent</b>#1D4ED8</div>
+    <div class="sw"><i style="background:#EEF3FA"></i><b>page</b>#EEF3FA</div>
+    <div class="sw"><i style="background:linear-gradient(90deg,#FFFFFF,#F3F7FD)"></i><b>card</b>#FFF → #F3F7FD</div>
+    <div class="sw"><i style="background:linear-gradient(180deg,#0F3270,#0A2453)"></i><b>header</b>#0F3270 → #0A2453</div>
+    <div class="sw"><i style="background:#0F1B2D"></i><b>text</b>#0F1B2D</div>
+    <div class="sw"><i style="background:#5B6779"></i><b>text-muted</b>#5B6779</div>
+    <div class="sw"><i style="background:linear-gradient(90deg,#4CBDFE,#1E8CFD 35%,#0567F5 65%,#0046CC)"></i><b>primary</b>#4CBDFE → #0046CC</div>
     <div class="sw"><i style="background:#D92D20"></i><b>danger</b>#D92D20</div>
+    <div class="sw"><i style="background:#E11D48"></i><b>now line</b>#E11D48</div>
     <div class="sw"><i style="background:#079455"></i><b>success</b>#079455</div>
     <div class="sw"><i style="background:#DC6803"></i><b>warning</b>#DC6803</div>
   </div>
-  <div class="lbl mt24">Статусы</div>
+  <div class="lbl mt24">Статусы (градиенты из docs/DESIGN.md; on hold — розовый, как сейчас)</div>
   <div class="hstack" style="flex-wrap:wrap;gap:8px">
-    <div class="sw" style="width:72px"><i style="background:#2563EB;height:28px"></i>new</div>
-    <div class="sw" style="width:72px"><i style="background:#4F46E5;height:28px"></i>scheduled</div>
-    <div class="sw" style="width:72px"><i style="background:#0891B2;height:28px"></i>on the way</div>
-    <div class="sw" style="width:72px"><i style="background:#B45309;height:28px"></i>in progress</div>
-    <div class="sw" style="width:72px"><i style="background:#7C3AED;height:28px"></i>parts</div>
-    <div class="sw" style="width:72px"><i style="background:#C2410C;height:28px"></i>customer</div>
-    <div class="sw" style="width:72px"><i style="background:#475569;height:28px"></i>on hold</div>
-    <div class="sw" style="width:72px"><i style="background:#079455;height:28px"></i>completed</div>
-    <div class="sw" style="width:72px"><i style="background:#0D9488;height:28px"></i>invoiced</div>
-    <div class="sw" style="width:72px"><i style="background:#166534;height:28px"></i>paid</div>
-    <div class="sw" style="width:72px"><i style="background:#6B7280;height:28px"></i>cancelled</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#F3FAFF,#B7E0FF);height:28px"></i>new</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#F3F5FF,#B7C6FF);height:28px"></i>scheduled</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#FFFBE9,#FFEC9F);height:28px"></i>on the way</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#FFF8EE,#FFDCAC);height:28px"></i>in progress</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#FBF6FF,#DFC0FF);height:28px"></i>parts</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#EBFDFF,#A5F7FF);height:28px"></i>customer</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#FFF4F5,#FFBCC1);height:28px"></i>on hold</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#ECFDF4,#A3FFCF);height:28px"></i>completed</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#EBFDFA,#9FFFED);height:28px"></i>invoiced</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#F1FEF5,#B0FFCB);height:28px"></i>paid</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#F4F4F5,#CCCCD6);height:28px"></i>cancelled</div>
   </div>
   <div class="lbl mt24">Inter — шкала (минимум 14 px на телефоне; 12 px только метки и бейджи)</div>
   <div class="vstack gap12">
@@ -468,7 +588,7 @@ body.only-new .side.before{display:none}
     <div class="between"><span style="font:400 14px/1.4 Inter;color:#667085">8450 128 St, Surrey, BC V3W 4G1</span><span class="xs muted">14 / 400 — вторичный</span></div>
     <div class="between"><span style="font:500 12px/1 Inter;color:#667085;letter-spacing:.04em">GATE / BUZZER</span><span class="xs muted">12 / 500 — метки, бейджи</span></div>
   </div>
-  <div class="lbl mt24">Аватары клиентов — иллюстрации из приложения, без обводки и тени (4.7)</div>
+  <div class="lbl mt24">Аватары клиентов — иллюстрации из приложения, белая обводка и мягкая тень; 40 px в списках, 56 в досье (4.7)</div>
   <div class="hstack gap16">
     <img class="av av56" src="data:image/webp;base64,UklGRioRAABXRUJQVlA4WAoAAAAQAAAAbwAAbwAAQUxQSB8FAAAB8EVtk2Hb2rZdkZHLtm3btm3btm1v3bbt+55Ytq3bvu+pZSMj4rrRh6oy9yNiAtBVyYr/n23x9fc88aLrPv+5z33hxotP2WejJWfH/2tOqKloAjD9qgfeNO6lN4LDf+vVibcftvrMACRLLZICWOzAr7z6KQeGuw10Dw60P33nyGUAqNZABVjwiJ++SZJm5sERhpsZSb477sQlAKj0TAFs+tWpJM08OOrhZiTf/v4OGVDpkQJ6wH0kzYJjHmYknzpmJkD7khKw76NkWLCjYU6+cNT0kNQLBXZ8hHRnp93I5/YDsnQuJSz1bdKdnXcjf7kakDqmwKmv0429dOP7F08P7ZRiyV+Txt4a+dBqUOmMCHb/Fy3Y4zC+dQSQOpIgV5KFPTfyszNCO5Ew24/ozt6H8e75oR1QLPIQS7CGhS+vBB0zxZKvsLCShZPXRh4jxRK/ZWE1jZPXho5JwhK/o7GixslrQccgYaHf0lhV49SVoaMmMssjLKys8bfzI42SqPyIhdU13j9TktHJuIqFFf6UX0YeFcVuYaxy4XHQUUiy+OSIOoW/vwbSiETTOBor7XxqJpWRKE5mYbULr4WOIMmSr3vUK/yjtZBGgO/RWHHj/VmHpdgmjFU3HgYdhqT8OCvn8afZkwyl2JfGyhtPhw6Vpnuqfh5/mU1kkGJfOqtvPB06KOUHafXz+N1MIv+n2DiCDXTuAx30VVoLjOMhAAQLvM5oQcTHKyEBKkfS2cTCi5GBhJ+FtcH4uAgSFnmL0YaIT9ZAyjiIxkYWno2s+Go0wzgBCTP8lt6K4NT5gJU/ZrSCzi2AA2hspvFs4Oa2fBv4dUucT0w368v0dgQnL7zEG4x2kLb2+s6WBvfck9ES5ykntubai+gtMX72elpbvvWFtjjHf641v/lsc77QmvE3tcX43YvobfnsKYyWOG/YpzWnbxhsaXCfpd5mNIS+3uy/pbcjOG1RTKC1w/n0DLijJcbvA4e15UJgjcJ2OrcFZv4TvRXBNxaC4ru0Vhjvg2Qc2Y7Ci5ETlnqP0Yiw9aEQTAhrg/O5LEDGSWxE4TXIQMJi7zCaQFsbCYDi+ywtsHgwCQZsS2+B83Dk/4NM93RY/Tz+NofIAMWR9PoZL4FioMhMr4bXzmPSvCKDoDiSVjvjpVAMKWnGl8Pr5jFpXpGhoNibVrfCU6EYbpJxtJo5n5kxyfCw8vseFTPbAorhKy6m1cv4WShGKDrDI/RaOX8/V5KRIGHldzzqFGZbQDFyxREsdSq8AIrRzPgcS42MP4diVCXNeDetPsbn50oyOkiY91VabZyTlkPCaCtWmEKri/O9TZAx+oq1JtNq4nx3OyjGUrH2ZFo9jO9vh4yxzVh7CkstjO9vi4yxVqz6W5Y6FE7aFIqxVyx4Py36F4XPLQtFFxUzfZm0vnnwp3NC0c0EHPcuS/Sq0C4AEroqCWs/Tlp/PPjKlhBBhzNmvvYjmvcjjPGZuaHodgLWvYc0714Y+dQ2gKLropDDXyXNu+WF/Psp00EFPUzAbKf/kTSLzpiR/75sfiChpxmY88zfkiweYxdeSP7lsgWBLOitKDDz/hM+JVksxiKskPQHjpgTUEGvRQGsetGjn5B0M4+RhZs5SXvmmnUBqKD3ogJgrXPGT+LAcDNzdzczDw6cdt8lGyZAVFDHlAXA/Fue/c0nJhtH6NOe/v5F2y4CADmhpiknAMgLrbXnqdd+5lu/+fWvx33vs9efsc96i8wAACkndBUAVlA4IOQLAABQMACdASpwAHAAPm0uk0ckIiGhKxPLQIANiWwAwyw+TUyaLI/jvxxzKB1Lcfox/Sn/D34vmG/ZP1W/R5/gPUA/mf+m6zX0D/Lh9kb93vSbvAf8v+Pfn35UvcXt3u+mDn+64jdrbfpwBfmf9g/2vH79h/NZ/4XlSeMr5v7Af8s/tn/Q9Uj/d/yvoG/PP8x/3fcG/kv8//2X3NfN37H/249hf9Y2kw+h35Db8H2/2GPwvpiAHvxWzWfN/vyf93t+ngqDVuol3W51H1FuQvzOmKxqMuVZ44tPFj1XjhN4RfHrW85DO8sfhbJ+Lmr7p8Bh5RsDejvRKcYh6WvCWMkzBb63kOPST8f/mTxVaZ5PFvEa0UneFvfz3JgXsv1SQJhRQnn/SbYjlMf3AOl54NRaXpTPLob28/hhMe5PjHaWUFE5FXte7oIfk3W/dWkvOsOC23f5m28TRtwmvQbBL0Ca3CQhrojgnNQwvF8v+ivFpk1b/gQQqhqsFrYChj6ihIAOAUwKsnmXgQnhsBuYAAD++0n//69///XnH//riKpepHKa/9CM3OzuOlk/+NGF1HxKLrHF/NL7B0ajhAgtKvu7J29gUWaTCtZDacEOlgpF+cnT4bJdOdz7w7UVKp8C3qAxzLVd+FM/c1fyQ7n/Wjz7vZnezrCdue93/e6H/p//0kVuxUkGZNUTJONg6BXUC3gayzKCh1DMN36t9KKVseEOhgh5q1FB/aQ0TtDlPSNf208hmHQNfIOcNelsQFa+H93ZsgCoINQyea/8wo+ZlieqFHzwwgDGZMHw8AQD4Mwp68x5Dy2sqGb9pn1PrngwD7S0XfoWA61fhBSMVkPVw9iqK3DqUhJeBv6Y87zojGef/FTum8Ch0m60ffHHQpZN5SzlyAW/RU/jZjy/PGTnDivlMeE4PE8l5N35AiIY4GgBFfvnLRTZAjU97SC8IAQNLqjylfVwja09Py4iDtdUS+z0HtS5iSLHPalcLLBN921KvbG2+nYu/JTIIag0Ln4p8AYlBg/y7K91NQwIEnlqf+Bpk4SNX5iIVmAWRp/699CJ+F68Pw1+S0L4pKGyqFOJ6+jipCdljl38rWIK/fpFaC0LLi5MK8H4GKR7ZQCUBNMViePZw83HnMyHiMv/Hf51ceRH3YKsZsJ25rRhw1OoX4njozeQHnZi+1bfE3HRvzESpETYufMGT4waDj4rDvTm1qxUyv94K+RiM08BTUJwADA9yfA7a2xe0whfnDPiMucss8vP6Z8okvA3qTKCnD8EcAz6VIeyC58DhBV9T1bFf725cMysI7YtBF/tu7jUPYSX24dk5BGitY/IKzPSRb80SmXHEkgLCqlTXqLORw9Y340tJ0nS2/iLZrCDsZOwRNXncqPBvQAbnS8MP8bm/IYGnOlj1tJ2wmtr2d/1vMzMHgEXI5t2/5ezrxSKnvids5pli9CgaAjKvP+g8mzA72xsl62UgkxpyxjOckttrAJ7lsAT7wLxoxY6jv+hll2TVedFn1tB3sU+yd8W+HmNeBjp24ZMHKHKvwn96K3AhIp9ey2Jb4ZPdnYbRZqRynv1KVAdmkiNYasT22aX0Q2Llpzb/DYfXvdJC34/5gD9xB5MJZaC3O63jVHhKIo2mo180+S/E05qxsO2Q07D8Xp7Ik9nppxYPcAXRmkugYXmLRAy7TScI6jP7TTDHyiw7kO7rvCrH0YgA4SA98F9wJYAUekp57IdKtAO5Ay4w8v9Qheuk9IYqkoIJZKMExKx1j5rOFuo5gmJvMBLAhrcd6zzAvsmsfPWFz+N7zeG2aMpHNoALz3H6QnkaFvUFjQw6xHjPyL8aAXNbP4oQjiAlLBs/TZwvN4TYZrXERwJwO/r8049Q1nDijoV6fO+gAsun7xT9GuThfEL3Q0n8GEP7a92c/9E6Mf2fdE2O/fW1xfIWLV4BvqWWTkElD8l7skn9E8YYb6b5v14NXcwoYFRgK9aiMIu0+KBNWOp8qmIUbPmD8+cLMoHTYf7WQC+8LT/P+TbzQln2hjxyBww0Vuln5zEbER3d/Marix2eBLhWaBOfZY7AP6NegmOeUTBWBxnW9dlFmu7eK5/BN8txIFq7gGPUJQItlfMx+5Jjux78V/b3BBV3SZybEG5QQnoWJXDCpLeTPjoP+5k/y76GhD+I7GoyI3z9DtEHAe+iLn9bvmJBkq/UpP8ejrDjtvV+klIdWx4JBjHLs0eUiABw0XrSEuIgIWWFaPYKSnju2TE07Iez/7E0sHrhF1wFopxyupO8J1j/H1+wzu2iRbogQrtbVhdWdHrVEYpW4pSuAAhbhntZ+l+yQIU631AQ/EaUF0+6rvH9ElqkEicFGEp/nT8GGP+XWgLAx4D9xcdjxaBCoNlZdlaLi9hYSKtLDNCS92q9sUxn6nVoAezXyN9QTInTtA/Tt0UnaffelxC8dWlDVdUbQvf4Sg5JnBVwW6xbaInPL0+u6IkiWfBmwut/igDjzTsjApUJ/Epb7hI42M9hVPSHHD0KDNjcQWFb7QE9McxLS92VPHKbQRk2+CA7qw6qMVVXE+wENRlTa66/aK/oPbBsSOHBqy1sDupHyII/L6FrPBCeZ16VzYwp6/f+0ZRVFBSOI10Ev8R7Ud9UkI+TUPZ93yaYfkWNTigv6f7fPAGmk7fWATo35vzVUhmT0TeLSiTN8M2/9kQlLTiYeCNYC64whsQ879NOLmUbA9iz/3i43O6o8TYIRwSKo2ixpKWl4V1s43sEA4R5LppPERFw7q4YRx6VnXhXzxuPLW+TvtU3OIfjlqsTJtl0xg2Fb8jyx95Jx7of9MZ0O7XJ+uREsFnm9372EnvF2pX/fvtUelQGqFFpA4Sq9bmCx4nN3N1DgH6QT9doLOw4iX4dsaYoFkenjgzckk61v16bD5IaflcoTY/rCOafp0Ic7o7BQbe1zjevs5C8p1yOqhk4X4we9U9Hjz6Lo4rrMB5mrHQBgxuGntUfc2vU8I1zaDit5P4qKJM9KxI4pFLUe/is1JupFRwlGLJw7hQsFqOIX9V/zZ9jxQsPjjNVkPdk08ftMvnFBQVY7H5ZCsPpdF5SgFYCgRtadHJfJnbjhBFYfvXavZQT1AHnPrOp41yDkqUDceogu6uHPHH3pSl8GtK80zfPhFKiDJjGNQTn0f2/tdMYbuLgiIUMW1I1q/puDosLZc5vWzUPxzA0/wXbSknFGWeAceP86x2A0Ts2jH9DHPZgb4XCL0CFiT3T4mv2KRPyUtH5AWTtJHkI7QmVakngm8RiEekhGpGQn7ODT0RlV1X4kEQ37xCL6CutiToVZi5bp014Hy45DrERO2eMTywX97qWpr/ig74D6eClGaP/exWSBjGbR2T1cUb98Jt8yaX/DV7nzJM+zrrwxpQIVPTrHh/ESai86Yu3sXWDrlFTLxRWtfpVBctS2vh8DhgUEf8f7+32NQDbLDwyxZl7EBJDic29B+mUNCd9McZSiNWAg+dCCLyW/FPp+CTytwMxM3eDhabZfBY+TVTk7TmLyY4ABBymcFO1twRmcDcafuY5zgP9jfGSsLO4wwr1YYwdJBNBQFB0g+Vk/OGiWIuhb1SAUE2ixCpOywVZBxo8W71UWSMX3TmM0Ta4djjCI9IMPfNNlcCUZ8CSOmQc1cljGuzzk/Z+s/Jn6b5/zA/zaPz2GgLcGKcP63TflKZWcp2ElSp4WfUcLnD3iyL+p3k3+aeNVsB/TLgJ3oc+rTdHT1jkHjQuFYBdEtgLrXiLdP9r11tR+tcamaiKIZfSy5hwd+iuFi/ph4tVf+Lht0q+RUcTyeiX58Weuq4gKvk7ANAig3aPGkR/Kc3+xzMak4wCR3NS4GWYZMlkcpT8yrV/uagVU1W68oJ6ky/Zg2U5y167KsX8QRRJi5OZ8WnkdaDSHCoImF09Ja3NIT95rhXbQJNC4nTeWKiE+6YZt3d0rr3OoJnwc0RDKK8ObhPxLA5TgY81TzXyN1FCbPqpqa9t9DMOz0of4nYr4g1zy4MSSuAaDVHDo/zZOZr141gxdhwgv1YA4TzLcRd1AAdlLfHl+o8bgAAAA==" alt="Jane Cooper"><span class="xs muted">56 — шапка досье</span>
     <img class="av av40" src="data:image/webp;base64,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" alt=""><img class="av av40" src="data:image/webp;base64,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" alt=""><span class="av av40 biz"><svg class="i"><use href="#i-building"/></svg></span><span class="xs muted">40 — списки (бизнес — иконка здания, как сейчас)</span>
@@ -1231,11 +1351,11 @@ body.only-new .side.before{display:none}
     <div class="cal" style="margin-right:-16px;border-right:0;border-radius:12px 0 0 12px">
       <div class="hrs"><div style="height:44px;border-bottom:1px solid var(--border)"></div><div>8 a.m.</div><div>9 a.m.</div><div>10 a.m.</div><div>11 a.m.</div><div>12 p.m.</div><div>1 p.m.</div><div>2 p.m.</div><div>3 p.m.</div><div>4 p.m.</div><div>5 p.m.</div></div>
       <div class="lane"><div class="lh"><span class="ini t av24">TT</span>Tom Technician</div>
-        <div class="blk" style="--c:var(--s-scheduled);top:92px;height:94px"><b>9–11 · Jane Cooper</b>Washer · #1001</div>
+        <div class="blk sch" style="top:92px;height:94px"><b>9–11 · Jane Cooper</b>Washer · #1001</div>
         <div class="buf" style="top:188px"></div>
       </div>
       <div class="lane"><div class="lh"><span class="ini a av24">AO</span>Alex Owner</div>
-        <div class="blk" style="--c:var(--s-scheduled);top:284px;height:94px"><b>1–3 · Jane Cooper</b>Refrigerator · #1004</div>
+        <div class="blk sch" style="top:284px;height:94px"><b>1–3 · Jane Cooper</b>Refrigerator · #1004</div>
         <div class="buf" style="top:380px"></div>
       </div>
       <div class="lane" style="width:40px;border-right:0"><div class="lh" style="padding:0 4px;color:var(--muted)">+1 →</div></div>
@@ -1968,9 +2088,9 @@ body.only-new .side.before{display:none}
           <div class="hstack" style="padding:12px;border-bottom:1px solid var(--border)"><span class="ini t av24">TT</span><b class="small">Tom Technician</b></div>
           <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
           <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
-          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px"><div class="cal" style="border:0;background:none;display:block"><div class="blk" style="--c:var(--s-parts);position:static;opacity:.85"><b>1–3 p.m.</b>Westside Property… · #1002</div></div></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px"><div class="cal" style="border:0;background:none;display:block"><div class="blk parts" style="position:static;opacity:.85"><b>1–3 p.m.</b>Westside Property… · #1002</div></div></div>
           <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
-          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;background:#F8FAFF"><div class="cal" style="border:0;background:none;display:block"><div class="blk" style="--c:var(--s-scheduled);position:static"><b>9–11 a.m.</b>Jane Cooper · Washer</div></div></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;background:#F8FAFF"><div class="cal" style="border:0;background:none;display:block"><div class="blk sch" style="position:static"><b>9–11 a.m.</b>Jane Cooper · Washer</div></div></div>
           <div class="hatch" style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
           <div class="hatch" style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
           <!-- Alex -->
@@ -1979,7 +2099,7 @@ body.only-new .side.before{display:none}
           <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
           <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
           <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
-          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;background:#F8FAFF"><div class="cal" style="border:0;background:none;display:block"><div class="blk" style="--c:var(--s-scheduled);position:static"><b>1–3 p.m.</b>Jane Cooper · Refrigerator</div></div></div>
+          <div style="border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;background:#F8FAFF"><div class="cal" style="border:0;background:none;display:block"><div class="blk sch" style="position:static"><b>1–3 p.m.</b>Jane Cooper · Refrigerator</div></div></div>
           <div class="hatch" style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
           <div class="hatch" style="border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>
           <!-- Unassigned -->

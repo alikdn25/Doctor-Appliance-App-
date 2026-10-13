@@ -1,24 +1,24 @@
 <section class="vsec" id="style" data-short="Стиль">
 <h2>Стиль</h2>
-<p class="lead">Плоский спокойный язык из раздела 4 UX-REDESIGN: белые поверхности, рамка 1 px, один акцентный цвет, цвет — только для смысла. Тени только у шторок, поповеров и FAB. Все кнопки, бейджи и карточки ниже — общие компоненты, экраны собраны только из них.</p>
+<p class="lead">Объёмный стиль, как сейчас (docs/DESIGN.md): градиенты слева направо, блик сверху, мягкие тени, выпуклые кнопки и карточки, поля ввода утоплены. Тёмно-синяя шапка осталась, но стала компактной (56–64 px вместо 110–150). Синее свечение — только у одной главной кнопки экрана; остальные кнопки выпуклые без свечения — так видна иерархия (UX-REDESIGN §4.1). Все экраны собраны из этих общих компонентов.</p>
 <div class="vgrid">
 
 <article class="pair">
 <header><b>Кнопки — 4 вида</b><code>Button · IconButton</code></header>
 <div class="pz"><div class="side after"><span class="tag new">СТАЛО</span>
 <div class="f board">
-  <div class="lbl">Телефон · 48 px, радиус 12</div>
+  <div class="lbl">Телефон · 48 px (главная в нижней панели — 56), радиус 16</div>
   <div class="hstack gap16" style="flex-wrap:wrap">
-    <div class="vstack"><span class="btn pri"><svg class="i"><use href="#i-car"/></svg>On my way</span><span class="xs muted">Primary — одно на видимую область</span></div>
-    <div class="vstack"><span class="btn sec"><svg class="i"><use href="#i-play"/></svg>Start job</span><span class="xs muted">Secondary — белый, рамка 1 px</span></div>
+    <div class="vstack"><span class="btn pri"><svg class="i"><use href="#i-car"/></svg>On my way</span><span class="xs muted">Primary — синий градиент + свечение; одна на экран</span></div>
+    <div class="vstack"><span class="btn sec"><svg class="i"><use href="#i-play"/></svg>Start job</span><span class="xs muted">Secondary — выпуклая белая, без свечения</span></div>
     <div class="vstack"><span class="btn ghost"><svg class="i"><use href="#i-pencil"/></svg>Edit</span><span class="xs muted">Ghost / Link — третичные</span></div>
     <div class="vstack"><span class="btn dng"><svg class="i"><use href="#i-trash"/></svg>Delete job</span><span class="xs muted">Destructive — красный текст</span></div>
   </div>
   <div class="lbl mt24">Состояния</div>
   <div class="hstack gap16" style="flex-wrap:wrap">
-    <div class="vstack"><span class="btn pri dis">Book</span><span class="xs muted">Disabled = тот же вид, 40%</span></div>
+    <div class="vstack"><span class="btn pri dis">Book</span><span class="xs muted">Disabled — приглушённый градиент, без свечения</span></div>
     <div class="vstack"><span class="btn pri"><svg class="i" style="animation:none"><use href="#i-history"/></svg>Saving…</span><span class="xs muted">В процессе: спиннер, повторный тап заблокирован</span></div>
-    <div class="vstack"><span class="btn dngfill">Void invoice</span><span class="xs muted">Красный фон — только в диалоге подтверждения</span></div>
+    <div class="vstack"><span class="btn dngfill">Void invoice</span><span class="xs muted">Красная выпуклая — только в диалоге подтверждения</span></div>
   </div>
   <div class="lbl mt24">Десктоп · 40 px</div>
   <div class="hstack" style="flex-wrap:wrap">
@@ -34,11 +34,11 @@
     <span class="ibtn" aria-label="Messages"><svg class="i"><use href="#i-msg"/></svg><span class="cnt">2</span></span>
     <span class="fab" style="position:static"><svg class="i s24"><use href="#i-plus"/></svg></span>
     <span class="fab sec" style="position:static"><svg class="i s24"><use href="#i-car"/></svg></span>
-    <span class="xs muted">FAB — единственное место с тенью вне шторок</span>
+    <span class="xs muted">FAB: главный — синий со свечением, вторичный (Trip) — белый</span>
   </div>
 </div>
 </div></div>
-<ul class="notes"><li>Градиенты, «подушки» и синие свечения убраны полностью (4.1).</li><li>Зазор между кнопками 8 px, радиус 12, иконка 20.</li></ul>
+<ul class="notes"><li>Объём как сейчас: градиент, блик сверху, внутренние тени, мягкая тень снизу.</li><li>Свечение (синяя тень) — только у главной кнопки экрана. Сейчас светятся почти все кнопки, поэтому глаз не видит главную.</li><li>Зазор между кнопками 8 px, радиус 16, иконка 20, тап-цель от 44×44.</li></ul>
 </article>
 
 <article class="pair">
@@ -79,7 +79,7 @@
   <div class="chips">
     <span class="chip red on">Overdue <span class="c">2</span></span><span class="chip">Needs scheduling <span class="c">1</span></span><span class="chip">Waiting for parts <span class="c">1</span></span><span class="chip zero">On hold 0</span>
   </div>
-  <p class="small muted mt16">Бейдж: фон 10% цвета, насыщенный текст, иконка 14 px, всегда с текстом — статус никогда не передаётся только цветом.</p>
+  <p class="small muted mt16">Бейдж — пилюля со светлым градиентом и мягкой выпуклой тенью (цвета из docs/DESIGN.md), иконка 14 px и всегда текст: статус никогда не передаётся только цветом.</p>
 </div>
 </div></div>
 </article>
@@ -90,29 +90,30 @@
 <div class="f board">
   <div class="lbl">Токены интерфейса</div>
   <div class="hstack gap16" style="flex-wrap:wrap;align-items:flex-start">
-    <div class="sw"><i style="background:#F6F7F9"></i><b>bg</b>#F6F7F9</div>
-    <div class="sw"><i style="background:#FFFFFF"></i><b>surface</b>#FFFFFF</div>
-    <div class="sw"><i style="background:#E4E7EC"></i><b>border</b>#E4E7EC</div>
-    <div class="sw"><i style="background:#101828"></i><b>text</b>#101828</div>
-    <div class="sw"><i style="background:#667085"></i><b>text-muted</b>#667085</div>
-    <div class="sw"><i style="background:#1D4ED8"></i><b>accent</b>#1D4ED8</div>
+    <div class="sw"><i style="background:#EEF3FA"></i><b>page</b>#EEF3FA</div>
+    <div class="sw"><i style="background:linear-gradient(90deg,#FFFFFF,#F3F7FD)"></i><b>card</b>#FFF → #F3F7FD</div>
+    <div class="sw"><i style="background:linear-gradient(180deg,#0F3270,#0A2453)"></i><b>header</b>#0F3270 → #0A2453</div>
+    <div class="sw"><i style="background:#0F1B2D"></i><b>text</b>#0F1B2D</div>
+    <div class="sw"><i style="background:#5B6779"></i><b>text-muted</b>#5B6779</div>
+    <div class="sw"><i style="background:linear-gradient(90deg,#4CBDFE,#1E8CFD 35%,#0567F5 65%,#0046CC)"></i><b>primary</b>#4CBDFE → #0046CC</div>
     <div class="sw"><i style="background:#D92D20"></i><b>danger</b>#D92D20</div>
+    <div class="sw"><i style="background:#E11D48"></i><b>now line</b>#E11D48</div>
     <div class="sw"><i style="background:#079455"></i><b>success</b>#079455</div>
     <div class="sw"><i style="background:#DC6803"></i><b>warning</b>#DC6803</div>
   </div>
-  <div class="lbl mt24">Статусы</div>
+  <div class="lbl mt24">Статусы (градиенты из docs/DESIGN.md; on hold — розовый, как сейчас)</div>
   <div class="hstack" style="flex-wrap:wrap;gap:8px">
-    <div class="sw" style="width:72px"><i style="background:#2563EB;height:28px"></i>new</div>
-    <div class="sw" style="width:72px"><i style="background:#4F46E5;height:28px"></i>scheduled</div>
-    <div class="sw" style="width:72px"><i style="background:#0891B2;height:28px"></i>on the way</div>
-    <div class="sw" style="width:72px"><i style="background:#B45309;height:28px"></i>in progress</div>
-    <div class="sw" style="width:72px"><i style="background:#7C3AED;height:28px"></i>parts</div>
-    <div class="sw" style="width:72px"><i style="background:#C2410C;height:28px"></i>customer</div>
-    <div class="sw" style="width:72px"><i style="background:#475569;height:28px"></i>on hold</div>
-    <div class="sw" style="width:72px"><i style="background:#079455;height:28px"></i>completed</div>
-    <div class="sw" style="width:72px"><i style="background:#0D9488;height:28px"></i>invoiced</div>
-    <div class="sw" style="width:72px"><i style="background:#166534;height:28px"></i>paid</div>
-    <div class="sw" style="width:72px"><i style="background:#6B7280;height:28px"></i>cancelled</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#F3FAFF,#B7E0FF);height:28px"></i>new</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#F3F5FF,#B7C6FF);height:28px"></i>scheduled</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#FFFBE9,#FFEC9F);height:28px"></i>on the way</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#FFF8EE,#FFDCAC);height:28px"></i>in progress</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#FBF6FF,#DFC0FF);height:28px"></i>parts</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#EBFDFF,#A5F7FF);height:28px"></i>customer</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#FFF4F5,#FFBCC1);height:28px"></i>on hold</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#ECFDF4,#A3FFCF);height:28px"></i>completed</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#EBFDFA,#9FFFED);height:28px"></i>invoiced</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#F1FEF5,#B0FFCB);height:28px"></i>paid</div>
+    <div class="sw" style="width:72px"><i style="background:linear-gradient(90deg,#F4F4F5,#CCCCD6);height:28px"></i>cancelled</div>
   </div>
   <div class="lbl mt24">Inter — шкала (минимум 14 px на телефоне; 12 px только метки и бейджи)</div>
   <div class="vstack gap12">
@@ -123,7 +124,7 @@
     <div class="between"><span style="font:400 14px/1.4 Inter;color:#667085">8450 128 St, Surrey, BC V3W 4G1</span><span class="xs muted">14 / 400 — вторичный</span></div>
     <div class="between"><span style="font:500 12px/1 Inter;color:#667085;letter-spacing:.04em">GATE / BUZZER</span><span class="xs muted">12 / 500 — метки, бейджи</span></div>
   </div>
-  <div class="lbl mt24">Аватары клиентов — иллюстрации из приложения, без обводки и тени (4.7)</div>
+  <div class="lbl mt24">Аватары клиентов — иллюстрации из приложения, белая обводка и мягкая тень; 40 px в списках, 56 в досье (4.7)</div>
   <div class="hstack gap16">
     <img class="av av56" src="{{IMG:av-woman}}" alt="Jane Cooper"><span class="xs muted">56 — шапка досье</span>
     <img class="av av40" src="{{IMG:av-woman}}" alt=""><img class="av av40" src="{{IMG:av-man}}" alt=""><span class="av av40 biz"><svg class="i"><use href="#i-building"/></svg></span><span class="xs muted">40 — списки (бизнес — иконка здания, как сейчас)</span>
