@@ -87,6 +87,11 @@ jobs:
         if: ${{ !cancelled() }}
         run: npm run types:check
 
+      - name: PostgreSQL client for the backup tests
+        run: |
+          command -v pg_dump || { sudo apt-get update && sudo apt-get install -y postgresql-client; }
+          pg_dump --version
+
       - name: Run tests
         if: ${{ !cancelled() }}
         run: php artisan test
