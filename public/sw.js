@@ -5,7 +5,7 @@
  * - Uploads and other non-GET requests are never touched: the in-page upload queue retries them.
  * Full offline work is out of scope (SPEC §7.4 for now).
  */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const STATIC_CACHE = `static-${VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
@@ -76,4 +76,54 @@ self.addEventListener('fetch', (event) => {
             fetch(request).catch(() => caches.match(OFFLINE_URL)),
         );
     }
+});
+
+// Push notifications (Settings → Notifications): show them, and open the app on tap.
+self.addEventListener('push', (event) => {
+    let data = {};
+
+    try {
+        data = event.data ? event.data.json() : {};
+    } catch {
+        data = { title: event.data ? event.data.text() : '' };
+    }
+
+    event.waitUntil(
+        self.registration.showNotification(data.title || 'Notification', {
+            body: data.body || '',
+            tag: data.tag || undefined,
+            icon: '/icons/icon-192.png',
+            badge: '/icons/icon-192.png',
+            data: { url: data.url || '/' },
+        }),
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = new URL(
+        (event.notification.data && event.notification.data.url) || '/',
+        self.location.origin,
+    );
+
+    // Only this app's own pages are opened.
+    if (url.origin !== self.location.origin) {
+        return;
+    }
+
+    event.waitUntil(
+        self.clients
+            .matchAll({ type: 'window', includeUncontrolled: true })
+            .then((windows) => {
+                for (const client of windows) {
+                    if ('focus' in client) {
+                        client.navigate(url.href);
+
+                        return client.focus();
+                    }
+                }
+
+                return self.clients.openWindow(url.href);
+            }),
+    );
 });

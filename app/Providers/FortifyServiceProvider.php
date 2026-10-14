@@ -53,7 +53,7 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::authenticateUsing(function (Request $request) {
             $user = User::where('email', Str::lower((string) $request->input(Fortify::username())))->first();
 
-            if ($user && $user->is_active && Hash::check((string) $request->input('password'), $user->password)) {
+            if ($user && $user->is_active && ! $user->is_bot && Hash::check((string) $request->input('password'), $user->password)) {
                 return $user;
             }
 
@@ -66,12 +66,17 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureViews(): void
     {
-        Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
-            'canRegister' => Features::enabled(Features::registration()),
-            // The recovery page itself explains when mail is unavailable, so the link is always shown.
-            'canResetPassword' => Features::enabled(Features::resetPasswords()),
-            'status' => $request->session()->get('status'),
-        ]));
+        Fortify::loginView(function (Request $request) {
+            // Whoever used this phone before: their pages leave the browser history.
+            Inertia::clearHistory();
+
+            return Inertia::render('auth/login', [
+                'canRegister' => Features::enabled(Features::registration()),
+                // The recovery page itself explains when mail is unavailable, so the link is always shown.
+                'canResetPassword' => Features::enabled(Features::resetPasswords()),
+                'status' => $request->session()->get('status'),
+            ]);
+        });
 
         Fortify::registerView(fn () => Inertia::render('auth/register', [
             'confirmationRequired' => AccountEmail::verificationRequired(),

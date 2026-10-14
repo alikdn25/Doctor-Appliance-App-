@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use App\Messaging\SmsInbox;
 use App\Models\Brand;
 use App\Models\BusinessExpense;
@@ -117,7 +118,11 @@ class HandleInertiaRequests extends Middleware
                 'viewBrands' => $user->can('viewAny', Brand::class),
                 'manageTeam' => $user->can('viewAny', Membership::class),
                 'viewTaxes' => $user->can('viewAny', TaxRate::class),
+                // Data protection: Deleted items (office), the change log and the booking bot (Owner).
+                'viewTrash' => $user->hasRole(UserRole::Owner, UserRole::Admin),
+                'viewChangeLog' => $user->hasRole(UserRole::Owner),
             ],
+            'unreadNotifications' => $user->unreadNotifications()->count(),
         ];
     }
 

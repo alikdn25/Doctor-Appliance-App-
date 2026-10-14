@@ -6,6 +6,7 @@ use App\Enums\CustomerType;
 use App\Enums\LeadSource;
 use App\Enums\PaymentTerms;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\RecordsChanges;
 use App\Support\NameAvatar;
 use App\Support\PhoneNumber;
 use Database\Factories\CustomerFactory;
@@ -35,10 +36,18 @@ use Illuminate\Support\Carbon;
  */
 class Customer extends Model
 {
-    use BelongsToCompany;
+    use BelongsToCompany, RecordsChanges;
 
     /** @use HasFactory<CustomerFactory> */
     use HasFactory, SoftDeletes;
+
+    public const AUDIT_TYPE = 'customer';
+
+    /** Days a deleted customer can still be restored from Deleted items. */
+    public const RESTORE_DAYS = 30;
+
+    /** When the customer being restored was deleted (its properties deleted with it share the time). */
+    private ?string $deletedTogetherAt = null;
 
     protected $fillable = [
         'type',
@@ -85,10 +94,27 @@ class Customer extends Model
             }
         });
 
-        // Soft-delete the customer's properties (and through them, appliances) with it.
-        static::deleting(function (Customer $customer) {
-            if (! $customer->isForceDeleting()) {
-                $customer->properties()->get()->each->delete();
+        // Soft-delete the customer's properties (and through them, appliances) with it, at the same moment, so that
+        // restoring the customer brings back exactly what was deleted with it.
+        static::deleted(function (Customer $customer) {
+            if (! $customer->isForceDeleting() && $customer->deleted_at !== null) {
+                Property::withoutCompanyScope()->where('company_id', $customer->company_id)->where('customer_id', $customer->id)
+                    ->get()->each(fn (Property $property) => $property->softDeleteAt($customer->deleted_at));
+            }
+        });
+
+        static::restoring(function (Customer $customer) {
+            $customer->deletedTogetherAt = $customer->getRawOriginal('deleted_at');
+        });
+
+        static::restored(function (Customer $customer) {
+            if ($customer->deletedTogetherAt !== null) {
+                Property::withoutCompanyScope()->onlyTrashed()
+                    ->where('company_id', $customer->company_id)
+                    ->where('customer_id', $customer->id)
+                    ->where('deleted_at', $customer->deletedTogetherAt)
+                    ->get()
+                    ->each(fn (Property $property) => $property->restore());
             }
         });
     }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -22,4 +23,10 @@ Route::middleware(['auth', 'active'])->group(function () {
         ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
+
+    // Notifications: the in-app list and push on this phone or browser.
+    Route::get('settings/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('settings/notifications/read', [NotificationController::class, 'read'])->name('notifications.read');
+    Route::post('settings/notifications/push', [NotificationController::class, 'subscribe'])->middleware('throttle:20,1')->name('notifications.push.subscribe');
+    Route::delete('settings/notifications/push', [NotificationController::class, 'unsubscribe'])->name('notifications.push.unsubscribe');
 });

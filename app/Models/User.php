@@ -37,6 +37,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $password
  * @property bool $is_super_admin
  * @property bool $is_active
+ * @property bool $is_bot The website booking bot's user: never signs in to the app
  * @property int|null $current_company_id
  * @property Carbon|null $last_login_at
  * @property string|null $two_factor_secret
@@ -84,6 +85,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'two_factor_confirmed_at' => 'datetime',
             'is_super_admin' => 'boolean',
             'is_active' => 'boolean',
+            'is_bot' => 'boolean',
             'last_login_at' => 'datetime',
         ];
     }

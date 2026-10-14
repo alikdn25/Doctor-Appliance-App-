@@ -7,6 +7,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\UserRole;
 use App\Models\Appliance;
 use App\Models\AuditLog;
+use App\Models\BotToken;
 use App\Models\Brand;
 use App\Models\BrandAddress;
 use App\Models\BusinessExpense;
@@ -158,6 +159,7 @@ beforeEach(function () {
                 'customer_id' => $job->customer_id, 'service_job_id' => $job->id, 'google_profile_id' => $profile->id,
                 'status' => 'sent', 'sent_at' => now(), 'message_id' => $message->id,
             ]);
+            BotToken::issue($company, 'Website '.$company->id, $owner);
         });
     }
     $this->estimateB = Estimate::withoutCompanyScope()->where('company_id', $this->companyB->id)->sole();
@@ -213,6 +215,7 @@ dataset('tenant models', [
     'message reads' => [MessageRead::class],
     'google profiles' => [GoogleProfile::class],
     'review requests' => [ReviewRequest::class],
+    'booking bot tokens' => [BotToken::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -233,7 +236,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         PaymentProviderConnection::class,
         JobAppliance::class, JobAssignee::class, JobBringItem::class, JobChecklistItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
-        Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class, Trip::class,
+        Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class, Trip::class, BotToken::class,
     ])->sort()->values()->all());
 });
 

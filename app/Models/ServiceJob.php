@@ -10,6 +10,7 @@ use App\Enums\LeadSource;
 use App\Enums\UserRole;
 use App\Enums\VisitType;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\RecordsChanges;
 use App\Support\PhoneNumber;
 use Database\Factories\ServiceJobFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -60,10 +61,12 @@ use Illuminate\Support\Carbon;
  */
 class ServiceJob extends Model
 {
-    use BelongsToCompany;
+    use BelongsToCompany, RecordsChanges;
 
     /** @use HasFactory<ServiceJobFactory> */
     use HasFactory, SoftDeletes;
+
+    public const AUDIT_TYPE = 'job';
 
     protected $fillable = [
         'brand_id',

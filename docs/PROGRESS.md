@@ -1,3 +1,54 @@
+# October 14 — Part A: data protection
+
+Owner's brief (October 14): part A (data protection) before part B (redesign phases 2–13 of UX-REDESIGN.md, each its
+own PR). UX-REDESIGN.md already holds sections 17–26 (only table formatting differs from the owner's file).
+
+1. **Backups**: the database every hour, uploaded files every day, encrypted on the server (libsodium) and stored in
+   external S3-compatible storage (Backblaze B2). Hourly copies kept 48 hours, daily 30 days, monthly 12 months, files
+   30 days; pruning by the app or by bucket lifecycle rules. `backup:check` alerts the platform owner when a backup
+   fails or is too old. Commands `backup:run|list|check|prune|restore|restore-company|key`. docs/RESTORE.md.
+2. **Before every deployment** `deploy.sh` backs up the database; no backup, no migrations.
+3. **Production guards**: `migrate:fresh/reset/refresh/rollback`, `db:wipe` refused (already), `db:seed` and
+   `migrate --seed` refused, DemoSeeder refuses production; a migration that drops or renames tables or columns or
+   deletes rows runs only when listed in `database/approved-destructive-migrations.php` (owner's permission), checked
+   by `migrate` in production and by a CI test.
+4. **Nothing is removed for good**: payments and job costs are soft-deleted too (customers, addresses, appliances,
+   jobs, estimates, invoices, expenses already were). **Deleted items** (`/deleted-items`, Owner and office): customers,
+   addresses, appliances, estimates, invoices, payments, expenses and job costs of the last 30 days with Restore; a
+   customer comes back with the addresses and appliances deleted with it. Every `ON DELETE CASCADE` foreign key is now
+   `RESTRICT` (only the people of a not-started visit time keep the cascade), so a hard delete can never take jobs,
+   invoices or history with it.
+5. **Change log**: create/change/delete/restore of customers, jobs, estimates, invoices and payments with who, when,
+   old and new values and the source (in the app, booking bot, customer page or provider, server). The Owner sees
+   "Show history" on the customer, job, estimate and invoice pages (invoice history includes its payments) and the whole
+   log in Company settings → Change log.
+6. **Watchdog** (`ops:watchdog`): at 7:00 company time counts customers, jobs and invoices per company; a drop of more
+   than 5% or 10+ records since the day before alerts the company's Owners.
+7. **Account switch bug**: caused by the temporary auto sign-in (`AUTH_AUTO_LOGIN_EMAIL`), which signed the device in
+   as the configured account whenever the session ended; removed. Also: a sign-in without "remember me" drops someone
+   else's remember cookie, signed-in pages are `no-store`, Inertia history is encrypted and cleared at sign-in, the menu
+   shows company, name, role and email. docs/UX-NOTES.md.
+8. **File backups**: see 1 (private and public storage, daily, 30 days).
+9. **Restore one company**: `backup:restore-company <id> [backup]` restores the backup into a scratch database,
+   shows per table what will be added back, put back and kept, asks, backs up the live database, then copies only that
+   company's rows (nothing deleted, numbering never moved back). Tested with two companies.
+10. **Server agent (Grok)** prepared, not switched on: `scripts/ops/` (status, check-backups, backup-now,
+    restore-company with the owner's approval; every action logged to `storage/logs/ops-agent.log`),
+    `setup-opsbot.sh` (Linux user without root, sudo only for those scripts), `opsbot-db.sql` (read-only DB user).
+    docs/OPS.md.
+11. **Website booking bot API** (`/api/bot/v1`, docs/BOOKING_BOT.md): per-company tokens (Company settings → Booking
+    bot, Owner), its own bot user; free windows, find customer by phone (first name and street only), add customer,
+    book a job. No changes, deletes, money or reports. Request and hourly booking limits. Every action logged as
+    "Booking bot"; every booking pushed to the Owners.
+12. **Notifications**: in-app list (Settings → Notifications, menu with unread count), Web Push on phones (VAPID keys:
+    `webpush:keys`), email once mail delivery is enabled, Telegram for server alerts while email is not set up.
+- Tests: `tests/Feature/DataProtection/*` (trash and restore, foreign keys, change log and access, bot API, sessions
+  and roles, watchdog, production guards) and `tests/Integration/BackupTest.php` (real pg_dump/pg_restore:
+  encryption, test restore, one of two companies restored, files, failure alert, retention, check, local fallback).
+- Needed from the owner: B2 bucket and key, the backup encryption key stored outside the server, VAPID keys,
+  optionally a Telegram bot for alerts; then a test restore on the server (docs/RESTORE.md §4).
+- Next: part B, phase 2 — design tokens and the UI kit (UX-REDESIGN.md §4, §16.1).
+
 # October 14 — UX redesign, phase 1: P0 fixes
 
 The owner's UX audit and redesign brief is in [UX-REDESIGN.md](UX-REDESIGN.md) (13 phases, one PR each). Phase 1 fixes

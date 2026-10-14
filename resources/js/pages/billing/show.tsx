@@ -1,4 +1,5 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { RecordHistory } from '@/components/record-history';
 import {
     Ban,
     CalendarPlus,
@@ -96,6 +97,7 @@ export default function BillingShow({
         can_sign: boolean;
     } | null;
 }) {
+    const canViewHistory = Boolean(usePage().props.auth.can?.viewChangeLog);
     const t = useTrans();
     const phoneText = usePhone();
     const money = useMoney(doc.currency);
@@ -855,6 +857,10 @@ export default function BillingShow({
                             {money(balance)}
                         </Button>
                     </div>
+                )}
+
+                {canViewHistory && (
+                    <RecordHistory type={doc.kind} id={doc.id} />
                 )}
             </div>
 

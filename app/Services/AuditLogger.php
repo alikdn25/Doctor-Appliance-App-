@@ -4,17 +4,20 @@ namespace App\Services;
 
 use App\Models\AuditLog;
 use App\Models\Company;
+use App\Support\Audit\ActionSource;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Records sensitive actions (role changes, settings, impersonation, suspension).
+ * Records sensitive actions (role changes, settings, impersonation, suspension) and every change of the main
+ * records (RecordsChanges), with who acted and from where (ActionSource).
  */
 class AuditLogger
 {
     public function __construct(
         private readonly CurrentCompany $currentCompany,
         private readonly Impersonation $impersonation,
+        private readonly ActionSource $source,
     ) {}
 
     /**
@@ -33,7 +36,8 @@ class AuditLogger
             'auditable_type' => $subject?->getMorphClass(),
             'auditable_id' => $subject?->getKey(),
             'changes' => $changes ?: null,
-            'ip_address' => request()?->ip(),
+            'ip_address' => app()->runningInConsole() ? null : request()->ip(),
+            'source' => $this->source->current(),
         ]);
     }
 }

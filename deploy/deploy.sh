@@ -28,12 +28,20 @@ failed() {
 }
 trap failed ERR
 
+previous_commit="$(git rev-parse HEAD)"
 git reset --hard "$deploy_commit"
 composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
 php artisan optimize:clear
 php artisan app:deployment-check --before-migrate
 npm ci --no-audit --no-fund
 npm run build
+# Back up the database before migrations (external storage, or a local copy until it is set up).
+# No backup, no migrations: the deployment stops here and maintenance mode stays on.
+if ! php artisan backup:run --reason=deploy; then
+    printf 'Database backup failed; deployment stopped before migrations. Previous commit: %s\n' "$previous_commit" >&2
+    failed
+    exit 1
+fi
 php artisan migrate --force
 if ! test -L public/storage; then php artisan storage:link; fi
 php artisan optimize

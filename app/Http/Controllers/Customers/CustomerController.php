@@ -22,7 +22,6 @@ use App\Models\Invoice;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\User;
-use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
 use App\Support\NameAvatar;
 use App\Support\PhoneNumber;
@@ -271,7 +270,7 @@ class CustomerController extends Controller
         return back();
     }
 
-    public function destroy(Customer $customer, AuditLogger $audit): RedirectResponse
+    public function destroy(Customer $customer): RedirectResponse
     {
         Gate::authorize('delete', $customer);
 
@@ -282,7 +281,6 @@ class CustomerController extends Controller
         }
 
         $customer->delete();
-        $audit->record('customer.deleted', $customer, ['name' => $customer->display_name]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('customers.deleted')]);
 

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Are recent database and file backups in the external storage? Prints the newest ones. Read-only.
+source "$(dirname "$0")/_common.sh"
+ops_run check-backups php artisan backup:check --no-alert
+php artisan backup:list --limit=10
+php artisan backup:list --files --limit=5

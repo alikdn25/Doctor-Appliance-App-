@@ -8,6 +8,7 @@ return [
         'profile' => 'Profile',
         'security' => 'Security',
         'appearance' => 'Appearance',
+        'notifications' => 'Notifications',
     ],
 
     'profile' => [

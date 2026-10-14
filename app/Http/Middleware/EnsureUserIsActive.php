@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Logs out users that were deactivated platform-wide while they had a session open.
+ * Logs out users that were deactivated platform-wide while they had a session open (and the booking bot's user,
+ * which never has a session).
  */
 class EnsureUserIsActive
 {
@@ -18,7 +19,7 @@ class EnsureUserIsActive
         /** @var User|null $user */
         $user = $request->user();
 
-        if ($user !== null && ! $user->is_active) {
+        if ($user !== null && (! $user->is_active || $user->is_bot)) {
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

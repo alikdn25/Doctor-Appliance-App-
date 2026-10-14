@@ -46,6 +46,9 @@ class Property extends Model
     /** @use HasFactory<PropertyFactory> */
     use HasFactory, SoftDeletes;
 
+    /** When the property being restored was deleted (its appliances deleted with it share the time). */
+    private ?string $deletedTogetherAt = null;
+
     protected $fillable = [
         'label',
         'line1',
@@ -98,11 +101,39 @@ class Property extends Model
             }
         });
 
-        static::deleting(function (Property $property) {
-            if (! $property->isForceDeleting()) {
-                $property->appliances()->get()->each->delete();
+        static::deleted(function (Property $property) {
+            if (! $property->isForceDeleting() && $property->deleted_at !== null) {
+                $property->softDeleteAt($property->deleted_at);
             }
         });
+
+        static::restoring(function (Property $property) {
+            $property->deletedTogetherAt = $property->getRawOriginal('deleted_at');
+        });
+
+        static::restored(function (Property $property) {
+            if ($property->deletedTogetherAt !== null) {
+                Appliance::withoutCompanyScope()->onlyTrashed()
+                    ->where('company_id', $property->company_id)
+                    ->where('property_id', $property->id)
+                    ->where('deleted_at', $property->deletedTogetherAt)
+                    ->get()
+                    ->each(fn (Appliance $appliance) => $appliance->restore());
+            }
+        });
+    }
+
+    /**
+     * Soft-deletes the property and its appliances at the given moment (the moment its customer was deleted).
+     */
+    public function softDeleteAt(\DateTimeInterface $at): void
+    {
+        if ($this->getRawOriginal('deleted_at') === null) {
+            $this->forceFill(['deleted_at' => $at])->saveQuietly();
+        }
+
+        Appliance::withoutCompanyScope()->where('company_id', $this->company_id)->where('property_id', $this->id)
+            ->get()->each(fn (Appliance $appliance) => $appliance->forceFill(['deleted_at' => $at])->saveQuietly());
     }
 
     /**

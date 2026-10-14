@@ -4,12 +4,19 @@ use App\Enums\UserRole;
 use App\Models\Company;
 use App\Models\User;
 use App\Support\Tenancy\CurrentCompany;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
+
+// Backups read the database from another process (pg_dump), so these tests commit their data and empty the
+// tables afterwards instead of rolling back a transaction.
+pest()->extend(TestCase::class)
+    ->use(DatabaseTruncation::class)
+    ->in('Integration');
 
 /**
  * Creates a user with a membership in the given (or a new) company.

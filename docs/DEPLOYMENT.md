@@ -114,10 +114,15 @@ Application secrets (database password, mail credentials, later Square/Telnyx ke
 1. Verify prerequisites and a clean checkout, lock deployment and resolve the selected tested commit; enter maintenance mode
 2. `git fetch` + `git reset --hard <tested commit>`
 3. `composer install --no-dev`, clear old config, run `app:deployment-check --before-migrate`, then build assets
-4. `php artisan migrate --force`, `storage:link`, `optimize`, `queue:restart`
-5. Run `app:deployment-check`, reopen and verify HTTPS `/up` and `/login`. A failed deployment leaves maintenance on for diagnosis
+4. `php artisan backup:run --reason=deploy` (encrypted, to external storage; a local copy in `storage/app/local-backups`
+   until storage is set up). **If the backup fails, the deployment stops here, before any migration.**
+5. `php artisan migrate --force`, `storage:link`, `optimize`, `queue:restart`. In production `migrate` refuses a
+   migration that drops or renames tables or columns unless the owner approved it in
+   `database/approved-destructive-migrations.php`; `migrate:fresh/reset/refresh/rollback`, `db:wipe` and `db:seed`
+   are refused.
+6. Run `app:deployment-check`, reopen and verify HTTPS `/up` and `/login`. A failed deployment leaves maintenance on for diagnosis
 
-Take and verify a database and media backup before upgrading an existing installation.
+Hourly database and daily file backups, the test restore and restoring one company: docs/RESTORE.md.
 For testing a green draft commit, use `DEPLOY_REF=chatgpt/bolt-ui DEPLOY_SHA=<tested-sha> bash deploy/deploy.sh`
 on the server; the GitHub production workflow remains limited to `main`.
 
