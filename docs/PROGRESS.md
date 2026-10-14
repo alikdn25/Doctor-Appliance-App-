@@ -42,6 +42,7 @@ own PR). UX-REDESIGN.md already holds sections 17–26 (only table formatting di
     "Booking bot"; every booking pushed to the Owners.
 12. **Notifications**: in-app list (Settings → Notifications, menu with unread count), Web Push on phones (VAPID keys:
     `webpush:keys`), email once mail delivery is enabled, Telegram for server alerts while email is not set up.
+
 - Tests: `tests/Feature/DataProtection/*` (trash and restore, foreign keys, change log and access, bot API, sessions
   and roles, watchdog, production guards) and `tests/Integration/BackupTest.php` (real pg_dump/pg_restore:
   encryption, test restore, one of two companies restored, files, failure alert, retention, check, local fallback).
