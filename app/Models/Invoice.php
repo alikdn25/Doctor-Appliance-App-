@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\InvoiceStatus;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Concerns\IsBillingDocument;
+use App\Models\Concerns\RecordsChanges;
 use Carbon\CarbonImmutable;
 use Database\Factories\InvoiceFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -57,10 +58,12 @@ use Illuminate\Support\Carbon;
  */
 class Invoice extends Model
 {
-    use BelongsToCompany, IsBillingDocument;
+    use BelongsToCompany, IsBillingDocument, RecordsChanges;
 
     /** @use HasFactory<InvoiceFactory> */
     use HasFactory, SoftDeletes;
+
+    public const AUDIT_TYPE = 'invoice';
 
     protected $fillable = ['issued_on', 'due_on', 'discount_type', 'discount_value', 'notes'];
 

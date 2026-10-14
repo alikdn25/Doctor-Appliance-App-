@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\Enums\PaymentMethod;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\RecordsChanges;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
@@ -41,7 +43,9 @@ use Illuminate\Support\Carbon;
  */
 class Payment extends Model
 {
-    use BelongsToCompany;
+    use BelongsToCompany, RecordsChanges, SoftDeletes;
+
+    public const AUDIT_TYPE = 'payment';
 
     protected $fillable = ['amount', 'tip_amount', 'method', 'reference', 'note', 'received_at', 'provider', 'provider_payment_id'];
 

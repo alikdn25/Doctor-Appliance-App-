@@ -1,12 +1,13 @@
 <?php
 
-use App\Http\Middleware\AutoLogin;
+use App\Http\Middleware\AuthenticateBot;
 use App\Http\Middleware\EnsureAccountEmailVerified;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\PrivatePages;
 use App\Http\Middleware\SetCurrentCompany;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,6 +19,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -31,9 +33,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/');
 
         $middleware->web(append: [
-            AutoLogin::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
+            PrivatePages::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
@@ -43,12 +45,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant' => SetCurrentCompany::class,
             'role' => EnsureRole::class,
             'super-admin' => EnsureSuperAdmin::class,
+            'bot' => AuthenticateBot::class,
         ]);
 
         // The tenant must be known before route model binding runs, so that
         // tenant-scoped models ({brand}, {membership}, ...) resolve inside it.
         $middleware->prependToPriorityList(SubstituteBindings::class, SetCurrentCompany::class);
         $middleware->prependToPriorityList(SetCurrentCompany::class, EnsureAccountEmailVerified::class);
+        // A deactivated account (or the booking bot's user) is signed out before anything else looks at it.
+        $middleware->prependToPriorityList(EnsureAccountEmailVerified::class, EnsureUserIsActive::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->dontFlash(['owner_password', 'owner_password_confirmation']);

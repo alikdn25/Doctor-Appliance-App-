@@ -7,6 +7,7 @@ import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useTrans } from '@/lib/i18n';
 import { cn, toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
+import { index as notifications } from '@/routes/notifications';
 import { edit } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
@@ -25,6 +26,11 @@ const sidebarNavItems: NavItem[] = [
     {
         title: 'settings.nav.appearance',
         href: editAppearance(),
+        icon: null,
+    },
+    {
+        title: 'settings.nav.notifications',
+        href: notifications(),
         icon: null,
     },
 ];

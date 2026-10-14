@@ -2,6 +2,9 @@ import { Link, usePage, usePoll } from '@inertiajs/react';
 import {
     Banknote,
     BarChart3,
+    Bot,
+    History,
+    Trash2,
     BookOpen,
     Building,
     Building2,
@@ -38,6 +41,8 @@ import { calendar, dashboard } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as brands } from '@/routes/brands';
 import { index as cash } from '@/routes/cash';
+import { bookingBot, changeLog } from '@/routes/company';
+import { index as trash } from '@/routes/trash';
 import { index as reports } from '@/routes/reports';
 import { index as customers } from '@/routes/customers';
 import { edit as googleProfiles } from '@/routes/company/google-profiles';
@@ -161,6 +166,21 @@ export function AppSidebar() {
             title: 'nav.company_settings',
             href: companySettings(),
             icon: Building,
+        },
+        can.viewTrash && {
+            title: 'nav.deleted_items',
+            href: trash(),
+            icon: Trash2,
+        },
+        can.viewChangeLog && {
+            title: 'nav.change_log',
+            href: changeLog(),
+            icon: History,
+        },
+        can.viewChangeLog && {
+            title: 'nav.booking_bot',
+            href: bookingBot(),
+            icon: Bot,
         },
     ].filter(Boolean) as NavItem[];
 

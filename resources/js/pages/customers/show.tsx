@@ -1,4 +1,5 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { RecordHistory } from '@/components/record-history';
 import {
     ChevronRight,
     KeyRound,
@@ -127,6 +128,7 @@ export default function CustomerShow({
     const t = useTrans();
     const time = useCompanyTime();
     const phoneText = usePhone();
+    const canViewHistory = Boolean(usePage().props.auth.can?.viewChangeLog);
     const [propertyDialog, setPropertyDialog] = useState<{
         open: boolean;
         property: PropertyData | null;
@@ -564,6 +566,10 @@ export default function CustomerShow({
                     <Button variant="destructive" onClick={remove}>
                         <Trash2 /> {t('customers.delete')}
                     </Button>
+                )}
+
+                {canViewHistory && (
+                    <RecordHistory type="customer" id={customer.id} />
                 )}
             </div>
 

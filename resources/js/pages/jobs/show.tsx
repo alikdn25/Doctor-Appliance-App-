@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { RecordHistory } from '@/components/record-history';
 import {
     AlarmClock,
     Banknote,
@@ -1114,6 +1115,10 @@ export default function JobShow({
                     <Button variant="destructive" onClick={remove}>
                         <Trash2 /> {t('jobs.delete')}
                     </Button>
+                )}
+
+                {auth.can?.viewChangeLog && (
+                    <RecordHistory type="job" id={job.id} />
                 )}
             </div>
 

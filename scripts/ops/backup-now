@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Back up the database to the external storage now (encrypted). Safe to run at any time.
+source "$(dirname "$0")/_common.sh"
+ops_run backup-now php artisan backup:run --reason=manual

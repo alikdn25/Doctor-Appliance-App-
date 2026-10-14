@@ -16,7 +16,7 @@ import { useTrans } from '@/lib/i18n';
 import { switchMethod } from '@/routes/companies';
 
 /**
- * Shows the current company. When the user belongs to several companies,
+ * Shows the current company and who is signed in to it. When the user belongs to several companies,
  * it becomes a dropdown to switch between them.
  */
 export function CompanySwitcher() {
@@ -38,9 +38,18 @@ export function CompanySwitcher() {
                 <span className="truncate font-semibold">
                     {auth.company.name}
                 </span>
-                {auth.role && (
-                    <span className="truncate text-xs text-muted-foreground">
-                        {auth.role.label}
+                {/* Who is signed in, always in sight: the name and the role in this company. */}
+                {auth.user && (
+                    <span
+                        className="truncate text-xs text-muted-foreground"
+                        data-test="signed-in-as"
+                    >
+                        {auth.role
+                            ? t('nav.signed_in_as_role', {
+                                  name: auth.user.name,
+                                  role: auth.role.label,
+                              })
+                            : auth.user.name}
                     </span>
                 )}
             </div>

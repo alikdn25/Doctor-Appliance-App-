@@ -156,14 +156,15 @@ is probably connected to the wrong or a recreated database: do not create a new 
 the right database instead. Give a temporary password to the person directly; they change it in
 Settings → Security.
 
-## Temporary sign-in without a password
+## Sign-in without a password: removed
 
-The owner asked to switch sign-in off for now. In the server `.env`:
+The temporary auto sign-in (`AUTH_AUTO_LOGIN_EMAIL`) was removed on October 14, 2026: it silently switched people to
+the configured account whenever their session ended (docs/UX-NOTES.md). Delete the line from the server `.env` if it
+is still there (it has no effect any more). If the owner does not know their password, reset it with
+`php artisan app:reset-password <email> --generate` and give the temporary password to the owner directly.
 
-```bash
-AUTH_AUTO_LOGIN_EMAIL=owner@example.com   # the owner's real account email
-```
+## Backups, push notifications, server agent
 
-then `php artisan config:cache` (or the deploy script) and reload PHP-FPM. Every visitor is then signed in as that
-account and lands on Jobs; anyone with the address sees and changes the company's data. To bring sign-in back,
-delete the line, refresh the configuration and reload PHP-FPM; then sign out once on each device.
+- Backups: docs/RESTORE.md (keys in `.env`, test restore, restoring one company).
+- Push notifications: `php artisan webpush:keys` once, put both keys in `.env`, `php artisan config:cache`.
+- Server agent access (prepared, not switched on): docs/OPS.md.

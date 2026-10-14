@@ -39,4 +39,9 @@ return [
     'cash' => 'Cash on hand',
     'business_expenses' => 'Business expenses',
     'mileage' => 'Mileage',
+    'deleted_items' => 'Deleted items',
+    'change_log' => 'Change log',
+    'booking_bot' => 'Booking bot',
+    'notifications' => 'Notifications',
+    'signed_in_as_role' => ':name · :role',
 ];

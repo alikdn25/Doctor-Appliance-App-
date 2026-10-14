@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\EstimateStatus;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Concerns\IsBillingDocument;
+use App\Models\Concerns\RecordsChanges;
 use Carbon\CarbonImmutable;
 use Database\Factories\EstimateFactory;
 use Illuminate\Database\Eloquent\Collection;
@@ -66,10 +67,12 @@ use Illuminate\Support\Carbon;
  */
 class Estimate extends Model
 {
-    use BelongsToCompany, IsBillingDocument;
+    use BelongsToCompany, IsBillingDocument, RecordsChanges;
 
     /** @use HasFactory<EstimateFactory> */
     use HasFactory, SoftDeletes;
+
+    public const AUDIT_TYPE = 'estimate';
 
     public const SIGNATURE_DRAWN = 'drawn';
 

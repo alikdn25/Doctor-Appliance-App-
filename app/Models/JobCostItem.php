@@ -6,6 +6,7 @@ use App\Enums\LineKind;
 use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * A cost of a job that is on no invoice: a part bought for a repair the customer declined, consumables, materials
@@ -27,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class JobCostItem extends Model
 {
-    use BelongsToCompany;
+    use BelongsToCompany, SoftDeletes;
 
     protected $fillable = ['kind', 'description', 'part_number', 'supplier', 'quantity', 'unit', 'unit_cost', 'supplier_taxes'];
 

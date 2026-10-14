@@ -67,4 +67,19 @@ return [
 
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | History
+    |--------------------------------------------------------------------------
+    |
+    | Page data kept in the browser history is encrypted, and the history is
+    | cleared at every sign-in and on the sign-in page, so Back never shows
+    | another person's data on a shared phone. Needs HTTPS (or localhost).
+    |
+    */
+
+    'history' => [
+        'encrypt' => (bool) env('INERTIA_ENCRYPT_HISTORY', true),
+    ],
+
 ];

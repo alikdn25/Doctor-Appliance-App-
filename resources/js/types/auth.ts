@@ -42,6 +42,8 @@ export type Permissions = {
     viewBrands?: boolean;
     manageTeam?: boolean;
     viewTaxes?: boolean;
+    viewTrash?: boolean;
+    viewChangeLog?: boolean;
 };
 
 export type Auth = {
@@ -50,6 +52,8 @@ export type Auth = {
     role: { value: string; label: string } | null;
     companies: { id: number; name: string }[];
     can: Permissions;
+    /** Notifications not read yet (Settings → Notifications). */
+    unreadNotifications?: number;
 };
 
 export type Impersonation = {

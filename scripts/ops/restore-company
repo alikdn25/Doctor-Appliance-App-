@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Restore ONE company from a backup into the live database (other companies untouched).
+#   restore-company <company id> [backup path]                 shows what would be restored (changes nothing)
+#   restore-company <company id> <backup path> --approved "<owner's message>"
+#                                                              restores; only after the owner approved this plan
+# A backup of the live database is made automatically before any change.
+source "$(dirname "$0")/_common.sh"
+
+company="${1:-}"
+path="${2:-}"
+[[ "$company" =~ ^[0-9]+$ ]] || { printf 'Usage: restore-company <company id> [backup path] [--approved "..."]\n' >&2; exit 2; }
+[[ -z "$path" || "$path" =~ ^[A-Za-z0-9._/-]+\.dump\.enc$ ]] || { printf 'Invalid backup path.\n' >&2; exit 2; }
+
+if [ "${3:-}" = "--approved" ]; then
+    approval="${4:-}"
+    [ -n "$approval" ] || { printf 'Quote the owner'"'"'s approval after --approved.\n' >&2; exit 2; }
+    [ -n "$path" ] || { printf 'Name the exact backup path the owner approved.\n' >&2; exit 2; }
+    ops_log "restore-company APPROVED company=$company path=$path approval=$(printf '%q' "$approval")"
+    ops_run restore-company php artisan backup:restore-company "$company" "$path" --force
+else
+    args=("$company")
+    [ -n "$path" ] && args+=("$path")
+    ops_run restore-company-plan php artisan backup:restore-company "${args[@]}" --dry-run
+    printf '\nNothing changed. Send this plan to the owner; restore only after their written OK.\n'
+fi

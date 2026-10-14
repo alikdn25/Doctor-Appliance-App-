@@ -14,6 +14,7 @@ use App\Http\Controllers\Billing\InvoiceReviewRequestController;
 use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Billing\PaymentLinkController;
 use App\Http\Controllers\Billing\PriceBookController;
+use App\Http\Controllers\Company\BotTokenController;
 use App\Http\Controllers\Company\BrandController;
 use App\Http\Controllers\Company\ChecklistController;
 use App\Http\Controllers\Company\CompanySettingsController;
@@ -30,6 +31,7 @@ use App\Http\Controllers\Customers\ApplianceController;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Customers\PropertyController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\Jobs\CalendarController;
 use App\Http\Controllers\Jobs\JobBacklogController;
 use App\Http\Controllers\Jobs\JobCloseController;
@@ -50,6 +52,7 @@ use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\SmsInboxController;
 use App\Http\Controllers\SmsWebhookController;
+use App\Http\Controllers\TrashController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
@@ -209,7 +212,16 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('payment-providers/{provider}/callback', [PaymentProviderController::class, 'callback'])->name('payment-providers.callback');
         Route::delete('payment-providers/{provider}', [PaymentProviderController::class, 'disconnect'])->name('payment-providers.disconnect');
 
+        // Data protection: deleted items (30 days, restorable) and the change log (Owner).
+        Route::get('deleted-items', [TrashController::class, 'index'])->name('trash.index');
+        Route::post('deleted-items/{type}/{id}/restore', [TrashController::class, 'restore'])->whereNumber('id')->name('trash.restore');
+        Route::get('history/{type}/{id}', [HistoryController::class, 'show'])->whereNumber('id')->name('history.show');
+
         Route::prefix('company')->group(function () {
+            Route::get('change-log', [HistoryController::class, 'index'])->name('company.change-log');
+            Route::get('booking-bot', [BotTokenController::class, 'index'])->name('company.booking-bot');
+            Route::post('booking-bot', [BotTokenController::class, 'store'])->middleware('throttle:10,1')->name('company.booking-bot.store');
+            Route::delete('booking-bot/{token}', [BotTokenController::class, 'destroy'])->name('company.booking-bot.destroy');
             Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company.settings.edit');
             Route::put('settings', [CompanySettingsController::class, 'update'])->name('company.settings.update');
             Route::put('timezone', DetectTimezoneController::class)->name('company.timezone.detect');

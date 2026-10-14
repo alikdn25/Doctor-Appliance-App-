@@ -42,6 +42,11 @@ class DemoSeeder extends Seeder
 {
     public function run(): void
     {
+        // Demo data never goes into a live database.
+        if (app()->isProduction()) {
+            throw new \RuntimeException('Demo data cannot be seeded in production.');
+        }
+
         $tenancy = app(CurrentCompany::class);
 
         $this->user('admin@example.com', 'Platform Admin', superAdmin: true);

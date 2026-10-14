@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Health of the installation. Read-only: changes nothing.
+source "$(dirname "$0")/_common.sh"
+ops_log "status"
+printf 'Commit: %s\n' "$(git rev-parse --short HEAD)"
+printf 'Maintenance mode: %s\n' "$(test -f storage/framework/down && echo on || echo off)"
+php artisan migrate:status --pending 2>/dev/null | tail -n 5 || true
+php artisan backup:check --no-alert || true
+printf 'Disk: %s\n' "$(df -h . | awk 'NR==2 {print $4 " free of " $2}')"
+url="$(php -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo rtrim(config("app.url"), "/");')"
+printf 'Health check: %s\n' "$(curl --silent --max-time 15 -o /dev/null -w '%{http_code}' "$url/up" || echo 'no answer')"

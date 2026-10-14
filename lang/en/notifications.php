@@ -34,4 +34,25 @@ return [
         'line' => ':customer declined estimate :number (:total) online.',
         'reason' => 'Reason: :reason',
     ],
+    'alert' => [
+        'open' => 'Open',
+    ],
+
+    'page' => [
+        'title' => 'Notifications',
+        'description' => 'Bookings from the website bot, backup problems and other notices.',
+        'empty' => 'No notifications yet.',
+        'mark_read' => 'Mark all as read',
+        'open' => 'Open',
+        'push_title' => 'Notifications on this phone',
+        'push_hint' => 'Get a notification on this phone or computer even when the app is closed.',
+        'push_enable' => 'Turn on',
+        'push_disable' => 'Turn off on this device',
+        'push_on' => 'On for this device.',
+        'push_blocked' => 'Notifications are blocked in this browser. Allow them in the browser or phone settings.',
+        'push_unsupported' => 'This browser cannot show notifications. On iPhone, add the app to the Home Screen first.',
+        'push_unavailable' => 'Push notifications are not set up on the server yet.',
+        'push_failed' => 'Notifications could not be turned on. Try again.',
+        'devices' => '{0} No devices|{1} 1 device|[2,*] :count devices',
+    ],
 ];

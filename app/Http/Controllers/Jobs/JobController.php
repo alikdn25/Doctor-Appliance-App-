@@ -37,7 +37,6 @@ use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\SupplierReceipt;
 use App\Models\User;
-use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\CostAccess;
 use App\Support\Billing\JobProfit;
@@ -524,7 +523,7 @@ class JobController extends Controller
         return to_route('jobs.show', $job);
     }
 
-    public function destroy(Request $request, ServiceJob $job, AuditLogger $audit): RedirectResponse
+    public function destroy(Request $request, ServiceJob $job): RedirectResponse
     {
         Gate::authorize('delete', $job);
 
@@ -540,7 +539,6 @@ class JobController extends Controller
             $job->forceFill(['deleted_by' => $request->user()->id])->save();
             $job->delete();
         });
-        $audit->record('job.deleted', $job, ['number' => $job->number]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.deleted_restorable', ['days' => ServiceJob::RESTORE_DAYS])]);
 
@@ -577,7 +575,7 @@ class JobController extends Controller
         ]);
     }
 
-    public function restore(ServiceJob $job, AuditLogger $audit): RedirectResponse
+    public function restore(ServiceJob $job): RedirectResponse
     {
         Gate::authorize('restore', $job);
 
@@ -585,7 +583,6 @@ class JobController extends Controller
             $job->restore();
             $job->forceFill(['deleted_by' => null])->save();
         });
-        $audit->record('job.restored', $job, ['number' => $job->number]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.restored', ['number' => $job->number])]);
 
