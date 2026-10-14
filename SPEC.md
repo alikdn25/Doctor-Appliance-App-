@@ -28,7 +28,8 @@ assumes a particular country.
   (labels and order of state/province/county and ZIP/postal code) are company settings derived from the country.
 - **Phone numbers** are stored in **E.164** (+15551234567). Numbers typed without a country code are read as numbers
   of the company's country.
-- **All UI strings** live in translation files; English is the default (and the only language in v1).
+- **All UI strings** live in translation files; English is the default (and the only language in v1). The spelling
+  follows the company's regional format: American for en-US (Labor, Check), Commonwealth elsewhere (Labour, Cheque).
 
 ### 1.2 Verticals
 

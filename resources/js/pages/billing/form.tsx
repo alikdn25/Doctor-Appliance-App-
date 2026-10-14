@@ -349,7 +349,9 @@ export default function BillingForm({
 
         return found;
     };
-    const blocking = clientErrors();
+    const allBlocking = clientErrors();
+    // "Add at least one item" is a grey hint until the first Save; only then it turns into an error.
+    const { items: noItems, ...blocking } = allBlocking;
     const hasErrors =
         Object.keys(blocking).length > 0 || Object.keys(errors).length > 0;
 
@@ -364,8 +366,10 @@ export default function BillingForm({
 
         form.clearErrors();
 
-        if (Object.keys(blocking).length > 0) {
-            form.setError(blocking as Partial<Record<keyof FormData, string>>);
+        if (Object.keys(allBlocking).length > 0) {
+            form.setError(
+                allBlocking as Partial<Record<keyof FormData, string>>,
+            );
 
             return;
         }
@@ -892,6 +896,11 @@ export default function BillingForm({
                 </dl>
 
                 <div className="da-pinned fixed inset-x-0 bottom-0 z-30 flex flex-wrap gap-2 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+                    {!hasErrors && noItems && (
+                        <p className="w-full text-sm text-muted-foreground">
+                            {noItems}
+                        </p>
+                    )}
                     {hasErrors && (
                         <p
                             className="w-full text-sm font-medium text-destructive"

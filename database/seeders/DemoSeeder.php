@@ -256,10 +256,12 @@ class DemoSeeder extends Seeder
             'attributes' => ['scheduled_start' => $start->utc(), 'scheduled_end' => $start->addHours($hours)->utc(), 'estimated_duration_minutes' => 60],
             'assignee_ids' => array_map(fn (User $u) => $u->id, $people),
         ];
-        $job = fn (Customer $customer, array $attributes, ?array $visitData) => $saveJob->create(
+        // The appliance must match the problem (a fridge job on the fridge), so screenshots read right.
+        $job = fn (Customer $customer, array $attributes, ?array $visitData, ?string $applianceType = null) => $saveJob->create(
             $customer,
             ['brand_id' => $brand->id, 'property_id' => $customer->properties()->value('id'), 'job_type' => 'repair', ...$attributes],
-            $customer->appliances()->pluck('appliances.id')->take(1)->all(),
+            $customer->appliances()->when($applianceType, fn ($query) => $query->where('appliances.type', $applianceType))
+                ->pluck('appliances.id')->take(1)->all(),
             [],
             null,
             $visitData,
@@ -267,7 +269,7 @@ class DemoSeeder extends Seeder
         );
 
         $job($jane, ['lead_source' => 'google_business_profile', 'description' => 'Washer stops mid-cycle with OE error.', 'notes' => 'Customer works from home.'],
-            $visit($today->setTime(9, 0), 2, [$tech]));
+            $visit($today->setTime(9, 0), 2, [$tech]), 'washer');
 
         $parts = $job($pm, ['lead_source' => 'referral', 'description' => 'Dishwasher not draining.'],
             $visit($today->subDays(2)->setTime(13, 0), 2, [$tech]));
@@ -294,7 +296,7 @@ class DemoSeeder extends Seeder
             'notes' => 'Diagnostic fee credited when the repair is done.',
             'items' => [
                 ['description' => 'Drain pump (OEM)', 'quantity' => '1', 'unit_price' => 18950, 'taxable' => true],
-                ['description' => 'Labour: replace drain pump', 'quantity' => '1', 'unit_price' => 14000, 'taxable' => true],
+                ['description' => __('billing.kinds.service').': replace drain pump', 'quantity' => '1', 'unit_price' => 14000, 'taxable' => true],
                 ['description' => 'Diagnostic fee credit', 'quantity' => '1', 'unit_price' => -9500, 'taxable' => true],
             ],
         ], $tech);
@@ -303,6 +305,6 @@ class DemoSeeder extends Seeder
 
         // The owner goes on calls too.
         $job($jane, ['lead_source' => 'repeat_customer', 'description' => 'Fridge not cooling.'],
-            $visit($today->setTime(13, 0), 2, [$owner]));
+            $visit($today->setTime(13, 0), 2, [$owner]), 'refrigerator');
     }
 }

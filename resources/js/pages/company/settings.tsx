@@ -77,6 +77,7 @@ type Props = {
     warrantyUnits: Option[];
     paymentProviders: Option[];
     providerConnections: ProviderConnection[];
+    providersComingSoon: string[];
 };
 
 type ProviderConnection = {
@@ -100,6 +101,7 @@ export default function CompanySettingsPage({
     warrantyUnits,
     paymentProviders,
     providerConnections,
+    providersComingSoon,
 }: Props) {
     const t = useTrans();
     const form = useForm<
@@ -869,11 +871,23 @@ export default function CompanySettingsPage({
                     <p className="text-sm text-muted-foreground">
                         {t('payments.connect.hint')}
                     </p>
-                    {providerConnections.length === 0 && (
-                        <p className="text-sm text-muted-foreground">
-                            {t('payments.connect.none_available')}
-                        </p>
-                    )}
+                    {providerConnections.length === 0 &&
+                        (providersComingSoon.length > 0 ? (
+                            providersComingSoon.map((provider) => (
+                                <p
+                                    key={provider}
+                                    className="text-sm text-muted-foreground"
+                                >
+                                    {t('payments.connect.coming_soon', {
+                                        provider,
+                                    })}
+                                </p>
+                            ))
+                        ) : (
+                            <p className="text-sm text-muted-foreground">
+                                {t('payments.connect.none_available')}
+                            </p>
+                        ))}
                     {providerConnections.map((provider) => (
                         <div
                             key={provider.key}

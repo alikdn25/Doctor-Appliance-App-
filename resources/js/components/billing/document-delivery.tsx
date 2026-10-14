@@ -1,7 +1,8 @@
 import { router, useForm } from '@inertiajs/react';
-import { Download, Eye, Mail, MessageSquare, Send } from 'lucide-react';
+import { Copy, Download, Eye, Mail, MessageSquare, Send } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { ReviewPromptDialog } from '@/components/billing/review-prompt';
 import { FormField } from '@/components/form-field';
 import { Button } from '@/components/ui/button';
@@ -99,6 +100,19 @@ export function DocumentDelivery({
         window.location.href = smsUrl(sms.phone, sms.text);
     };
 
+    const copyLink = async () => {
+        if (!delivery.public_url) {
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(delivery.public_url);
+            toast.success(t('documents.link_copied'));
+        } catch {
+            window.prompt(t('documents.copy_link'), delivery.public_url);
+        }
+    };
+
     const submit = (e: FormEvent) => {
         e.preventDefault();
         form.post(delivery.send_url, {
@@ -161,17 +175,15 @@ export function DocumentDelivery({
                 </p>
             )}
             {delivery.public_url && (
-                <p className="truncate text-xs text-muted-foreground">
-                    {t('documents.online_link')}:{' '}
-                    <a
-                        href={delivery.public_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline"
-                    >
-                        {delivery.public_url}
-                    </a>
-                </p>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-11 text-muted-foreground"
+                    onClick={copyLink}
+                >
+                    <Copy /> {t('documents.copy_link')}
+                </Button>
             )}
 
             <Dialog open={open} onOpenChange={setOpen}>

@@ -119,7 +119,9 @@ test('my jobs: day with arrows, Completed, + Trip, card with Navigate, Call and 
     await tech.goto('http://127.0.0.1:8000/my-jobs');
     const today = tech.getByRole('link', { name: 'Today', exact: true });
     await expect(today).toBeVisible();
-    await expect(tech.getByRole('link', { name: 'Completed' })).toBeVisible();
+    await expect(
+        tech.getByRole('link', { name: 'Completed', exact: true }),
+    ).toBeVisible();
     await expect(tech.getByRole('button', { name: '+ Trip' })).toBeVisible();
     await expect(tech.getByRole('link', { name: 'Upcoming' })).toHaveCount(0);
 

@@ -23,14 +23,11 @@ export function ScreenHeader({
     subtitle,
     back,
     actions,
-    own = true,
 }: {
     title: string;
     subtitle?: string;
     back?: NonNullable<InertiaLinkProps['href']>;
     actions?: ReactNode;
-    /** Mockup screens with their own header also hide the unfinished-jobs bar. */
-    own?: boolean;
 }) {
     const slot = useContext(ScreenHeaderSlot);
     const { toggleSidebar } = useSidebar();
@@ -41,9 +38,7 @@ export function ScreenHeader({
     }
 
     return createPortal(
-        <div
-            className={`flex w-full items-center gap-3 ${own ? 'da-screen-own' : ''}`}
-        >
+        <div className="flex w-full items-center gap-3">
             {back ? (
                 <Link
                     href={back}

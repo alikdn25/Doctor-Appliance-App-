@@ -115,9 +115,6 @@ export function PropertyFields({
 
     return (
         <div className="grid gap-3 sm:grid-cols-2">
-            <p className="text-xs text-muted-foreground sm:col-span-2">
-                {t('properties.address_hint')}
-            </p>
             {layout.map(([field, span, autoComplete]) =>
                 input(field, span, autoComplete),
             )}

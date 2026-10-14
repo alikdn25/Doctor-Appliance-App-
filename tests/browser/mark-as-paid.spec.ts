@@ -13,7 +13,7 @@ test('cash on site: Mark as paid from the job, then the review question and Comp
     await page.getByRole('button', { name: 'Add item' }).click();
     await page
         .getByRole('dialog')
-        .getByRole('button', { name: 'Labor', exact: true })
+        .getByRole('button', { name: 'Labour', exact: true })
         .click();
     await page
         .getByLabel('Description', { exact: true })

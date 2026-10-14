@@ -55,20 +55,9 @@ export default function Login({
                             </div>
 
                             <div className="grid gap-2">
-                                <div className="flex items-center">
-                                    <Label htmlFor="password">
-                                        {t('auth.fields.password')}
-                                    </Label>
-                                    {canResetPassword && (
-                                        <TextLink
-                                            href={request()}
-                                            className="ml-auto text-sm"
-                                            tabIndex={5}
-                                        >
-                                            {t('auth.login.forgot')}
-                                        </TextLink>
-                                    )}
-                                </div>
+                                <Label htmlFor="password">
+                                    {t('auth.fields.password')}
+                                </Label>
                                 <PasswordInput
                                     id="password"
                                     name="password"
@@ -78,6 +67,15 @@ export default function Login({
                                     placeholder={t('auth.fields.password')}
                                 />
                                 <InputError message={errors.password} />
+                                {canResetPassword && (
+                                    <TextLink
+                                        href={request()}
+                                        className="justify-self-start text-sm"
+                                        tabIndex={5}
+                                    >
+                                        {t('auth.login.forgot')}
+                                    </TextLink>
+                                )}
                             </div>
 
                             <div className="flex items-center space-x-3">

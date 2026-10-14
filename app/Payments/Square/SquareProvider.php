@@ -55,8 +55,12 @@ class SquareProvider implements PaymentProvider
 
     public function isAvailableFor(Company $company): bool
     {
-        return $this->client->isConfigured()
-            && in_array($company->country, (array) config('payments.square.countries', []), true);
+        return $this->client->isConfigured() && $this->servesCountry((string) $company->country);
+    }
+
+    public function servesCountry(string $country): bool
+    {
+        return in_array($country, (array) config('payments.square.countries', []), true);
     }
 
     public function isConnected(Company $company): bool

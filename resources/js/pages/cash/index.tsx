@@ -122,15 +122,15 @@ export default function CashIndex({
                         return (
                             <li
                                 key={p.id}
-                                className="flex items-center gap-3 p-3 text-sm"
+                                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 p-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto]"
                             >
                                 <Link
                                     href={index({ query: { user: p.id } })}
-                                    className="min-w-0 flex-1 font-medium hover:underline"
+                                    className="min-w-0 truncate font-medium hover:underline"
                                 >
                                     {p.name}
                                 </Link>
-                                <span className="tabular-nums">
+                                <span className="text-right tabular-nums">
                                     {entries.length === 0
                                         ? t('cash.nothing')
                                         : entries
@@ -142,6 +142,7 @@ export default function CashIndex({
                                 <Button
                                     variant="outline"
                                     size="sm"
+                                    className="col-span-2 justify-self-start sm:col-span-1"
                                     onClick={() => openFor(p)}
                                 >
                                     <Banknote /> {t('cash.record_deposit')}

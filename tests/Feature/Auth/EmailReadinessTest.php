@@ -83,7 +83,7 @@ test('profile email changes do not promise confirmation while mail is off', func
 
 test('password reset and resend do not claim to send unavailable mail', function () {
     $user = User::factory()->unverified()->create();
-    $this->get(route('login'))->assertInertia(fn (Assert $page) => $page->where('canResetPassword', false));
+    $this->get(route('login'))->assertInertia(fn (Assert $page) => $page->where('canResetPassword', true));
     $this->get(route('password.request'))->assertInertia(fn (Assert $page) => $page->where('emailAvailable', false));
     $this->post(route('password.email'), ['email' => $user->email])->assertSessionHasErrors('email');
     $this->actingAs($user)->post(route('verification.send'))->assertSessionHasErrors('email');

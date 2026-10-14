@@ -1,6 +1,4 @@
 import { useForm } from '@inertiajs/react';
-import { ArrowRightLeft, UserRoundPen } from 'lucide-react';
-import { useState } from 'react';
 import { FormField } from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,53 +21,49 @@ type Member = {
     is_active: boolean;
 };
 
+export type TransitionMode = 'transfer' | 'replace';
+
+/** Whether "Replace technician" applies: a company-only technician login that is still in use. */
+export function canReplace(member: Member): boolean {
+    return (
+        member.role === 'technician' &&
+        !member.email.endsWith('@retired.invalid')
+    );
+}
+
+/**
+ * "Transfer jobs" and "Replace technician" dialogs for one team member; opened from the member's "⋯" menu.
+ */
 export function MemberTransitions({
     member,
     members,
+    mode,
+    onClose,
 }: {
     member: Member;
     members: Member[];
+    mode: TransitionMode | null;
+    onClose: () => void;
 }) {
     const t = useTrans();
-    const [mode, setMode] = useState<'transfer' | 'replace' | null>(null);
     const form = useForm({
         replacement_id: '',
         name: '',
         password: '',
         password_confirmation: '',
     });
-    const show = (value: 'transfer' | 'replace') => {
+    const close = () => {
+        onClose();
         form.reset();
         form.clearErrors();
-        setMode(value);
     };
     return (
         <>
-            <Button
-                variant="outline"
-                className="h-11"
-                onClick={() => show('transfer')}
-            >
-                <ArrowRightLeft />
-                {t('team.transfer_jobs')}
-            </Button>
-            {member.role === 'technician' &&
-                !member.email.endsWith('@retired.invalid') && (
-                    <Button
-                        variant="outline"
-                        className="h-11"
-                        onClick={() => show('replace')}
-                    >
-                        <UserRoundPen />
-                        {t('team.replace_technician')}
-                    </Button>
-                )}
             <Dialog
                 open={mode !== null}
                 onOpenChange={(open) => {
                     if (!open) {
-                        setMode(null);
-                        form.reset();
+                        close();
                     }
                 }}
             >
@@ -101,10 +95,7 @@ export function MemberTransitions({
                                     : transferJobs(member.id).url,
                                 {
                                     preserveScroll: true,
-                                    onSuccess: () => {
-                                        setMode(null);
-                                        form.reset();
-                                    },
+                                    onSuccess: close,
                                     onFinish: () =>
                                         form.reset(
                                             'password',

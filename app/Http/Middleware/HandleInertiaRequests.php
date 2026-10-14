@@ -62,7 +62,8 @@ class HandleInertiaRequests extends Middleware
                     ? SmsInbox::unreadCount($user)
                     : null;
             }),
-            'translations' => Inertia::once(fn () => Translations::forLocale(app()->getLocale())),
+            // Keyed by locale, so a change of the company's regional format (Labor / Labour) reaches the browser.
+            'translations' => Inertia::once(fn () => Translations::forLocale(app()->getLocale()))->as('translations.'.app()->getLocale()),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

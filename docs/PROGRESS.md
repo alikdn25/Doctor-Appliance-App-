@@ -1,3 +1,53 @@
+# October 14 — UX redesign, phase 1: P0 fixes
+
+The owner's UX audit and redesign brief is in [UX-REDESIGN.md](UX-REDESIGN.md) (13 phases, one PR each). Phase 1 fixes
+the bugs, leaks and SPEC contradictions of its section 3, without redesigning screens.
+
+1. **Cash on hand**: each person is a grid row (name truncates · amount · action); on a phone the button goes under
+   the name, so names no longer run over "No cash on hand".
+2. **Team**: one row per member (name, role badge, email truncated, brands); Edit, Transfer jobs, Replace technician,
+   Resend invitation and Remove are in a "⋯" menu (`MemberTransitions` is now a controlled dialog).
+3. **Calendar → Map** without a key: "Map is unavailable right now. Jobs and directions are listed below." Server
+   details (`GOOGLE_MAPS_*`, DEPLOYMENT.md) are shown only to the platform admin.
+4. **Invoice / estimate**: the raw customer URL is replaced with a "Copy customer link" button and a toast. Links are
+   built with `route()` from the request host, so production links use the real domain.
+5. **Log in**: "Forgot your password?" is always shown, under the password field; the recovery page already explains
+   when mail is unavailable (SPEC §10).
+6. **Settings → Payments**: in a country Square serves but with no Square keys on the server, the text is "Card
+   payments with Square are coming soon. Record payments by hand for now." (`PaymentProvider::servesCountry`,
+   `PaymentProviders::comingSoonFor`). Countries Square does not serve keep "not available in your country yet".
+7. **Warranty settings**: "Labour and materials" → "Labour" / "Labor" (materials carry no warranty).
+8. **Credits and discounts** (lines priced below zero) show and print no warranty (`IsBillingLine::hasWarranty`).
+9. **Accept cash payments** hint: "Technicians can record cash payments."
+10. **Reports**: plural counts ("1 invoice", "1 estimate").
+11. **Reports**: the two bases are named — "Revenue · invoices issued" with "Based on N invoices issued in this
+    period", and "Profit · jobs closed" with "Based on N jobs closed in this period"; the profit table says "Revenue of
+    closed jobs (without taxes)". Calculations unchanged.
+12. **No roadmap in the UI**: "Address autocomplete comes later" and "comes with the price book" removed (also the
+    unused "Coming in a later update." strings).
+13. **Confirm password**: "Confirm your password to continue.", Confirm + Cancel (back, or the profile).
+14. **Dates**: appliance dates and the admin company list use the company's regional format (no `2027-10-09`).
+    Native date inputs keep the browser's format.
+15. **New invoice**: "Add at least one item." is a grey hint until the first Save, then an error; Save is no longer
+    disabled by it.
+16. **Spelling by regional format**: en-US (and US territories) reads Labor / Check; every other regional format
+    reads Labour / Cheque. `App\Support\Locale\Spelling` maps the company's regional format to the translation
+    locale (`en` or `en_GB`, an overlay of only the respelled keys in `lang/en_GB`); `CurrentCompany` switches it with
+    the company, and each queued job starts on the default. The default "Labor (per hour)" service of a new company
+    follows the same rule (existing services keep their names).
+17. **Unfinished-jobs bar** is shown on every screen, including Jobs and My Jobs (it was hidden on screens with their
+    own header).
+18. **Demo data**: the fridge job is on the fridge, the washer job on the washer.
+
+- Tests: `tests/Feature/UxP0FixesTest.php` (spelling per regional format, default service names, no warranty on
+  credits), Square "coming soon" in `SquareTest`, recovery link in `EmailReadinessTest`; browser
+  `tests/browser/ux-p0.spec.ts` (login link, map text, Copy customer link, team "⋯", cash row, plain settings
+  texts, new-invoice hint, bar on Jobs) with phone and desktop screenshots. Existing browser scenarios now use the
+  Canadian spelling of the fixture company ("Labour").
+- `doctor-appliance-screens.html` is not in this repository, so it was not rebuilt; the Playwright report holds the
+  screenshots of each phase.
+- Next: phase 2 — design tokens and the UI kit (UX-REDESIGN.md §4, §16.1).
+
 # October 9 — support access 403, trip navigation, My Jobs empty days
 
 - **Support access 403**: "Return to admin" pressed twice (or in an old tab) and admin pages left open while support

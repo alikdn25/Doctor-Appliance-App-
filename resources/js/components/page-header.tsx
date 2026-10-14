@@ -27,7 +27,6 @@ export function PageHeader({
                     title={title}
                     subtitle={description}
                     back={back}
-                    own={false}
                 />
                 {actions && (
                     <div className="mb-4 flex flex-wrap justify-end gap-2">

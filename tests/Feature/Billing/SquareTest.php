@@ -124,16 +124,22 @@ describe('connecting', function () {
         $this->get(route('company.settings.edit'))->assertInertia(fn (Assert $page) => $page
             ->where('providerConnections.0.key', 'square')
             ->where('providerConnections.0.connected', null)
+            ->where('providersComingSoon', [])
             ->where('paymentProviders', []));
 
         // Brazil: no Square; Stripe will be the provider there.
         $this->company->update(['country' => 'BR']);
-        $this->get(route('company.settings.edit'))->assertInertia(fn (Assert $page) => $page->where('providerConnections', []));
+        $this->get(route('company.settings.edit'))->assertInertia(fn (Assert $page) => $page
+            ->where('providerConnections', [])
+            ->where('providersComingSoon', []));
         $this->get(route('payment-providers.connect', 'square'))->assertNotFound();
 
         $this->company->update(['country' => 'CA']);
         config(['services.square.application_id' => null]);
-        $this->get(route('company.settings.edit'))->assertInertia(fn (Assert $page) => $page->where('providerConnections', []));
+        // Canada is served by Square, the installation just has no keys yet: "coming soon", not "not in your country".
+        $this->get(route('company.settings.edit'))->assertInertia(fn (Assert $page) => $page
+            ->where('providerConnections', [])
+            ->where('providersComingSoon', ['Square']));
     });
 
     test('the Owner connects the company\'s own Square account with OAuth', function () {

@@ -54,6 +54,19 @@ class PaymentProviders
     }
 
     /**
+     * Providers that serve the company's country but are not set up on this installation yet.
+     *
+     * @return array<string, PaymentProvider>
+     */
+    public function comingSoonFor(Company $company): array
+    {
+        return array_filter(
+            $this->all(),
+            fn (PaymentProvider $provider) => ! $provider->isAvailableFor($company) && $provider->servesCountry((string) $company->country),
+        );
+    }
+
+    /**
      * Providers the company can pick as its online payment provider: available and connected.
      *
      * @return list<array{value: string, label: string}>

@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, router } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
@@ -6,9 +6,18 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useTrans } from '@/lib/i18n';
 import { store } from '@/routes/password/confirm';
+import { edit } from '@/routes/profile';
 
 export default function ConfirmPassword() {
     const t = useTrans();
+    // Back to where the person came from; a direct visit goes to the profile instead of a dead end.
+    const cancel = () => {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            router.visit(edit());
+        }
+    };
 
     return (
         <>
@@ -32,14 +41,22 @@ export default function ConfirmPassword() {
                             <InputError message={errors.password} />
                         </div>
 
-                        <div className="flex items-center">
+                        <div className="grid gap-2">
                             <Button
-                                className="w-full"
+                                className="h-11 w-full"
                                 disabled={processing}
                                 data-test="confirm-password-button"
                             >
                                 {processing && <Spinner />}
                                 {t('auth.confirm.submit')}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                className="h-11 w-full"
+                                onClick={cancel}
+                            >
+                                {t('auth.confirm.cancel')}
                             </Button>
                         </div>
                     </div>

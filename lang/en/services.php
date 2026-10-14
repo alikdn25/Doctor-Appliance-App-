@@ -3,7 +3,7 @@
 return [
     'title' => 'Services',
     'description' => 'Your services and prices. The list started from your business type; change it as you like.',
-    'hint' => 'Prices are in :currency. Leave the price empty if it depends on the job. Picking services on estimate and invoice lines comes with the price book.',
+    'hint' => 'Prices are in :currency. Leave empty if it depends on the job.',
     'add' => 'Add service',
     'remove' => 'Remove service',
     'empty' => 'No services yet.',
@@ -26,5 +26,8 @@ return [
         'unit_price' => 'Price',
         'taxable' => 'Taxable',
         'is_active' => 'Active',
+    ],
+    'defaults' => [
+        'labor_per_hour' => 'Labor (per hour)',
     ],
 ];

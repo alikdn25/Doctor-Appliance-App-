@@ -146,7 +146,6 @@ return [
     'text' => 'Text',
     'open_customer' => 'Open customer',
     'gate_code' => 'Gate / buzzer: :code',
-    'coming_soon' => 'Coming in a later update.',
     'created_by_on' => 'Created :date',
 
     'tabs' => [

@@ -24,7 +24,8 @@ return [
     'sent_on' => 'Sent to :email on :date',
     'viewed_on' => 'Viewed by the customer on :date',
     'no_email' => 'This customer has no email address yet. Type one here.',
-    'online_link' => 'Customer link',
+    'copy_link' => 'Copy customer link',
+    'link_copied' => 'Customer link copied.',
 
     'default_message' => [
         'estimate' => "Hi :name,\n\nThank you for choosing :brand. Please find estimate :number for :total attached. You can also view it online with the link below.\n\nKind regards,\n:brand",
