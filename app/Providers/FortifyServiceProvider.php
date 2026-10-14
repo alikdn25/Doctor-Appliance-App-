@@ -68,7 +68,8 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
             'canRegister' => Features::enabled(Features::registration()),
-            'canResetPassword' => AccountEmail::deliveryEnabled() && Features::enabled(Features::resetPasswords()),
+            // The recovery page itself explains when mail is unavailable, so the link is always shown.
+            'canResetPassword' => Features::enabled(Features::resetPasswords()),
             'status' => $request->session()->get('status'),
         ]));
 

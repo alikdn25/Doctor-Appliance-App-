@@ -35,6 +35,11 @@ interface PaymentProvider
     public function isAvailableFor(Company $company): bool;
 
     /**
+     * Whether the provider serves companies in this country (ISO 3166-1 alpha-2), configured here or not yet.
+     */
+    public function servesCountry(string $country): bool;
+
+    /**
      * Whether the company has finished connecting its own account (e.g. OAuth done).
      */
     public function isConnected(Company $company): bool;

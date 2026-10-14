@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { create, index, show } from '@/routes/admin/companies';
 
@@ -44,6 +45,7 @@ export default function AdminCompaniesIndex({
     tzdata: Tzdata;
 }) {
     const t = useTrans();
+    const time = useCompanyTime();
     const [search, setSearch] = useState(filters.search);
 
     const submit = (e: FormEvent) => {
@@ -151,7 +153,7 @@ export default function AdminCompaniesIndex({
                                         )}
                                         {company.subscription_status &&
                                             ` · ${company.subscription_status}`}
-                                        {` · ${company.created_at}`}
+                                        {` · ${time.dateOnly(company.created_at)}`}
                                     </div>
                                 </div>
                                 <ChevronRight className="size-4 text-muted-foreground" />

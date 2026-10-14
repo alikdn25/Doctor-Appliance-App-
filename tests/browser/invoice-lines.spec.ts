@@ -10,8 +10,8 @@ test('one "Add item" sheet adds labor, part and material rows whose prices add u
 }) => {
     await page.goto(`/jobs/${fixture.job_id}/invoices/create`);
 
-    // The old type switch and the three "+ Labor / Part / Material" buttons are gone.
-    await expect(page.getByRole('button', { name: 'Labor' })).toHaveCount(0);
+    // The old type switch and the three "+ Labour / Part / Material" buttons are gone (Canadian spelling).
+    await expect(page.getByRole('button', { name: 'Labour' })).toHaveCount(0);
 
     const addItem = async (kind: string, name: string, price: string) => {
         await page.getByRole('button', { name: 'Add item' }).click();
@@ -33,7 +33,7 @@ test('one "Add item" sheet adds labor, part and material rows whose prices add u
         await page.getByRole('button', { name: 'Done' }).click();
     };
 
-    await addItem('Labor', 'Diagnosis and repair', '100');
+    await addItem('Labour', 'Diagnosis and repair', '100');
     await addItem('Part', 'Drain pump', '150');
     await addItem('Material', 'Hose clamp', '10');
 
@@ -85,7 +85,7 @@ test('a tax set for parts and materials skips labor until ticked on the line', a
     await dialog.locator('#name').fill(name);
     await dialog.locator('#rate').fill('10');
     await dialog
-        .getByRole('checkbox', { name: 'Labor', exact: true })
+        .getByRole('checkbox', { name: 'Labour', exact: true })
         .uncheck();
     await dialog
         .getByRole('checkbox', {
@@ -97,7 +97,7 @@ test('a tax set for parts and materials skips labor until ticked on the line', a
 
     await page.goto(`/jobs/${fixture.job_id}/invoices/create`);
     for (const [kind, label] of [
-        ['Labor', 'Repair labor'],
+        ['Labour', 'Repair labor'],
         ['Part', 'Door switch'],
     ]) {
         await page.getByRole('button', { name: 'Add item' }).click();

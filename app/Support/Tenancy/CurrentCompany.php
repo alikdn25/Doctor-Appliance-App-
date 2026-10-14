@@ -3,11 +3,13 @@
 namespace App\Support\Tenancy;
 
 use App\Models\Company;
+use App\Support\Locale\Spelling;
 use Closure;
 
 /**
  * Holds the company (tenant) the current request or job runs for.
  * Registered as a scoped singleton, so it resets between requests and queued jobs.
+ * The translation locale follows the company's regional format (Labor / Labour spelling, see Spelling).
  */
 class CurrentCompany
 {
@@ -16,6 +18,7 @@ class CurrentCompany
     public function set(?Company $company): void
     {
         $this->company = $company;
+        self::applyLocale($company);
     }
 
     public function get(): ?Company
@@ -36,6 +39,7 @@ class CurrentCompany
     public function forget(): void
     {
         $this->company = null;
+        self::applyLocale(null);
     }
 
     /**
@@ -50,11 +54,27 @@ class CurrentCompany
     {
         $previous = $this->company;
         $this->company = $company;
+        self::applyLocale($company);
 
         try {
             return $callback();
         } finally {
             $this->company = $previous;
+            self::applyLocale($previous);
+        }
+    }
+
+    private static function applyLocale(?Company $company): void
+    {
+        // Plain unit tests run without a booted application (no config, no translator).
+        if (! app()->bound('translator')) {
+            return;
+        }
+
+        $locale = Spelling::appLocale($company?->locale);
+
+        if (app()->getLocale() !== $locale) {
+            app()->setLocale($locale);
         }
     }
 }

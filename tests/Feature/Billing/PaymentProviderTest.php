@@ -39,6 +39,11 @@ class FakePaymentProvider implements PaymentProvider
         return true;
     }
 
+    public function servesCountry(string $country): bool
+    {
+        return true;
+    }
+
     public function isConnected(Company $company): bool
     {
         return true;

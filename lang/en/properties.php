@@ -17,7 +17,6 @@ return [
     'gate_code' => 'Gate / buzzer: :code',
     'site_contact' => 'On-site contact',
     'call_site_contact' => 'Call on-site contact',
-    'address_hint' => 'Enter the address manually. Address autocomplete comes later.',
 
     'fields' => [
         'label' => 'Label (e.g. Home, Rental)',

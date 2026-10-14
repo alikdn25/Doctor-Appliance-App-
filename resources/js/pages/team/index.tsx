@@ -1,9 +1,18 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Mail, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+    ArrowRightLeft,
+    Mail,
+    MoreHorizontal,
+    Pencil,
+    Plus,
+    Trash2,
+    UserRoundPen,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { FormField } from '@/components/form-field';
-import { MemberTransitions } from '@/components/member-transitions';
+import { canReplace, MemberTransitions } from '@/components/member-transitions';
+import type { TransitionMode } from '@/components/member-transitions';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +25,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
@@ -62,6 +78,10 @@ export default function TeamIndex({
     const t = useTrans();
     const [editing, setEditing] = useState<Member | null>(null);
     const [open, setOpen] = useState(false);
+    const [transition, setTransition] = useState<{
+        member: Member;
+        mode: TransitionMode;
+    } | null>(null);
 
     const form = useForm<MemberForm>({
         name: '',
@@ -156,29 +176,38 @@ export default function TeamIndex({
                     {members.map((member) => (
                         <li
                             key={member.id}
-                            className="flex flex-wrap items-center gap-3 px-4 py-3"
+                            className="flex items-center gap-3 px-4 py-3"
                         >
                             <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className="font-medium">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <span className="min-w-0 truncate font-medium">
                                         {member.name}
                                     </span>
-                                    <Badge variant="outline">
+                                    <Badge
+                                        variant="outline"
+                                        className="shrink-0"
+                                    >
                                         {member.role_label}
                                     </Badge>
                                     {!member.is_active && (
-                                        <Badge variant="secondary">
+                                        <Badge
+                                            variant="secondary"
+                                            className="shrink-0"
+                                        >
                                             {t('common.inactive')}
                                         </Badge>
                                     )}
                                     {member.invitation_pending &&
                                         emailAvailable && (
-                                            <Badge variant="secondary">
+                                            <Badge
+                                                variant="secondary"
+                                                className="shrink-0"
+                                            >
                                                 {t('team.invited')}
                                             </Badge>
                                         )}
                                 </div>
-                                <div className="text-xs break-words text-muted-foreground">
+                                <div className="truncate text-xs text-muted-foreground">
                                     {member.email.endsWith('@retired.invalid')
                                         ? t('team.retired_login')
                                         : member.email}{' '}
@@ -186,56 +215,90 @@ export default function TeamIndex({
                                 </div>
                             </div>
                             {member.can_manage && (
-                                <div className="flex flex-wrap gap-2">
-                                    <MemberTransitions
-                                        member={member}
-                                        members={members}
-                                    />
-                                    {member.invitation_pending && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="size-10"
-                                            aria-label={t(
-                                                'team.resend_invitation',
-                                            )}
-                                            title={t('team.resend_invitation')}
-                                            onClick={() =>
-                                                router.post(
-                                                    resendInvitation(member.id)
-                                                        .url,
-                                                    {},
-                                                    { preserveScroll: true },
-                                                )
+                                            className="size-11 shrink-0"
+                                            aria-label={t('team.actions', {
+                                                name: member.name,
+                                            })}
+                                        >
+                                            <MoreHorizontal />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            onSelect={() => openEdit(member)}
+                                        >
+                                            <Pencil /> {t('common.edit')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onSelect={() =>
+                                                setTransition({
+                                                    member,
+                                                    mode: 'transfer',
+                                                })
                                             }
                                         >
-                                            <Mail />
-                                        </Button>
-                                    )}
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-10"
-                                        aria-label={t('common.edit')}
-                                        onClick={() => openEdit(member)}
-                                    >
-                                        <Pencil />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-10"
-                                        aria-label={t('common.remove')}
-                                        onClick={() => remove(member)}
-                                    >
-                                        <Trash2 />
-                                    </Button>
-                                </div>
+                                            <ArrowRightLeft />{' '}
+                                            {t('team.transfer_jobs')}
+                                        </DropdownMenuItem>
+                                        {canReplace(member) && (
+                                            <DropdownMenuItem
+                                                onSelect={() =>
+                                                    setTransition({
+                                                        member,
+                                                        mode: 'replace',
+                                                    })
+                                                }
+                                            >
+                                                <UserRoundPen />{' '}
+                                                {t('team.replace_technician')}
+                                            </DropdownMenuItem>
+                                        )}
+                                        {member.invitation_pending && (
+                                            <DropdownMenuItem
+                                                onSelect={() =>
+                                                    router.post(
+                                                        resendInvitation(
+                                                            member.id,
+                                                        ).url,
+                                                        {},
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    )
+                                                }
+                                            >
+                                                <Mail />{' '}
+                                                {t('team.resend_invitation')}
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            variant="destructive"
+                                            onSelect={() => remove(member)}
+                                        >
+                                            <Trash2 /> {t('common.remove')}
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             )}
                         </li>
                     ))}
                 </ul>
             </div>
+
+            {transition && (
+                <MemberTransitions
+                    member={transition.member}
+                    members={members}
+                    mode={transition.mode}
+                    onClose={() => setTransition(null)}
+                />
+            )}
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-md">

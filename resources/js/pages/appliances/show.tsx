@@ -66,12 +66,14 @@ export default function ApplianceShow({
         }
     };
 
+    // Dates come as YYYY-MM-DD; show them in the company's regional format.
+    const plainDate = (ymd: string | null) => (ymd ? time.dateOnly(ymd) : null);
     const rows: [string, string | null][] = [
         ['model_number', appliance.model_number],
         ['serial_number', appliance.serial_number],
-        ['purchase_date', appliance.purchase_date],
-        ['install_date', appliance.install_date],
-        ['warranty_expires_on', appliance.warranty_expires_on],
+        ['purchase_date', plainDate(appliance.purchase_date)],
+        ['install_date', plainDate(appliance.install_date)],
+        ['warranty_expires_on', plainDate(appliance.warranty_expires_on)],
     ];
 
     return (

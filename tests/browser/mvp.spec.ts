@@ -99,7 +99,9 @@ test('an old unfinished repair remains in the backlog and map fallback keeps vis
     await screenshot(page, info, 'unfinished-jobs');
     await page.goto(`/calendar?view=map&date=${fixture.today}`);
     await expect(
-        page.getByText(/The map is off: no Google Maps key is set/),
+        page.getByText(
+            'Map is unavailable right now. Jobs and directions are listed below.',
+        ),
     ).toBeVisible();
     await expect(
         page.getByRole('button', {

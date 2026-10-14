@@ -411,9 +411,8 @@ body:has(.da-pinned) .da-tabbar {
     display: none;
 }
 
-/* A screen with its own header (ScreenHeader) replaces the default header content and the backlog bar,
-   as on the approved mockups. */
-.da-header:has(.da-header-slot > *) .da-header-default,
-body:has(.da-header-slot > .da-screen-own) .da-unfinished-bar {
+/* A screen with its own header (ScreenHeader) replaces the default header content. The unfinished-jobs bar
+   stays on every screen (SPEC §6). */
+.da-header:has(.da-header-slot > *) .da-header-default {
     display: none;
 }

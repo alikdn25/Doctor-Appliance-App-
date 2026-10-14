@@ -46,4 +46,5 @@ return [
         'super_admin' => 'Platform administrators cannot be added to a company.',
         'last_owner' => 'The company must keep at least one active Owner.',
     ],
+    'actions' => 'Actions for :name',
 ];

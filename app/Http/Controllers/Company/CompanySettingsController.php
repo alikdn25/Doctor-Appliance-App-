@@ -57,6 +57,11 @@ class CompanySettingsController extends Controller
                 'label' => $provider->label(),
                 'connected' => $provider->connectionSummary($company),
             ], $providers->availableFor($company))),
+            // Providers for the company's country that this installation has not set up yet ("coming soon").
+            'providersComingSoon' => array_values(array_map(
+                fn (PaymentProvider $provider) => $provider->label(),
+                $providers->comingSoonFor($company),
+            )),
             'timezones' => Timezones::options(),
             'currencies' => Currencies::options(),
             'countries' => Countries::options(),

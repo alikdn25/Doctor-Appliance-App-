@@ -83,7 +83,8 @@ return [
         'connected_as' => 'Connected: :account',
         'location' => 'Payments go to :location (:currency).',
         'invalid_state' => 'The connection could not be confirmed. Please try again.',
-        'none_available' => 'No online payment provider is available in your country yet. Stripe is coming next.',
+        'none_available' => 'No online payment provider is available in your country yet. Record payments by hand for now.',
+        'coming_soon' => 'Card payments with :provider are coming soon. Record payments by hand for now.',
     ],
 
     'square' => [

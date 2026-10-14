@@ -5,7 +5,9 @@ test('reports open on the profit of the month with day, week, month and year', a
 }) => {
     await page.goto('/reports');
     const profit = page.getByLabel('Profit', { exact: true });
-    await expect(profit).toContainText('Revenue (without taxes)');
+    await expect(profit).toContainText(
+        'Revenue of closed jobs (without taxes)',
+    );
     await expect(profit).toContainText('Margin');
 
     await page.getByRole('button', { name: 'Year', exact: true }).click();

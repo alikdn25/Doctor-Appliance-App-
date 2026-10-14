@@ -98,7 +98,7 @@ export function BusinessReport({ data }: { data: BusinessReportData }) {
                                     className="rounded-2xl border bg-card p-4"
                                 >
                                     <dt className="text-sm text-muted-foreground">
-                                        {t('reports.revenue')} ·{' '}
+                                        {t('reports.revenue_basis')} ·{' '}
                                         {total.currency}
                                     </dt>
                                     <dd className="text-xl font-semibold tabular-nums">
@@ -114,9 +114,11 @@ export function BusinessReport({ data }: { data: BusinessReportData }) {
                                                   total.average,
                                                   total.currency,
                                               )}
-                                        {' · '}
-                                        {total.invoices}{' '}
-                                        {t('reports.invoice_count')}
+                                    </dd>
+                                    <dd className="mt-1 text-xs text-muted-foreground">
+                                        {t('reports.revenue_based_on', {
+                                            count: total.invoices,
+                                        })}
                                     </dd>
                                 </div>
                             ))}
@@ -143,7 +145,9 @@ export function BusinessReport({ data }: { data: BusinessReportData }) {
                 <p className="text-sm text-muted-foreground">
                     {t('reports.conversion_count', {
                         approved: data.conversion.approved,
-                        estimates: data.conversion.estimates,
+                        estimates: t('reports.estimates_n', {
+                            count: data.conversion.estimates,
+                        }),
                     })}
                 </p>
             </section>

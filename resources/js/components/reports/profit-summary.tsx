@@ -68,7 +68,7 @@ export function ProfitSummary({
             <div className="grid grid-cols-2 gap-2">
                 <div className="da-card p-3">
                     <p className="text-xs text-muted-foreground">
-                        {t('reports.profit_summary.title')}
+                        {t('reports.profit_summary.basis')}
                     </p>
                     <p
                         className={cn(
@@ -79,6 +79,11 @@ export function ProfitSummary({
                         )}
                     >
                         {data.profit === null ? '—' : money(data.profit)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                        {t('reports.profit_summary.based_on', {
+                            count: data.jobs,
+                        })}
                     </p>
                 </div>
                 <div className="da-card p-3">

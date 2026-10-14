@@ -12,6 +12,7 @@ use App\Support\TimezoneDatabase;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -48,6 +49,10 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Event::listen(Logout::class, fn () => app(Impersonation::class)->finish());
+
+        // The translation locale follows the current company (CurrentCompany); a long-running worker starts
+        // every job on the default again, like the company context itself.
+        Event::listen(JobProcessing::class, fn () => app()->setLocale((string) config('app.fallback_locale')));
     }
 
     /**

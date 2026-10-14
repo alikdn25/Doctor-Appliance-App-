@@ -68,20 +68,24 @@ export function DayMap({
             .sort((a, b) => a.start_minutes - b.start_minutes || a.id - b.id);
     }, [visits, lanes, person]);
     const placed = stops.filter((visit) => visit.job.coordinates !== null);
-    const isOwner = auth.role?.value === 'owner';
-    // Say why there is no map, so the owner knows what to fix.
+    // Server configuration details are only for the platform admin who can fix them.
+    const isAdmin = auth.user?.is_super_admin === true;
     const mapProblem = !key
-        ? t(isOwner ? 'calendar.map_no_key_owner' : 'calendar.map_unavailable')
+        ? t(isAdmin ? 'calendar.map_no_key_admin' : 'calendar.map_unavailable')
         : state === 'rejected'
           ? t(
-                isOwner
-                    ? 'calendar.map_key_rejected_owner'
+                isAdmin
+                    ? 'calendar.map_key_rejected_admin'
                     : 'calendar.map_unavailable',
             )
           : state === 'unavailable'
             ? t('calendar.map_unavailable')
             : placed.length === 0
-              ? t('calendar.map_no_positions')
+              ? t(
+                    isAdmin
+                        ? 'calendar.map_no_positions_admin'
+                        : 'calendar.map_no_positions',
+                )
               : null;
     const addresses = stops
         .map((visit) => visit.job.address)
