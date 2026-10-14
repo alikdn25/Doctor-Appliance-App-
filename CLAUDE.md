@@ -20,6 +20,9 @@ Read `SPEC.md` before any task. It is the source of truth for scope and stages.
 - Do not ask permission for routine steps. When the work is done and tests pass: commit, push, open the PR and merge it
   into `main`. If the environment blocks the merge, say so in one line with the PR link ("press Merge").
 - Ask only real product questions (what the feature should do), never "should I open a PR / merge / continue?".
+- Merge a PR into `main` yourself when CI is green and there is no conflict, then go straight to the next stage.
+  Ask the owner first only before: database migrations, deleting data, changes to payments and billing, a production
+  deploy, changes to secrets and access.
 - This workspace has no server access. Grok Bot is the agent with server access (docs/SERVER_HANDOFF.md). When a
   change must reach the server (deploy, `.env`, migrations, workers), end the task with a ready-to-paste command block
   for Grok Bot: steps, checks to run on the live site, and what to report back.

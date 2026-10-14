@@ -58,6 +58,13 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Design tokens (UX-REDESIGN §4.2): semantic colours on top of the palette. */
+    --color-danger: var(--danger);
+    --color-success: var(--success);
+    --color-warning: var(--warning);
+    --color-navy: var(--navy);
+    --color-link: var(--link);
 }
 
 :root {
@@ -94,6 +101,123 @@
     --sidebar-accent-foreground: oklch(0.4 0.17 253);
     --sidebar-border: oklch(0.9 0.025 250);
     --sidebar-ring: oklch(0.87 0 0);
+
+    /* ---- Design tokens (UX-REDESIGN §4, docs/DESIGN.md). Volume is set here and used only through the
+       components (Button, IconButton, Card, chips, badges); screens never repeat these values. ---- */
+    --navy: #0f3270;
+    --link: #0a6cf5;
+    --danger: #d92d20;
+    --success: #079455;
+    --warning: #dc6803;
+    --now-line: #e11d48;
+
+    /* Highlight laid over a coloured gradient: light on top, a faint shade at the bottom. */
+    --gradient-highlight: linear-gradient(
+        180deg,
+        rgb(255 255 255 / 0.3) 0%,
+        rgb(255 255 255 / 0) 55%,
+        rgb(0 20 80 / 0.14) 100%
+    );
+    /* Primary accent: light (left) to dark (right). */
+    --gradient-primary-fill: linear-gradient(
+        90deg,
+        #4cbdfe 0%,
+        #1e8cfd 35%,
+        #0567f5 65%,
+        #0046cc 100%
+    );
+    --gradient-primary: var(--gradient-highlight), var(--gradient-primary-fill);
+    /* Raised white "cushion" (Secondary buttons, chips, tiles). */
+    --gradient-surface:
+        linear-gradient(
+            180deg,
+            rgb(255 255 255 / 0.95) 0%,
+            rgb(255 255 255 / 0) 55%,
+            rgb(0 36 73 / 0.05) 100%
+        ),
+        linear-gradient(90deg, #ffffff 0%, #e1eaf6 100%);
+    --gradient-card: linear-gradient(90deg, #ffffff 0%, #f3f7fd 100%);
+    --gradient-header: linear-gradient(180deg, #0f3270 0%, #0a2453 100%);
+    --gradient-danger:
+        linear-gradient(
+            180deg,
+            rgb(255 255 255 / 0.3) 0%,
+            rgb(255 255 255 / 0) 55%,
+            rgb(80 0 0 / 0.14) 100%
+        ),
+        linear-gradient(90deg, #ff7a6b 0%, #e5372a 55%, #b91c1c 100%);
+
+    /* Edges of a raised white shape, and the same shape pressed in. */
+    --shadow-raised:
+        inset 0 2px 1px #fff, inset 0 -3px 6px rgb(0 36 73 / 0.13),
+        inset 3px 0 5px rgb(255 255 255 / 0.9),
+        inset -4px 0 8px rgb(0 36 73 / 0.09), 0 0 0 1px rgb(0 36 73 / 0.07),
+        0 9px 16px -6px rgb(0 36 73 / 0.32), 0 2px 4px rgb(0 36 73 / 0.12);
+    --shadow-pressed:
+        inset 0 2px 4px rgb(0 36 73 / 0.16), 0 0 0 1px rgb(0 36 73 / 0.08),
+        0 2px 4px -2px rgb(0 36 73 / 0.2);
+    /* Edges of the coloured Primary shape; the glow below it belongs to Primary only. */
+    --shadow-primary-edges:
+        inset 0 2px 2px rgb(255 255 255 / 0.55),
+        inset 0 -4px 8px rgb(0 30 110 / 0.38),
+        inset 4px 0 8px rgb(255 255 255 / 0.22),
+        inset -5px 0 10px rgb(0 20 90 / 0.3);
+    --shadow-glow:
+        0 12px 20px -6px rgb(5 103 245 / 0.6), 0 3px 6px rgb(0 50 140 / 0.25);
+    --shadow-tertiary:
+        0 0 0 1px rgb(0 36 73 / 0.1), 0 2px 4px -2px rgb(0 36 73 / 0.18);
+    --shadow-card:
+        inset 0 1px 0 #fff, 0 2px 4px rgb(0 36 73 / 0.06),
+        0 14px 28px -8px rgb(0 36 73 / 0.16);
+    --shadow-sunken: inset 0 2px 4px rgb(16 42 79 / 0.08);
+    --shadow-badge:
+        inset 0 1px 1px rgb(255 255 255 / 0.7),
+        inset 0 -1px 2px rgb(0 36 73 / 0.1), 0 1px 3px rgb(0 36 73 / 0.16);
+
+    /* One status dictionary for badges, calendar blocks and filter chips (UX-REDESIGN §4.3):
+       --status-<key>-from → -to is the light gradient, -text the readable colour. */
+    --status-new-from: #f3faff;
+    --status-new-to: #b7e0ff;
+    --status-new-text: #075985;
+    --status-scheduled-from: #f3f5ff;
+    --status-scheduled-to: #b7c6ff;
+    --status-scheduled-text: #3730a3;
+    --status-on-the-way-from: #ebfdff;
+    --status-on-the-way-to: #a5f3fc;
+    --status-on-the-way-text: #155e75;
+    --status-in-progress-from: #fffbe9;
+    --status-in-progress-to: #ffe08a;
+    --status-in-progress-text: #92400e;
+    --status-waiting-for-parts-from: #fbf6ff;
+    --status-waiting-for-parts-to: #dfc0ff;
+    --status-waiting-for-parts-text: #6b21a8;
+    --status-waiting-for-customer-from: #fff8ee;
+    --status-waiting-for-customer-to: #ffd3a1;
+    --status-waiting-for-customer-text: #9a3412;
+    --status-on-hold-from: #f8fafc;
+    --status-on-hold-to: #cbd5e1;
+    --status-on-hold-text: #334155;
+    --status-completed-from: #ecfdf4;
+    --status-completed-to: #a3ffcf;
+    --status-completed-text: #065f46;
+    --status-invoiced-from: #ebfdfa;
+    --status-invoiced-to: #9fffed;
+    --status-invoiced-text: #115e59;
+    --status-paid-from: #dcfce7;
+    --status-paid-to: #86efac;
+    --status-paid-text: #14532d;
+    --status-cancelled-from: #f4f4f5;
+    --status-cancelled-to: #cccdd6;
+    --status-cancelled-text: #3f3f46;
+    --status-draft-from: #fafbfc;
+    --status-draft-to: #d1dcf0;
+    --status-draft-text: #334155;
+    --status-declined-from: #fff4f5;
+    --status-declined-to: #ffbcc1;
+    --status-declined-text: #9f1239;
+    --status-refunded-from: #f8f6ff;
+    --status-refunded-to: #cdc0ff;
+    --status-refunded-text: #5b21b6;
 }
 
 .dark {
@@ -152,50 +276,36 @@
  * by inner shadows, and the element sinks 2 px when pressed.
  */
 @layer components {
+    /* Secondary level: raised white cushion, no glow. */
     .da-raised {
-        background:
-            linear-gradient(
-                180deg,
-                rgb(255 255 255 / 0.95) 0%,
-                rgb(255 255 255 / 0) 55%,
-                rgb(0 36 73 / 0.05) 100%
-            ),
-            linear-gradient(90deg, #ffffff 0%, #e1eaf6 100%);
-        box-shadow:
-            inset 0 2px 1px #fff,
-            inset 0 -3px 6px rgb(0 36 73 / 0.13),
-            inset 3px 0 5px rgb(255 255 255 / 0.9),
-            inset -4px 0 8px rgb(0 36 73 / 0.09),
-            0 0 0 1px rgb(0 36 73 / 0.07),
-            0 9px 16px -6px rgb(0 36 73 / 0.32),
-            0 2px 4px rgb(0 36 73 / 0.12);
+        background: var(--gradient-surface);
+        box-shadow: var(--shadow-raised);
         color: #0f1b2d;
     }
 
+    /* Primary level: the one main action in view — full volume and the blue glow. */
     .da-primary {
-        background:
-            linear-gradient(
-                180deg,
-                rgb(255 255 255 / 0.3) 0%,
-                rgb(255 255 255 / 0) 55%,
-                rgb(0 20 80 / 0.14) 100%
-            ),
-            linear-gradient(
-                90deg,
-                #4cbdfe 0%,
-                #1e8cfd 35%,
-                #0567f5 65%,
-                #0046cc 100%
-            );
-        box-shadow:
-            inset 0 2px 2px rgb(255 255 255 / 0.55),
-            inset 0 -4px 8px rgb(0 30 110 / 0.38),
-            inset 4px 0 8px rgb(255 255 255 / 0.22),
-            inset -5px 0 10px rgb(0 20 90 / 0.3),
-            0 12px 20px -6px rgb(5 103 245 / 0.6),
-            0 3px 6px rgb(0 50 140 / 0.25);
+        background: var(--gradient-primary);
+        box-shadow: var(--shadow-primary-edges), var(--shadow-glow);
         color: #fff;
         text-shadow: 0 1px 2px rgb(0 30 90 / 0.45);
+    }
+    .da-primary:disabled,
+    .da-primary[aria-disabled='true'] {
+        box-shadow: var(--shadow-primary-edges);
+        filter: saturate(0.55);
+    }
+
+    /* Tertiary level: light volume — a thin edge and a faint shadow (Edit, Add discount, Add notes). */
+    .da-tertiary {
+        background: linear-gradient(180deg, #ffffff 0%, #f6f9fd 100%);
+        box-shadow: var(--shadow-tertiary);
+        color: var(--link);
+    }
+
+    /* Destructive level outside a confirmation: red text only (Delete, Void, Refund, Remove). */
+    .da-destructive-text {
+        color: var(--danger);
     }
 
     .da-soft {
@@ -216,53 +326,58 @@
         color: #0050d0;
     }
 
+    /* Destructive, filled: only on the confirm button of a confirmation dialog. */
     .da-danger {
-        background:
-            linear-gradient(
-                180deg,
-                rgb(255 255 255 / 0.28) 0%,
-                rgb(255 255 255 / 0) 55%,
-                rgb(80 0 0 / 0.14) 100%
-            ),
-            linear-gradient(90deg, #f87171 0%, #dc2626 55%, #b91c1c 100%);
+        background: var(--gradient-danger);
         box-shadow:
             inset 0 2px 2px rgb(255 255 255 / 0.45),
-            inset 0 -4px 8px rgb(110 0 0 / 0.35),
-            0 10px 18px -6px rgb(185 28 28 / 0.5);
+            inset 0 -4px 8px rgb(110 0 0 / 0.3),
+            0 6px 12px -6px rgb(120 20 20 / 0.45);
         color: #fff;
+        text-shadow: 0 1px 2px rgb(90 0 0 / 0.4);
     }
 
+    /* Pressing sinks the shape by 1 px and flattens its shadow (UX-REDESIGN §4.1). */
     .da-press {
         transition:
             transform 80ms,
+            box-shadow 80ms,
             filter 80ms;
     }
     .da-press:active:not(:disabled) {
-        transform: translateY(2px) scale(0.99);
+        transform: translateY(1px);
+    }
+    .da-raised.da-press:active:not(:disabled),
+    .da-soft.da-press:active:not(:disabled),
+    .da-tertiary.da-press:active:not(:disabled) {
+        box-shadow: var(--shadow-pressed);
+    }
+    .da-primary.da-press:active:not(:disabled) {
+        box-shadow:
+            var(--shadow-primary-edges),
+            0 4px 8px -4px rgb(5 103 245 / 0.5);
     }
     .da-press:hover:not(:disabled) {
         filter: brightness(1.03);
     }
 
     .da-card {
-        background: linear-gradient(90deg, #ffffff 0%, #f3f7fd 100%);
-        box-shadow:
-            inset 0 1px 0 #fff,
-            0 2px 4px rgb(0 36 73 / 0.06),
-            0 14px 28px -8px rgb(0 36 73 / 0.16);
+        background: var(--gradient-card);
+        box-shadow: var(--shadow-card);
         border-radius: 18px;
     }
 
+    /* Inputs are sunken, never raised. */
     .da-input {
         background: linear-gradient(180deg, #f4f7fb 0%, #ffffff 40%);
-        box-shadow: inset 0 2px 4px rgb(16 42 79 / 0.08);
+        box-shadow: var(--shadow-sunken);
         border-color: #d5deea;
         border-radius: 14px;
     }
 
     .da-header {
         /* Deep navy of the approved mockups. */
-        background: linear-gradient(180deg, #0f3270 0%, #0a2453 100%);
+        background: var(--gradient-header);
         color: #fff;
     }
 
@@ -291,7 +406,13 @@
     }
 
     .da-chip {
-        background: linear-gradient(90deg, #ffffff 0%, #eaf0f8 100%);
+        background:
+            linear-gradient(
+                180deg,
+                rgb(255 255 255 / 0.95) 0%,
+                rgb(255 255 255 / 0) 60%
+            ),
+            linear-gradient(90deg, #ffffff 0%, #eaf0f8 100%);
         box-shadow:
             inset 0 1px 0 #fff,
             inset 0 -2px 4px rgb(0 36 73 / 0.08),
@@ -301,20 +422,7 @@
     .da-chip[aria-current='page'],
     .da-chip[aria-pressed='true'],
     .da-chip[data-state='on'] {
-        background:
-            linear-gradient(
-                180deg,
-                rgb(255 255 255 / 0.3) 0%,
-                rgb(255 255 255 / 0) 55%,
-                rgb(0 20 80 / 0.14) 100%
-            ),
-            linear-gradient(
-                90deg,
-                #4cbdfe 0%,
-                #1e8cfd 35%,
-                #0567f5 65%,
-                #0046cc 100%
-            );
+        background: var(--gradient-primary);
         color: #fff;
         text-shadow: 0 1px 1px rgb(0 0 0 / 0.25);
         box-shadow:
@@ -323,10 +431,34 @@
     }
 
     .da-badge {
+        box-shadow: var(--shadow-badge);
+    }
+
+    /* A status pill: light gradient of its status, readable text (StatusBadge sets --s). */
+    .da-status {
+        background: linear-gradient(
+            90deg,
+            var(--status-from, var(--status-draft-from)),
+            var(--status-to, var(--status-draft-to))
+        );
+        color: var(--status-text, var(--status-draft-text));
+        box-shadow: var(--shadow-badge);
+    }
+
+    /* Overdue is a red flag on top of any status, never a status of its own. */
+    .da-overdue {
+        background:
+            linear-gradient(
+                180deg,
+                rgb(255 255 255 / 0.25) 0%,
+                rgb(255 255 255 / 0) 60%
+            ),
+            linear-gradient(90deg, #ff7a6b 0%, #d92d20 100%);
+        color: #fff;
+        text-shadow: 0 1px 1px rgb(90 0 0 / 0.35);
         box-shadow:
-            inset 0 1px 1px rgb(255 255 255 / 0.7),
-            inset 0 -1px 2px rgb(0 36 73 / 0.1),
-            0 1px 3px rgb(0 36 73 / 0.16);
+            inset 0 1px 1px rgb(255 255 255 / 0.4),
+            0 1px 3px rgb(120 20 20 / 0.3);
     }
 
     .da-avatar {
@@ -398,6 +530,30 @@
     }
     .da-kind-material {
         background: linear-gradient(90deg, #94a3b8 0%, #64748b 100%);
+    }
+
+    /* A filter chip in alarm (Overdue): red edge, red text. */
+    .da-chip-danger:not([aria-pressed='true']) {
+        color: #c0261b;
+        box-shadow:
+            inset 0 1px 1px #fff,
+            inset 0 -2px 4px rgb(0 36 73 / 0.1),
+            0 0 0 1px rgb(217 45 32 / 0.35),
+            0 5px 10px -5px rgb(0 36 73 / 0.3);
+    }
+
+    /* Bottom sheet: rounded top, light surface, deep shadow. */
+    .da-sheet {
+        border-radius: 22px 22px 0 0;
+        background: linear-gradient(180deg, #ffffff 0%, #f6f9fd 100%);
+        box-shadow: 0 -12px 30px rgb(10 36 83 / 0.25);
+    }
+
+    /* Pinned action bar of inner screens. */
+    .da-action-bar {
+        background: #fff;
+        border-top: 1px solid #e1e8f2;
+        box-shadow: 0 -6px 18px rgb(16 42 79 / 0.08);
     }
 
     .da-tile[aria-pressed='true'] {

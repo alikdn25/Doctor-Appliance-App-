@@ -1,3 +1,32 @@
+# October 14 — UX redesign, phase 2: design tokens and the UI kit
+
+UX-REDESIGN.md §4 and §16.1 phase 2. The look follows the volumetric ux-preview mockups; where they differ, the
+document wins (button radius 14, status colours of §4.3).
+
+1. **Tokens** in `resources/css/app.css`: gradients (`--gradient-primary`, `--gradient-surface`, card, header,
+   danger), shadows (`--shadow-raised`, `--shadow-pressed`, `--shadow-glow`, card, sunken, badge), semantic colours
+   `--danger`, `--success`, `--warning` (also Tailwind `danger`, `success`, `warning`, `navy`, `link`) and the status
+   dictionary `--status-<tone>-from/-to/-text`. The existing `.da-*` classes now read the tokens.
+2. **Buttons — four levels**: Primary (only one glows), Secondary (raised, no glow), Tertiary (`tertiary`, `ghost`,
+   `link`), Destructive (red text; the filled red `destructiveSolid` only in confirmation dialogs: void invoice, turn
+   off two-factor). 48 px on a phone, 40 on a desktop, radius 14, pressing sinks 1 px with a flatter shadow, `loading`
+   spinner.
+3. **One status dictionary** (`lib/status.ts`): jobs, visits, estimates and invoices share one `StatusBadge` (colour +
+   icon + text) and the red `OverdueFlag`. Status colours changed to §4.3: on the way cyan, in progress amber, waiting
+   for customer orange, on hold slate, paid dark green. Estimate and invoice badges now have the same raised look.
+4. **UI kit** (`resources/js/components/ui`): IconButton, StatusBadge/OverdueFlag, AppBar, BottomNav, Fab, ListRow,
+   Section, bottom Sheet (rounded top, 44 px close), OverflowMenu, ConfirmDialog, toast with Undo, SearchField,
+   FilterChips, SegmentedControl, StickyActionBar, EmptyState, FormField, PhoneInput, AddressInput, TagInput,
+   EditableList, DateChips, TimeWindowChips (with an optional "Now" chip for §25), MoneyText, DateText. Screens adopt
+   them in the next phases.
+5. **`/dev/ui`**: every component in every state; registered only when `APP_ENV=local`.
+6. Sections 17–26 are assigned to phases in UX-REDESIGN.md §16.1.
+
+- Tests: `tests/Feature/UiKitTest.php` (the page never exists outside local), browser `tests/browser/ui-kit.spec.ts`
+  (only Primary glows, 48/40 px heights, distinct status colours, Overdue flag, confirmation, toast with Undo, bottom
+  sheet; phone and desktop screenshots).
+- Next: phase 3 — app frame and navigation (§5, §22, menu item of §23).
+
 # October 14 — Part A: data protection
 
 Owner's brief (October 14): part A (data protection) before part B (redesign phases 2–13 of UX-REDESIGN.md, each its

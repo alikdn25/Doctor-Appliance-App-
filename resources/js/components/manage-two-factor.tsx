@@ -63,7 +63,7 @@ export default function ManageTwoFactor(props: Props) {
                         <Form {...disable.form()}>
                             {({ processing }) => (
                                 <Button
-                                    variant="destructive"
+                                    variant="destructiveSolid"
                                     type="submit"
                                     disabled={processing}
                                 >
