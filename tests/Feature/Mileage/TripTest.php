@@ -7,11 +7,14 @@ use App\Models\Membership;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\Trip;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
+    // Midday in Vancouver: "+2 hours" in a test never crosses midnight into a new day of trips.
+    $this->travelTo(CarbonImmutable::parse('2026-10-14 18:00', 'UTC'));
     config(['services.google_maps.server_key' => 'server-key']);
     Http::fake([
         'maps.googleapis.com/maps/api/distancematrix/*' => Http::response([

@@ -23,12 +23,15 @@ export function VisitFields({
     errors,
     errorPrefix = '',
     assignableUsers,
+    hideTimes = false,
 }: {
     value: VisitFormValue;
     onChange: (patch: Partial<VisitFormValue>) => void;
     errors: Record<string, string | undefined>;
     errorPrefix?: string;
     assignableUsers: Assignable[];
+    /** The day and times are picked with chips above (job form "When"); only the rest is shown. */
+    hideTimes?: boolean;
 }) {
     const t = useTrans();
     const err = (field: string) =>
@@ -39,45 +42,53 @@ export function VisitFields({
 
     return (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <FormField
-                id={`${errorPrefix}date`}
-                label={t('jobs.visit_fields.date')}
-                error={err('date')}
-                className="col-span-2 sm:col-span-1"
-            >
-                <Input
-                    id={`${errorPrefix}date`}
-                    type="date"
-                    value={value.date}
-                    onChange={(e) => onChange({ date: e.target.value })}
-                />
-            </FormField>
-            <FormField
-                id={`${errorPrefix}start_time`}
-                label={t('jobs.visit_fields.start_time')}
-                error={err('start_time')}
-            >
-                <Input
-                    id={`${errorPrefix}start_time`}
-                    type="time"
-                    step={900}
-                    value={value.start_time}
-                    onChange={(e) => onChange({ start_time: e.target.value })}
-                />
-            </FormField>
-            <FormField
-                id={`${errorPrefix}end_time`}
-                label={t('jobs.visit_fields.end_time')}
-                error={err('end_time')}
-            >
-                <Input
-                    id={`${errorPrefix}end_time`}
-                    type="time"
-                    step={900}
-                    value={value.end_time}
-                    onChange={(e) => onChange({ end_time: e.target.value })}
-                />
-            </FormField>
+            {!hideTimes && (
+                <>
+                    <FormField
+                        id={`${errorPrefix}date`}
+                        label={t('jobs.visit_fields.date')}
+                        error={err('date')}
+                        className="col-span-2 sm:col-span-1"
+                    >
+                        <Input
+                            id={`${errorPrefix}date`}
+                            type="date"
+                            value={value.date}
+                            onChange={(e) => onChange({ date: e.target.value })}
+                        />
+                    </FormField>
+                    <FormField
+                        id={`${errorPrefix}start_time`}
+                        label={t('jobs.visit_fields.start_time')}
+                        error={err('start_time')}
+                    >
+                        <Input
+                            id={`${errorPrefix}start_time`}
+                            type="time"
+                            step={900}
+                            value={value.start_time}
+                            onChange={(e) =>
+                                onChange({ start_time: e.target.value })
+                            }
+                        />
+                    </FormField>
+                    <FormField
+                        id={`${errorPrefix}end_time`}
+                        label={t('jobs.visit_fields.end_time')}
+                        error={err('end_time')}
+                    >
+                        <Input
+                            id={`${errorPrefix}end_time`}
+                            type="time"
+                            step={900}
+                            value={value.end_time}
+                            onChange={(e) =>
+                                onChange({ end_time: e.target.value })
+                            }
+                        />
+                    </FormField>
+                </>
+            )}
             <FormField
                 id={`${errorPrefix}estimated_duration_minutes`}
                 label={t('jobs.visit_fields.estimated_duration_minutes')}

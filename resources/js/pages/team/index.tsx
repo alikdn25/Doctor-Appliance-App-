@@ -46,6 +46,7 @@ type Member = {
     role: string;
     role_label: string;
     is_active: boolean;
+    shows_in_calendar: boolean;
     brand_ids: number[];
     invitation_pending: boolean;
     is_self: boolean;
@@ -64,6 +65,7 @@ type MemberForm = {
     email: string;
     role: string;
     is_active: boolean;
+    shows_in_calendar: boolean;
     brand_ids: number[];
     password: string;
     password_confirmation: string;
@@ -88,6 +90,7 @@ export default function TeamIndex({
         email: '',
         role: 'technician',
         is_active: true,
+        shows_in_calendar: true,
         brand_ids: [],
         password: '',
         password_confirmation: '',
@@ -109,6 +112,7 @@ export default function TeamIndex({
             email: member.email,
             role: member.role,
             is_active: member.is_active,
+            shows_in_calendar: member.shows_in_calendar,
             brand_ids: member.brand_ids,
             password: '',
             password_confirmation: '',
@@ -457,6 +461,32 @@ export default function TeamIndex({
                                     }
                                 />
                                 {t('team.fields.is_active')}
+                            </label>
+                        )}
+
+                        {/* Goes on calls: offered as the technician when booking (UX-REDESIGN §7.1). */}
+                        {['owner', 'admin', 'technician'].includes(
+                            form.data.role,
+                        ) && (
+                            <label className="flex min-h-9 items-start gap-2 text-sm">
+                                <Checkbox
+                                    className="mt-0.5"
+                                    checked={form.data.shows_in_calendar}
+                                    onCheckedChange={(c) =>
+                                        form.setData(
+                                            'shows_in_calendar',
+                                            c === true,
+                                        )
+                                    }
+                                />
+                                <span>
+                                    <span className="block">
+                                        {t('team.fields.shows_in_calendar')}
+                                    </span>
+                                    <span className="block text-xs text-muted-foreground">
+                                        {t('team.shows_in_calendar_hint')}
+                                    </span>
+                                </span>
                             </label>
                         )}
 

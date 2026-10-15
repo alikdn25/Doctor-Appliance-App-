@@ -67,6 +67,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $payment_provider
  * @property bool $timezone_pending
  * @property array<string, array{closed: bool, open: string|null, close: string|null}>|null $business_hours
+ * @property list<array{start: string, end: string}>|null $arrival_windows
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -95,6 +96,7 @@ class Company extends Model
         'estimate_prefix',
         'estimate_next_number',
         'business_hours',
+        'arrival_windows',
         'travel_buffer_minutes',
         'estimate_valid_days',
         'estimate_followup_days',
@@ -173,6 +175,7 @@ class Company extends Model
             'sms_mode' => SmsMode::class,
             'message_templates' => 'array',
             'business_hours' => 'array',
+            'arrival_windows' => 'array',
             'invoice_next_number' => 'integer',
             'estimate_next_number' => 'integer',
             'job_next_number' => 'integer',
@@ -295,6 +298,34 @@ class Company extends Model
      *
      * @return array<string, array{closed: bool, open: string|null, close: string|null}>
      */
+    /**
+     * The arrival windows offered when booking (UX-REDESIGN §25): the company's own list, or 9–11, 11–1, 1–3, 3–5.
+     * Sorted by start; windows may overlap.
+     *
+     * @return list<array{start: string, end: string}>
+     */
+    public function arrivalWindows(): array
+    {
+        $own = is_array($this->arrival_windows) ? $this->arrival_windows : [];
+        $windows = $own !== [] ? $own : self::defaultArrivalWindows();
+        usort($windows, fn (array $a, array $b) => [$a['start'], $a['end']] <=> [$b['start'], $b['end']]);
+
+        return array_values($windows);
+    }
+
+    /**
+     * @return list<array{start: string, end: string}>
+     */
+    public static function defaultArrivalWindows(): array
+    {
+        return [
+            ['start' => '09:00', 'end' => '11:00'],
+            ['start' => '11:00', 'end' => '13:00'],
+            ['start' => '13:00', 'end' => '15:00'],
+            ['start' => '15:00', 'end' => '17:00'],
+        ];
+    }
+
     public static function defaultBusinessHours(): array
     {
         $hours = [];

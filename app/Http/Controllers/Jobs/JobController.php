@@ -45,6 +45,8 @@ use App\Support\Billing\JobProfit;
 use App\Support\Jobs\JobPresenter;
 use App\Support\PhoneNumber;
 use Carbon\CarbonImmutable;
+use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -53,6 +55,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use IntlDateFormatter;
 
 class JobController extends Controller
 {
@@ -265,6 +268,8 @@ class JobController extends Controller
             'today' => CarbonImmutable::now(currentCompany()->timezone)->format('Y-m-d'),
             // Company clock, so the booking form never suggests a window that has already passed.
             'nowTime' => CarbonImmutable::now(currentCompany()->timezone)->format('H:i'),
+            'arrivalWindows' => currentCompany()->arrivalWindows(),
+            ...($quick ? $this->bookingTechnicians() : []),
             ...$this->formOptions($request->user()),
         ]);
     }
@@ -282,11 +287,49 @@ class JobController extends Controller
             $request->bringItems(),
         );
 
+        $visit = $request->boolean('quick_booking') && ! $request->boolean('open_invoice') ? $job->visits()->first() : null;
+
+        // Booking (UX-REDESIGN §7.1): back to the day's schedule with "Booked #1005 · Tomorrow 9–11" and Open job.
+        if ($visit !== null) {
+            Inertia::flash('toast', [
+                'type' => 'success',
+                'message' => __('jobs.quick.booked', ['number' => $job->number, 'when' => self::bookedWhen($visit)]),
+                'action' => ['label' => __('jobs.quick.open_job'), 'url' => route('jobs.show', $job, false)],
+            ]);
+            $date = CarbonImmutable::parse($visit->scheduled_start)->setTimezone(currentCompany()->timezone)->toDateString();
+
+            return Gate::allows('dispatch', ServiceJob::class)
+                ? to_route('calendar', ['view' => 'day', 'date' => $date])
+                : to_route('jobs.mine', ['date' => $date]);
+        }
+
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.created', ['number' => $job->number])]);
 
         return $request->boolean('open_invoice')
             ? to_route('invoices.create', $job)
             : to_route('jobs.show', $job);
+    }
+
+    /**
+     * "Today 9–11 a.m.", "Tomorrow 1–3 p.m." or "Fri, Oct 16 9–11 a.m." in the company's time zone and format.
+     */
+    private static function bookedWhen(JobVisit $visit): string
+    {
+        $company = currentCompany();
+        $start = CarbonImmutable::parse($visit->scheduled_start)->setTimezone($company->timezone);
+        $end = CarbonImmutable::parse($visit->scheduled_end)->setTimezone($company->timezone);
+        $today = CarbonImmutable::now($company->timezone)->startOfDay();
+        // The wall-clock time is worked out by Carbon; ICU only spells it in the company's format (as UTC, so its
+        // own time-zone rules never shift the hour).
+        $wall = fn (CarbonImmutable $moment) => new DateTimeImmutable($moment->format('Y-m-d H:i:s'), new DateTimeZone('UTC'));
+        $day = match ((int) $today->diffInDays($start->startOfDay())) {
+            0 => __('jobs.quick.today'),
+            1 => __('jobs.quick.tomorrow'),
+            default => (new IntlDateFormatter($company->locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, 'UTC', null, 'EEE, MMM d'))->format($wall($start)),
+        };
+        $hours = new IntlDateFormatter($company->locale, IntlDateFormatter::NONE, IntlDateFormatter::SHORT, 'UTC');
+
+        return $day.' '.$hours->format($wall($start)).'–'.$hours->format($wall($end));
     }
 
     public function show(Request $request, ServiceJob $job): Response|RedirectResponse
@@ -601,16 +644,31 @@ class JobController extends Controller
         Gate::authorize('create', ServiceJob::class);
 
         $search = trim((string) $request->query('search', ''));
+        // Booking types the phone first: from 3 digits, only phone numbers are matched (not house numbers).
+        $digits = PhoneNumber::searchDigits($search);
+        $byPhone = $request->query('by') === 'phone';
 
-        $customers = $search === '' ? collect() : Customer::query()
-            ->search($search)
+        $customers = ($search === '' || ($byPhone && strlen($digits) < 3)) ? collect() : Customer::query()
+            ->when(
+                $byPhone,
+                fn (Builder $q) => $q->whereHas('phones', fn (Builder $p) => $p->where('number_normalized', 'like', "%{$digits}%")),
+                fn (Builder $q) => $q->search($search),
+            )
             ->with(['primaryPhone', 'properties.appliances'])
             ->orderBy('display_name')
             ->limit(8)
             ->get();
+        $jobCounts = ServiceJob::query()
+            ->whereIn('customer_id', $customers->pluck('id'))
+            ->selectRaw('customer_id, count(*) as total')
+            ->groupBy('customer_id')
+            ->pluck('total', 'customer_id');
 
         return response()->json([
-            'customers' => $customers->map(fn (Customer $c) => self::customerOption($c))->values(),
+            'customers' => $customers->map(fn (Customer $c) => [
+                ...self::customerOption($c),
+                'jobs_count' => (int) ($jobCounts[$c->id] ?? 0),
+            ])->values(),
         ]);
     }
 
@@ -701,6 +759,45 @@ class JobController extends Controller
      *
      * @return list<array{id: int, name: string, role: string}>
      */
+    /**
+     * Booking (UX-REDESIGN §7.1): the people who go on calls, and when each is busy over the next week, so the form
+     * can say "free" or "busy 9–11" for the chosen day and window, and "Now" can end at the next job.
+     *
+     * @return array{bookingTechnicians: list<array{id: int, name: string}>, busy: array<int, list<array{date: string, start: string, end: string}>>}
+     */
+    private function bookingTechnicians(): array
+    {
+        $timezone = currentCompany()->timezone;
+        $members = Membership::query()->inCalendar()->with('user')->get()
+            ->filter(fn (Membership $m) => $m->user !== null)
+            ->sortBy(fn (Membership $m) => mb_strtolower($m->user->name))
+            ->values();
+        $ids = $members->pluck('user_id')->all();
+        $from = CarbonImmutable::now($timezone)->startOfDay();
+
+        $busy = [];
+        JobVisit::query()
+            ->whereIn('status', [VisitStatus::Scheduled->value, VisitStatus::OnTheWay->value, VisitStatus::InProgress->value])
+            ->whereBetween('scheduled_start', [$from->utc(), $from->addDays(8)->utc()])
+            ->whereHas('assignees', fn (Builder $q) => $q->whereIn('users.id', $ids))
+            ->with('assignees')
+            ->orderBy('scheduled_start')
+            ->get()
+            ->each(function (JobVisit $visit) use (&$busy, $ids, $timezone) {
+                $start = CarbonImmutable::parse($visit->scheduled_start)->setTimezone($timezone);
+                $end = CarbonImmutable::parse($visit->scheduled_end)->setTimezone($timezone);
+
+                foreach ($visit->assignees->whereIn('id', $ids) as $user) {
+                    $busy[$user->id][] = ['date' => $start->toDateString(), 'start' => $start->format('H:i'), 'end' => $end->format('H:i')];
+                }
+            });
+
+        return [
+            'bookingTechnicians' => $members->map(fn (Membership $m) => ['id' => $m->user->id, 'name' => $m->user->name])->all(),
+            'busy' => $busy,
+        ];
+    }
+
     private function assignableUsers(): array
     {
         return Membership::query()

@@ -40,6 +40,11 @@ class CompanySettingsRequest extends FormRequest
             'estimate_next_number' => ['required', 'integer', 'min:1', 'max:999999999'],
             'business_hours' => ['required', 'array:'.implode(',', Company::WEEKDAYS)],
             'travel_buffer_minutes' => ['required', 'integer', 'min:0', 'max:240'],
+            // Arrival windows offered when booking (UX-REDESIGN §25): any number, may overlap.
+            'arrival_windows' => ['sometimes', 'array', 'min:1', 'max:16'],
+            'arrival_windows.*' => ['required', 'array:start,end'],
+            'arrival_windows.*.start' => ['required', 'date_format:H:i'],
+            'arrival_windows.*.end' => ['required', 'date_format:H:i', 'after:arrival_windows.*.start'],
             'distance_unit' => ['sometimes', Rule::in(['km', 'mi'])],
             'mileage_rate' => ['nullable', 'numeric', 'min:0', 'max:1000'],
             'estimate_valid_days' => ['nullable', 'integer', 'min:1', 'max:365'],
@@ -88,6 +93,17 @@ class CompanySettingsRequest extends FormRequest
                 'open' => $closed ? null : $data['business_hours'][$day]['open'],
                 'close' => $closed ? null : $data['business_hours'][$day]['close'],
             ];
+        }
+
+        if (isset($data['arrival_windows'])) {
+            $windows = collect($data['arrival_windows'])
+                ->map(fn (array $w) => ['start' => $w['start'], 'end' => $w['end']])
+                ->unique(fn (array $w) => $w['start'].'-'.$w['end'])
+                ->sortBy(fn (array $w) => $w['start'].'-'.$w['end'])
+                ->values()
+                ->all();
+            // The default list is kept as "not set", so later changes to the defaults still apply.
+            $data['arrival_windows'] = $windows === Company::defaultArrivalWindows() ? null : $windows;
         }
 
         // A time zone saved by the Owner is final; browser detection no longer applies.

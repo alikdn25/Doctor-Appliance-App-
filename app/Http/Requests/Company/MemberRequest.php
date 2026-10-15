@@ -41,6 +41,7 @@ class MemberRequest extends FormRequest
             'password' => [$creating ? 'nullable' : 'exclude', 'string', 'confirmed', Password::defaults()],
             'role' => ['required', Rule::enum(UserRole::class)->only($this->user()->hasRole(UserRole::Owner) ? UserRole::assignable() : [UserRole::Technician])],
             'is_active' => [$creating ? 'exclude' : 'required', 'boolean'],
+            'shows_in_calendar' => [$creating ? 'exclude' : 'sometimes', 'boolean'],
             'brand_ids' => ['array'],
             'brand_ids.*' => [
                 'integer',

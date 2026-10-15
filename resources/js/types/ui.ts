@@ -11,6 +11,8 @@ export type AppVariant = 'header' | 'sidebar';
 export type FlashToast = {
     type: 'success' | 'info' | 'warning' | 'error';
     message: string;
+    /** A button in the toast, e.g. "Open job" after booking. */
+    action?: { label: string; url: string };
 };
 
 export type AuthLayoutProps = {

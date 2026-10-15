@@ -31,9 +31,10 @@ test('visible menu and booking open the first visit directly from any working sc
     ).toBeVisible();
     await expect(page.locator('#booking-name')).toBeVisible();
     await expect(page.locator('#booking-phone')).toBeVisible();
-    await expect(page.locator('#booking-date')).toBeVisible();
+    await expect(page.locator('[data-slot="date-chips"]')).toBeVisible();
+    await expect(page.locator('[data-slot="time-window-chips"]')).toBeVisible();
     await expect(
-        page.getByRole('button', { name: 'Save booking', exact: true }),
+        page.getByRole('button', { name: 'Book', exact: true }),
     ).toBeDisabled();
     await page.goto('/calendar?date=2026-10-12');
     await page

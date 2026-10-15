@@ -1,5 +1,13 @@
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { Plus, Search, Trash2, UserPlus, X } from 'lucide-react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import {
+    ChevronDown,
+    Pencil,
+    Plus,
+    Search,
+    Trash2,
+    UserPlus,
+    X,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -19,10 +27,13 @@ import { VisitFields } from '@/components/jobs/visit-fields';
 import { CustomerAvatar } from '@/components/customers/customer-avatar';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { CustomerNotes } from '@/components/customers/customer-notes';
-import { PageHeader } from '@/components/page-header';
+import { ScreenHeader } from '@/components/screen-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DateChips } from '@/components/ui/date-chips';
+import { StickyActionBar } from '@/components/ui/sticky-action-bar';
+import { TimeWindowChips } from '@/components/ui/time-window-chips';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,6 +42,7 @@ import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
 import { duplicates } from '@/routes/customers';
 import { index, lookup, show, store, update } from '@/routes/jobs';
+import { JOB_DRAFT_KEY } from '@/pages/jobs/quick-book';
 import { warranties as jobWarranties } from '@/routes/jobs';
 import type { Option } from '@/types';
 
@@ -185,7 +197,12 @@ export default function JobForm({
     manufacturers,
     assignableUsers,
     visitTypes,
-}: Props) {
+    arrivalWindows = [],
+    nowTime = '00:00',
+}: Props & {
+    arrivalWindows?: { start: string; end: string }[];
+    nowTime?: string;
+}) {
     const t = useTrans();
     const time = useCompanyTime();
     const phoneText = usePhone();
@@ -198,6 +215,9 @@ export default function JobForm({
     const [search, setSearch] = useState('');
     const [results, setResults] = useState<CustomerOption[] | null>(null);
     const [searching, setSearching] = useState(false);
+    // Edit: the customer's own name and phone, and the address fields, open on request (UX-REDESIGN §7.3).
+    const [addressOpen, setAddressOpen] = useState(false);
+    const [customTime, setCustomTime] = useState(false);
     const [duplicate, setDuplicate] = useState<{
         display_name: string;
     } | null>(null);
@@ -264,6 +284,59 @@ export default function JobForm({
             strict_arrival: false,
         },
     });
+    // "Open full job form" on Book customer: what was typed there comes along.
+    useEffect(() => {
+        if (
+            editing ||
+            !new URLSearchParams(window.location.search).has('draft')
+        ) {
+            return;
+        }
+        try {
+            const draft = JSON.parse(
+                sessionStorage.getItem(JOB_DRAFT_KEY) ?? 'null',
+            ) as {
+                customer_id: number | null;
+                phone: string;
+                name: string;
+                description: string;
+                notes: string;
+                appliance_type: string;
+            } | null;
+            sessionStorage.removeItem(JOB_DRAFT_KEY);
+            if (!draft) return;
+            form.setData((d) => ({
+                ...d,
+                description: draft.description || d.description,
+                notes: draft.notes || d.notes,
+                ...(draft.customer_id
+                    ? {}
+                    : {
+                          new_customer_mode: true,
+                          new_customer: {
+                              ...d.new_customer,
+                              first_name: draft.name,
+                              phone: draft.phone,
+                          },
+                      }),
+                new_appliances: draft.appliance_type
+                    ? [
+                          {
+                              type: draft.appliance_type,
+                              manufacturer: '',
+                              model_number: '',
+                              serial_number: '',
+                          } as never,
+                      ]
+                    : d.new_appliances,
+            }));
+        } catch {
+            // A broken draft is ignored.
+        }
+        // Only when the form opens.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const followsUp = ['return_visit', 'callback'].includes(
         form.data.visit_type,
     );
@@ -540,9 +613,13 @@ export default function JobForm({
         <>
             <Head title={title} />
 
-            <form onSubmit={submit} className="max-w-3xl space-y-6 p-4">
-                <PageHeader title={title} />
+            <ScreenHeader title={title} back={job ? show(job.id) : index()} />
 
+            <form
+                onSubmit={submit}
+                className="mx-auto w-full max-w-3xl space-y-6 p-4"
+                data-test="job-form"
+            >
                 {/* Customer */}
                 <section className="space-y-3 rounded-lg border p-4">
                     <h2 className="text-base font-medium">
@@ -550,53 +627,103 @@ export default function JobForm({
                     </h2>
 
                     {customer && data.customer_edit ? (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             <div className="flex items-center gap-3">
                                 <CustomerAvatar
                                     icon={customer.avatar_icon}
                                     name={customer.display_name}
                                     size="lg"
                                 />
-                                <p className="text-sm text-muted-foreground">
-                                    {t('jobs.form.edit_customer_hint')}
-                                </p>
-                            </div>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                {textField(
-                                    'ce-first_name',
-                                    t('customers.fields.first_name'),
-                                    data.customer_edit.first_name,
-                                    (v) => setCustomerEdit({ first_name: v }),
-                                    errors['customer_edit.first_name'],
-                                    { autoComplete: 'off' },
-                                )}
-                                {textField(
-                                    'ce-last_name',
-                                    t('customers.fields.last_name'),
-                                    data.customer_edit.last_name,
-                                    (v) => setCustomerEdit({ last_name: v }),
-                                    errors['customer_edit.last_name'],
-                                    { autoComplete: 'off' },
-                                )}
-                                {textField(
-                                    'ce-phone',
-                                    t('customers.fields.phone'),
-                                    data.customer_edit.phone,
-                                    (v) => setCustomerEdit({ phone: v }),
-                                    errors['customer_edit.phone'] ??
-                                        errors.customer_edit,
-                                    { type: 'tel', autoComplete: 'off' },
-                                )}
-                                {textField(
-                                    'ce-company_name',
-                                    t('customers.fields.company_name'),
-                                    data.customer_edit.company_name,
-                                    (v) => setCustomerEdit({ company_name: v }),
-                                    errors['customer_edit.company_name'],
-                                    { autoComplete: 'off' },
-                                )}
+                                <span className="min-w-0 flex-1">
+                                    <span className="block font-semibold">
+                                        {customer.display_name}
+                                    </span>
+                                    {customer.phone && (
+                                        <span className="block text-sm text-muted-foreground">
+                                            {phoneText(customer.phone)}
+                                        </span>
+                                    )}
+                                </span>
                             </div>
                             <CustomerNotes notes={customer.notes} />
+                            {/* Name and phone belong to the customer, not to this job: folded, with a warning. */}
+                            <details
+                                className="da-card group"
+                                data-test="customer-details"
+                                open={
+                                    !!(
+                                        errors['customer_edit.first_name'] ||
+                                        errors['customer_edit.last_name'] ||
+                                        errors['customer_edit.phone'] ||
+                                        errors['customer_edit.company_name'] ||
+                                        errors.customer_edit
+                                    ) || undefined
+                                }
+                            >
+                                <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                                    <span className="flex-1">
+                                        {t('jobs.form.customer_details')}
+                                    </span>
+                                    <ChevronDown className="size-5 transition-transform group-open:rotate-180" />
+                                </summary>
+                                <div className="space-y-3 border-t p-4">
+                                    <p className="rounded-xl bg-amber-50 p-3 text-sm font-medium text-amber-900">
+                                        {t('jobs.form.changes_apply_to_all', {
+                                            name: customer.display_name,
+                                        })}
+                                    </p>
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        {textField(
+                                            'ce-first_name',
+                                            t('customers.fields.first_name'),
+                                            data.customer_edit.first_name,
+                                            (v) =>
+                                                setCustomerEdit({
+                                                    first_name: v,
+                                                }),
+                                            errors['customer_edit.first_name'],
+                                            { autoComplete: 'off' },
+                                        )}
+                                        {textField(
+                                            'ce-last_name',
+                                            t('customers.fields.last_name'),
+                                            data.customer_edit.last_name,
+                                            (v) =>
+                                                setCustomerEdit({
+                                                    last_name: v,
+                                                }),
+                                            errors['customer_edit.last_name'],
+                                            { autoComplete: 'off' },
+                                        )}
+                                        {textField(
+                                            'ce-phone',
+                                            t('customers.fields.phone'),
+                                            data.customer_edit.phone,
+                                            (v) =>
+                                                setCustomerEdit({ phone: v }),
+                                            errors['customer_edit.phone'] ??
+                                                errors.customer_edit,
+                                            {
+                                                type: 'tel',
+                                                autoComplete: 'off',
+                                            },
+                                        )}
+                                        {textField(
+                                            'ce-company_name',
+                                            t('customers.fields.company_name'),
+                                            data.customer_edit.company_name,
+                                            (v) =>
+                                                setCustomerEdit({
+                                                    company_name: v,
+                                                }),
+                                            errors[
+                                                'customer_edit.company_name'
+                                            ],
+                                            { autoComplete: 'off' },
+                                        )}
+                                    </div>
+                                </div>
+                            </details>
                         </div>
                     ) : customer ? (
                         <div className="flex items-start justify-between gap-2 rounded-md bg-muted/50 p-3">
@@ -928,60 +1055,83 @@ export default function JobForm({
                     )}
 
                     {/* The address can be added or corrected here (e.g. a booking taken without one). */}
-                    {customer && data.address_edit && (
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <FormField
-                                id="ae-line1"
-                                label={t('properties.fields.line1')}
-                                error={errors['address_edit.line1']}
-                                className="sm:col-span-2"
+                    {customer &&
+                        data.address_edit &&
+                        !addressOpen &&
+                        !Object.keys(errors).some((key) =>
+                            key.startsWith('address_edit'),
+                        ) && (
+                            <Button
+                                type="button"
+                                variant="tertiary"
+                                size="sm"
+                                className="w-fit"
+                                onClick={() => setAddressOpen(true)}
+                                data-test="edit-address"
                             >
-                                <AddressAutocomplete
+                                <Pencil /> {t('jobs.form.edit_address')}
+                            </Button>
+                        )}
+                    {customer &&
+                        data.address_edit &&
+                        (addressOpen ||
+                            Object.keys(errors).some((key) =>
+                                key.startsWith('address_edit'),
+                            )) && (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <FormField
                                     id="ae-line1"
-                                    autoComplete="off"
-                                    value={data.address_edit.line1}
-                                    country={data.address_edit.country}
-                                    onChange={(v) =>
-                                        setAddressEdit({ line1: v })
-                                    }
-                                    onPick={(address) =>
-                                        setAddressEdit(
-                                            {
-                                                ...address,
-                                                unit:
-                                                    address.unit ??
-                                                    data.address_edit?.unit ??
-                                                    '',
-                                            },
-                                            true,
-                                        )
-                                    }
-                                />
-                            </FormField>
-                            {textField(
-                                'ae-unit',
-                                t('properties.fields.unit'),
-                                data.address_edit.unit,
-                                (v) => setAddressEdit({ unit: v }),
-                                errors['address_edit.unit'],
-                            )}
-                            {textField(
-                                'ae-city',
-                                t('properties.fields.city'),
-                                data.address_edit.city,
-                                (v) => setAddressEdit({ city: v }),
-                                errors['address_edit.city'],
-                            )}
-                            {textField(
-                                'ae-postal_code',
-                                auth.company?.address.postal_label ??
-                                    t('properties.fields.postal_code'),
-                                data.address_edit.postal_code,
-                                (v) => setAddressEdit({ postal_code: v }),
-                                errors['address_edit.postal_code'],
-                            )}
-                        </div>
-                    )}
+                                    label={t('properties.fields.line1')}
+                                    error={errors['address_edit.line1']}
+                                    className="sm:col-span-2"
+                                >
+                                    <AddressAutocomplete
+                                        id="ae-line1"
+                                        autoComplete="off"
+                                        value={data.address_edit.line1}
+                                        country={data.address_edit.country}
+                                        onChange={(v) =>
+                                            setAddressEdit({ line1: v })
+                                        }
+                                        onPick={(address) =>
+                                            setAddressEdit(
+                                                {
+                                                    ...address,
+                                                    unit:
+                                                        address.unit ??
+                                                        data.address_edit
+                                                            ?.unit ??
+                                                        '',
+                                                },
+                                                true,
+                                            )
+                                        }
+                                    />
+                                </FormField>
+                                {textField(
+                                    'ae-unit',
+                                    t('properties.fields.unit'),
+                                    data.address_edit.unit,
+                                    (v) => setAddressEdit({ unit: v }),
+                                    errors['address_edit.unit'],
+                                )}
+                                {textField(
+                                    'ae-city',
+                                    t('properties.fields.city'),
+                                    data.address_edit.city,
+                                    (v) => setAddressEdit({ city: v }),
+                                    errors['address_edit.city'],
+                                )}
+                                {textField(
+                                    'ae-postal_code',
+                                    auth.company?.address.postal_label ??
+                                        t('properties.fields.postal_code'),
+                                    data.address_edit.postal_code,
+                                    (v) => setAddressEdit({ postal_code: v }),
+                                    errors['address_edit.postal_code'],
+                                )}
+                            </div>
+                        )}
                 </section>
 
                 {/* Appliances (appliance repair vertical only) */}
@@ -1151,31 +1301,58 @@ export default function JobForm({
                     <h2 className="text-base font-medium sm:col-span-2">
                         {t('jobs.sections.job')}
                     </h2>
-                    <fieldset className="space-y-2 sm:col-span-2">
-                        <legend className="mb-2 text-sm font-medium">
-                            {t('jobs.fields.visit_type')}
-                        </legend>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                            {visitTypes.map((o) => (
-                                <Button
-                                    key={o.value}
-                                    type="button"
-                                    variant={
-                                        data.visit_type === o.value
-                                            ? 'default'
-                                            : 'outline'
-                                    }
-                                    className="h-auto min-h-11 whitespace-normal"
-                                    onClick={() =>
-                                        form.setData('visit_type', o.value)
-                                    }
-                                >
+                    {/* Job type (what kind of work) and visit reason (why we go) side by side (UX-REDESIGN §7.2). */}
+                    <FormField
+                        id="job_type"
+                        label={t('jobs.fields.job_type')}
+                        hint={t('jobs.form.job_type_hint')}
+                        error={errors.job_type}
+                        className="sm:col-span-2"
+                    >
+                        <NativeSelect
+                            id="job_type"
+                            value={data.job_type}
+                            onChange={(e) =>
+                                form.setData('job_type', e.target.value)
+                            }
+                        >
+                            {jobTypes.map((o) => (
+                                <option key={o.value} value={o.value}>
                                     {o.label}
-                                </Button>
+                                </option>
                             ))}
-                        </div>
-                        <InputError message={errors.visit_type} />
-                    </fieldset>
+                        </NativeSelect>
+                    </FormField>
+                    {auth.company?.vertical !== 'handyman' && (
+                        <fieldset className="space-y-2 sm:col-span-2">
+                            <legend className="text-sm font-medium">
+                                {t('jobs.fields.visit_reason')}
+                            </legend>
+                            <p className="mb-2 text-xs text-muted-foreground">
+                                {t('jobs.form.visit_reason_hint')}
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                {visitTypes.map((o) => (
+                                    <Button
+                                        key={o.value}
+                                        type="button"
+                                        variant={
+                                            data.visit_type === o.value
+                                                ? 'default'
+                                                : 'outline'
+                                        }
+                                        className="h-auto min-h-11 whitespace-normal"
+                                        onClick={() =>
+                                            form.setData('visit_type', o.value)
+                                        }
+                                    >
+                                        {o.label}
+                                    </Button>
+                                ))}
+                            </div>
+                            <InputError message={errors.visit_type} />
+                        </fieldset>
+                    )}
                     {followsUp && (
                         <FormField
                             id="previous_job_id"
@@ -1356,25 +1533,6 @@ export default function JobForm({
                         </FormField>
                     ) : null}
                     <FormField
-                        id="job_type"
-                        label={t('jobs.fields.job_type')}
-                        error={errors.job_type}
-                    >
-                        <NativeSelect
-                            id="job_type"
-                            value={data.job_type}
-                            onChange={(e) =>
-                                form.setData('job_type', e.target.value)
-                            }
-                        >
-                            {jobTypes.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </NativeSelect>
-                    </FormField>
-                    <FormField
                         id="lead_source"
                         label={t('jobs.fields.lead_source')}
                         error={errors.lead_source}
@@ -1427,45 +1585,144 @@ export default function JobForm({
                     </FormField>
                 </section>
 
-                {/* First visit */}
+                {/* When (UX-REDESIGN §7.2): day and arrival-window chips; "Later" = Needs scheduling. */}
                 {!editing && (
-                    <section className="space-y-4 rounded-lg border p-4">
-                        <label className="flex items-center gap-3 text-base font-medium">
-                            <Checkbox
-                                checked={data.add_visit}
-                                onCheckedChange={(c) =>
-                                    form.setData('add_visit', c === true)
-                                }
+                    <section
+                        className="space-y-3 rounded-lg border p-4"
+                        data-test="job-when"
+                    >
+                        <h2 className="text-base font-medium">
+                            {t('jobs.quick.when')}
+                        </h2>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                role="radio"
+                                aria-checked={!data.add_visit}
+                                aria-pressed={!data.add_visit}
+                                className="da-chip da-press inline-flex h-11 shrink-0 items-center rounded-2xl px-4 text-sm font-semibold whitespace-nowrap"
+                                onClick={() => form.setData('add_visit', false)}
+                            >
+                                {t('jobs.form.later')}
+                            </button>
+                            <DateChips
+                                className="min-w-0 flex-1"
+                                label={t('jobs.quick.day')}
+                                today={today}
+                                value={data.add_visit ? data.visit.date : ''}
+                                onChange={(date) => {
+                                    const first = arrivalWindows.find(
+                                        (w) =>
+                                            date !== today || w.start > nowTime,
+                                    );
+                                    form.setData((d) => ({
+                                        ...d,
+                                        add_visit: true,
+                                        visit: {
+                                            ...d.visit,
+                                            date,
+                                            ...(first && !customTime
+                                                ? {
+                                                      start_time: first.start,
+                                                      end_time: first.end,
+                                                  }
+                                                : {}),
+                                        },
+                                    }));
+                                }}
                             />
-                            {t('jobs.form.add_visit')}
-                        </label>
-
+                        </div>
+                        {!data.add_visit && (
+                            <p className="text-sm text-muted-foreground">
+                                {t('jobs.form.later_hint')}
+                            </p>
+                        )}
                         {data.add_visit && (
-                            <VisitFields
-                                value={data.visit}
-                                onChange={setVisit}
-                                errors={errors}
-                                errorPrefix="visit."
-                                assignableUsers={assignableUsers}
-                            />
+                            <>
+                                {!customTime && (
+                                    <TimeWindowChips
+                                        label={t('jobs.quick.arrival_window')}
+                                        windows={arrivalWindows}
+                                        nowTime={
+                                            data.visit.date === today
+                                                ? nowTime
+                                                : null
+                                        }
+                                        value={
+                                            arrivalWindows.some(
+                                                (w) =>
+                                                    w.start ===
+                                                        data.visit.start_time &&
+                                                    w.end ===
+                                                        data.visit.end_time,
+                                            )
+                                                ? data.visit.start_time
+                                                : null
+                                        }
+                                        onChange={(start) => {
+                                            const w = arrivalWindows.find(
+                                                (x) => x.start === start,
+                                            );
+                                            if (w) {
+                                                setVisit({
+                                                    start_time: w.start,
+                                                    end_time: w.end,
+                                                });
+                                            }
+                                        }}
+                                    />
+                                )}
+                                <button
+                                    type="button"
+                                    className="min-h-11 text-sm font-medium text-link"
+                                    onClick={() => setCustomTime(!customTime)}
+                                >
+                                    {t(
+                                        customTime
+                                            ? 'jobs.form.use_windows'
+                                            : 'jobs.quick.custom_time',
+                                    )}
+                                </button>
+                                <VisitFields
+                                    value={data.visit}
+                                    onChange={setVisit}
+                                    errors={errors}
+                                    errorPrefix="visit."
+                                    assignableUsers={assignableUsers}
+                                    hideTimes={
+                                        !customTime &&
+                                        !errors['visit.date'] &&
+                                        !errors['visit.start_time'] &&
+                                        !errors['visit.end_time']
+                                    }
+                                />
+                            </>
                         )}
                     </section>
                 )}
 
-                <div className="flex flex-col gap-2 sm:flex-row">
+                <StickyActionBar>
                     <Button
                         type="submit"
                         size="lg"
-                        disabled={form.processing || !canSave}
+                        disabled={!canSave}
+                        loading={form.processing}
+                        data-test="job-form-save"
                     >
                         {t('common.save')}
                     </Button>
-                    <Button type="button" variant="ghost" size="lg" asChild>
-                        <Link href={job ? show(job.id) : index()}>
-                            {t('common.cancel')}
-                        </Link>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="lg"
+                        className="md:order-first"
+                        onClick={() =>
+                            router.visit((job ? show(job.id) : index()).url)
+                        }
+                    >
+                        {t('common.cancel')}
                     </Button>
-                </div>
+                </StickyActionBar>
             </form>
         </>
     );

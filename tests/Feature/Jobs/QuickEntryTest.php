@@ -49,7 +49,8 @@ test('book opens a short form with the selected date and the full job form stays
 test('a name phone and time create the customer job and visit together without inventing an address', function () {
     $response = $this->post(route('jobs.store'), quickEntryPayload());
     $job = inCompany($this->company, fn () => ServiceJob::with('customer.primaryPhone', 'property', 'visits.assignees')->sole());
-    $response->assertSessionHasNoErrors()->assertRedirect(route('jobs.show', $job));
+    // Booked: back to the day in the calendar, with "Booked #… · …" and Open job (UX-REDESIGN §7.1).
+    $response->assertSessionHasNoErrors()->assertRedirect(route('calendar', ['view' => 'day', 'date' => '2030-01-15']));
 
     expect($job->customer->display_name)->toBe('Jane Quick')
         ->and($job->customer->primaryPhone->number)->toBe('+16045550101')

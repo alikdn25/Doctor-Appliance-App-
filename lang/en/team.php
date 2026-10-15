@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'shows_in_calendar_hint' => 'Offered as the technician when booking a customer.',
     'transfer_jobs' => 'Transfer jobs',
     'transfer_to' => 'Assign unfinished work to',
     'choose_replacement' => 'Choose a team member',
@@ -31,6 +32,7 @@ return [
     'brands_hint' => 'Leave all unchecked to give access to every brand.',
 
     'fields' => [
+        'shows_in_calendar' => 'Goes on calls (shows in calendar)',
         'name' => 'Full name',
         'email' => 'Email',
         'role' => 'Role',
