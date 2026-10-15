@@ -96,7 +96,10 @@ test('quick booking finds an existing customer and shows their preferences', asy
     await page.getByRole('button', { name: 'Find a customer by name' }).click();
     await page.locator('#booking-name').fill('Jane Browser');
     const matches = page.locator('[data-test="customer-matches"]');
-    await matches.getByRole('button', { name: 'Use' }).first().click();
+    const use = matches.getByRole('button', { name: 'Use' }).first();
+    await expect(use).toBeVisible();
+    // Keyboard activation: the phone emulation in CI sometimes reports the list as off-screen while it scrolls.
+    await use.press('Enter');
     await expect(
         chosen.getByText('Jane Browser', { exact: true }),
     ).toBeVisible();
