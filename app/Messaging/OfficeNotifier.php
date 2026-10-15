@@ -10,11 +10,14 @@ use App\Models\Estimate;
 use App\Models\Membership;
 use App\Models\SmsAccount;
 use App\Models\User;
+use App\Notifications\AppAlert;
 use App\Notifications\EstimateDecided;
 use App\Sms\SmsProvider;
 use App\Support\Billing\Money;
 use App\Support\PhoneNumber;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Tells the office (Owners and Admins who work for the document's brand) about things customers do online:
@@ -51,6 +54,25 @@ class OfficeNotifier
             $user->notify(new EstimateDecided($approved, $details, $url));
         }
 
+        // Push to every phone in the company and a line in the bell list (UX-REDESIGN §21.1).
+        $replace = array_map(fn (?string $value) => (string) $value, $details);
+        $alert = new AppAlert(
+            $approved ? 'estimate_approved' : 'estimate_declined',
+            __($approved ? 'notifications.estimate_approved.subject' : 'notifications.estimate_declined.subject', $replace),
+            __($approved ? 'notifications.estimate_approved.push' : 'notifications.estimate_declined.push', $replace),
+            $url,
+            mail: false,
+        );
+
+        foreach ($this->everyone($estimate) as $user) {
+            try {
+                $user->notify($alert);
+            } catch (Throwable $e) {
+                // A broken push channel must not undo the customer's decision.
+                Log::warning('Estimate alert failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         if ($approved && $company->sms_mode === SmsMode::Automatic && $this->sms->isConfigured()
             && SmsAccount::query()->whereNotNull('phone_number')->exists()) {
             $body = __('notifications.estimate_approved.sms', array_map(fn (?string $value) => (string) $value, [...$details, 'url' => $url]));
@@ -70,14 +92,34 @@ class OfficeNotifier
      */
     private function recipients(Estimate $estimate): Collection
     {
+        return $this->members($estimate, [UserRole::Owner, UserRole::Admin]);
+    }
+
+    /**
+     * The company's own people (active, working for the estimate's brand).
+     *
+     * @return Collection<int, User>
+     */
+    private function everyone(Estimate $estimate): Collection
+    {
+        // Subcontractors are outside people: estimates and money are not their business.
+        return $this->members($estimate, [UserRole::Owner, UserRole::Admin, UserRole::Technician, UserRole::Collector]);
+    }
+
+    /**
+     * @param  list<UserRole>  $roles
+     * @return Collection<int, User>
+     */
+    private function members(Estimate $estimate, array $roles): Collection
+    {
         return Membership::query()
             ->where('is_active', true)
-            ->whereIn('role', [UserRole::Owner->value, UserRole::Admin->value])
+            ->whereIn('role', array_map(fn (UserRole $role) => $role->value, $roles))
             ->with('user')
             ->get()
             ->map(fn (Membership $membership) => $membership->user)
             ->filter(function (?User $user) use ($estimate) {
-                if ($user === null) {
+                if ($user === null || ! $user->is_active) {
                     return false;
                 }
 

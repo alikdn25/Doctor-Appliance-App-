@@ -13,6 +13,8 @@ export type DocumentRow = {
     /** An invoice with money owed after its due date. */
     overdue?: boolean;
     due_on?: string | null;
+    /** Days until the due date of money owed; negative when overdue. */
+    due_in_days?: number | null;
     job_id: number;
     customer: string | null;
 };
@@ -144,6 +146,8 @@ export type BillingDocument = DocumentRow & {
     }[];
     // Invoice
     due_on?: string | null;
+    /** Days until the due date of money owed; negative when overdue. */
+    due_in_days?: number | null;
     amount_paid?: number;
     paid_at?: string | null;
     voided_at?: string | null;
@@ -180,4 +184,17 @@ export type TaxOption = {
     is_default: boolean;
     /** Line types a new line of which gets this tax when it is a default tax. */
     applies_to: ('service' | 'part' | 'material')[];
+};
+
+/** An estimate of the job with its lines, for "From estimate" on an invoice. */
+export type JobEstimate = {
+    id: number;
+    number: string;
+    status: string;
+    status_label: string;
+    currency: string;
+    discount_type: 'amount' | 'percent' | null;
+    discount_value: string | null;
+    notes: string | null;
+    items: DocumentItem[];
 };

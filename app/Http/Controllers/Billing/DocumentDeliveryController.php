@@ -8,15 +8,20 @@ use App\Enums\MessageKind;
 use App\Enums\SmsMode;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Jobs\JobMessageController;
+use App\Mail\ReceiptMail;
 use App\Messaging\MessagingPresenter;
 use App\Messaging\Messenger;
 use App\Models\Estimate;
 use App\Models\Invoice;
+use App\Services\AuditLogger;
 use App\Support\Billing\DocumentPdf;
+use App\Support\Billing\PublicDocument;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 
 /**
@@ -99,6 +104,49 @@ class DocumentDeliveryController extends Controller
             'Content-Disposition' => 'inline; filename="'.DocumentPdf::filename($document).'"',
             'Cache-Control' => 'private, no-store',
         ]);
+    }
+
+    public function estimateLink(Estimate $estimate): JsonResponse
+    {
+        abort_if($estimate->status === EstimateStatus::Revised, 422);
+
+        return $this->link($estimate);
+    }
+
+    public function invoiceLink(Invoice $invoice): JsonResponse
+    {
+        abort_if($invoice->isVoid(), 422);
+
+        return $this->link($invoice);
+    }
+
+    /**
+     * "Copy link" under Send: the customer's online page, made on first use.
+     */
+    private function link(Estimate|Invoice $document): JsonResponse
+    {
+        Gate::authorize('view', $document);
+
+        return response()->json(['url' => PublicDocument::url($document)]);
+    }
+
+    /**
+     * "Send receipt" after payment (UX-REDESIGN §19): never sent by itself, only when someone taps it.
+     */
+    public function sendReceipt(Request $request, Invoice $invoice, AuditLogger $audit): RedirectResponse
+    {
+        Gate::authorize('view', $invoice);
+        abort_if($invoice->isVoid() || $invoice->amount_paid <= 0, 422);
+
+        $email = $request->validate(['email' => ['required', 'email', 'max:255']], [], ['email' => __('documents.to')])['email'];
+
+        PublicDocument::token($invoice);
+        Mail::to($email)->queue(new ReceiptMail($invoice));
+        $audit->record('invoice.receipt_sent', $invoice, ['number' => $invoice->number, 'to' => $email]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('documents.receipt.sent', ['email' => $email])]);
+
+        return back();
     }
 
     private function send(Request $request, Estimate|Invoice $document, SendDocument $send): RedirectResponse

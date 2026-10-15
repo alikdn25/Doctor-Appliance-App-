@@ -20,13 +20,16 @@ return [
 
     'prompt' => [
         'title' => 'Send Google Review request?',
-        'description' => 'The review link goes to the customer as a separate text.',
+        'description' => 'The review link goes to the customer as a separate text. You can change the words for this customer.',
         'yes' => 'Yes',
         'no' => 'No',
         'location' => 'Location',
         'choose_location' => 'Choose a location',
         'phone' => 'Phone',
         'send' => 'Send',
+        'dont_send' => 'Don\'t send',
+        'text' => 'Message',
+        'text_hint' => 'Only for this customer; the template in settings stays the same. The review link is added at the end if you remove it.',
         'no_locations' => 'No Google review locations yet. Add them in Company → Google reviews.',
         'sms_off' => 'Texting is off for the company (Company → Messaging), so a review request cannot be sent by SMS.',
         'invalid_phone' => 'Enter a valid phone number.',

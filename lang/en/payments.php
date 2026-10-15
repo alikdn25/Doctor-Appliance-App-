@@ -3,6 +3,8 @@
 return [
     'title' => 'Payments',
     'record' => 'Mark as paid',
+    'take' => 'Take payment',
+    'take_hint' => 'Let the customer scan the code to pay online, or mark the invoice as paid.',
     'paid_in_full' => [
         'title' => 'Paid in full',
         'description' => ':number is paid. Close the job now?',

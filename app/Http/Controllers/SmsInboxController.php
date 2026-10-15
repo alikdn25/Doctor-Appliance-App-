@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Enums\MessageKind;
 use App\Enums\SmsMode;
+use App\Enums\UserRole;
 use App\Http\Controllers\Jobs\JobMessageController;
 use App\Messaging\Messenger;
 use App\Messaging\SmsInbox;
 use App\Models\Message;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -34,7 +36,24 @@ class SmsInboxController extends Controller
             'threads' => $inbox->threads($request->user(), $search, $unread),
             'conversation' => $phone ? $inbox->conversation($request->user(), $phone) : null,
             'filters' => ['search' => $search, 'unread' => $unread],
+            // The empty list says why it is empty (UX-REDESIGN §10.5); the Owner gets a link to the settings.
+            'smsMode' => currentCompany()->sms_mode->value,
+            'canSetUpMessaging' => $request->user()->hasRole(UserRole::Owner),
         ]);
+    }
+
+    /**
+     * Older messages of a conversation, loaded when the chat is scrolled up.
+     */
+    public function older(Request $request, SmsInbox $inbox): JsonResponse
+    {
+        Gate::authorize('viewAny', Message::class);
+        $data = $request->validate([
+            'phone' => ['required', 'string', self::PHONE_RULE],
+            'before' => ['required', 'integer', 'min:1'],
+        ]);
+
+        return response()->json(['messages' => $inbox->older($request->user(), $data['phone'], (int) $data['before'])]);
     }
 
     public function read(Request $request, SmsInbox $inbox): RedirectResponse

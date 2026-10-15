@@ -229,9 +229,7 @@ test('inbox opens, acknowledges the visible reply and sends to the actual contac
     );
     await screenshot(page, info, 'sms-inbox');
     if (info.project.name === 'mobile') {
-        await page
-            .getByRole('link', { name: 'Conversations', exact: true })
-            .click();
+        await page.getByRole('link', { name: 'Back', exact: true }).click();
         await expect(
             page.getByRole('region', { name: 'Conversations' }),
         ).toBeVisible();

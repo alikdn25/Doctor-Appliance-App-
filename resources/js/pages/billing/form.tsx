@@ -27,15 +27,18 @@ import type {
 } from '@/components/billing/line-editor';
 import type {
     BillingDocument,
+    DocumentItem,
     DocumentKind,
     DocumentRow,
+    JobEstimate,
     JobSummary,
     ServiceOption,
     TaxOption,
 } from '@/components/billing/types';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
-import { PageHeader } from '@/components/page-header';
+import { ScreenHeader } from '@/components/screen-header';
+import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
@@ -65,6 +68,8 @@ type FormData = {
     items: Line[];
     deposit_type: '' | 'amount' | 'percent';
     deposit_value: string;
+    /** A new invoice made from an approved estimate: the estimate becomes invoiced. */
+    estimate_id: number | null;
 };
 
 /**
@@ -86,6 +91,8 @@ export default function BillingForm({
     prefillItems = null,
     lineSetup,
     existingInvoices = [],
+    estimates = [],
+    fromEstimateId = null,
 }: {
     kind: DocumentKind;
     document: BillingDocument | null;
@@ -112,6 +119,10 @@ export default function BillingForm({
     lineSetup: LineSetup;
     /** Invoices this job already has (new invoice only). */
     existingInvoices?: DocumentRow[];
+    /** Estimates of the job, for "From estimate" in Add item (invoices). */
+    estimates?: JobEstimate[];
+    /** The approved estimate a new invoice starts from (UX-REDESIGN §21.2). */
+    fromEstimateId?: number | null;
 }) {
     const t = useTrans();
     const time = useCompanyTime();
@@ -132,89 +143,98 @@ export default function BillingForm({
             .filter((r) => r.is_default && r.applies_to.includes(lineKind))
             .map((r) => r.id);
 
+    // A saved line as an editable row; copied lines (from an estimate) get no id.
+    const lineFromItem = (item: DocumentItem, keepId: boolean) =>
+        newLine({
+            ...(keepId ? { id: item.id } : {}),
+            costs_editable: item.costs_editable !== false,
+            description: item.description,
+            quantity: String(Number(item.quantity)),
+            unit_price: fromMinor(item.unit_price, currency),
+            taxable: item.taxable,
+            tax_rate_ids: item.tax_rate_ids ?? null,
+            optional: kind === 'estimate' && item.optional,
+            selected: kind === 'estimate' ? item.selected : true,
+            kind: item.kind,
+            service_id: item.service_id,
+            part_number: item.part_number ?? '',
+            supplier: item.supplier ?? '',
+            unit: item.unit ?? '',
+            unit_cost:
+                item.unit_cost !== null
+                    ? fromMinor(item.unit_cost, currency)
+                    : '',
+            supplier_taxes: Object.fromEntries(
+                item.supplier_taxes.map((tax) => [
+                    String(tax.tax_rate_id),
+                    fromMinor(tax.amount, currency),
+                ]),
+            ),
+            bill_to_customer: item.bill_to_customer,
+            warranty_value:
+                item.warranty_value === null ? '' : String(item.warranty_value),
+            warranty_unit: item.warranty_unit ?? 'days',
+            price_touched: true,
+            warranty_touched: true,
+        });
+    const fromEstimate = document
+        ? undefined
+        : estimates.find((estimate) => estimate.id === fromEstimateId);
+
     const form = useForm<FormData>({
         issued_on: document?.issued_on ?? today,
         valid_until: document
             ? (document.valid_until ?? '')
             : (defaultValidUntil ?? ''),
         due_on: document?.due_on ?? (document ? '' : (defaultDueOn ?? today)),
-        discount_type: document?.discount_type ?? '',
+        discount_type:
+            document?.discount_type ?? fromEstimate?.discount_type ?? '',
         discount_value:
             document?.discount_type && document.discount_value
                 ? String(Number(document.discount_value))
-                : '',
-        notes: document?.notes ?? '',
+                : fromEstimate?.discount_type && fromEstimate.discount_value
+                  ? String(Number(fromEstimate.discount_value))
+                  : '',
+        notes: document?.notes ?? fromEstimate?.notes ?? '',
         tax_rate_ids: document
             ? document.taxes
                   .map((tax) => tax.tax_rate_id)
                   .filter((id): id is number => id !== null)
             : taxRates.filter((r) => r.is_default).map((r) => r.id),
         items: document
-            ? document.items.map((item) =>
-                  newLine({
-                      id: item.id,
-                      costs_editable: item.costs_editable !== false,
-                      description: item.description,
-                      quantity: String(Number(item.quantity)),
-                      unit_price: fromMinor(item.unit_price, currency),
-                      taxable: item.taxable,
-                      tax_rate_ids: item.tax_rate_ids ?? null,
-                      optional: item.optional,
-                      selected: item.selected,
-                      kind: item.kind,
-                      service_id: item.service_id,
-                      part_number: item.part_number ?? '',
-                      supplier: item.supplier ?? '',
-                      unit: item.unit ?? '',
-                      unit_cost:
-                          item.unit_cost !== null
-                              ? fromMinor(item.unit_cost, currency)
-                              : '',
-                      supplier_taxes: Object.fromEntries(
-                          item.supplier_taxes.map((tax) => [
-                              String(tax.tax_rate_id),
-                              fromMinor(tax.amount, currency),
-                          ]),
-                      ),
-                      bill_to_customer: item.bill_to_customer,
-                      warranty_value:
-                          item.warranty_value === null
-                              ? ''
-                              : String(item.warranty_value),
-                      warranty_unit: item.warranty_unit ?? 'days',
-                      price_touched: true,
-                      warranty_touched: true,
-                  }),
-              )
-            : prefillItems
-              ? prefillItems.map((item) =>
-                    newLine({
-                        description: item.description,
-                        unit_price:
-                            item.unit_price !== null
-                                ? fromMinor(item.unit_price, currency)
-                                : '',
-                        taxable: item.taxable,
-                        tax_rate_ids: defaultTaxIds(item.kind ?? 'service'),
-                        price_touched: item.unit_price !== null,
-                        ...(item.kind ? { kind: item.kind } : {}),
-                        ...(item.quantity ? { quantity: item.quantity } : {}),
-                        ...(item.warranty_value !== undefined &&
-                        item.warranty_value !== null
-                            ? {
-                                  warranty_value: String(item.warranty_value),
-                                  warranty_unit: item.warranty_unit ?? 'days',
-                                  warranty_touched: true,
-                              }
-                            : {}),
-                    }),
-                )
-              : [],
+            ? document.items.map((item) => lineFromItem(item, true))
+            : fromEstimate
+              ? fromEstimate.items.map((item) => lineFromItem(item, false))
+              : prefillItems
+                ? prefillItems.map((item) =>
+                      newLine({
+                          description: item.description,
+                          unit_price:
+                              item.unit_price !== null
+                                  ? fromMinor(item.unit_price, currency)
+                                  : '',
+                          taxable: item.taxable,
+                          tax_rate_ids: defaultTaxIds(item.kind ?? 'service'),
+                          price_touched: item.unit_price !== null,
+                          ...(item.kind ? { kind: item.kind } : {}),
+                          ...(item.quantity ? { quantity: item.quantity } : {}),
+                          ...(item.warranty_value !== undefined &&
+                          item.warranty_value !== null
+                              ? {
+                                    warranty_value: String(item.warranty_value),
+                                    warranty_unit: item.warranty_unit ?? 'days',
+                                    warranty_touched: true,
+                                }
+                              : {}),
+                      }),
+                  )
+                : [],
         deposit_type: document?.deposit_type ?? '',
         deposit_value:
             document?.deposit_type && document.deposit_value
                 ? String(Number(document.deposit_value))
                 : '',
+        estimate_id: fromEstimate?.id ?? null,
     });
     const { data, errors } = form;
     const fieldErrors = errors as Record<string, string | undefined>;
@@ -273,6 +293,15 @@ export default function BillingForm({
         addLine(
             newLine({ kind: lineKind, tax_rate_ids: defaultTaxIds(lineKind) }),
         );
+    // "From estimate": all its lines at once, the rows stay folded.
+    const addEstimate = (estimate: JobEstimate) =>
+        form.setData((d) => ({
+            ...d,
+            items: [
+                ...d.items,
+                ...estimate.items.map((item) => lineFromItem(item, false)),
+            ],
+        }));
     const addService = (service: ServiceOption) => {
         const line = newLine({
             kind: service.kind,
@@ -350,8 +379,10 @@ export default function BillingForm({
         return found;
     };
     const allBlocking = clientErrors();
-    // "Add at least one item" is a grey hint until the first Save; only then it turns into an error.
-    const { items: noItems, ...blocking } = allBlocking;
+    // "Add at least one item" is said only after a Save without lines (UX-REDESIGN §10.3).
+    const blocking = Object.fromEntries(
+        Object.entries(allBlocking).filter(([key]) => key !== 'items'),
+    );
     const hasErrors =
         Object.keys(blocking).length > 0 || Object.keys(errors).length > 0;
 
@@ -434,6 +465,7 @@ export default function BillingForm({
                     ? { optional: line.optional, selected: line.selected }
                     : {}),
             })),
+            estimate_id: kind === 'invoice' && !document ? d.estimate_id : null,
             deposit_type:
                 kind === 'estimate' ? d.deposit_type || null : undefined,
             deposit_value:
@@ -485,9 +517,14 @@ export default function BillingForm({
                 ? t('invoices.no_due_date')
                 : data.due_on <= data.issued_on
                   ? t('invoices.terms.due_on_receipt')
-                  : t('invoices.due_date', {
-                        date: time.dateOnly(data.due_on),
-                    })
+                  : paymentTerms && !document && data.due_on === defaultDueOn
+                    ? t('invoices.due_date_terms', {
+                          date: time.dateOnly(data.due_on),
+                          terms: paymentTerms,
+                      })
+                    : t('invoices.due_date', {
+                          date: time.dateOnly(data.due_on),
+                      })
             : data.valid_until
               ? t('estimates.valid_until_date', {
                     date: time.dateOnly(data.valid_until),
@@ -499,31 +536,51 @@ export default function BillingForm({
         <>
             <Head title={title} />
 
-            <form onSubmit={submit} className="max-w-3xl space-y-5 p-4 pb-32">
-                <PageHeader
-                    title={title}
-                    back={back}
-                    description={[
-                        t('billing.job', { number: job.number }),
-                        job.customer,
-                        job.address,
-                    ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                />
+            <ScreenHeader
+                title={title}
+                subtitle={[
+                    t('billing.job', { number: job.number }),
+                    job.customer,
+                ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                back={back}
+            />
 
+            <form
+                onSubmit={submit}
+                className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-6"
+            >
                 {!document && existingInvoices.length > 0 && (
                     <p
-                        className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+                        className="da-warning rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
                         role="status"
+                        data-test="second-invoice"
                     >
-                        {t('invoices.already_invoiced', {
-                            list: existingInvoices
-                                .map(
-                                    (invoice) =>
-                                        `${invoice.number} (${invoice.status_label}, ${money(invoice.total, invoice.currency)})`,
-                                )
-                                .join(', '),
+                        {t('invoices.second_invoice_before')}{' '}
+                        {existingInvoices.map((invoice, index) => (
+                            <span key={invoice.id}>
+                                {index > 0 && ', '}
+                                <Link
+                                    href={showInvoice(invoice.id)}
+                                    className="font-semibold underline"
+                                >
+                                    {invoice.number}
+                                </Link>{' '}
+                                ({invoice.status_label})
+                            </span>
+                        ))}
+                        . {t('invoices.second_invoice_after')}
+                    </p>
+                )}
+                {fromEstimate && (
+                    <p
+                        className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100"
+                        role="status"
+                        data-test="from-approved-estimate"
+                    >
+                        {t('invoices.from_approved_estimate', {
+                            number: fromEstimate.number,
                         })}
                     </p>
                 )}
@@ -895,15 +952,28 @@ export default function BillingForm({
                     )}
                 </dl>
 
-                <div className="da-pinned fixed inset-x-0 bottom-0 z-30 flex flex-wrap gap-2 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
-                    {!hasErrors && noItems && (
-                        <p className="w-full text-sm text-muted-foreground">
-                            {noItems}
-                        </p>
-                    )}
+                <StickyActionBar className="flex-wrap">
+                    <p
+                        className="!flex-none basis-full text-sm text-muted-foreground tabular-nums"
+                        data-test="sticky-totals"
+                    >
+                        {[
+                            `${t('billing.subtotal')} ${money(totals.subtotal)}`,
+                            totals.taxes.length > 0
+                                ? `${t('billing.taxes')} ${money(
+                                      totals.taxes.reduce(
+                                          (sum, tax) => sum + tax.amount,
+                                          0,
+                                      ),
+                                  )}`
+                                : null,
+                        ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                    </p>
                     {hasErrors && (
                         <p
-                            className="w-full text-sm font-medium text-destructive"
+                            className="!flex-none basis-full text-sm font-medium text-destructive"
                             role="alert"
                         >
                             {Object.values(blocking)[0] ??
@@ -914,21 +984,21 @@ export default function BillingForm({
                     <Button
                         type="button"
                         variant="outline"
-                        className="h-12 md:h-11"
+                        className="h-12 !flex-none md:h-11"
                         asChild
                     >
                         <Link href={back}>{t('common.cancel')}</Link>
                     </Button>
                     <Button
                         type="submit"
-                        className="h-12 flex-1 md:h-11 md:flex-none"
+                        className="h-12 md:h-11"
                         disabled={
                             form.processing || Object.keys(blocking).length > 0
                         }
                     >
                         {t('common.save')} · {money(totals.total)}
                     </Button>
-                </div>
+                </StickyActionBar>
             </form>
 
             <AddItemSheet
@@ -938,6 +1008,8 @@ export default function BillingForm({
                 onOpenChange={setAdding}
                 onPick={addService}
                 onCustom={addCustom}
+                estimates={kind === 'invoice' ? estimates : []}
+                onEstimate={addEstimate}
             />
         </>
     );

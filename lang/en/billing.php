@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'headline' => [
+        'paid' => 'Paid · :amount',
+        'due' => 'Due :date · :amount',
+        'overdue' => 'Overdue 1 day · :amount|Overdue :count days · :amount',
+        'balance' => 'Balance due · :amount',
+    ],
     'not_sent' => 'Not sent yet — you can still edit it',
     'private_cost' => 'Private',
     'section' => 'Estimates & invoices',
@@ -10,6 +16,7 @@ return [
     'items' => 'Items',
     'add_item' => 'Add item',
     'add_sheet' => [
+        'from_estimate' => 'From estimate :number (1 line)|From estimate :number (:count lines)',
         'title' => 'Add item',
         'hint' => 'Pick an item from the price book or add a custom labor, part or material line.',
         'search' => 'Search the price book',

@@ -2,7 +2,7 @@ import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { KindBadge } from './line-editor';
 import type { LineKind } from './line-editor';
-import type { ServiceOption } from './types';
+import type { JobEstimate, ServiceOption } from './types';
 import { Input } from '@/components/ui/input';
 import {
     Sheet,
@@ -14,8 +14,9 @@ import {
 import { useTrans } from '@/lib/i18n';
 
 /**
- * "Add item": the price book with a search that filters as you type (the item's type comes from the price book),
- * and "Or custom item" with one button per type for a line typed by hand.
+ * "Add item": "From estimate EST-1" (all lines of an estimate of the job in one tap), the price book with a search
+ * that filters as you type (the item's type comes from the price book), and "Or custom item" with one button per
+ * type for a line typed by hand.
  */
 export function AddItemSheet({
     open,
@@ -24,9 +25,14 @@ export function AddItemSheet({
     onOpenChange,
     onPick,
     onCustom,
+    estimates = [],
+    onEstimate,
 }: {
     open: boolean;
     services: ServiceOption[];
+    /** Estimates of the job whose lines can be added at once (invoices). */
+    estimates?: JobEstimate[];
+    onEstimate?: (estimate: JobEstimate) => void;
     money: (minor: number, currency?: string) => string;
     onOpenChange: (open: boolean) => void;
     onPick: (service: ServiceOption) => void;
@@ -72,6 +78,30 @@ export function AddItemSheet({
                         {t('billing.add_sheet.hint')}
                     </SheetDescription>
                 </SheetHeader>
+
+                {estimates.length > 0 && onEstimate && (
+                    <div
+                        className="flex flex-wrap gap-2"
+                        data-test="from-estimate"
+                    >
+                        {estimates.map((estimate) => (
+                            <button
+                                key={estimate.id}
+                                type="button"
+                                className="da-chip da-press inline-flex h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium"
+                                onClick={() => {
+                                    onEstimate(estimate);
+                                    close(false);
+                                }}
+                            >
+                                {t('billing.add_sheet.from_estimate', {
+                                    number: estimate.number,
+                                    count: estimate.items.length,
+                                })}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {services.length > 0 && (
                     <>

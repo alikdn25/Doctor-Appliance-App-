@@ -27,12 +27,14 @@ return [
         'line' => ':customer approved estimate :number (:total) online and signed it as :signer.',
         'deposit' => 'A deposit of :deposit was asked; it is shown on the estimate once paid.',
         'sms' => ':brand: :customer approved estimate :number (:total). :url',
+        'push' => ':customer approved :number (:total).',
     ],
 
     'estimate_declined' => [
         'subject' => 'Estimate :number declined by :customer',
         'line' => ':customer declined estimate :number (:total) online.',
         'reason' => 'Reason: :reason',
+        'push' => ':customer declined :number (:total).',
     ],
     'alert' => [
         'open' => 'Open',

@@ -32,11 +32,17 @@ export function ActionSheet({
     title,
     items,
     variant = 'header',
+    trigger,
+    description,
 }: {
     title: string;
     /** Items the person may not use are passed as false and left out. */
     items: (ActionSheetItem | false | null | undefined)[];
     variant?: 'raised' | 'header' | 'plain';
+    /** A button of its own instead of ⋯ (e.g. "Send ▾"). */
+    trigger?: (open: () => void) => ReactNode;
+    /** A short note under the title (e.g. why texting is off). */
+    description?: string;
 }) {
     const t = useTrans();
     const [open, setOpen] = useState(false);
@@ -58,14 +64,18 @@ export function ActionSheet({
 
     return (
         <>
-            <IconButton
-                label={t('ui.more_actions')}
-                variant={variant}
-                onClick={() => setOpen(true)}
-                data-test="action-sheet-button"
-            >
-                <MoreHorizontal />
-            </IconButton>
+            {trigger ? (
+                trigger(() => setOpen(true))
+            ) : (
+                <IconButton
+                    label={t('ui.more_actions')}
+                    variant={variant}
+                    onClick={() => setOpen(true)}
+                    data-test="action-sheet-button"
+                >
+                    <MoreHorizontal />
+                </IconButton>
+            )}
             <Sheet open={open} onOpenChange={setOpen}>
                 <SheetContent
                     side="bottom"
@@ -74,8 +84,10 @@ export function ActionSheet({
                 >
                     <SheetHeader className="p-0 px-2 pr-12">
                         <SheetTitle>{title}</SheetTitle>
-                        <SheetDescription className="sr-only">
-                            {t('ui.more_actions')}
+                        <SheetDescription
+                            className={description ? undefined : 'sr-only'}
+                        >
+                            {description ?? t('ui.more_actions')}
                         </SheetDescription>
                     </SheetHeader>
                     <div className="pb-[env(safe-area-inset-bottom)]">

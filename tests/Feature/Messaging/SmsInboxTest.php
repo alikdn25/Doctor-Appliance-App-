@@ -11,6 +11,7 @@ use App\Models\MessageRead;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\SmsAccount;
+use App\Support\Tenancy\CurrentCompany;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -294,4 +295,53 @@ test('deleting a limited brand never grants access to other brands or their inbo
         ->where('unreadMessages', 1)->has('threads.data', 1)->where('threads.data.0.phone', '+16045550142'));
     $this->get(route('messages.index', ['phone' => '+16045550143']))->assertNotFound();
     $this->get(route('jobs.show', $otherJob))->assertForbidden();
+});
+
+test('the chat offers ready texts for the customer and links to their job (UX-REDESIGN §26)', function () {
+    $this->get(route('messages.index', ['phone' => '+16045550142']))->assertInertia(fn (Assert $page) => $page
+        ->where('conversation.job.id', $this->job->id)
+        ->where('conversation.templates', fn ($templates) => collect($templates)->pluck('key')->contains('general')
+            && str_contains(collect($templates)->firstWhere('key', 'general')['text'], 'Jane')));
+});
+
+test('earlier messages load when the chat is scrolled up, only within the conversation', function () {
+    $ids = inCompany($this->company, fn () => collect(range(1, 3))->map(fn (int $i) => Message::create([
+        'customer_id' => $this->customer->id, 'direction' => Message::OUTBOUND, 'channel' => Message::SMS,
+        'kind' => MessageKind::General, 'to' => '+16045550142', 'from' => '+16045550100', 'body' => "Text {$i}",
+        'status' => 'delivered', 'sent_at' => now(),
+    ])->id));
+
+    $older = $this->getJson(route('messages.older', ['phone' => '+16045550142', 'before' => $ids->last()]))
+        ->assertOk()->json('messages');
+    expect(collect($older)->pluck('body')->all())->toBe(['Text 2', 'Text 1', 'Please call before arriving.']);
+
+    // Another company's employee sees nothing of it.
+    app(CurrentCompany::class)->forget();
+    $stranger = memberOf(Company::factory()->create());
+    app(CurrentCompany::class)->forget();
+    expect($this->actingAs($stranger)->getJson(route('messages.older', ['phone' => '+16045550142', 'before' => $ids->last()]))->json('messages'))->toBe([]);
+});
+
+test('in "From technician\'s phone" mode the texts opened on phones show in the inbox', function () {
+    $this->company->update(['sms_mode' => 'technician_phone']);
+    inCompany($this->company, fn () => Message::create([
+        'customer_id' => $this->customer->id, 'service_job_id' => $this->job->id, 'direction' => Message::OUTBOUND,
+        'channel' => Message::TECHNICIAN_PHONE, 'kind' => MessageKind::OnMyWay, 'to' => '+16045550199',
+        'body' => 'On my way!', 'status' => 'opened', 'sent_at' => now(),
+    ]));
+
+    $this->get(route('messages.index'))->assertInertia(fn (Assert $page) => $page
+        ->where('smsMode', 'technician_phone')
+        ->where('canSetUpMessaging', true)
+        ->where('threads.data', fn ($threads) => collect($threads)->pluck('phone')->contains('+16045550199')));
+});
+
+test('the job page shows "Open chat" to the office, not to technicians', function () {
+    $this->get(route('jobs.show', $this->job))->assertInertia(fn (Assert $page) => $page
+        ->where('messaging.chat_url', route('messages.index', ['phone' => '+16045550142'])));
+
+    $tech = memberOf($this->company, UserRole::Technician);
+    $techJob = ServiceJob::factory()->for(Property::factory()->for($this->customer))->withVisit($tech)->create();
+    $this->actingAs($tech)->get(route('jobs.show', $techJob))->assertInertia(fn (Assert $page) => $page
+        ->where('messaging.chat_url', null));
 });

@@ -42,7 +42,7 @@ import { ScreenHeader } from '@/components/screen-header';
 import { ActionSheet } from '@/components/ui/action-sheet';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
-import { MessageHistory } from '@/components/messaging/message-history';
+import { RecentMessages } from '@/components/messaging/recent-messages';
 import type { MessageItem } from '@/components/messaging/types';
 import { Button } from '@/components/ui/button';
 import { useCompanyTime } from '@/lib/datetime';
@@ -113,7 +113,11 @@ type Props = {
     canDelete: boolean;
     applianceTypes: Option[];
     manufacturers: string[];
-    messaging: { mode: string; messages: MessageItem[] };
+    messaging: {
+        mode: string;
+        messages: MessageItem[];
+        chat_url: string | null;
+    };
 };
 
 export default function CustomerShow({
@@ -618,8 +622,9 @@ export default function CustomerShow({
                     <h2 className="text-base font-medium">
                         {t('messages.title')}
                     </h2>
-                    <MessageHistory
+                    <RecentMessages
                         messages={messaging.messages}
+                        chatUrl={messaging.chat_url}
                         showJobLinks
                     />
                 </section>

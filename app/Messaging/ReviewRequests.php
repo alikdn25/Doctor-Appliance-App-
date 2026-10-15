@@ -43,6 +43,7 @@ class ReviewRequests
                 'id' => $p->id,
                 'label' => $p->label,
                 'text' => $this->text($job, $p),
+                'review_url' => $p->review_url,
             ])->values()->all(),
             'default_profile_id' => match (true) {
                 $profiles->contains('id', $default) => $default,
@@ -56,11 +57,11 @@ class ReviewRequests
      * "Send" in the prompt: an SMS from the company number (Automatic) or the record that the text was opened on
      * the technician's phone. The job keeps the latest request.
      */
-    public function send(Invoice $invoice, GoogleProfile $profile, string $to, User $user): Message
+    public function send(Invoice $invoice, GoogleProfile $profile, string $to, User $user, ?string $text = null): Message
     {
         $invoice->loadMissing(['customer', 'job']);
         $job = $invoice->job;
-        $body = $this->text($job, $profile);
+        $body = $this->personal($text, $profile) ?? $this->text($job, $profile);
 
         $message = currentCompany()->sms_mode === SmsMode::Automatic
             ? $this->messenger->smsToCustomerNumber(MessageKind::ReviewRequest, $invoice->customer, $job, $to, $body, $user)
@@ -80,6 +81,25 @@ class ReviewRequests
         ]);
 
         return $message;
+    }
+
+    /**
+     * The text edited in the prompt for this one customer (the template stays as it is). The review link is what
+     * the request is for, so it goes at the end when it was deleted from the text.
+     */
+    private function personal(?string $text, GoogleProfile $profile): ?string
+    {
+        $text = trim((string) $text);
+
+        if ($text === '') {
+            return null;
+        }
+
+        if ($profile->review_url && ! str_contains($text, $profile->review_url)) {
+            $text .= "\n".$profile->review_url;
+        }
+
+        return $text;
     }
 
     public function text(ServiceJob $job, ?GoogleProfile $profile): string

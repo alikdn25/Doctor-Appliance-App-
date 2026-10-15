@@ -53,6 +53,8 @@ class DocumentRequest extends FormRequest
             'issued_on' => ['required', 'date_format:Y-m-d'],
             'valid_until' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:issued_on'],
             'due_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:issued_on'],
+            // A new invoice made from the lines of an approved estimate of the job.
+            'estimate_id' => ['nullable', 'integer'],
             'discount_type' => ['nullable', Rule::in(['amount', 'percent'])],
             'discount_value' => [
                 'nullable', 'numeric', 'min:0',

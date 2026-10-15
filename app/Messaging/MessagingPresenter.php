@@ -44,7 +44,18 @@ class MessagingPresenter
                 'on_my_way' => MessageTemplates::render($company, MessageKind::OnMyWay, $context),
             ],
             'messages' => $this->history(Message::query()->where('service_job_id', $job->id)),
+            'chat_url' => $this->chatUrl($user, $phone?->number),
         ];
+    }
+
+    /**
+     * "Open chat" with the customer's mobile in the SMS Inbox, for the people who use the inbox.
+     */
+    private function chatUrl(User $user, ?string $phone): ?string
+    {
+        return $phone !== null && $user->can('viewAny', Message::class) && currentCompany()->sms_mode !== SmsMode::Off
+            ? route('messages.index', ['phone' => $phone])
+            : null;
     }
 
     /**
@@ -85,6 +96,7 @@ class MessagingPresenter
         return [
             'mode' => currentCompany()->sms_mode->value,
             'messages' => $this->history($query),
+            'chat_url' => $this->chatUrl($user, $this->messenger->mobile($customer)?->number),
         ];
     }
 

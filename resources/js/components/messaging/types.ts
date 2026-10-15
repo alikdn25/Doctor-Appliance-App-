@@ -24,6 +24,8 @@ export type JobMessaging = {
     sms_blocked: string | null;
     texts: { general: string; on_my_way: string };
     messages: MessageItem[];
+    /** "Open chat" in the SMS Inbox (office). */
+    chat_url: string | null;
 };
 
 export type DocumentSms = {
@@ -41,6 +43,11 @@ export type ReviewPrompt = {
     mode: SmsMode;
     blocked: string | null;
     phone: string | null;
-    profiles: { id: number; label: string; text: string }[];
+    profiles: {
+        id: number;
+        label: string;
+        text: string;
+        review_url: string;
+    }[];
     default_profile_id: number | null;
 } | null;

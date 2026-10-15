@@ -2,7 +2,7 @@ import { router, useForm } from '@inertiajs/react';
 import { MessageSquare, Send } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
-import { MessageHistory } from '@/components/messaging/message-history';
+import { RecentMessages } from '@/components/messaging/recent-messages';
 import type { JobMessaging } from '@/components/messaging/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -94,7 +94,10 @@ export function JobMessagingSection({
                 </Button>
             )}
 
-            <MessageHistory messages={messaging.messages} />
+            <RecentMessages
+                messages={messaging.messages}
+                chatUrl={messaging.chat_url}
+            />
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent>

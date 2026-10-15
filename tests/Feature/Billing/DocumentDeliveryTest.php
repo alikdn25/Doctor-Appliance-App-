@@ -2,6 +2,7 @@
 
 use App\Enums\UserRole;
 use App\Mail\DocumentMail;
+use App\Mail\ReceiptMail;
 use App\Models\AuditLog;
 use App\Models\Brand;
 use App\Models\Company;
@@ -173,4 +174,48 @@ test('a voided invoice is shown as cancelled and cannot be sent', function () {
     auth()->logout();
     $this->get(route('documents.public', $token))->assertInertia(fn (Assert $page) => $page
         ->where('document.status', 'void')->where('canPay', false));
+});
+
+test('"Send receipt" after payment emails a branded receipt with the PDF; nothing goes by itself', function () {
+    Mail::fake();
+
+    // Nothing paid yet: no receipt to send.
+    $this->get(route('invoices.show', $this->invoice))->assertInertia(fn (Assert $page) => $page->where('delivery.receipt_url', null));
+    $this->post(route('invoices.receipt', $this->invoice), ['email' => 'maria@example.com'])->assertStatus(422);
+
+    $this->post(route('payments.store', $this->invoice), ['amount' => '280.50', 'method' => 'card_terminal', 'reference' => '4242'])->assertSessionHasNoErrors();
+    Mail::assertNothingQueued();
+
+    $this->get(route('invoices.show', $this->invoice))->assertInertia(fn (Assert $page) => $page
+        ->where('delivery.receipt_url', route('invoices.receipt', $this->invoice)));
+
+    $this->post(route('invoices.receipt', $this->invoice), ['email' => 'maria@example.com'])->assertSessionHasNoErrors();
+
+    Mail::assertQueued(ReceiptMail::class, function (ReceiptMail $mail) {
+        $mail->assertHasTo('maria@example.com');
+        $mail->assertHasSubject('Receipt from Lone Star Appliance · '.$this->invoice->number);
+        $mail->assertSeeInHtml('$280.50');
+        $mail->assertSeeInHtml('Paid');
+        $mail->assertSeeInHtml('Ref. 4242');
+        $mail->assertSeeInHtml('View receipt online');
+        $mail->assertSeeInHtml(route('documents.public.pdf', $this->invoice->fresh()->public_token));
+        $mail->assertSeeInHtml('(512) 555-0100');
+
+        return count($mail->attachments()) === 1;
+    });
+    expect(inCompany($this->company, fn () => AuditLog::query()->where('action', 'invoice.receipt_sent')->count()))->toBe(1);
+});
+
+test('"Copy link" makes the customer link on first use, and only for people who can see the document', function () {
+    expect($this->invoice->fresh()->public_token)->toBeNull();
+    app(CurrentCompany::class)->forget();
+    $stranger = memberOf(Company::factory()->create(), UserRole::Owner);
+    app(CurrentCompany::class)->forget();
+
+    $url = $this->postJson(route('invoices.link', $this->invoice))->assertOk()->json('url');
+    expect($url)->toBe(route('documents.public', $this->invoice->fresh()->public_token))
+        ->and($this->postJson(route('invoices.link', $this->invoice))->json('url'))->toBe($url);
+
+    app(CurrentCompany::class)->forget();
+    $this->actingAs($stranger)->postJson(route('invoices.link', $this->invoice))->assertNotFound();
 });
