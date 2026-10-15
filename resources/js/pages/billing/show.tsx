@@ -945,7 +945,7 @@ function VoidInvoiceDialog({
                     </FormField>
                     <Button
                         type="submit"
-                        variant="destructive"
+                        variant="destructiveSolid"
                         className="w-full"
                         disabled={form.processing}
                     >

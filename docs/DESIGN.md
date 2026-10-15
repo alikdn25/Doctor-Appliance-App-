@@ -50,9 +50,35 @@ Everything pressable is a raised, soft, rounded shape:
 - Color runs as a gradient from left (lighter) to right (darker).
 - A vertical highlight on top (light at the top, faint dark at the bottom).
 - Soft "spherical" edges: no border; inner shadows are light on the top and left, dark on the bottom and right.
-- Corner radius 16–18 px (14 px for small icon buttons, pill for badges).
+- Corner radius: buttons 14 px, cards 18 px, icon buttons 14 px, pill for badges and chips.
 - A soft drop shadow under the element.
-- On press the element sinks by 2 px: `transform: translateY(2px) scale(.99)`.
+- On press the element sinks by 1 px and its shadow flattens (`--shadow-pressed`).
+
+## Tokens and the UI kit (UX-REDESIGN §4, phase 2)
+
+All volume and colour values live as CSS variables in `resources/css/app.css` (`--gradient-primary`,
+`--gradient-surface`, `--gradient-card`, `--gradient-header`, `--shadow-raised`, `--shadow-pressed`,
+`--shadow-primary-edges`, `--shadow-glow`, `--shadow-card`, `--shadow-sunken`, `--danger`, `--success`, `--warning`,
+`--status-<tone>-from/-to/-text`) and are used only through the components in `resources/js/components/ui`. The local
+page `/dev/ui` (APP_ENV=local) shows every component in every state.
+
+**Buttons — four levels of volume** (`Button` variants):
+
+| Level       | Variant                                      | Look                                             | When                                             |
+| ----------- | -------------------------------------------- | ------------------------------------------------ | ------------------------------------------------ |
+| Primary     | `default`                                    | blue gradient, highlight, **glow**               | the one main action in view                      |
+| Secondary   | `outline` (white) / `secondary` (light blue) | raised cushion, no glow                          | other actions                                    |
+| Tertiary    | `tertiary` / `ghost` / `link`                | thin edge and faint shadow, or text with an icon | Edit, Add discount                               |
+| Destructive | `destructive`                                | red text                                         | Delete, Void, Refund, Remove                     |
+| —           | `destructiveSolid`                           | filled red                                       | only the confirm button of a confirmation dialog |
+
+48 px high on a phone, 40 on a desktop; `loading` shows a spinner and blocks a second tap; disabled keeps its volume,
+muted (Primary loses the glow).
+
+Kit: Button, IconButton, StatusBadge + OverdueFlag, AppBar, BottomNav, Fab, Card, ListRow, Section, Sheet (bottom),
+OverflowMenu, ConfirmDialog, toast (`lib/toast.ts`, with Undo), SearchField, FilterChips, SegmentedControl,
+StickyActionBar, EmptyState, Skeleton, FormField, PhoneInput, AddressInput, TagInput, EditableList, DateChips,
+TimeWindowChips, MoneyText, DateText.
 
 ## Colors
 
@@ -191,7 +217,10 @@ inner shadows as the primary button.
 
 ## Statuses
 
-A status is always **color + icon + text**. Names come from the code enums (translated). Badges are pills with a light
+A status is always **color + icon + text**. One dictionary for badges, calendar blocks and filter chips
+(`resources/js/lib/status.ts`, colours as `--status-*` tokens). Colours follow UX-REDESIGN §4.3 (October 14): on the
+way cyan, in progress amber, waiting for customer orange, on hold slate, paid dark green. Overdue is not a status but a
+red flag (`OverdueFlag`) next to any status. Names come from the code enums (translated). Badges are pills with a light
 left-to-right gradient and a soft raised shadow:
 
 ```css
@@ -205,14 +234,15 @@ box-shadow:
 | --------------------------- | ------------------- | ----------------------------- | ------------------------------------- |
 | New                         | `#F3FAFF → #B7E0FF` | `#075985`                     | file-plus                             |
 | Scheduled                   | `#F3F5FF → #B7C6FF` | `#3730A3`                     | calendar                              |
-| On the way                  | `#FFFBE9 → #FFEC9F` | `#92400E`                     | car                                   |
-| In progress                 | `#FFF8EE → #FFDCAC` | `#9A3412`                     | wrench                                |
+| On the way                  | `#EBFDFF → #A5F3FC` | `#155E75`                     | car                                   |
+| In progress                 | `#FFFBE9 → #FFE08A` | `#92400E`                     | wrench                                |
 | Waiting for parts           | `#FBF6FF → #DFC0FF` | `#6B21A8`                     | package                               |
-| Waiting for customer        | `#EBFDFF → #A5F7FF` | `#155E75`                     | clock                                 |
+| Waiting for customer        | `#FFF8EE → #FFD3A1` | `#9A3412`                     | user                                  |
 | Completed / Done / Approved | `#ECFDF4 → #A3FFCF` | `#065F46`                     | check-circle (thumbs-up for Approved) |
 | Invoiced                    | `#EBFDFA → #9FFFED` | `#115E59`                     | receipt                               |
-| Paid                        | `#F1FEF5 → #B0FFCB` | `#166534`                     | banknote                              |
-| On hold / Declined          | `#FFF4F5 → #FFBCC1` | `#9F1239`                     | pause-circle / x-circle               |
+| Paid                        | `#DCFCE7 → #86EFAC` | `#14532D`                     | banknote                              |
+| On hold                     | `#F8FAFC → #CBD5E1` | `#334155`                     | pause-circle                          |
+| Declined                    | `#FFF4F5 → #FFBCC1` | `#9F1239`                     | x-circle                              |
 | Cancelled / Void            | `#F4F4F5 → #CCCCD6` | `#3F3F46`, struck through     | x-circle                              |
 | Unpaid                      | `#FFFBE9 → #FFEC9F` | `#92400E`                     | clock (not car)                       |
 | Partially paid              | `#FFF8EE → #FFDCAC` | `#9A3412`                     | half-filled circle                    |

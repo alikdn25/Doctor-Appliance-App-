@@ -212,6 +212,11 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('payment-providers/{provider}/callback', [PaymentProviderController::class, 'callback'])->name('payment-providers.callback');
         Route::delete('payment-providers/{provider}', [PaymentProviderController::class, 'disconnect'])->name('payment-providers.disconnect');
 
+        // The UI kit, to check every component and state on a phone and a desktop. Local development only.
+        if (app()->environment('local')) {
+            Route::inertia('dev/ui', 'dev/ui')->name('dev.ui');
+        }
+
         // Data protection: deleted items (30 days, restorable) and the change log (Owner).
         Route::get('deleted-items', [TrashController::class, 'index'])->name('trash.index');
         Route::post('deleted-items/{type}/{id}/restore', [TrashController::class, 'restore'])->whereNumber('id')->name('trash.restore');

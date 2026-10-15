@@ -53,6 +53,8 @@ function seedCompany(string $name): array
 }
 
 test('an hourly backup is encrypted and stored as hourly, daily and monthly copies', function () {
+    // Mid-day, so the next hour is the same day and month.
+    $this->travelTo(CarbonImmutable::parse('2026-10-14 10:00', 'UTC'));
     seedCompany('Alpha');
 
     $this->artisan('backup:run')->assertSuccessful();
