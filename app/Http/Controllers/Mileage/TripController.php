@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Membership;
 use App\Models\Trip;
+use App\Models\User;
 use App\Support\Maps\DistanceMatrix;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -73,7 +74,32 @@ class TripController extends Controller
                 ->sortBy('label')->values() : [],
             'types' => array_map(fn (string $type) => ['value' => $type, 'label' => __("trips.types.{$type}")], Trip::TYPES),
             'today' => CarbonImmutable::now($company->timezone)->toDateString(),
+            'recentStops' => self::recentStops($request->user()),
+            // "Enter by hand" on the Trip sheet of My Jobs opens this screen with the form.
+            'openManual' => $request->boolean('manual'),
         ]);
+    }
+
+    /**
+     * The person's last five stores and suppliers (newest first, no repeats): the "Recent" chips of the Trip sheet.
+     *
+     * @return list<string>
+     */
+    public static function recentStops(User $user): array
+    {
+        return Trip::query()
+            ->where('user_id', $user->id)
+            ->whereNull('job_visit_id')
+            ->whereIn('type', ['parts_store', 'supplier'])
+            ->whereNotNull('to_address')
+            ->orderByDesc('trip_date')->orderByDesc('id')
+            ->limit(50)
+            ->pluck('to_address')
+            ->map(fn (string $address) => trim($address))
+            ->unique(fn (string $address) => mb_strtolower($address))
+            ->take(5)
+            ->values()
+            ->all();
     }
 
     public function store(Request $request): RedirectResponse

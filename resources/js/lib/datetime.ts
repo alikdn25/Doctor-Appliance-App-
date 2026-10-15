@@ -47,6 +47,15 @@ export function useCompanyTime() {
             year: 'numeric',
         });
 
+        // ISO dates ("2026-10-09") in the company time zone, whatever the regional format.
+        const isoDateFormat = new Intl.DateTimeFormat('en-CA', {
+            timeZone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        });
+        const hourFormat = make({ hour: 'numeric' });
+        const minuteFormat = make({ minute: 'numeric' });
         const ymdFormat = make({
             year: 'numeric',
             month: '2-digit',
@@ -58,6 +67,8 @@ export function useCompanyTime() {
             isToday: (iso: string) =>
                 ymdFormat.format(new Date(iso)) ===
                 ymdFormat.format(new Date()),
+            /** The company-time date of a moment, "2026-10-09". */
+            ymd: (iso: string) => isoDateFormat.format(new Date(iso)),
             day: (iso: string) => dayFormat.format(new Date(iso)),
             /** "Thu, Oct 2, 2026" */
             fullDay: (iso: string) => fullDayFormat.format(new Date(iso)),
@@ -70,6 +81,16 @@ export function useCompanyTime() {
             /** "Tue, Oct 6 · 9:00 a.m. – 11:00 a.m." */
             window: (start: string, end: string) =>
                 `${dayFormat.format(new Date(start))} · ${timeFormat.format(new Date(start))} – ${timeFormat.format(new Date(end))}`,
+            /** "9–11 a.m.", "9:30 a.m.–1:00 p.m." (no ":00" minutes when both times are on the hour). */
+            shortRange: (start: string, end: string) => {
+                const from = new Date(start);
+                const to = new Date(end);
+                const exact = [from, to].some(
+                    (d) => Number(minuteFormat.format(d)) !== 0,
+                );
+
+                return (exact ? timeFormat : hourFormat).formatRange(from, to);
+            },
             /** "9:00 a.m. – 11:00 a.m." */
             timeRange: (start: string, end: string) =>
                 `${timeFormat.format(new Date(start))} – ${timeFormat.format(new Date(end))}`,

@@ -94,6 +94,8 @@ class VisitActionController extends Controller
 
         return Inertia::render('jobs/finish', [
             'visitId' => $visit->id,
+            // "Waiting for parts" on the job page opens this screen with "Part needed" chosen.
+            'result' => in_array($request->query('result'), ['completed', 'parts', 'not_completed'], true) ? $request->query('result') : 'completed',
             'job' => [
                 'id' => $job->id,
                 'number' => $job->number,

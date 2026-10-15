@@ -18,6 +18,7 @@ use App\Enums\VisitType;
 use App\Enums\WarrantyUnit;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Customers\CustomerController;
+use App\Http\Controllers\Mileage\TripController;
 use App\Http\Requests\Jobs\JobRequest;
 use App\Messaging\MessagingPresenter;
 use App\Models\Appliance;
@@ -36,6 +37,7 @@ use App\Models\Membership;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\SupplierReceipt;
+use App\Models\Trip;
 use App\Models\User;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\CostAccess;
@@ -206,6 +208,8 @@ class JobController extends Controller
             'search' => $search,
             // Cash this person collected and has not handed in yet.
             'cashOnHand' => CashLedger::balances()[$user->id] ?? [],
+            // The Trip sheet's "Recent" chips (only for people who log trips).
+            'recentStops' => Gate::allows('create', Trip::class) ? TripController::recentStops($user) : [],
             'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging) {
                 $job = $visit->job;
 

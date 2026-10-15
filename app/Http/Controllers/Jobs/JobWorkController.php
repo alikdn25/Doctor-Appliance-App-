@@ -7,6 +7,7 @@ use App\Enums\ApplianceType;
 use App\Http\Controllers\Controller;
 use App\Models\Appliance;
 use App\Models\ServiceJob;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -18,13 +19,18 @@ use Inertia\Inertia;
  */
 class JobWorkController extends Controller
 {
-    public function notes(Request $request, ServiceJob $job): RedirectResponse
+    public function notes(Request $request, ServiceJob $job): RedirectResponse|JsonResponse
     {
         Gate::authorize('work', $job);
 
         $job->update($request->validate([
             'tech_notes' => ['nullable', 'string', 'max:5000'],
         ]));
+
+        // Autosave on the job page (UX-REDESIGN §6.2): no page reload and no toast, the field shows "Saved".
+        if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+            return response()->json(['saved' => true]);
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.notes_saved')]);
 
