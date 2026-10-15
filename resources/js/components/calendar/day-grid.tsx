@@ -1,8 +1,9 @@
 import { AlarmClock, AlertTriangle } from 'lucide-react';
 import type { DragEvent, TouchEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { statusLook } from '@/lib/status';
 import type { CalendarVisit, Lane } from '@/components/calendar/types';
 import { inLane } from '@/components/calendar/types';
-import { useClock } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
 import { isFinishedJob } from '@/components/jobs/types';
@@ -34,7 +35,14 @@ type Props = {
     ) => void;
     onDrop: (lane: Lane, date: string, minutes: number | null) => void;
     onOpen: (visit: CalendarVisit) => void;
+    /** A tap on an empty part of a lane: book there (UX-REDESIGN §9.1). */
+    onEmptySlot?: (lane: Lane, minutes: number) => void;
+    /** Minutes since midnight now, when the day shown is today (the red "now" line). */
+    nowMinutes?: number | null;
 };
+
+/** Lanes are at least 160 px wide (UX-REDESIGN §9.2). */
+const LANE_PX = 176;
 
 /**
  * Overlapping visits in one lane are placed side by side.
@@ -72,14 +80,52 @@ export function DayGrid({
     onVisitTouchStart,
     onDrop,
     onOpen,
+    onEmptySlot,
+    nowMinutes = null,
 }: Props) {
     const t = useTrans();
-    const clock = useClock();
+    // "+2 →": how many lanes are still off to the right.
+    const scroller = useRef<HTMLDivElement>(null);
+    const [hidden, setHidden] = useState(0);
+    useEffect(() => {
+        const element = scroller.current;
+        if (!element) return;
+        const measure = () =>
+            setHidden(
+                Math.max(
+                    0,
+                    Math.floor(
+                        (element.scrollWidth -
+                            element.scrollLeft -
+                            element.clientWidth +
+                            8) /
+                            LANE_PX,
+                    ),
+                ),
+            );
+        measure();
+        element.addEventListener('scroll', measure, { passive: true });
+        window.addEventListener('resize', measure);
+        return () => {
+            element.removeEventListener('scroll', measure);
+            window.removeEventListener('resize', measure);
+        };
+    }, [lanes.length]);
     const locale = useLocale();
     const hourFormat = new Intl.DateTimeFormat(locale, {
         hour: 'numeric',
         timeZone: 'UTC',
     });
+    // "9–11 a.m." from wall-clock times.
+    const shortRange = (start: string, end: string) => {
+        const at = (hhmm: string) => new Date(`2000-01-01T${hhmm}:00Z`);
+        const exact = [start, end].some((v) => !v.endsWith(':00'));
+        return new Intl.DateTimeFormat(locale, {
+            hour: 'numeric',
+            ...(exact ? { minute: '2-digit' } : {}),
+            timeZone: 'UTC',
+        }).formatRange(at(start), at(end));
+    };
     const height = (hours.end - hours.start) * HOUR_PX;
     const y = (minutes: number) =>
         ((minutes - hours.start * 60) / 60) * HOUR_PX;
@@ -96,223 +142,294 @@ export function DayGrid({
         onDrop(lane, date, minutes);
     };
 
+    const minutesAt = (e: { clientY: number }, element: HTMLElement) =>
+        hours.start * 60 +
+        ((e.clientY - element.getBoundingClientRect().top) / HOUR_PX) * 60;
+
     return (
-        <div className="overflow-x-auto rounded-lg border" data-drag-scroll>
-            <div className="flex min-w-max">
-                <div className="w-12 shrink-0 border-r">
-                    <div className="h-10 border-b" />
-                    <div className="relative" style={{ height }}>
-                        {hourList.map((h) => (
-                            <span
-                                key={h}
-                                className={`absolute right-1 text-[11px] text-muted-foreground ${h === hours.start ? 'translate-y-0.5' : '-translate-y-1/2'}`}
-                                style={{ top: y(h * 60) }}
-                            >
-                                {hourFormat.format(
-                                    new Date(Date.UTC(2000, 0, 1, h)),
-                                )}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-
-                {lanes.map((lane) => {
-                    const laneVisits = visits.filter(
-                        (v) => v.date === date && inLane(v, lane),
-                    );
-                    const { placed, count } = columns(laneVisits);
-
-                    return (
-                        <div
-                            key={lane.id ?? 'unassigned'}
-                            className="w-44 shrink-0 border-r last:border-r-0 sm:w-52"
-                        >
-                            <div
-                                className={cn(
-                                    'flex h-10 items-center border-b px-2 text-sm font-medium',
-                                    lane.id === null &&
-                                        'text-muted-foreground italic',
-                                )}
-                                title={
-                                    lane.inactive
-                                        ? t('calendar.inactive')
-                                        : undefined
-                                }
-                            >
-                                <span className="truncate">
-                                    {lane.name ?? t('calendar.unassigned')}
-                                    {lane.inactive && ' *'}
+        <div className="relative">
+            {hidden > 0 && (
+                <button
+                    type="button"
+                    data-test="lanes-more"
+                    className="da-chip absolute top-1.5 right-1.5 z-20 rounded-full px-2.5 text-xs leading-7 font-semibold"
+                    onClick={() =>
+                        scroller.current?.scrollBy({
+                            left: LANE_PX * 2,
+                            behavior: 'smooth',
+                        })
+                    }
+                >
+                    +{hidden} →
+                </button>
+            )}
+            <div
+                ref={scroller}
+                className="da-card overflow-x-auto"
+                data-drag-scroll
+            >
+                <div className="flex min-w-max">
+                    <div className="sticky left-0 z-10 w-12 shrink-0 border-r bg-background">
+                        <div className="h-10 border-b" />
+                        <div className="relative" style={{ height }}>
+                            {hourList.map((h) => (
+                                <span
+                                    key={h}
+                                    className={`absolute right-1 text-[11px] text-muted-foreground ${h === hours.start ? 'translate-y-0.5' : '-translate-y-1/2'}`}
+                                    style={{ top: y(h * 60) }}
+                                >
+                                    {hourFormat.format(
+                                        new Date(Date.UTC(2000, 0, 1, h)),
+                                    )}
                                 </span>
-                            </div>
-                            <div
-                                className={cn(
-                                    'relative',
-                                    dragging && 'bg-muted/30',
-                                )}
-                                style={{ height }}
-                                onDragOver={(e) => e.preventDefault()}
-                                onDrop={(e) => dropAt(e, lane)}
-                                data-drop-lane={lane.id ?? ''}
-                                data-drop-date={date}
-                                data-drop-mode="time"
-                                data-hour-start={hours.start}
-                            >
-                                {hourList.map((h) => (
-                                    <div
-                                        key={h}
-                                        className="pointer-events-none absolute inset-x-0 border-t border-dashed border-border/70"
-                                        style={{ top: y(h * 60) }}
-                                    />
-                                ))}
-
-                                {placed.map(({ visit, column }) => {
-                                    const top = y(visit.start_minutes);
-                                    const windowPx = Math.max(
-                                        ((visit.end_minutes -
-                                            visit.start_minutes) /
-                                            60) *
-                                            HOUR_PX,
-                                        24,
-                                    );
-                                    const onSitePx = Math.max(
-                                        (visit.on_site_minutes / 60) * HOUR_PX,
-                                        windowPx,
-                                    );
-                                    const bufferPx =
-                                        (travelBuffer / 60) * HOUR_PX;
-                                    const width = 100 / count;
-
-                                    return (
-                                        <div
-                                            key={visit.id}
-                                            className="absolute px-0.5"
-                                            style={{
-                                                top,
-                                                left: `${column * width}%`,
-                                                width: `${width}%`,
-                                            }}
-                                        >
-                                            <button
-                                                type="button"
-                                                draggable={visit.movable}
-                                                onDragStart={(e) => {
-                                                    const rect =
-                                                        e.currentTarget.getBoundingClientRect();
-                                                    onVisitDragStart(
-                                                        e,
-                                                        visit,
-                                                        lane,
-                                                        ((e.clientY -
-                                                            rect.top) /
-                                                            HOUR_PX) *
-                                                            60,
-                                                    );
-                                                }}
-                                                onDragEnd={onDragEnd}
-                                                onTouchStart={(e) => {
-                                                    const rect =
-                                                        e.currentTarget.getBoundingClientRect();
-                                                    onVisitTouchStart(
-                                                        e,
-                                                        visit,
-                                                        lane,
-                                                        ((e.touches[0].clientY -
-                                                            rect.top) /
-                                                            HOUR_PX) *
-                                                            60,
-                                                    );
-                                                }}
-                                                onContextMenu={(e) =>
-                                                    e.preventDefault()
-                                                }
-                                                onClick={() => onOpen(visit)}
-                                                className={cn(
-                                                    'flex w-full flex-col justify-start overflow-hidden rounded-md border bg-card px-1.5 py-1 text-left text-xs shadow-sm select-none [-webkit-touch-callout:none]',
-                                                    visit.movable
-                                                        ? 'cursor-grab border-l-4 border-l-primary active:cursor-grabbing'
-                                                        : 'border-l-4 border-l-muted-foreground/40 opacity-80',
-                                                    visit.conflict &&
-                                                        'border-destructive ring-1 ring-destructive',
-                                                    isFinishedJob(
-                                                        visit.job.status,
-                                                    ) && 'opacity-50 grayscale',
-                                                )}
-                                                style={{ height: windowPx }}
-                                            >
-                                                <span className="flex items-center gap-1 font-medium">
-                                                    {visit.conflict && (
-                                                        <AlertTriangle
-                                                            className="size-3 shrink-0 text-destructive"
-                                                            aria-label={t(
-                                                                'calendar.conflict',
-                                                                {
-                                                                    minutes:
-                                                                        travelBuffer,
-                                                                },
-                                                            )}
-                                                        />
-                                                    )}
-                                                    {visit.strict_arrival && (
-                                                        <AlarmClock
-                                                            className="size-3 shrink-0 text-red-600"
-                                                            aria-label={t(
-                                                                'jobs.strict.badge',
-                                                            )}
-                                                        />
-                                                    )}
-                                                    <span className="truncate">
-                                                        {clock.range(
-                                                            visit.start_time,
-                                                            visit.end_time,
-                                                        )}{' '}
-                                                        {visit.job.customer}
-                                                    </span>
-                                                </span>
-                                                <span className="block truncate text-muted-foreground">
-                                                    #{visit.job.number} ·{' '}
-                                                    {visit.job.appliances.join(
-                                                        ', ',
-                                                    ) ||
-                                                        visit.job
-                                                            .job_type_label}
-                                                </span>
-                                                <span className="block truncate text-muted-foreground">
-                                                    {visit.job.address}
-                                                </span>
-                                            </button>
-                                            {onSitePx > windowPx && (
-                                                <div
-                                                    className="rounded-b-md bg-primary/10"
-                                                    style={{
-                                                        height:
-                                                            onSitePx - windowPx,
-                                                    }}
-                                                />
-                                            )}
-                                            {bufferPx > 0 && (
-                                                <div
-                                                    className="pointer-events-none rounded-b-md opacity-60"
-                                                    title={t(
-                                                        'calendar.travel_buffer',
-                                                        {
-                                                            minutes:
-                                                                travelBuffer,
-                                                        },
-                                                    )}
-                                                    style={{
-                                                        height: bufferPx,
-                                                        backgroundImage:
-                                                            'repeating-linear-gradient(135deg, var(--muted-foreground) 0 1px, transparent 1px 6px)',
-                                                    }}
-                                                />
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            ))}
                         </div>
-                    );
-                })}
+                    </div>
+
+                    {lanes.map((lane) => {
+                        const laneVisits = visits.filter(
+                            (v) => v.date === date && inLane(v, lane),
+                        );
+                        const { placed, count } = columns(laneVisits);
+
+                        return (
+                            <div
+                                key={lane.id ?? 'unassigned'}
+                                className="shrink-0 border-r last:border-r-0"
+                                style={{ width: LANE_PX }}
+                            >
+                                <div
+                                    className={cn(
+                                        'flex h-10 items-center border-b px-2 text-sm font-medium',
+                                        lane.id === null &&
+                                            'text-muted-foreground italic',
+                                    )}
+                                    title={
+                                        lane.inactive
+                                            ? t('calendar.inactive')
+                                            : undefined
+                                    }
+                                >
+                                    <span className="truncate">
+                                        {lane.name ?? t('calendar.unassigned')}
+                                        {lane.inactive && ' *'}
+                                    </span>
+                                </div>
+                                <div
+                                    className={cn(
+                                        'relative',
+                                        dragging && 'bg-muted/30',
+                                    )}
+                                    style={{ height }}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => dropAt(e, lane)}
+                                    onClick={(e) => {
+                                        // Only the empty lane itself, not a visit on it.
+                                        if (
+                                            onEmptySlot &&
+                                            !dragging &&
+                                            e.target === e.currentTarget
+                                        ) {
+                                            onEmptySlot(
+                                                lane,
+                                                minutesAt(e, e.currentTarget),
+                                            );
+                                        }
+                                    }}
+                                    data-drop-lane={lane.id ?? ''}
+                                    data-drop-date={date}
+                                    data-drop-mode="time"
+                                    data-hour-start={hours.start}
+                                >
+                                    {hourList.map((h) => (
+                                        <div
+                                            key={h}
+                                            className="pointer-events-none absolute inset-x-0 border-t border-dashed border-border/70"
+                                            style={{ top: y(h * 60) }}
+                                        />
+                                    ))}
+                                    {nowMinutes !== null &&
+                                        nowMinutes >= hours.start * 60 &&
+                                        nowMinutes <= hours.end * 60 && (
+                                            <div
+                                                data-test="now-line"
+                                                className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-[var(--now-line)]"
+                                                style={{ top: y(nowMinutes) }}
+                                            />
+                                        )}
+
+                                    {placed.map(({ visit, column }) => {
+                                        const top = y(visit.start_minutes);
+                                        const windowPx = Math.max(
+                                            ((visit.end_minutes -
+                                                visit.start_minutes) /
+                                                60) *
+                                                HOUR_PX,
+                                            24,
+                                        );
+                                        const onSitePx = Math.max(
+                                            (visit.on_site_minutes / 60) *
+                                                HOUR_PX,
+                                            windowPx,
+                                        );
+                                        const bufferPx =
+                                            (travelBuffer / 60) * HOUR_PX;
+                                        const width = 100 / count;
+                                        // Late: still scheduled after its window ended.
+                                        const overdue =
+                                            visit.status === 'scheduled' &&
+                                            nowMinutes !== null &&
+                                            visit.end_minutes < nowMinutes;
+
+                                        return (
+                                            <div
+                                                key={visit.id}
+                                                className="absolute px-0.5"
+                                                style={{
+                                                    top,
+                                                    left: `${column * width}%`,
+                                                    width: `${width}%`,
+                                                }}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    draggable={visit.movable}
+                                                    onDragStart={(e) => {
+                                                        const rect =
+                                                            e.currentTarget.getBoundingClientRect();
+                                                        onVisitDragStart(
+                                                            e,
+                                                            visit,
+                                                            lane,
+                                                            ((e.clientY -
+                                                                rect.top) /
+                                                                HOUR_PX) *
+                                                                60,
+                                                        );
+                                                    }}
+                                                    onDragEnd={onDragEnd}
+                                                    onTouchStart={(e) => {
+                                                        const rect =
+                                                            e.currentTarget.getBoundingClientRect();
+                                                        onVisitTouchStart(
+                                                            e,
+                                                            visit,
+                                                            lane,
+                                                            ((e.touches[0]
+                                                                .clientY -
+                                                                rect.top) /
+                                                                HOUR_PX) *
+                                                                60,
+                                                        );
+                                                    }}
+                                                    onContextMenu={(e) =>
+                                                        e.preventDefault()
+                                                    }
+                                                    onClick={() =>
+                                                        onOpen(visit)
+                                                    }
+                                                    data-status={
+                                                        visit.job.status
+                                                    }
+                                                    data-overdue={
+                                                        overdue || undefined
+                                                    }
+                                                    className={cn(
+                                                        'flex w-full flex-col justify-start overflow-hidden rounded-md border border-l-4 bg-card px-1.5 py-1 text-left text-xs shadow-sm select-none [-webkit-touch-callout:none]',
+                                                        visit.movable
+                                                            ? 'cursor-grab active:cursor-grabbing'
+                                                            : 'opacity-80',
+                                                        (visit.conflict ||
+                                                            overdue) &&
+                                                            'border-danger ring-1 ring-danger',
+                                                        isFinishedJob(
+                                                            visit.job.status,
+                                                        ) &&
+                                                            'opacity-50 grayscale',
+                                                    )}
+                                                    style={{
+                                                        height: windowPx,
+                                                        // The status colour as a stripe (UX-REDESIGN §4.3).
+                                                        borderLeftColor: `var(--status-${statusLook(visit.job.status).tone}-to)`,
+                                                    }}
+                                                >
+                                                    <span className="flex items-center gap-1 font-medium">
+                                                        {visit.conflict && (
+                                                            <AlertTriangle
+                                                                className="size-3 shrink-0 text-destructive"
+                                                                aria-label={t(
+                                                                    'calendar.conflict',
+                                                                    {
+                                                                        minutes:
+                                                                            travelBuffer,
+                                                                    },
+                                                                )}
+                                                            />
+                                                        )}
+                                                        {visit.strict_arrival && (
+                                                            <AlarmClock
+                                                                className="size-3 shrink-0 text-red-600"
+                                                                aria-label={t(
+                                                                    'jobs.strict.badge',
+                                                                )}
+                                                            />
+                                                        )}
+                                                        <span className="truncate">
+                                                            {shortRange(
+                                                                visit.start_time,
+                                                                visit.end_time,
+                                                            )}{' '}
+                                                            ·{' '}
+                                                            {visit.job.customer}
+                                                        </span>
+                                                    </span>
+                                                    <span className="block truncate text-muted-foreground">
+                                                        {visit.job.appliances.join(
+                                                            ', ',
+                                                        ) ||
+                                                            visit.job
+                                                                .job_type_label}{' '}
+                                                        · #{visit.job.number}
+                                                    </span>
+                                                    <span className="block truncate text-muted-foreground">
+                                                        {visit.job.address}
+                                                    </span>
+                                                </button>
+                                                {onSitePx > windowPx && (
+                                                    <div
+                                                        className="rounded-b-md bg-primary/10"
+                                                        style={{
+                                                            height:
+                                                                onSitePx -
+                                                                windowPx,
+                                                        }}
+                                                    />
+                                                )}
+                                                {bufferPx > 0 && (
+                                                    <div
+                                                        className="pointer-events-none rounded-b-md opacity-60"
+                                                        title={t(
+                                                            'calendar.travel_buffer',
+                                                            {
+                                                                minutes:
+                                                                    travelBuffer,
+                                                            },
+                                                        )}
+                                                        style={{
+                                                            height: bufferPx,
+                                                            backgroundImage:
+                                                                'repeating-linear-gradient(135deg, var(--muted-foreground) 0 1px, transparent 1px 6px)',
+                                                        }}
+                                                    />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );

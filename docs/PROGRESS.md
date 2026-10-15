@@ -1,3 +1,25 @@
+# October 15 — UX redesign, phase 8: calendar and map
+
+UX-REDESIGN.md §9.
+
+1. **Toolbar** (§9.1): [Day | Week | Map], ‹ › and the date (tap to pick a day; "Today" when away from today) on one
+   row; the separate date field is gone. "Show completed", the people shown and the travel-buffer legend are in a
+   Filters sheet (remembered per device). The drag hint is shown once, with "Got it".
+2. **Booking from the calendar**: "Book on this day" is gone; + Book in the bottom bar (or the sidebar) books on the
+   day the calendar shows, and a tap on an empty spot of a lane opens Book customer with that day, time and person.
+3. **Day on a phone** (§9.2): lanes only for the people who go on calls (plus anyone else with a job that day);
+   people with work first, Unassigned last; lanes 176 px wide with the hour column pinned and a "+N →" chip for
+   lanes off screen; blocks "9–11 a.m. · Jane Cooper" with the appliance below, a status-coloured stripe and a red
+   frame when late; a red "now" line; "N to schedule" folds above the grid (a column on wide screens).
+4. **Week on a phone** (§9.3): an agenda — "Fri, Oct 9 · 3 jobs" per day, opened at today; "⋯ → Reschedule" opens the
+   time/person sheet. Tablets and computers keep the grid (all 7 days, status colours).
+5. **Map** (§9.4): the person filter is a row of chips; the numbered list and "Open route" stay.
+
+- No migrations (uses the "Goes on calls" flag added in phase 5).
+- Tests: lanes and their order, the admin lane only with a job, booking from an empty slot (CalendarTest); browser
+  scenarios for Filters/Show completed, + Book with the shown day, a tap on an empty slot, map chips.
+- Next: phase 9 — invoices, estimates, payments, inbox (§10) with §21, §18, §19 and §26.
+
 # October 15 — UX redesign, phase 7: customers and appliances
 
 UX-REDESIGN.md §8.

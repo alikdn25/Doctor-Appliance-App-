@@ -164,6 +164,8 @@ export default function QuickBook({
     booking,
     openInvoice,
     bookingDate,
+    bookingStart = null,
+    bookingTechnician = null,
     today,
     nowTime = '00:00',
     brands,
@@ -178,6 +180,8 @@ export default function QuickBook({
     booking: boolean;
     openInvoice: boolean;
     bookingDate: string | null;
+    bookingStart?: string | null;
+    bookingTechnician?: number | null;
     today: string;
     nowTime?: string;
     brands: Option[];
@@ -209,8 +213,18 @@ export default function QuickBook({
         bookingDate ?? (upcomingToday.length > 0 ? today : addDays(today, 1));
     const firstWindow =
         firstDate === today ? upcomingToday[0] : arrivalWindows[0];
+    // A tap on an empty calendar slot brings its time: the window starting then, or a two-hour custom time.
+    const slotWindow = bookingStart
+        ? arrivalWindows.find((w) => w.start === bookingStart)
+        : undefined;
     const [slot, setSlot] = useState<Slot>(
-        firstWindow ? { kind: 'window', ...firstWindow } : { kind: 'custom' },
+        bookingStart
+            ? slotWindow
+                ? { kind: 'window', ...slotWindow }
+                : { kind: 'custom' }
+            : firstWindow
+              ? { kind: 'window', ...firstWindow }
+              : { kind: 'custom' },
     );
 
     const form = useForm({
@@ -248,14 +262,17 @@ export default function QuickBook({
         add_visit: booking,
         visit: {
             date: firstDate,
-            start_time: firstWindow?.start ?? '09:00',
-            end_time: firstWindow?.end ?? '11:00',
+            start_time: bookingStart ?? firstWindow?.start ?? '09:00',
+            end_time: bookingStart
+                ? toHhmm(toMinutes(bookingStart) + 120)
+                : (firstWindow?.end ?? '11:00'),
             estimated_duration_minutes: 60,
             // One person on calls (a one-person business): booked to them. Otherwise Unassigned until picked.
-            assignee_ids:
-                bookingTechnicians.length === 1
-                    ? [bookingTechnicians[0].id]
-                    : ([] as number[]),
+            assignee_ids: bookingTechnician
+                ? [bookingTechnician]
+                : bookingTechnicians.length === 1
+                  ? [bookingTechnicians[0].id]
+                  : ([] as number[]),
         },
     });
     const { data } = form;

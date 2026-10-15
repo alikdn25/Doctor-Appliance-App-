@@ -1,5 +1,19 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+
+/** + Book of the menu books on the day the calendar shows (the bottom bar on a phone, the sidebar on a computer). */
+async function bookShownDay(page: Page, mobile: boolean) {
+    if (mobile) {
+        await page.locator('[data-test="bottom-nav-book"]').click();
+    } else {
+        await page
+            .locator('[data-sidebar="content"]')
+            .last()
+            .getByRole('link', { name: 'Book customer', exact: true })
+            .click();
+    }
+}
 
 const fixture = JSON.parse(
     readFileSync('storage/framework/testing/browser-fixture.json', 'utf8'),
@@ -37,9 +51,7 @@ test('visible menu and booking open the first visit directly from any working sc
         page.getByRole('button', { name: 'Book', exact: true }),
     ).toBeDisabled();
     await page.goto('/calendar?date=2026-10-12');
-    await page
-        .getByRole('link', { name: 'Book on this day', exact: true })
-        .click();
+    await bookShownDay(page, info.project.name === 'mobile');
     await expect(page).toHaveURL(/book=1.*date=2026-10-12/);
     await expect(page.locator('input[type="date"]').first()).toHaveValue(
         '2026-10-12',

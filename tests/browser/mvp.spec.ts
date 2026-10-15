@@ -114,9 +114,11 @@ test('an old unfinished repair remains in the backlog and map fallback keeps vis
             name: /1:00 p\.m\. – 3:00 p\.m\..*Jane Browser/,
         }),
     ).toBeVisible();
+    // The person filter of the map is a row of chips (UX-REDESIGN §9.4).
     await page
-        .getByRole('combobox', { name: 'Jobs to show' })
-        .selectOption({ label: 'Browser Technician' });
+        .getByRole('group', { name: 'Jobs to show' })
+        .getByRole('button', { name: 'Browser Technician' })
+        .click();
     await expect(
         page.getByRole('button', {
             name: /1:00 p\.m\. – 3:00 p\.m\..*Jane Browser/,

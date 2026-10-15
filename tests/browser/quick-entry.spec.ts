@@ -1,5 +1,19 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+
+/** + Book of the menu books on the day the calendar shows (the bottom bar on a phone, the sidebar on a computer). */
+async function bookShownDay(page: Page, mobile: boolean) {
+    if (mobile) {
+        await page.locator('[data-test="bottom-nav-book"]').click();
+    } else {
+        await page
+            .locator('[data-sidebar="content"]')
+            .last()
+            .getByRole('link', { name: 'Book customer', exact: true })
+            .click();
+    }
+}
 
 const fixture = JSON.parse(
     readFileSync('storage/framework/testing/browser-fixture.json', 'utf8'),
@@ -39,9 +53,7 @@ test('an empty calendar day books a new caller using only name phone and time', 
     const name = `Quick Caller ${info.project.name}`;
     const date = info.project.name === 'desktop' ? '2030-01-15' : '2030-01-16';
     await page.goto(`/calendar?date=${date}`);
-    await page
-        .getByRole('link', { name: 'Book on this day', exact: true })
-        .click();
+    await bookShownDay(page, info.project.name === 'mobile');
     await page
         .locator('#booking-phone')
         .fill(
@@ -74,7 +86,7 @@ test('an empty calendar day books a new caller using only name phone and time', 
     await page.goto(`/calendar?date=${date}`);
     await expect(
         page.getByRole('button', {
-            name: new RegExp(`10:00 a\\.m\\. – 12:00 p\\.m\\..*${name}`),
+            name: new RegExp(`10 a\\.m\\..*12 p\\.m\\. · ${name}`),
         }),
     ).toBeVisible();
     await page.screenshot({
@@ -166,4 +178,16 @@ test('"Now" books a caller right away for today, before the technician\'s next j
     await expect(page.locator('[data-sonner-toast]')).toContainText(
         /Booked #\d+ · Today/,
     );
+});
+
+test('a tap on an empty calendar slot books there with the time and the person', async ({
+    page,
+}) => {
+    await page.goto('/calendar?view=day&date=2030-01-20');
+    const lane = page.locator('[data-drop-mode="time"]').first();
+    await lane.click({ position: { x: 40, y: 56 * 2 + 10 } });
+    await expect(page).toHaveURL(
+        /book=1.*date=2030-01-20.*start=\d\d(%3A|:)\d\d.*technician=\d+/,
+    );
+    await expect(page.locator('[data-test="booking-form"]')).toBeVisible();
 });
