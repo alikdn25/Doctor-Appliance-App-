@@ -34,7 +34,9 @@ test('invoices: totals on top, filter chips, rows with where each invoice stands
     page,
 }, info) => {
     await page.goto('/invoices');
-    await expect(page.locator('[data-test="metric-outstanding"]')).toBeVisible();
+    await expect(
+        page.locator('[data-test="metric-outstanding"]'),
+    ).toBeVisible();
     await expect(page.locator('[data-test="metric-overdue"]')).toBeVisible();
     await screenshot(page, info, 'invoices');
 
