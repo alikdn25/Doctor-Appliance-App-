@@ -1,28 +1,4 @@
 import { Link, usePage, usePoll } from '@inertiajs/react';
-import {
-    Banknote,
-    BarChart3,
-    Bot,
-    History,
-    Trash2,
-    BookOpen,
-    Building,
-    Building2,
-    Car,
-    MessageSquare,
-    CalendarDays,
-    ClipboardList,
-    Contact,
-    LayoutGrid,
-    Percent,
-    Plus,
-    Receipt,
-    Star,
-    Tags,
-    Users,
-    Wrench,
-    Wallet,
-} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { CompanySwitcher } from '@/components/company-switcher';
 import { NavMain } from '@/components/nav-main';
@@ -37,164 +13,33 @@ import {
     SidebarMenuItem,
     SidebarRail,
 } from '@/components/ui/sidebar';
-import { calendar, dashboard } from '@/routes';
-import { index as adminCompanies } from '@/routes/admin/companies';
-import { index as brands } from '@/routes/brands';
-import { index as cash } from '@/routes/cash';
-import { bookingBot, changeLog } from '@/routes/company';
-import { index as trash } from '@/routes/trash';
-import { index as reports } from '@/routes/reports';
-import { index as customers } from '@/routes/customers';
-import { edit as googleProfiles } from '@/routes/company/google-profiles';
-import { edit as messaging } from '@/routes/company/messaging';
-import { edit as services } from '@/routes/company/services';
-import { edit as companySettings } from '@/routes/company/settings';
-import { index as invoices } from '@/routes/invoices';
-import { index as messageInbox } from '@/routes/messages';
-import { index as expenses } from '@/routes/expenses';
-import { index as trips } from '@/routes/trips';
-import {
-    create as bookCustomer,
-    index as jobs,
-    mine as myJobs,
-} from '@/routes/jobs';
-import { index as taxes } from '@/routes/taxes';
-import { index as team } from '@/routes/team';
+import { useAppNavigation } from '@/hooks/use-app-navigation';
 import type { NavItem } from '@/types';
 
+/**
+ * Desktop sidebar (on a phone the same sections are in the bottom bar and More). Built from useAppNavigation, the
+ * one source of the menu.
+ */
 export function AppSidebar() {
-    const { auth, unreadMessages } = usePage().props;
+    const { auth } = usePage().props;
     const can = auth.can ?? {};
+    const { groups, home } = useAppNavigation();
     usePoll(
         30000,
         { only: ['unreadMessages'] },
         { autoStart: Boolean(can.viewMessageInbox) },
     );
 
-    // Everyday sections first; money, reports and settings sit in groups that open on tap.
-    const mainItems: NavItem[] = auth.company
-        ? ([
-              can.createJobs && {
-                  title: 'nav.book_customer',
-                  href: bookCustomer({ query: { book: 1 } }),
-                  icon: Plus,
-              },
-              can.viewMyJobs && {
-                  title: 'nav.my_jobs',
-                  href: myJobs(),
-                  icon: Wrench,
-              },
-              can.viewCalendar && {
-                  title: 'nav.calendar',
-                  href: calendar(),
-                  icon: CalendarDays,
-              },
-              can.viewJobs && {
-                  title: 'nav.jobs',
-                  href: jobs(),
-                  icon: ClipboardList,
-              },
-              can.viewCustomers && {
-                  title: 'nav.customers',
-                  href: customers(),
-                  icon: Contact,
-              },
-              can.viewInvoices && {
-                  title: 'nav.invoices',
-                  href: invoices(),
-                  icon: Receipt,
-              },
-              can.viewMessageInbox && {
-                  title: 'nav.sms_inbox',
-                  href: messageInbox(),
-                  icon: MessageSquare,
-                  badge: unreadMessages ?? 0,
-              },
-          ].filter(Boolean) as NavItem[])
-        : [];
-
-    const moneyItems: NavItem[] = auth.company
-        ? ([
-              can.viewInvoices && {
-                  title: 'nav.reports',
-                  href: reports(),
-                  icon: BarChart3,
-              },
-              can.viewInvoices && {
-                  title: 'nav.cash',
-                  href: cash(),
-                  icon: Banknote,
-              },
-              can.viewBusinessExpenses && {
-                  title: 'nav.business_expenses',
-                  href: expenses(),
-                  icon: Wallet,
-              },
-              can.viewBusinessExpenses && {
-                  title: 'nav.mileage',
-                  href: trips(),
-                  icon: Car,
-              },
-          ].filter(Boolean) as NavItem[])
-        : [];
-
-    const companyItems: NavItem[] = [
-        auth.company && {
-            title: 'nav.getting_started',
-            href: dashboard(),
-            icon: LayoutGrid,
-        },
-        can.viewBrands && { title: 'nav.brands', href: brands(), icon: Tags },
-        can.manageTeam && { title: 'nav.team', href: team(), icon: Users },
-        can.viewTaxes && { title: 'nav.taxes', href: taxes(), icon: Percent },
-        can.manageChecklists && {
-            title: 'nav.services',
-            href: services(),
-            icon: BookOpen,
-        },
-        can.manageChecklists && {
-            title: 'nav.google_reviews',
-            href: googleProfiles(),
-            icon: Star,
-        },
-        can.manageCompany && {
-            title: 'nav.messaging',
-            href: messaging(),
-            icon: MessageSquare,
-        },
-        can.manageCompany && {
-            title: 'nav.company_settings',
-            href: companySettings(),
-            icon: Building,
-        },
-        can.viewTrash && {
-            title: 'nav.deleted_items',
-            href: trash(),
-            icon: Trash2,
-        },
-        can.viewChangeLog && {
-            title: 'nav.change_log',
-            href: changeLog(),
-            icon: History,
-        },
-        can.viewChangeLog && {
-            title: 'nav.booking_bot',
-            href: bookingBot(),
-            icon: Bot,
-        },
-    ].filter(Boolean) as NavItem[];
-
-    const adminItems: NavItem[] = auth.user?.is_super_admin
-        ? [
-              {
-                  title: 'nav.companies',
-                  href: adminCompanies(),
-                  icon: Building2,
-              },
-          ]
-        : [];
-
-    const homeHref = can.viewMyJobs ? myJobs() : dashboard();
+    const items = (key: string): NavItem[] =>
+        (groups.find((group) => group.key === key)?.items ?? []).map(
+            (item) => ({
+                title: item.title,
+                href: item.href,
+                icon: item.icon,
+                badge: item.badge,
+            }),
+        );
+    const homeHref = home;
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -215,18 +60,18 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainItems} label="nav.group_main" />
+                <NavMain items={items('main')} label="nav.group_main" />
                 <NavMain
-                    items={moneyItems}
+                    items={items('money')}
                     label="nav.group_money"
                     collapsible
                 />
                 <NavMain
-                    items={companyItems}
+                    items={items('company')}
                     label="nav.group_company"
                     collapsible
                 />
-                <NavMain items={adminItems} label="nav.group_platform" />
+                <NavMain items={items('platform')} label="nav.group_platform" />
             </SidebarContent>
 
             <SidebarFooter>

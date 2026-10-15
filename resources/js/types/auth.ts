@@ -6,6 +6,9 @@ export type User = {
     avatar?: string;
     is_super_admin: boolean;
     two_factor_enabled?: boolean;
+    /** Bottom menu: Field (works on calls) or Office (runs the team), UX-REDESIGN §22. */
+    menu_mode: 'field' | 'office';
+    can_choose_menu: boolean;
     [key: string]: unknown;
 };
 
@@ -15,6 +18,8 @@ export type CurrentCompany = {
     country: string;
     currency: string;
     currency_decimals: number;
+    /** automatic, technician_phone or off (SPEC §7.7). */
+    sms_mode: string;
     /** Regional format (BCP 47) for dates, times and numbers, e.g. en-US. */
     locale: string;
     timezone: string;

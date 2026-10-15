@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Accounting\BusinessExpenseCategoryController;
 use App\Http\Controllers\Accounting\BusinessExpenseController;
+use App\Http\Controllers\Accounting\ExpensesHubController;
 use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
@@ -50,6 +51,7 @@ use App\Http\Controllers\Onboarding\CompanyController as OnboardingCompanyContro
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\Reports\ReportController;
+use App\Http\Controllers\Settings\MenuModeController;
 use App\Http\Controllers\SmsInboxController;
 use App\Http\Controllers\SmsWebhookController;
 use App\Http\Controllers\TrashController;
@@ -216,6 +218,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         if (app()->environment('local')) {
             Route::inertia('dev/ui', 'dev/ui')->name('dev.ui');
         }
+
+        Route::put('settings/menu-mode', MenuModeController::class)->name('menu-mode.update');
+        Route::get('expenses-and-taxes', ExpensesHubController::class)->name('expenses-hub');
 
         // Data protection: deleted items (30 days, restorable) and the change log (Owner).
         Route::get('deleted-items', [TrashController::class, 'index'])->name('trash.index');

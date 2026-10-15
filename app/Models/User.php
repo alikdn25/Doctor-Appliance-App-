@@ -38,6 +38,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property bool $is_super_admin
  * @property bool $is_active
  * @property bool $is_bot The website booking bot's user: never signs in to the app
+ * @property string|null $menu_mode "field" or "office" bottom menu (UX-REDESIGN §22); null = the role's default
  * @property int|null $current_company_id
  * @property Carbon|null $last_login_at
  * @property string|null $two_factor_secret
@@ -197,6 +198,24 @@ class User extends Authenticatable implements MustVerifyEmail
     public function currentRole(): ?UserRole
     {
         return $this->currentMembership()?->role;
+    }
+
+    /**
+     * The bottom menu this person uses (UX-REDESIGN §22): Field (works on calls) or Office (runs the team). Only the
+     * office roles can choose; everybody else works in the field. Office is the default for Owners and Admins.
+     */
+    public function menuMode(): string
+    {
+        if (! $this->canChooseMenu()) {
+            return 'field';
+        }
+
+        return in_array($this->menu_mode, ['field', 'office'], true) ? $this->menu_mode : 'office';
+    }
+
+    public function canChooseMenu(): bool
+    {
+        return $this->hasRole(UserRole::Owner, UserRole::Admin);
     }
 
     public function hasRole(UserRole ...$roles): bool

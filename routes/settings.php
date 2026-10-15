@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 // Personal settings: available to every signed-in user (also super-admins and
 // users without a company), so they stay outside the tenant middleware.
-Route::middleware(['auth', 'active'])->group(function () {
+Route::middleware(['auth', 'active', 'tenant:optional'])->group(function () {
     Route::redirect('settings', '/settings/profile');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');

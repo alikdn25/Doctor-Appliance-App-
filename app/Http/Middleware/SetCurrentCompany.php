@@ -22,12 +22,28 @@ class SetCurrentCompany
         private readonly Impersonation $impersonation,
     ) {}
 
-    public function handle(Request $request, Closure $next): Response
+    /**
+     * "tenant:optional" (personal settings): use the person's company when they have one, so the app frame and
+     * menu show it, but never redirect — these pages also serve people without a company.
+     */
+    public function handle(Request $request, Closure $next, ?string $mode = null): Response
     {
         /** @var User|null $user */
         $user = $request->user();
 
         if ($user === null) {
+            return $next($request);
+        }
+
+        if ($mode === 'optional') {
+            $company = $this->impersonation->isActive()
+                ? $this->resolveImpersonatedCompany($user)
+                : $user->accessibleCompanies()->firstWhere('id', $user->current_company_id) ?? $user->accessibleCompanies()->first();
+
+            if ($company !== null) {
+                $this->currentCompany->set($company);
+            }
+
             return $next($request);
         }
 

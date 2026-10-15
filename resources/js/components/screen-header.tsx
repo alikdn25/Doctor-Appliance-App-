@@ -1,22 +1,19 @@
-import { Link } from '@inertiajs/react';
 import type { InertiaLinkProps } from '@inertiajs/react';
-import { ArrowLeft, Menu } from 'lucide-react';
 import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useSidebar } from '@/components/ui/sidebar';
-import { useTrans } from '@/lib/i18n';
+import { BackButton, useBackTarget } from '@/components/back-button';
 
 /** The dark header's slot; a screen with its own header (mockup screens) renders into it. */
 export const ScreenHeaderSlot = createContext<HTMLElement | null>(null);
 
 /** Square raised button on the dark header (DESIGN.md "Header buttons"). */
 export const headerButtonClass =
-    'da-header-btn da-press flex size-12 shrink-0 items-center justify-center';
+    'da-header-btn da-press flex size-10 shrink-0 items-center justify-center';
 
 /**
- * A screen's own header, as on the approved mockups: menu or back arrow, title with a subtitle,
- * and buttons on the right (search, filters, more).
+ * A screen's own header (UX-REDESIGN §4.4, §5.3): ← on child screens (none on root screens, and no menu button —
+ * More is in the bottom bar), the title with a short factual subtitle, and buttons on the right.
  */
 export function ScreenHeader({
     title,
@@ -30,8 +27,7 @@ export function ScreenHeader({
     actions?: ReactNode;
 }) {
     const slot = useContext(ScreenHeaderSlot);
-    const { toggleSidebar } = useSidebar();
-    const t = useTrans();
+    const backTo = useBackTarget(back);
 
     if (!slot) {
         return null;
@@ -39,30 +35,13 @@ export function ScreenHeader({
 
     return createPortal(
         <div className="flex w-full items-center gap-3">
-            {back ? (
-                <Link
-                    href={back}
-                    aria-label={t('common.back')}
-                    className={headerButtonClass}
-                >
-                    <ArrowLeft className="size-6" aria-hidden="true" />
-                </Link>
-            ) : (
-                <button
-                    type="button"
-                    aria-label={t('nav.menu')}
-                    className="flex size-12 shrink-0 items-center justify-center rounded-xl text-white md:hidden"
-                    onClick={toggleSidebar}
-                >
-                    <Menu className="size-7" aria-hidden="true" />
-                </button>
-            )}
+            {backTo && <BackButton href={backTo} />}
             <div className="min-w-0 flex-1">
-                <h1 className="truncate text-2xl leading-tight font-bold text-white">
+                <h1 className="truncate text-xl leading-tight font-semibold text-white">
                     {title}
                 </h1>
                 {subtitle && (
-                    <p className="line-clamp-2 text-[15px] text-white/80">
+                    <p className="line-clamp-2 text-sm text-white/75">
                         {subtitle}
                     </p>
                 )}

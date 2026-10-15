@@ -268,7 +268,9 @@ Visit statuses use the same look as the matching job status.
 
 ## Navigation and layout
 
-- Bottom bar with 4 tabs: **Today · Map · Messages · More** (approved My Jobs mockup).
+- Bottom bar by role (UX-REDESIGN §5.1, §22): Owner/Office **Today · Calendar · ＋ Book · Jobs** (Office menu) or
+  **Invoices** (Field menu) **· More**; technician **Today · Mileage · My expenses · More**. More opens the whole menu
+  as a bottom sheet; there is no menu button in the header on phones. Child screens show ← in the header.
 - Inner screens have no tab bar: a back button at the top and actions pinned to the bottom. In code a pinned bar has
   the class `da-pinned`; while one is on screen the tab bar (`da-tabbar`) is hidden so nothing covers the actions.
 - Menu: the everyday sections first (Book customer, My jobs, Calendar, Jobs, Customers, Invoices, Messages); "Money and

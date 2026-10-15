@@ -89,7 +89,21 @@ test('the menu shows the everyday sections and opens money and settings on tap',
 }, info) => {
     await page.goto('/jobs');
     if (info.project.name === 'mobile') {
-        await page.getByRole('button', { name: 'Menu', exact: true }).click();
+        // Phone: no menu button in the header; More in the bottom bar opens the menu as a sheet (Owner: groups open).
+        await expect(
+            page.getByRole('button', { name: 'Menu', exact: true }),
+        ).toHaveCount(0);
+        await page.locator('[data-test="bottom-nav-more"]').click();
+        const more = page.locator('[data-test="more-sheet"]');
+        await expect(
+            more.getByRole('link', { name: 'Customers', exact: true }),
+        ).toBeVisible();
+        await expect(
+            more.getByRole('link', { name: 'Reports', exact: true }),
+        ).toBeVisible();
+        await page.screenshot({ path: info.outputPath('menu.png') });
+
+        return;
     }
     const sidebar = page.locator('[data-sidebar="content"]').last();
     await expect(
@@ -117,7 +131,11 @@ test('my jobs: day with arrows, Completed, + Trip, card with Navigate, Call and 
     });
     const tech = await context.newPage();
     await tech.goto('http://127.0.0.1:8000/my-jobs');
-    const today = tech.getByRole('link', { name: 'Today', exact: true });
+    // The day tab of My Jobs (the bottom bar has its own "Today").
+    const notBottomBar = tech.locator(':not([data-test^="bottom-nav"])');
+    const today = tech
+        .getByRole('link', { name: 'Today', exact: true })
+        .and(notBottomBar);
     await expect(today).toBeVisible();
     await expect(
         tech.getByRole('link', { name: 'Completed', exact: true }),
@@ -127,9 +145,7 @@ test('my jobs: day with arrows, Completed, + Trip, card with Navigate, Call and 
 
     // The arrows move one day; the label becomes the date, and back again.
     await tech.getByRole('link', { name: 'Next day' }).click();
-    await expect(
-        tech.getByRole('link', { name: 'Today', exact: true }),
-    ).toHaveCount(0);
+    await expect(today).toHaveCount(0);
     await tech.getByRole('link', { name: 'Previous day' }).click();
     await expect(today).toBeVisible();
 

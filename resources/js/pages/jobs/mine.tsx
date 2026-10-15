@@ -16,6 +16,7 @@ import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { StrictBadge } from '@/components/jobs/job-outcome';
 import { JobCard, StatusCircles } from '@/components/jobs/job-card';
 import { QuickTripSheet } from '@/components/jobs/quick-trip-sheet';
+import { InboxHeaderButton } from '@/components/inbox-header-button';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { Input } from '@/components/ui/input';
 import type { Visit } from '@/components/jobs/types';
@@ -158,6 +159,7 @@ export default function MyJobs({
                 }
                 actions={
                     <>
+                        <InboxHeaderButton />
                         <button
                             type="button"
                             className={headerButtonClass}
@@ -168,7 +170,7 @@ export default function MyJobs({
                                 setSearchOpen(!searchOpen);
                             }}
                         >
-                            <Search className="size-6" />
+                            <Search className="size-5" />
                         </button>
                         <button
                             type="button"
@@ -177,7 +179,7 @@ export default function MyJobs({
                             aria-expanded={legendOpen}
                             onClick={() => setLegendOpen(!legendOpen)}
                         >
-                            <SlidersHorizontal className="size-6" />
+                            <SlidersHorizontal className="size-5" />
                         </button>
                     </>
                 }

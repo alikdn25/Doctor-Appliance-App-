@@ -3,6 +3,7 @@ import { Plus, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { StatusCircles } from '@/components/jobs/job-card';
+import { InboxHeaderButton } from '@/components/inbox-header-button';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { JobList } from '@/components/jobs/job-list';
 import type { Assignable, JobRow } from '@/components/jobs/types';
@@ -93,6 +94,7 @@ export default function JobsIndex({
                 subtitle={t('jobs.count', { count: jobs.total })}
                 actions={
                     <>
+                        <InboxHeaderButton />
                         <button
                             type="button"
                             className={headerButtonClass}
@@ -100,7 +102,7 @@ export default function JobsIndex({
                             aria-expanded={searchOpen}
                             onClick={() => setSearchOpen(!searchOpen)}
                         >
-                            <Search className="size-6" />
+                            <Search className="size-5" />
                         </button>
                         <button
                             type="button"
@@ -109,7 +111,7 @@ export default function JobsIndex({
                             aria-expanded={filtersOpen}
                             onClick={() => setFiltersOpen(!filtersOpen)}
                         >
-                            <SlidersHorizontal className="size-6" />
+                            <SlidersHorizontal className="size-5" />
                         </button>
                     </>
                 }
