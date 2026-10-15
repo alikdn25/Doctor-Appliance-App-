@@ -189,9 +189,10 @@ class InvoiceController extends Controller
                 'discount_type' => $estimate->discount_type,
                 'discount_value' => $estimate->discount_value,
                 'notes' => $estimate->notes,
-                // Optional lines the customer did not pick are left out, as when the estimate is invoiced.
+                // Optional lines the customer did not pick and other options are left out, as when the estimate is
+                // invoiced.
                 'items' => collect(BillingPresenter::document($estimate)['items'])
-                    ->filter(fn (array $item) => ! $item['optional'] || $item['selected'])
+                    ->filter(fn (array $item) => $item['option_name'] !== null ? $item['selected'] : (! $item['optional'] || $item['selected']))
                     ->values()
                     ->all(),
             ])

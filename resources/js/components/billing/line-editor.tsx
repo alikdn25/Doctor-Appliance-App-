@@ -26,6 +26,10 @@ import type { Option } from '@/types';
 
 export type LineKind = 'service' | 'part' | 'material';
 
+export type EstimateOption = 'good' | 'better' | 'best';
+
+export const ESTIMATE_OPTIONS: EstimateOption[] = ['good', 'better', 'best'];
+
 export type Line = {
     key: number;
     id: number | null;
@@ -36,6 +40,8 @@ export type Line = {
     tax_rate_ids: number[] | null;
     optional: boolean;
     selected: boolean;
+    /** Good / Better / Best (estimates); '' = in every option. */
+    option_name: EstimateOption | '';
     kind: LineKind;
     service_id: number | null;
     part_number: string;
@@ -89,6 +95,7 @@ export const newLine = (patch: Partial<Line> = {}): Line => ({
     tax_rate_ids: null,
     optional: false,
     selected: false,
+    option_name: '',
     kind: 'service',
     service_id: null,
     part_number: '',
@@ -403,6 +410,11 @@ export function LineEditor({
                     <KindBadge kind={line.kind} />
                     <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium">
+                            {line.option_name && (
+                                <span className="da-badge mr-1.5 rounded-full px-2 text-xs leading-5 font-semibold">
+                                    {t(`estimates.options.${line.option_name}`)}
+                                </span>
+                            )}
                             {name.trim() || t('billing.line.untitled')}
                         </span>
                         <span className="block truncate text-xs text-muted-foreground tabular-nums">
@@ -755,6 +767,38 @@ export function LineEditor({
             )}
 
             {estimate && (
+                <div className="space-y-1" data-test="line-option">
+                    <p className="text-sm font-medium">
+                        {t('estimates.options.title')}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        {(['', ...ESTIMATE_OPTIONS] as const).map((option) => (
+                            <button
+                                key={option || 'all'}
+                                type="button"
+                                aria-pressed={line.option_name === option}
+                                className="da-chip da-press inline-flex h-10 items-center rounded-full px-3.5 text-sm font-medium"
+                                onClick={() =>
+                                    onChange({
+                                        option_name: option,
+                                        optional: false,
+                                        selected: false,
+                                    })
+                                }
+                            >
+                                {option
+                                    ? t(`estimates.options.${option}`)
+                                    : t('estimates.options.none')}
+                            </button>
+                        ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        {t('estimates.options.line_hint')}
+                    </p>
+                </div>
+            )}
+
+            {estimate && line.option_name === '' && (
                 <div className="flex flex-wrap gap-x-4">
                     <label className="flex min-h-11 items-center gap-2 text-sm">
                         <Checkbox

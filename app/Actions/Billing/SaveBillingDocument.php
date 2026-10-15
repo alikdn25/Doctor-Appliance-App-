@@ -209,10 +209,7 @@ class SaveBillingDocument
                 'cost_owner_id' => $costOwner,
                 'unit_cost' => array_key_exists('unit_cost', $item) ? $item['unit_cost'] : $old?->unit_cost,
                 'supplier_taxes' => array_key_exists('supplier_taxes', $item) ? $item['supplier_taxes'] : $old?->supplier_taxes,
-                ...($estimate ? [
-                    'optional' => (bool) ($item['optional'] ?? false),
-                    'selected' => ! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false),
-                ] : []),
+                ...($estimate ? self::estimateFlags($item) : []),
             ];
 
             // Warranty: as set on the line, else the price book item's, else the company's default.
@@ -228,7 +225,13 @@ class SaveBillingDocument
             return $line;
         }, $data['items']));
 
-        // Internal lines (not billed) and optional lines not picked are not in the total.
+        if ($estimate) {
+            // The chosen option: the one whose lines were sent selected, else the first offered.
+            $picked = collect($items)->first(fn (array $item) => $item['option_name'] !== null && $item['selected']);
+            $items = self::chooseOption($items, $picked['option_name'] ?? null);
+        }
+
+        // Internal lines (not billed), optional lines not picked and other options are not in the total.
         $totals = DocumentTotals::calculate(
             array_map(fn (array $item) => [...$item, 'included' => ($item['selected'] ?? true) && $item['bill_to_customer']], $items),
             $data['discount_type'] ?? null,
@@ -278,6 +281,50 @@ class SaveBillingDocument
     }
 
     /**
+     * Optional / selected / option of an estimate line. An option line is never "optional": it is in the total
+     * when its option is the chosen one.
+     *
+     * @param  array<string, mixed>  $item
+     * @return array{optional: bool, selected: bool, option_name: string|null}
+     */
+    private static function estimateFlags(array $item): array
+    {
+        $option = in_array($item['option_name'] ?? null, EstimateItem::OPTIONS, true) ? $item['option_name'] : null;
+
+        if ($option !== null) {
+            return ['optional' => false, 'selected' => (bool) ($item['selected'] ?? false), 'option_name' => $option];
+        }
+
+        return [
+            'optional' => (bool) ($item['optional'] ?? false),
+            'selected' => ! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false),
+            'option_name' => null,
+        ];
+    }
+
+    /**
+     * One option is chosen: the lines of the given option (or, when it is not offered, of the first option) are
+     * selected, the other options' lines are not.
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    public static function chooseOption(array $items, ?string $chosen): array
+    {
+        $offered = array_values(array_intersect(EstimateItem::OPTIONS, array_column($items, 'option_name')));
+
+        if ($offered === []) {
+            return $items;
+        }
+
+        $chosen = in_array($chosen, $offered, true) ? $chosen : $offered[0];
+
+        return array_map(fn (array $item) => in_array($item['option_name'] ?? null, EstimateItem::OPTIONS, true)
+            ? [...$item, 'selected' => $item['option_name'] === $chosen, 'optional' => false]
+            : $item, $items);
+    }
+
+    /**
      * Taxes a new line gets when none were chosen for it: the document's taxes that apply to its type
      * (null = all of them, as before per-type rules).
      *
@@ -291,6 +338,25 @@ class SaveBillingDocument
         }
 
         return $rates->filter(fn (TaxRate $rate) => $rate->appliesTo($kind))->pluck('id')->values()->all();
+    }
+
+    /**
+     * Makes one Good / Better / Best option the chosen one and recalculates the estimate's totals and deposit.
+     */
+    public function choose(Estimate $estimate, string $option): void
+    {
+        $estimate->loadMissing('items');
+
+        if (! $estimate->items->contains('option_name', $option)) {
+            throw ValidationException::withMessages(['option' => __('estimates.errors.unknown_option')]);
+        }
+
+        $estimate->items->each(function (EstimateItem $item) use ($option) {
+            if ($item->option_name !== null) {
+                $item->update(['selected' => $item->option_name === $option]);
+            }
+        });
+        $this->recalculate($estimate);
     }
 
     /**

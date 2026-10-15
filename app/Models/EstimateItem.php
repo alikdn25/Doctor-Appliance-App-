@@ -19,13 +19,17 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool $taxable
  * @property int $total
  * @property bool $optional The customer may choose to include it
- * @property bool $selected Whether an optional line is included
+ * @property bool $selected Whether an optional line is included, or the line's option is the chosen one
+ * @property string|null $option_name good, better or best; null = in every option
  */
 class EstimateItem extends Model
 {
     use BelongsToCompany, IsBillingLine;
 
-    protected $fillable = ['position', 'description', 'quantity', 'unit_price', 'taxable', 'total', 'optional', 'selected'];
+    /** Good / Better / Best: the options an estimate can offer, in this order. */
+    public const OPTIONS = ['good', 'better', 'best'];
+
+    protected $fillable = ['position', 'description', 'quantity', 'unit_price', 'taxable', 'total', 'optional', 'selected', 'option_name'];
 
     /**
      * @return array<string, string>
@@ -44,10 +48,15 @@ class EstimateItem extends Model
     }
 
     /**
-     * Counted in the totals: every required line, and optional lines that are selected.
+     * Counted in the totals: every required line, optional lines that are selected, and the lines of the chosen
+     * option.
      */
     public function isIncluded(): bool
     {
+        if ($this->option_name !== null) {
+            return $this->selected;
+        }
+
         return ! $this->optional || $this->selected;
     }
 }

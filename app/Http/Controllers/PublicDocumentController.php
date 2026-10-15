@@ -7,9 +7,11 @@ use App\Actions\Billing\DecideEstimateOnline;
 use App\Enums\EstimateStatus;
 use App\Models\Company;
 use App\Models\Estimate;
+use App\Models\EstimateItem;
 use App\Models\Invoice;
 use App\Payments\PaymentProviderException;
 use App\Payments\PaymentProviders;
+use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\DocumentPdf;
 use App\Support\Billing\DocumentPrint;
 use App\Support\Billing\PublicDocument;
@@ -100,6 +102,7 @@ class PublicDocumentController extends Controller
             'signature' => ['nullable', 'required_if:signature_type,'.Estimate::SIGNATURE_DRAWN, 'string', 'max:'.(int) ceil(DecideEstimateOnline::MAX_SIGNATURE_BYTES * 4 / 3 + 64)],
             'selected_items' => ['array', 'max:100'],
             'selected_items.*' => ['integer'],
+            'option' => ['nullable', Rule::in(EstimateItem::OPTIONS)],
         ], attributes: [
             'signer_name' => __('estimates.online.signer_name'),
             'signature' => __('estimates.online.signature'),
@@ -123,6 +126,7 @@ class PublicDocumentController extends Controller
                 $png,
                 $request->ip(),
                 $request->userAgent(),
+                $data['option'] ?? null,
             );
 
             // A deposit is asked: straight to the provider's checkout when the company takes online payments.
@@ -214,7 +218,9 @@ class PublicDocumentController extends Controller
                     'tax_rate_ids' => $item->tax_rate_ids,
                     'optional' => $item->optional,
                     'selected' => $item->selected,
+                    'option_name' => $item->option_name,
                 ])->values()->all(),
+                'options' => BillingPresenter::options($estimate),
                 'deposit_type' => $estimate->deposit_type,
                 'deposit_value' => (string) $estimate->deposit_value,
             ],

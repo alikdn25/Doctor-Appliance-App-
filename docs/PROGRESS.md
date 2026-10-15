@@ -1,3 +1,20 @@
+# October 15 — UX redesign, phase 9b: Good / Better / Best on estimates
+
+SPEC §7.5, UX-REDESIGN §10.4, §21.2. Migration approved by the owner on October 15.
+
+1. **Migration** `2026_10_24_000100_add_option_name_to_estimate_items`: `estimate_items.option_name` (nullable:
+   good / better / best). Existing lines keep no option; nothing is removed.
+2. **Estimate form**: each line has an "Options" chip row (All options · Good · Better · Best); a Good/Better/Best
+   switch above the totals shows the total of each option (the shown one is saved as the chosen one).
+3. **Estimate page**: one card per option with its total and "Chosen"; the lines follow the card; Mark approved
+   approves the option shown.
+4. **Customer's online page**: option cards with live totals; Approve requires a choice; the estimate total, deposit,
+   PDF and the invoice (Create invoice, New invoice from the approved estimate) take only the chosen option's lines.
+5. PDF: each option line is tagged, with a line "Options: Good $150 · Better $250 (Chosen) · Best $950".
+
+- Tests: option totals, online choice and the invoice lines, Mark approved with an option (OnlineEstimateApprovalTest).
+- Next: phase 10 — reports, expenses, cash, mileage (§11) with §17 (tax reserve, migrations approved) and §23.
+
 # October 15 — UX redesign, phase 9: invoices, estimates, payments, inbox
 
 UX-REDESIGN.md §10 with §18, §19, §21 and §26.
