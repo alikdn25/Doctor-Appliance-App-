@@ -2,6 +2,7 @@ import { router, useForm } from '@inertiajs/react';
 import {
     FileText,
     Link2,
+    Lock,
     Pencil,
     Plus,
     Trash2,
@@ -18,6 +19,7 @@ import {
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { InfoHint } from '@/components/ui/info-hint';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useCompanyTime } from '@/lib/datetime';
@@ -167,10 +169,15 @@ export function JobCostsSection({
     };
 
     return (
-        <section className="space-y-3 rounded-lg border p-4">
+        <section className="da-card space-y-3 p-4">
             <h2 className="flex items-center gap-2 text-base font-medium">
                 <TrendingUp className="size-4" />
                 {t('costs.title')}
+                {/* Costs and receipts never reach the customer. */}
+                <Lock
+                    className="size-4 text-muted-foreground"
+                    aria-label={t('costs.internal')}
+                />
             </h2>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
                 <div>
@@ -217,10 +224,10 @@ export function JobCostsSection({
             </dl>
 
             <div className="space-y-2">
-                <h3 className="text-sm font-medium">{t('costs.job_costs')}</h3>
-                <p className="text-xs text-muted-foreground">
-                    {t('costs.job_costs_hint')}
-                </p>
+                <InfoHint
+                    title={t('costs.job_costs')}
+                    hint={t('costs.job_costs_hint')}
+                />
                 {costs.items.length > 0 && (
                     <ul className="divide-y rounded-md border text-sm">
                         {costs.items.map((item) => (
@@ -417,12 +424,10 @@ export function JobCostsSection({
             </div>
 
             <div className="space-y-2">
-                <h3 className="text-sm font-medium">
-                    {t('costs.receipts.title')}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                    {t('costs.receipts.hint')}
-                </p>
+                <InfoHint
+                    title={t('costs.receipts.title')}
+                    hint={t('costs.receipts.hint')}
+                />
                 {costs.receipts.length === 0 && (
                     <p className="text-sm text-muted-foreground">
                         {t('costs.receipts.empty')}

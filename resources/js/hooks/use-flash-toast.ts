@@ -20,7 +20,10 @@ export function useFlashToast(): void {
                           duration: 8000,
                           action: {
                               label: data.action.label,
-                              onClick: () => router.visit(data.action!.url),
+                              onClick: () =>
+                                  router.visit(data.action!.url, {
+                                      method: data.action!.method ?? 'get',
+                                  }),
                           },
                       }
                     : undefined,

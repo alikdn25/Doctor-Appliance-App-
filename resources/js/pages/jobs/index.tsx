@@ -1,23 +1,34 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { Plus, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
-import type { FormEvent } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
+import {
+    ArrowDownWideNarrow,
+    RotateCcw,
+    SlidersHorizontal,
+} from 'lucide-react';
 import { useState } from 'react';
-import { StatusCircles } from '@/components/jobs/job-card';
 import { InboxHeaderButton } from '@/components/inbox-header-button';
-import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { JobList } from '@/components/jobs/job-list';
 import type { Assignable, JobRow } from '@/components/jobs/types';
 import { PaginationLinks } from '@/components/pagination-links';
 import type { Paginated } from '@/components/pagination-links';
+import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
+import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { FilterChips } from '@/components/ui/filter-chips';
+import type { FilterChip } from '@/components/ui/filter-chips';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import { SearchField } from '@/components/ui/search-field';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
-import { create, index, trash } from '@/routes/jobs';
+import { index, restore } from '@/routes/jobs';
+import type { BacklogReason } from '@/types/job-backlog';
 import type { Option } from '@/types';
 
-type Filters = {
+type Tab = 'open' | 'all' | 'deleted';
+
+type AllFilters = {
     search: string;
     status: string;
     brand: string;
@@ -30,146 +41,252 @@ type Filters = {
     to: string;
 };
 
+type DeletedJob = {
+    id: number;
+    number: number;
+    customer: string | null;
+    address: string | null;
+    brand: string | null;
+    deleted_at: string | null;
+    deleted_by: string | null;
+    restorable_until: string | null;
+};
+
+const REASONS: BacklogReason[] = [
+    'overdue',
+    'needs_schedule',
+    'waiting_for_parts',
+    'waiting_for_customer',
+    'on_hold',
+    'scheduled',
+];
+
+/**
+ * Jobs (UX-REDESIGN §7.4): one screen with Open (the unfinished queue by urgency, with its count) · All · Deleted,
+ * a live search, one line of filter chips (zeros muted, at the end), compact office cards, and the sort under "⋯".
+ * Deleted rows carry Restore; the 30-day note is said once at the top.
+ */
 export default function JobsIndex({
+    tab,
+    sort = '',
     jobs,
-    statusCounts = {},
     filters,
-    statuses,
-    types,
-    brands,
-    technicians,
-    canCreate,
-    visitTypes,
-    outcomes,
+    statusCounts = {},
+    statuses = [],
+    types = [],
+    visitTypes = [],
+    outcomes = [],
+    brands = [],
+    technicians = [],
+    deleted = [],
+    days = 30,
+    canViewAll,
     canViewTrash,
+    deletedCount = 0,
 }: {
-    jobs: Paginated<JobRow>;
+    tab: Tab;
+    sort?: string;
+    jobs?: Paginated<JobRow>;
+    filters: Partial<AllFilters> & { search: string; reason?: string };
     statusCounts?: Record<string, number>;
-    filters: Filters;
-    statuses: Option[];
-    types: Option[];
-    visitTypes: Option[];
-    outcomes: Option[];
+    statuses?: Option[];
+    types?: Option[];
+    visitTypes?: Option[];
+    outcomes?: Option[];
+    brands?: Option[];
+    technicians?: Assignable[];
+    deleted?: DeletedJob[];
+    days?: number;
+    canViewAll: boolean;
     canViewTrash: boolean;
-    brands: Option[];
-    technicians: Assignable[];
     canCreate: boolean;
+    deletedCount?: number;
 }) {
     const t = useTrans();
-    const [search, setSearch] = useState(filters.search);
-    const [searchOpen, setSearchOpen] = useState(filters.search !== '');
-    const [legendOpen, setLegendOpen] = useState(false);
-    // Filters other than search and status stay folded away until asked for.
+    const time = useCompanyTime();
+    const { unfinishedJobs } = usePage().props;
     const [filtersOpen, setFiltersOpen] = useState(
-        Object.entries(filters).some(
-            ([key, value]) =>
-                !['search', 'status'].includes(key) && value !== '',
-        ),
+        tab === 'all' &&
+            Object.entries(filters).some(
+                ([key, value]) =>
+                    !['search', 'status'].includes(key) && value !== '',
+            ),
     );
 
-    const apply = (next: Partial<Filters>) =>
+    const go = (query: Record<string, string>, replace = true) =>
         router.get(
             index().url,
             Object.fromEntries(
-                Object.entries({ ...filters, search, ...next }).filter(
-                    ([, value]) => value !== '',
-                ),
+                Object.entries({ tab, ...query } as Record<
+                    string,
+                    string
+                >).filter(([, value]) => value !== ''),
             ),
-            { preserveState: true, replace: true },
+            { preserveState: true, preserveScroll: true, replace },
         );
+    const current = Object.fromEntries(
+        Object.entries(filters).map(([key, value]) => [
+            key,
+            String(value ?? ''),
+        ]),
+    ) as Record<string, string>;
+    const apply = (next: Record<string, string>) =>
+        go({ ...current, ...(sort ? { sort } : {}), ...next });
 
-    const submit = (e: FormEvent) => {
-        e.preventDefault();
-        apply({ search });
-    };
+    const openCount = unfinishedJobs?.total ?? 0;
+    const tabs = [
+        {
+            value: 'open' as const,
+            label: `${t('jobs.tabs.open')} ${openCount}`,
+        },
+        { value: 'all' as const, label: t('jobs.tabs.all') },
+        ...(canViewTrash
+            ? [
+                  {
+                      value: 'deleted' as const,
+                      label: deletedCount
+                          ? `${t('jobs.tabs.deleted')} ${deletedCount}`
+                          : t('jobs.tabs.deleted'),
+                  },
+              ]
+            : []),
+    ];
 
-    const filtered = Object.values(filters).some((v) => v !== '');
+    // One line of chips; a chip with nothing in it is muted and goes to the end.
+    const sortChips = (chips: FilterChip[]) => [
+        ...chips.filter((c) => c.count !== 0),
+        ...chips.filter((c) => c.count === 0),
+    ];
+    const chips: FilterChip[] =
+        tab === 'open'
+            ? sortChips(
+                  REASONS.map((reason) => ({
+                      value: reason,
+                      label: t(`jobs.backlog.reasons.${reason}`),
+                      count: unfinishedJobs?.counts[reason] ?? 0,
+                      danger: reason === 'overdue',
+                  })),
+              )
+            : tab === 'all'
+              ? statuses
+                    .filter((o) => (statusCounts[o.value] ?? 0) > 0)
+                    .map((o) => ({
+                        value: o.value,
+                        label: o.label,
+                        count: statusCounts[o.value] ?? 0,
+                    }))
+              : [];
+    const chipKey = tab === 'open' ? 'reason' : 'status';
+    const selectedChip = current[chipKey] ?? '';
+
+    const sortItems =
+        tab === 'open'
+            ? [
+                  { key: 'urgency', label: t('jobs.sort.urgency') },
+                  { key: 'newest', label: t('jobs.sort.newest') },
+              ]
+            : tab === 'all'
+              ? [
+                    { key: 'visit', label: t('jobs.sort.visit') },
+                    { key: 'number', label: t('jobs.sort.number') },
+                ]
+              : [];
+    const activeSort = sort || sortItems[0]?.key;
+    const filtered =
+        tab === 'all' &&
+        Object.entries(current).some(
+            ([key, value]) => key !== 'sort' && value !== '',
+        );
 
     return (
         <>
             <Head title={t('jobs.title')} />
 
             <ScreenHeader
-                title={t('jobs.title')}
-                subtitle={t('jobs.count', { count: jobs.total })}
+                title={canViewAll ? t('jobs.title') : t('jobs.backlog.title')}
+                subtitle={
+                    tab === 'deleted'
+                        ? t('jobs.count', { count: deleted.length })
+                        : jobs
+                          ? t('jobs.count', { count: jobs.total })
+                          : undefined
+                }
                 actions={
                     <>
                         <InboxHeaderButton />
-                        <button
-                            type="button"
-                            className={headerButtonClass}
-                            aria-label={t('common.search')}
-                            aria-expanded={searchOpen}
-                            onClick={() => setSearchOpen(!searchOpen)}
-                        >
-                            <Search className="size-5" />
-                        </button>
-                        <button
-                            type="button"
-                            className={headerButtonClass}
-                            aria-label={t('jobs.filters')}
-                            aria-expanded={filtersOpen}
-                            onClick={() => setFiltersOpen(!filtersOpen)}
-                        >
-                            <SlidersHorizontal className="size-5" />
-                        </button>
+                        {tab === 'all' && (
+                            <button
+                                type="button"
+                                className={headerButtonClass}
+                                aria-label={t('jobs.filters')}
+                                aria-expanded={filtersOpen}
+                                onClick={() => setFiltersOpen(!filtersOpen)}
+                            >
+                                <SlidersHorizontal className="size-5" />
+                            </button>
+                        )}
+                        {sortItems.length > 0 && (
+                            <ActionSheet
+                                title={t('jobs.sort.title')}
+                                items={sortItems.map((item) => ({
+                                    key: item.key,
+                                    label: item.label,
+                                    hint:
+                                        item.key === activeSort
+                                            ? t('jobs.sort.current')
+                                            : undefined,
+                                    icon: <ArrowDownWideNarrow />,
+                                    onSelect: () =>
+                                        apply({
+                                            sort:
+                                                item.key === sortItems[0].key
+                                                    ? ''
+                                                    : item.key,
+                                        }),
+                                }))}
+                            />
+                        )}
                     </>
                 }
             />
 
             <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6">
-                <StatusCircles
-                    counts={statusCounts}
-                    labels={Object.fromEntries(
-                        statuses.map((o) => [o.value, o.label]),
-                    )}
-                    selected={filters.status}
-                    onSelect={(status) => apply({ status })}
-                    open={legendOpen}
-                    onOpenChange={setLegendOpen}
-                />
-
-                {searchOpen && (
-                    <form onSubmit={submit} className="flex gap-2">
-                        <Input
-                            type="search"
-                            autoFocus
-                            value={search}
-                            placeholder={t('jobs.search')}
-                            aria-label={t('common.search')}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                        <Button type="submit" variant="outline">
-                            {t('common.search')}
-                        </Button>
-                    </form>
+                {canViewAll && (
+                    <SegmentedControl
+                        label={t('jobs.title')}
+                        className="flex w-full"
+                        value={tab}
+                        onChange={(next) => go({ tab: next }, false)}
+                        options={tabs}
+                    />
                 )}
 
-                {filtersOpen && (
+                {tab !== 'deleted' && (
+                    <SearchField
+                        value={filters.search}
+                        placeholder={t('jobs.search')}
+                        onSearch={(search) => apply({ search })}
+                    />
+                )}
+
+                {chips.length > 0 && (
+                    <FilterChips
+                        label={t('jobs.filters')}
+                        selected={selectedChip ? [selectedChip] : []}
+                        onChange={(value) =>
+                            apply({
+                                [chipKey]: value === selectedChip ? '' : value,
+                            })
+                        }
+                        chips={chips}
+                    />
+                )}
+
+                {tab === 'all' && filtersOpen && (
                     <div className="da-card grid grid-cols-2 gap-2 p-3 md:grid-cols-3">
-                        {canViewTrash && (
-                            <Button variant="outline" asChild>
-                                <Link href={trash()}>
-                                    <Trash2 /> {t('jobs.trash.title')}
-                                </Link>
-                            </Button>
-                        )}
-                        <NativeSelect
-                            aria-label={t('jobs.change_status')}
-                            value={filters.status}
-                            onChange={(e) => apply({ status: e.target.value })}
-                        >
-                            <option value="">{t('jobs.all_statuses')}</option>
-                            <option value="open">{t('jobs.open_jobs')}</option>
-                            {statuses.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </NativeSelect>
                         <NativeSelect
                             aria-label={t('jobs.fields.job_type')}
-                            value={filters.type}
+                            value={current.type ?? ''}
                             onChange={(e) => apply({ type: e.target.value })}
                         >
                             <option value="">{t('jobs.all_types')}</option>
@@ -180,8 +297,8 @@ export default function JobsIndex({
                             ))}
                         </NativeSelect>
                         <NativeSelect
-                            aria-label={t('jobs.fields.visit_type')}
-                            value={filters.visit_type}
+                            aria-label={t('jobs.fields.visit_reason')}
+                            value={current.visit_type ?? ''}
                             onChange={(e) =>
                                 apply({ visit_type: e.target.value })
                             }
@@ -197,7 +314,7 @@ export default function JobsIndex({
                         </NativeSelect>
                         <NativeSelect
                             aria-label={t('jobs.close.outcome')}
-                            value={filters.outcome}
+                            value={current.outcome ?? ''}
                             onChange={(e) => apply({ outcome: e.target.value })}
                         >
                             <option value="">{t('jobs.all_outcomes')}</option>
@@ -210,9 +327,9 @@ export default function JobsIndex({
                                 </option>
                             ))}
                         </NativeSelect>
-                        <label className="flex min-h-9 items-center gap-2 rounded-md border px-3 text-sm">
+                        <label className="flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm">
                             <Checkbox
-                                checked={filters.strict === '1'}
+                                checked={current.strict === '1'}
                                 onCheckedChange={(c) =>
                                     apply({ strict: c === true ? '1' : '' })
                                 }
@@ -222,7 +339,7 @@ export default function JobsIndex({
                         {brands.length > 1 && (
                             <NativeSelect
                                 aria-label={t('jobs.fields.brand')}
-                                value={filters.brand}
+                                value={current.brand ?? ''}
                                 onChange={(e) =>
                                     apply({ brand: e.target.value })
                                 }
@@ -237,7 +354,7 @@ export default function JobsIndex({
                         )}
                         <NativeSelect
                             aria-label={t('jobs.visit_fields.assignee_ids')}
-                            value={filters.technician}
+                            value={current.technician ?? ''}
                             onChange={(e) =>
                                 apply({ technician: e.target.value })
                             }
@@ -255,7 +372,7 @@ export default function JobsIndex({
                             {t('jobs.from')}
                             <Input
                                 type="date"
-                                value={filters.from}
+                                value={current.from ?? ''}
                                 onChange={(e) =>
                                     apply({ from: e.target.value })
                                 }
@@ -265,17 +382,14 @@ export default function JobsIndex({
                             {t('jobs.to')}
                             <Input
                                 type="date"
-                                value={filters.to}
+                                value={current.to ?? ''}
                                 onChange={(e) => apply({ to: e.target.value })}
                             />
                         </label>
                         {filtered && (
                             <Button
                                 variant="ghost"
-                                onClick={() => {
-                                    setSearch('');
-                                    router.get(index().url);
-                                }}
+                                onClick={() => go({ tab: 'all' })}
                             >
                                 {t('jobs.clear_filters')}
                             </Button>
@@ -283,24 +397,80 @@ export default function JobsIndex({
                     </div>
                 )}
 
-                <h2 className="pt-1 text-lg font-bold">
-                    {(statuses.find((o) => o.value === filters.status)?.label ??
-                        t('jobs.title')) + ` (${jobs.total})`}
-                </h2>
-
-                <JobList
-                    jobs={jobs.data}
-                    empty={filtered ? t('jobs.no_results') : t('jobs.empty')}
-                />
-
-                <PaginationLinks links={jobs.links} />
-
-                {canCreate && (
-                    <Button asChild className="h-14 w-full text-lg">
-                        <Link href={create({ query: { book: 1 } })}>
-                            <Plus className="size-6" /> {t('nav.book_customer')}
-                        </Link>
-                    </Button>
+                {tab === 'deleted' ? (
+                    <>
+                        <p className="text-sm text-muted-foreground">
+                            {t('jobs.trash.hint', { days })}
+                        </p>
+                        {deleted.length === 0 ? (
+                            <p className="da-card p-10 text-center text-sm text-muted-foreground">
+                                {t('jobs.trash.empty', { days })}
+                            </p>
+                        ) : (
+                            <ul
+                                className="da-card divide-y overflow-hidden"
+                                data-test="deleted-jobs"
+                            >
+                                {deleted.map((job) => (
+                                    <li
+                                        key={job.id}
+                                        className="flex items-center gap-3 p-3 text-sm"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate font-semibold">
+                                                #{job.number} · {job.customer}
+                                            </p>
+                                            {job.address && (
+                                                <p className="truncate text-muted-foreground">
+                                                    {job.address}
+                                                </p>
+                                            )}
+                                            {job.deleted_at && (
+                                                <p className="truncate text-xs text-muted-foreground">
+                                                    {t(
+                                                        'jobs.trash.deleted_by',
+                                                        {
+                                                            date: time.dateTime(
+                                                                job.deleted_at,
+                                                            ),
+                                                            name:
+                                                                job.deleted_by ??
+                                                                '—',
+                                                        },
+                                                    )}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() =>
+                                                router.post(restore(job.id).url)
+                                            }
+                                        >
+                                            <RotateCcw /> {t('jobs.restore')}
+                                        </Button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </>
+                ) : (
+                    jobs && (
+                        <>
+                            <JobList
+                                jobs={jobs.data}
+                                empty={
+                                    filters.search || selectedChip || filtered
+                                        ? t('jobs.no_results')
+                                        : tab === 'open'
+                                          ? t('jobs.backlog.empty')
+                                          : t('jobs.empty')
+                                }
+                            />
+                            <PaginationLinks links={jobs.links} />
+                        </>
+                    )
                 )}
             </div>
         </>

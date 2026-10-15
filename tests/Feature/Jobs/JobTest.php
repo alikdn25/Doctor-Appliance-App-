@@ -306,12 +306,14 @@ test('the job list can be searched and filtered', function () {
     $new = ServiceJob::factory()->for(Property::factory()->for($other))->create(['brand_id' => $this->brand->id]);
 
     $ids = fn (array $query) => collect(
-        $this->get(route('jobs.index', $query))->viewData('page')['props']['jobs']['data'],
+        $this->get(route('jobs.index', ['tab' => 'all', ...$query]))->viewData('page')['props']['jobs']['data'],
     )->pluck('id')->all();
 
-    expect($ids([]))->toBe([$new->id, $scheduled->id])
+    // All: by visit date, newest first; jobs without a visit after them (UX-REDESIGN §7.4). "⋯" sorts by number.
+    expect($ids([]))->toBe([$scheduled->id, $new->id])
+        ->and($ids(['sort' => 'number']))->toBe([$new->id, $scheduled->id])
         ->and($ids(['status' => 'scheduled']))->toBe([$scheduled->id])
-        ->and($ids(['status' => 'open']))->toBe([$new->id, $scheduled->id])
+        ->and($ids(['status' => 'open']))->toBe([$scheduled->id, $new->id])
         ->and($ids(['technician' => $this->tech->id]))->toBe([$scheduled->id])
         ->and($ids(['from' => '2030-02-01', 'to' => '2030-02-01']))->toBe([$scheduled->id])
         ->and($ids(['from' => '2030-02-02']))->toBe([])
@@ -343,7 +345,7 @@ test('an admin limited to some brands only sees and creates jobs of those brands
 
     $this->actingAs($admin);
 
-    $this->get(route('jobs.index'))
+    $this->get(route('jobs.index', ['tab' => 'all']))
         ->assertInertia(fn (Assert $page) => $page
             ->where('jobs.total', 1)
             ->where('jobs.data.0.id', $mine->id)

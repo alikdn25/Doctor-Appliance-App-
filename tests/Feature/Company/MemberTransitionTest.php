@@ -78,7 +78,7 @@ test('waiting-for-parts work transfers even after its diagnosis visit finished a
     expect($this->job->fresh()->status)->toBe(JobStatus::WaitingForParts);
     $this->post(route('team.transfer-jobs', $this->tech->membershipFor($this->company)), ['replacement_id' => $this->otherTech->membershipFor($this->company)->id])->assertSessionHasNoErrors();
     $this->actingAs($this->otherTech)->get(route('jobs.show', $this->job))->assertOk();
-    $this->get(route('jobs.backlog'))->assertOk()->assertInertia(fn (Assert $page) => $page
+    $this->get(route('jobs.index', ['tab' => 'open']))->assertOk()->assertInertia(fn (Assert $page) => $page
         ->where('jobs.total', 1)->where('jobs.data.0.id', $this->job->id)->where('jobs.data.0.backlog_reason', 'waiting_for_parts'));
     $this->actingAs($this->tech)->get(route('jobs.show', $this->job))->assertForbidden();
     $this->get(route('jobs.mine', ['tab' => 'recent']))->assertOk()->assertInertia(fn (Assert $page) => $page->has('visits', 0));

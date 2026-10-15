@@ -2,7 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { ListTodo } from 'lucide-react';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { backlog } from '@/routes/jobs';
+import { index as jobs } from '@/routes/jobs';
 
 /** Order of the counters: what needs action first; future scheduled work last. */
 const REASONS = [
@@ -32,7 +32,7 @@ export function UnfinishedJobsBar() {
             className="da-unfinished-bar sticky top-0 z-30 flex min-h-11 [scrollbar-width:none] items-center gap-2 overflow-x-auto border-b bg-muted px-3 text-sm whitespace-nowrap md:px-4 [&::-webkit-scrollbar]:hidden"
         >
             <Link
-                href={backlog()}
+                href={jobs({ query: { tab: 'open' } })}
                 className="flex min-h-11 shrink-0 items-center gap-2 font-semibold"
                 data-test="unfinished-total"
             >
@@ -46,7 +46,7 @@ export function UnfinishedJobsBar() {
                 (reason) => (
                     <Link
                         key={reason}
-                        href={backlog({ query: { reason } })}
+                        href={jobs({ query: { tab: 'open', reason } })}
                         data-test={`unfinished-${reason}`}
                         className={cn(
                             'inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-background px-3 text-xs font-medium',

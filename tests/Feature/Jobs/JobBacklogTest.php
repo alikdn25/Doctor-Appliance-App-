@@ -38,9 +38,9 @@ test('the queue keeps old, unscheduled and waiting jobs without any date cutoff'
     $hold = $this->jobs->status(JobStatus::OnHold)->create();
     $future = $this->jobs->withVisit($this->tech)->create();
 
-    $this->actingAs($this->owner)->get(route('jobs.backlog'))
+    $this->actingAs($this->owner)->get(route('jobs.index', ['tab' => 'open']))
         ->assertOk()->assertInertia(fn (Assert $page) => $page
-        ->component('jobs/backlog')
+        ->component('jobs/index')
         ->where('unfinishedJobs.total', 6)
         ->where('unfinishedJobs.counts', [
             'overdue' => 1, 'needs_schedule' => 1, 'waiting_for_parts' => 1,
@@ -55,7 +55,7 @@ test('the queue keeps old, unscheduled and waiting jobs without any date cutoff'
         ->where('jobs.data.5.backlog_reason', 'scheduled'));
 
     $this->travelTo('2031-06-12 16:00:00');
-    $this->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 6)->where('unfinishedJobs.counts.overdue', 2));
 });
 
@@ -69,7 +69,7 @@ test('finished, billed, cancelled, deleted and outcome-closed jobs are excluded'
     $this->jobs->create(['closed_at' => now()]);
     $open = $this->jobs->create();
 
-    $this->actingAs($this->owner)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($this->owner)->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 1)->where('jobs.total', 1)->where('jobs.data.0.id', $open->id));
 });
 
@@ -80,7 +80,7 @@ test('multiple visits count once and a future return removes the overdue flag on
     $return = JobVisit::factory()->for($job, 'job')->assignedTo($this->tech)->create();
     JobVisit::factory()->for($job, 'job')->assignedTo($this->tech)->create(['status' => VisitStatus::Cancelled]);
 
-    $this->actingAs($this->owner)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($this->owner)->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 1)->where('unfinishedJobs.counts.overdue', 0)
         ->where('unfinishedJobs.counts.scheduled', 1)->where('jobs.total', 1)
         ->where('jobs.data.0.visit.scheduled_start', $return->scheduled_start->toIso8601String()));
@@ -90,7 +90,7 @@ test('finished and cancelled visits do not keep a job scheduled', function () {
     $job = $this->jobs->withVisit($this->tech, ['status' => VisitStatus::Completed])->create();
     JobVisit::factory()->for($job, 'job')->create(['status' => VisitStatus::Cancelled]);
 
-    $this->actingAs($this->owner)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($this->owner)->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.counts.needs_schedule', 1)->where('jobs.data.0.backlog_reason', 'needs_schedule'));
 });
 
@@ -98,10 +98,10 @@ test('closing removes work and reopening restores it to the queue', function () 
     $job = $this->jobs->create();
     $this->actingAs($this->owner);
     $this->post(route('jobs.close', $job), ['outcome' => 'customer_declined', 'reason' => 'Repair too expensive'])->assertRedirect();
-    $this->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page->where('unfinishedJobs.total', 0));
+    $this->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page->where('unfinishedJobs.total', 0));
 
     $this->put(route('jobs.status', $job), ['status' => 'new'])->assertRedirect();
-    $this->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 1)->where('jobs.data.0.id', $job->id));
 });
 
@@ -122,7 +122,7 @@ test('waiting for customer is logged, stays visible and can be scheduled again',
     expect($job->fresh()->status)->toBe(JobStatus::WaitingForCustomer);
     expect(inCompany($this->company, fn () => $job->statusChanges()->latest('id')->first()->note))
         ->toBe('Waiting for approval of the repair.');
-    $this->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 1)->where('unfinishedJobs.counts.waiting_for_customer', 1));
 
     $this->actingAs($this->tech)->post(route('visits.start', $visit))->assertSessionHasErrors('status');
@@ -130,7 +130,7 @@ test('waiting for customer is logged, stays visible and can be scheduled again',
         'date' => '2030-07-01', 'start_time' => '13:00', 'end_time' => '15:00', 'assignee_ids' => [$this->tech->id],
     ])->assertRedirect()->assertSessionHasNoErrors();
     expect($job->fresh()->status)->toBe(JobStatus::Scheduled);
-    $this->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 1)->where('unfinishedJobs.counts.scheduled', 1));
 });
 
@@ -140,7 +140,7 @@ test('technicians see only their assigned unfinished jobs including completed di
     $this->jobs->create();
     $this->jobs->withVisit($this->tech)->status(JobStatus::Completed)->create();
 
-    $this->actingAs($this->tech)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($this->tech)->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 1)->where('jobs.total', 1)->where('jobs.data.0.id', $mine->id));
     $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page->where('unfinishedJobs.total', 1));
 });
@@ -156,7 +156,7 @@ test('brand restrictions apply to both the queue and shared counter with assigne
     $assigned = $this->jobs->withVisit($admin)->create(['brand_id' => $otherBrand->id]);
     $this->jobs->create(['brand_id' => $otherBrand->id]);
 
-    $this->actingAs($admin)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($admin)->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 2)->where('jobs.total', 2)
         ->where('jobs.data', fn ($rows) => collect($rows)->pluck('id')->all() === [$allowed->id, $assigned->id]));
 });
@@ -168,51 +168,89 @@ test('company switching changes both the queue and shared count without leaking 
     $foreign = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($other)))->create();
     ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($other)))->create();
 
-    $this->actingAs($this->owner)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($this->owner)->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 1)->where('jobs.total', 1)->where('jobs.data.0.id', $ours->id));
     $this->post(route('companies.switch', $other))->assertRedirect();
-    $this->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 2)->where('jobs.total', 2)->where('jobs.data.0.id', $foreign->id));
 });
 
 test('counts cover all pages and stay global when the queue is filtered or searched', function () {
     $this->jobs->count(30)->sequence(fn (Sequence $sequence) => ['number' => 1001 + $sequence->index])->create();
     $parts = $this->jobs->status(JobStatus::WaitingForParts)->create();
-    $this->actingAs($this->owner)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($this->owner)->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 31)->where('jobs.total', 31)->has('jobs.data', 25));
-    $this->get(route('jobs.backlog', ['page' => 2]))->assertInertia(fn (Assert $page) => $page
+    $this->get(route('jobs.index', ['tab' => 'open', 'page' => 2]))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 31)->has('jobs.data', 6));
-    $this->get(route('jobs.backlog', ['reason' => 'waiting_for_parts', 'search' => '#'.$parts->number]))
+    $this->get(route('jobs.index', ['tab' => 'open', 'reason' => 'waiting_for_parts', 'search' => '#'.$parts->number]))
         ->assertInertia(fn (Assert $page) => $page->where('unfinishedJobs.total', 31)
             ->where('jobs.total', 1)->where('jobs.data.0.id', $parts->id));
-    $this->get(route('jobs.backlog', ['reason' => 'invalid']))->assertInertia(fn (Assert $page) => $page
+    $this->get(route('jobs.index', ['tab' => 'open', 'reason' => 'invalid']))->assertInertia(fn (Assert $page) => $page
         ->where('filters.reason', '')->where('jobs.total', 31));
 });
 
 test('partial navigation refreshes the shared counter even when only jobs are requested', function () {
     $job = $this->jobs->create();
-    $response = $this->actingAs($this->owner)->get(route('jobs.backlog'))->assertInertia(fn (Assert $page) => $page
+    $response = $this->actingAs($this->owner)->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs.total', 1));
     inCompany($this->company, fn () => $job->forceFill(['status' => JobStatus::Completed])->save());
 
-    $this->get(route('jobs.backlog'), [
+    $this->get(route('jobs.index', ['tab' => 'open']), [
         'X-Inertia' => 'true', 'X-Inertia-Version' => $response->viewData('page')['version'],
-        'X-Inertia-Partial-Component' => 'jobs/backlog', 'X-Inertia-Partial-Data' => 'jobs',
+        'X-Inertia-Partial-Component' => 'jobs/index', 'X-Inertia-Partial-Data' => 'jobs',
     ])->assertOk()->assertJsonPath('props.unfinishedJobs.total', 0)->assertJsonPath('props.jobs.total', 0);
 });
 
 test('unsupported roles cannot open the queue or obtain its counter', function (UserRole $role) {
     $user = memberOf($this->company, $role);
     $this->jobs->withVisit($user)->create();
-    $this->actingAs($user)->get(route('jobs.backlog'))->assertForbidden();
+    $this->actingAs($user)->get(route('jobs.index', ['tab' => 'open']))->assertForbidden();
     $this->get(route('dashboard'))->assertInertia(fn (Assert $page) => $page->where('unfinishedJobs', null));
 })->with([UserRole::Collector, UserRole::Subcontractor]);
 
 test('unauthenticated and platform pages do not query a tenant queue', function () {
     $this->jobs->create();
-    $this->get(route('jobs.backlog'))->assertRedirect(route('login'));
+    $this->get(route('jobs.index', ['tab' => 'open']))->assertRedirect(route('login'));
     $this->get(route('login'))->assertInertia(fn (Assert $page) => $page->where('unfinishedJobs', null));
     $admin = User::factory()->create(['is_super_admin' => true]);
     $this->actingAs($admin)->get(route('admin.companies.index'))->assertInertia(fn (Assert $page) => $page
         ->where('unfinishedJobs', null));
+});
+
+test('Jobs opens on the Open tab; the old addresses open their tabs; technicians only get Open', function () {
+    $this->actingAs($this->owner)->get(route('jobs.index'))->assertInertia(fn (Assert $page) => $page
+        ->component('jobs/index')->where('tab', 'open')->where('canViewAll', true));
+    $this->get(route('jobs.backlog', ['reason' => 'overdue']))->assertRedirect(route('jobs.index', ['tab' => 'open', 'reason' => 'overdue']));
+    $this->get(route('jobs.index', ['tab' => 'all']))->assertInertia(fn (Assert $page) => $page->where('tab', 'all')->has('statusCounts'));
+
+    $this->actingAs($this->tech)->get(route('jobs.index', ['tab' => 'open']))->assertInertia(fn (Assert $page) => $page
+        ->where('tab', 'open')->where('canViewAll', false));
+    $this->get(route('jobs.index', ['tab' => 'all']))->assertRedirect(route('jobs.mine'));
+    $this->get(route('jobs.index', ['tab' => 'deleted']))->assertRedirect(route('jobs.mine'));
+});
+
+test('deleting a job says "Job deleted" with Undo, which restores it', function () {
+    $job = $this->jobs->create();
+
+    $this->actingAs($this->owner)->delete(route('jobs.destroy', $job))->assertRedirect(route('jobs.index'));
+    $toast = session('inertia.flash_data.toast');
+
+    expect($toast['action'])->toBe(['label' => 'Undo', 'url' => route('jobs.restore', $job, false), 'method' => 'post']);
+
+    $this->post($toast['action']['url'])->assertRedirect(route('jobs.show', $job));
+    expect(inCompany($this->company, fn () => ServiceJob::query()->find($job->id)))->not->toBeNull();
+});
+
+test('the Open tab sorts by urgency: overdue, needs scheduling, waiting, then the nearest visit', function () {
+    $later = $this->jobs->withVisit($this->tech, ['scheduled_start' => '2030-06-20 16:00:00', 'scheduled_end' => '2030-06-20 18:00:00'])->create();
+    $sooner = $this->jobs->withVisit($this->tech, ['scheduled_start' => '2030-06-13 16:00:00', 'scheduled_end' => '2030-06-13 18:00:00'])->create();
+    $parts = $this->jobs->status(JobStatus::WaitingForParts)->create();
+    $unscheduled = $this->jobs->create();
+    $overdue = $this->jobs->withVisit($this->tech, ['scheduled_start' => '2030-06-01 16:00:00', 'scheduled_end' => '2030-06-01 18:00:00'])->create();
+
+    $ids = fn (array $query = []) => collect($this->actingAs($this->owner)->get(route('jobs.index', ['tab' => 'open', ...$query]))
+        ->viewData('page')['props']['jobs']['data'])->pluck('id')->all();
+
+    expect($ids())->toBe([$overdue->id, $unscheduled->id, $parts->id, $sooner->id, $later->id])
+        ->and($ids(['sort' => 'newest'])[0])->toBe($overdue->id);
 });

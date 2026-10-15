@@ -1,3 +1,29 @@
+# October 15 — UX redesign, phase 6: Jobs tabs and the office job page
+
+UX-REDESIGN.md §7.4, §7.5 and the job-page part of §20.
+
+1. **Jobs** is one screen with **Open** (the unfinished queue, with its count) · **All** · **Deleted**. The old
+   addresses (/jobs/not-completed, /jobs/deleted) open their tabs; the unfinished strip opens Open. Technicians see
+   only Open; a link with a list filter (e.g. ?status=completed) opens All.
+2. One line of filter chips: Open — Overdue (red) · Needs scheduling · Waiting for parts · Waiting for customer · On
+   hold · Scheduled / in progress, zeros muted at the end; All — statuses that have jobs. Live search (number,
+   customer, phone, address, model, serial). The other filters of All stay under the filter button.
+3. Sorting: Open by urgency (overdue → needs scheduling → waiting → on hold → nearest visit); All by visit date,
+   newest first. "⋯" switches to newest first / by job number.
+4. **Office card**: compact, no Navigate; Call is an icon; the assignee's initials on the right; Overdue as a red flag
+   next to the status.
+5. **Deleted**: "Can be restored for 30 days" once at the top; Restore in each row.
+6. **Office job page** (§7.5): one status badge (the "Invoice · Paid" chip moved to the money section's rows); Delete
+   job under "⋯" with a confirmation and "Job deleted · Undo"; Costs & profit marked internal with a lock, its long
+   notes behind (i); on a phone, anchor chips Overview · Work · Money · Activity under the header.
+7. §20 (job page): the job page no longer loads or sends checklist items. Removing the Checklists settings screen,
+   the code and the tables is phase 11 (the table drop needs the owner's permission).
+
+- No migrations.
+- Tests: Jobs tabs, redirects, technician access, urgency order, sort options, Undo after delete (JobBacklogTest),
+  updated list/trash/isolation tests; browser scenarios for the tabs, office cards, Deleted and the anchor chips.
+- Next: phase 7 — customers and appliances (§8).
+
 # October 15 — UX redesign, phase 5: booking and job forms
 
 UX-REDESIGN.md §7.1–7.3 and §25.

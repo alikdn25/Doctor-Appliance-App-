@@ -82,6 +82,7 @@ import { RecordHistory } from '@/components/record-history';
 import { ScreenHeader } from '@/components/screen-header';
 import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import { Textarea } from '@/components/ui/textarea';
@@ -388,13 +389,8 @@ export default function JobShow({
         });
     };
 
-    const remove = () => {
-        if (
-            confirm(t('jobs.confirm_delete_restorable', { number: job.number }))
-        ) {
-            router.delete(destroy(job.id).url);
-        }
-    };
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const remove = () => setDeleteOpen(true);
 
     const removeVisit = (visit: Visit) => {
         if (confirm(t('jobs.confirm_delete_visit'))) {
@@ -763,6 +759,39 @@ export default function JobShow({
             />
 
             <div className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-6">
+                {/* Phone: jump to a part of the page (UX-REDESIGN §7.5). */}
+                <nav
+                    aria-label={t('jobs.job_number', { number: job.number })}
+                    className="sticky top-0 z-20 -mx-4 -mt-4 flex [scrollbar-width:none] gap-2 overflow-x-auto bg-background/90 px-4 py-2 backdrop-blur md:hidden"
+                    data-test="job-anchors"
+                >
+                    {(
+                        [
+                            ['overview', 'overview'],
+                            ['work', 'work'],
+                            ['documents', 'money'],
+                            ['activity', 'activity'],
+                        ] as const
+                    ).map(([target, label]) => (
+                        <button
+                            key={target}
+                            type="button"
+                            className="da-chip da-press inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-sm font-medium"
+                            onClick={() => {
+                                const element = document.getElementById(target);
+                                if (element instanceof HTMLDetailsElement) {
+                                    element.open = true;
+                                }
+                                element?.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'start',
+                                });
+                            }}
+                        >
+                            {t(`jobs.anchors.${label}`)}
+                        </button>
+                    ))}
+                </nav>
                 <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge
                         status={job.status}
@@ -772,22 +801,6 @@ export default function JobShow({
                     <span className="da-badge rounded-full px-2.5 py-0.5 text-xs font-medium">
                         {job.visit_type_label}
                     </span>
-                    {/* The job status follows the work; invoices still show next to it before the work is done. */}
-                    {!moneyFirst &&
-                        job.invoices
-                            .filter((invoice) => invoice.status !== 'void')
-                            .map((invoice) => (
-                                <a
-                                    key={invoice.id}
-                                    href="#documents"
-                                    className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900"
-                                >
-                                    {t('jobs.invoice_chip', {
-                                        number: invoice.number,
-                                        status: invoice.status_label,
-                                    })}
-                                </a>
-                            ))}
                 </div>
 
                 {job.outcome && job.outcome_label && (
@@ -824,7 +837,8 @@ export default function JobShow({
 
                 {/* Customer: name, address, the gate code large (needed at the door), notes, Navigate · Call · Text. */}
                 <section
-                    className="da-card space-y-3 p-4"
+                    id="overview"
+                    className="da-card scroll-mt-28 space-y-3 p-4"
                     data-test="job-customer"
                 >
                     <div className="flex items-start gap-3">
@@ -1041,6 +1055,7 @@ export default function JobShow({
                 />
 
                 {/* Appliances */}
+                <div id="work" className="scroll-mt-28" aria-hidden="true" />
                 {showAppliances && (
                     <Section
                         title={t('jobs.sections.appliances')}
@@ -1178,7 +1193,11 @@ export default function JobShow({
                 {can.update && schedule}
 
                 {/* Activity, folded: texts, the schedule, the status history and the details. */}
-                <details className="da-card group" data-test="job-activity">
+                <details
+                    id="activity"
+                    className="da-card group scroll-mt-28"
+                    data-test="job-activity"
+                >
                     <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 [&::-webkit-details-marker]:hidden">
                         <History className="size-5 shrink-0 text-muted-foreground" />
                         <span className="min-w-0 flex-1">
@@ -1327,6 +1346,29 @@ export default function JobShow({
                 <div className="fixed inset-x-3 bottom-24 z-50 md:static">
                     <InputError message={actionError} />
                 </div>
+            )}
+
+            {can.delete && (
+                <ConfirmDialog
+                    open={deleteOpen}
+                    onOpenChange={setDeleteOpen}
+                    destructive
+                    title={t('jobs.delete_confirm_title', {
+                        number: job.number,
+                    })}
+                    description={t('jobs.delete_confirm_text', { days: 30 })}
+                    confirmLabel={t('jobs.delete')}
+                    processing={busy}
+                    onConfirm={() => {
+                        setBusy(true);
+                        router.delete(destroy(job.id).url, {
+                            onFinish: () => {
+                                setBusy(false);
+                                setDeleteOpen(false);
+                            },
+                        });
+                    }}
+                />
             )}
 
             {statusOptions.length > 0 && (
