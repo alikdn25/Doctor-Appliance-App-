@@ -1,32 +1,41 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Banknote,
+    CalendarDays,
+    Car,
+    CheckCircle2,
     ChevronLeft,
     ChevronRight,
     Download,
     PackageCheck,
-    Plus,
+    Play,
     Search,
-    SlidersHorizontal,
     UserX,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { formatMoney } from '@/components/billing/money';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
-import { StrictBadge } from '@/components/jobs/job-outcome';
-import { JobCard, StatusCircles } from '@/components/jobs/job-card';
-import { QuickTripSheet } from '@/components/jobs/quick-trip-sheet';
 import { InboxHeaderButton } from '@/components/inbox-header-button';
-import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
-import { Input } from '@/components/ui/input';
+import { cardButton, JobCard } from '@/components/jobs/job-card';
+import { StrictBadge } from '@/components/jobs/job-outcome';
+import { QuickTripSheet } from '@/components/jobs/quick-trip-sheet';
 import type { Visit } from '@/components/jobs/types';
+import { openSmsApp } from '@/components/messaging/job-messaging';
+import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
+import { Fab } from '@/components/ui/fab';
+import { FilterChips } from '@/components/ui/filter-chips';
+import { Input } from '@/components/ui/input';
+import { ListRow } from '@/components/ui/list-row';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { useInstallPrompt } from '@/hooks/use-install-prompt';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
+import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
-import { create as bookCustomer, mine, show } from '@/routes/jobs';
+import { mine, show } from '@/routes/jobs';
+import { finishScreen, onMyWay, start } from '@/routes/visits';
 
 type MyVisit = Visit & {
     can_work?: boolean;
@@ -53,6 +62,9 @@ type MyVisit = Visit & {
 
 type Tab = 'day' | 'completed';
 
+/** Status filter chips appear only on a busy day. */
+const CHIPS_FROM = 4;
+
 /** "2026-10-09" moved by whole days. */
 const shiftDay = (ymd: string, by: number) => {
     const date = new Date(`${ymd}T00:00:00Z`);
@@ -62,9 +74,9 @@ const shiftDay = (ymd: string, by: number) => {
 };
 
 /**
- * My jobs, as on the approved mockup: tabs with counts, one card per visit (avatar, number and status,
- * time, name, address, appliance and problem, appliance picture) with Navigate, Call and View job,
- * and Book customer at the end. Visit steps (On my way, Start, Finish) are on the job page.
+ * My Jobs (UX-REDESIGN §6.1, §24): [Day | Completed] with ‹ date › on one line, the day in one sentence
+ * ("3 jobs · next at 1 p.m."), compact cards with Navigate, Call and the visit step (On my way, Start job,
+ * Finish visit), the next job outlined, and + Trip as a floating button.
  */
 export default function MyJobs({
     tab,
@@ -74,8 +86,10 @@ export default function MyJobs({
     visits,
     cashOnHand = {},
     othersOnDay = 0,
+    recentStops = [],
 }: {
     tab: Tab;
+    recentStops?: string[];
     othersOnDay?: number;
     date: string;
     today: string;
@@ -87,52 +101,53 @@ export default function MyJobs({
     const time = useCompanyTime();
     const install = useInstallPrompt();
     const { auth } = usePage().props;
-    const canBook = auth.can?.createJobs ?? false;
-    // The search runs on the server over all tabs (and their counts); it stays open while switching tabs.
+    // The search runs on the server over both tabs; it stays open while switching tabs.
     const [searchOpen, setSearchOpen] = useState(initialSearch !== '');
-    const [legendOpen, setLegendOpen] = useState(false);
     const [search, setSearch] = useState(initialSearch);
+    const [busy, setBusy] = useState<number | null>(null);
+    const dateInput = useRef<HTMLInputElement>(null);
     const firstRender = useRef(true);
+    const term = search.trim();
+    const query = (next: { tab: Tab; date?: string }) => ({
+        tab: next.tab,
+        ...(next.tab === 'day' && next.date && next.date !== today
+            ? { date: next.date }
+            : {}),
+        ...(term ? { search: term } : {}),
+    });
+
     useEffect(() => {
         if (firstRender.current) {
             firstRender.current = false;
             return;
         }
         const timer = setTimeout(() => {
-            router.get(
-                mine().url,
-                {
-                    tab,
-                    ...(tab === 'day' && date !== today ? { date } : {}),
-                    ...(search.trim() ? { search: search.trim() } : {}),
-                },
-                { preserveState: true, preserveScroll: true, replace: true },
-            );
+            router.get(mine().url, query({ tab, date }), {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            });
         }, 350);
         return () => clearTimeout(timer);
     }, [search]);
-    const term = search.trim();
+
     const [status, setStatus] = useState('');
     const [tripOpen, setTripOpen] = useState(false);
+    // A plain date: formatted as it is, without a time zone.
+    const plainDay = (options: Intl.DateTimeFormatOptions) =>
+        new Intl.DateTimeFormat(auth.company?.locale ?? 'en-US', {
+            ...options,
+            timeZone: 'UTC',
+        }).format(new Date(`${date}T00:00:00Z`));
+    // The header already shows the date; the label stays short so the row fits a phone.
     const dayLabel =
         date === today
             ? t('jobs.tabs.today')
-            : new Intl.DateTimeFormat(auth.company?.locale ?? 'en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  timeZone: 'UTC',
-              }).format(new Date(`${date}T00:00:00Z`));
-    const dayHref = (day: string) =>
-        mine({
-            query: {
-                tab: 'day',
-                ...(day !== today ? { date: day } : {}),
-                ...(term ? { search: term } : {}),
-            },
-        });
-    const title = tab === 'day' ? dayLabel : t('jobs.tabs.completed');
+            : plainDay({ weekday: 'short', month: 'short', day: 'numeric' });
+    const goTo = (next: { tab: Tab; date?: string }) =>
+        router.get(mine().url, query(next), { preserveScroll: true });
 
-    // Count circles per status of this tab's jobs; tapping one shows only that status.
+    // Status chips over this tab's jobs; a tap shows only that status, a second tap shows all.
     const statusCounts: Record<string, number> = {};
     const statusLabels: Record<string, string> = {};
     visits.forEach((visit) => {
@@ -140,9 +155,101 @@ export default function MyJobs({
             (statusCounts[visit.job.status] ?? 0) + 1;
         statusLabels[visit.job.status] = visit.job.status_label;
     });
+    const showChips = visits.length >= CHIPS_FROM;
     const shown = visits.filter(
-        (visit) => status === '' || visit.job.status === status,
+        (visit) => !showChips || status === '' || visit.job.status === status,
     );
+
+    const now = Date.now();
+    const overdue = (visit: MyVisit) =>
+        visit.status === 'scheduled' &&
+        new Date(visit.scheduled_end).getTime() < now;
+    // The next job: the one under way, else the first still to come (or late) on this day.
+    const next =
+        tab === 'day'
+            ? (visits.find((v) =>
+                  ['on_the_way', 'in_progress'].includes(v.status),
+              ) ?? visits.find((v) => v.status === 'scheduled'))
+            : undefined;
+    const summary =
+        tab === 'completed'
+            ? `${t('jobs.mine_summary.last_30_days')} · ${t('jobs.mine_summary.jobs', { count: visits.length })}`
+            : [
+                  t('jobs.mine_summary.jobs', { count: visits.length }),
+                  next?.status === 'scheduled' &&
+                      t('jobs.mine_summary.next_at', {
+                          time: time.time(next.scheduled_start),
+                      }),
+              ]
+                  .filter(Boolean)
+                  .join(' · ');
+
+    const act = (visit: MyVisit, url: string, data: object = {}) => {
+        setBusy(visit.id);
+        router.post(url, data as never, {
+            preserveScroll: true,
+            onError: (errors) =>
+                toast.error(String(Object.values(errors)[0] ?? '')),
+            onFinish: () => setBusy(null),
+        });
+    };
+
+    const step = (visit: MyVisit) => {
+        if (!visit.can_work || tab !== 'day') {
+            return undefined;
+        }
+        const props = {
+            variant: 'outline' as const,
+            className: cardButton,
+            loading: busy === visit.id,
+        };
+
+        if (visit.status === 'scheduled') {
+            return (
+                <Button
+                    {...props}
+                    data-test="card-on-my-way"
+                    onClick={() => {
+                        // From the technician's phone: the messages app opens with the text ready.
+                        const sms = visit.on_my_way_sms;
+                        act(
+                            visit,
+                            onMyWay(visit.id).url,
+                            sms ? { phone_sms: sms } : {},
+                        );
+                        if (sms) {
+                            openSmsApp(sms.to, sms.body);
+                        }
+                    }}
+                >
+                    <Car /> {t('jobs.actions.on_my_way')}
+                </Button>
+            );
+        }
+
+        if (visit.status === 'on_the_way') {
+            return (
+                <Button
+                    {...props}
+                    onClick={() => act(visit, start(visit.id).url)}
+                >
+                    <Play /> {t('jobs.actions.start')}
+                </Button>
+            );
+        }
+
+        if (visit.status === 'in_progress') {
+            return (
+                <Button {...props} asChild loading={false}>
+                    <Link href={finishScreen(visit.id)}>
+                        <CheckCircle2 /> {t('jobs.actions.complete')}
+                    </Link>
+                </Button>
+            );
+        }
+
+        return undefined;
+    };
 
     return (
         <>
@@ -150,13 +257,11 @@ export default function MyJobs({
 
             <ScreenHeader
                 title={t('jobs.my_jobs')}
-                subtitle={
-                    date === today
-                        ? t('jobs.today_subtitle', {
-                              date: time.fullDay(new Date().toISOString()),
-                          })
-                        : time.dateOnly(date)
-                }
+                subtitle={plainDay({
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                })}
                 actions={
                     <>
                         <InboxHeaderButton />
@@ -172,34 +277,16 @@ export default function MyJobs({
                         >
                             <Search className="size-5" />
                         </button>
-                        <button
-                            type="button"
-                            className={headerButtonClass}
-                            aria-label={t('jobs.filters')}
-                            aria-expanded={legendOpen}
-                            onClick={() => setLegendOpen(!legendOpen)}
-                        >
-                            <SlidersHorizontal className="size-5" />
-                        </button>
                     </>
                 }
             />
 
-            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6">
+            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 pb-24 sm:p-6">
                 {install && (
                     <Button variant="outline" onClick={() => void install()}>
                         <Download /> {t('jobs.install.button')}
                     </Button>
                 )}
-
-                <StatusCircles
-                    counts={statusCounts}
-                    labels={statusLabels}
-                    selected={status}
-                    onSelect={setStatus}
-                    open={legendOpen}
-                    onOpenChange={setLegendOpen}
-                />
 
                 {searchOpen && (
                     <Input
@@ -230,62 +317,104 @@ export default function MyJobs({
                         </p>
                     ))}
 
-                {/* One day at a time (arrows move the day), the work completed lately, and + Trip. */}
-                <nav aria-label={t('jobs.my_jobs')} className="flex gap-2">
-                    <div
-                        data-state={tab === 'day' ? 'on' : 'off'}
-                        className="da-chip flex min-h-12 min-w-0 flex-[1.4] items-center rounded-2xl"
-                    >
-                        <Link
-                            href={dayHref(shiftDay(date, -1))}
-                            preserveScroll
-                            aria-label={t('jobs.tabs.previous_day')}
-                            className="flex h-12 w-10 shrink-0 items-center justify-center rounded-l-2xl"
-                        >
-                            <ChevronLeft className="size-5" />
-                        </Link>
-                        <Link
-                            href={dayHref(date)}
-                            preserveScroll
-                            aria-current={tab === 'day' ? 'page' : undefined}
-                            className="flex h-12 min-w-0 flex-1 items-center justify-center text-sm font-semibold whitespace-nowrap"
-                        >
-                            {dayLabel}
-                        </Link>
-                        <Link
-                            href={dayHref(shiftDay(date, 1))}
-                            preserveScroll
-                            aria-label={t('jobs.tabs.next_day')}
-                            className="flex h-12 w-10 shrink-0 items-center justify-center rounded-r-2xl"
-                        >
-                            <ChevronRight className="size-5" />
-                        </Link>
-                    </div>
-                    <Link
-                        href={mine({
-                            query: term
-                                ? { tab: 'completed', search: term }
-                                : { tab: 'completed' },
-                        })}
-                        preserveState
-                        preserveScroll
-                        aria-current={tab === 'completed' ? 'page' : undefined}
-                        className="da-chip da-press flex min-h-12 min-w-0 flex-1 items-center justify-center rounded-2xl px-2 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    >
-                        {t('jobs.tabs.completed')}
-                    </Link>
-                    <button
-                        type="button"
-                        className="da-trip da-press flex min-h-12 shrink-0 items-center justify-center rounded-2xl px-3 text-sm font-semibold whitespace-nowrap"
-                        onClick={() => setTripOpen(true)}
-                    >
-                        {t('jobs.tabs.trip')}
-                    </button>
-                </nav>
+                {/* One line: the tab on the left, the day on the right (‹ › and a tap on the date to pick one). */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <SegmentedControl
+                        label={t('jobs.my_jobs')}
+                        value={tab}
+                        onChange={(next) => goTo({ tab: next, date })}
+                        options={[
+                            { value: 'day', label: t('jobs.tabs.day') },
+                            {
+                                value: 'completed',
+                                label: t('jobs.tabs.completed'),
+                            },
+                        ]}
+                    />
+                    {tab === 'day' && (
+                        <div className="flex shrink-0 items-center">
+                            <button
+                                type="button"
+                                aria-label={t('jobs.tabs.previous_day')}
+                                className="da-press flex size-10 shrink-0 items-center justify-center rounded-xl"
+                                onClick={() =>
+                                    goTo({
+                                        tab: 'day',
+                                        date: shiftDay(date, -1),
+                                    })
+                                }
+                            >
+                                <ChevronLeft className="size-5" />
+                            </button>
+                            <label className="relative flex min-h-11 cursor-pointer items-center px-1 text-sm font-semibold whitespace-nowrap text-link underline decoration-dotted underline-offset-4">
+                                <span data-test="day-label">{dayLabel}</span>
+                                <input
+                                    ref={dateInput}
+                                    type="date"
+                                    value={date}
+                                    aria-label={t('jobs.tabs.pick_day')}
+                                    className="absolute inset-0 cursor-pointer opacity-0"
+                                    onClick={(e) => {
+                                        try {
+                                            e.currentTarget.showPicker();
+                                        } catch {
+                                            // Older browsers open the picker by themselves.
+                                        }
+                                    }}
+                                    onChange={(e) =>
+                                        e.target.value &&
+                                        goTo({
+                                            tab: 'day',
+                                            date: e.target.value,
+                                        })
+                                    }
+                                />
+                            </label>
+                            <button
+                                type="button"
+                                aria-label={t('jobs.tabs.next_day')}
+                                className="da-press flex size-10 shrink-0 items-center justify-center rounded-xl"
+                                onClick={() =>
+                                    goTo({
+                                        tab: 'day',
+                                        date: shiftDay(date, 1),
+                                    })
+                                }
+                            >
+                                <ChevronRight className="size-5" />
+                            </button>
+                        </div>
+                    )}
+                </div>
 
-                <h2 className="pt-1 text-lg font-bold">
-                    {title} ({shown.length})
-                </h2>
+                <p
+                    className="text-sm text-muted-foreground"
+                    data-test="day-summary"
+                >
+                    {summary}
+                </p>
+
+                {showChips && (
+                    <FilterChips
+                        label={t('jobs.filters')}
+                        selected={status === '' ? [''] : [status]}
+                        onChange={(value) =>
+                            setStatus(value === status ? '' : value)
+                        }
+                        chips={[
+                            {
+                                value: '',
+                                label: t('jobs.all_statuses'),
+                                count: visits.length,
+                            },
+                            ...Object.keys(statusCounts).map((value) => ({
+                                value,
+                                label: statusLabels[value],
+                                count: statusCounts[value],
+                            })),
+                        ]}
+                    />
+                )}
 
                 {shown.length === 0 && (
                     <p className="da-card p-10 text-center text-sm text-muted-foreground">
@@ -307,11 +436,14 @@ export default function MyJobs({
                             key={visit.id}
                             job={visit.job}
                             href={show(visit.job.id)}
-                            highlight={visit.status === 'in_progress'}
+                            accent={visit.id === next?.id}
+                            overdue={tab === 'day' && overdue(visit)}
+                            action={step(visit)}
                             time={
+                                // Visits of the shown day show only the window; one still open from an earlier day shows its date.
                                 tab === 'day' &&
-                                time.isToday(visit.scheduled_start)
-                                    ? time.timeRange(
+                                time.ymd(visit.scheduled_start) === date
+                                    ? time.shortRange(
                                           visit.scheduled_start,
                                           visit.scheduled_end,
                                       )
@@ -321,63 +453,77 @@ export default function MyJobs({
                                       )
                             }
                             extra={
-                                <>
-                                    {visit.assignees.length === 0 && (
-                                        <div className="flex items-center gap-1 font-medium text-amber-700">
-                                            <UserX className="size-3.5" />
-                                            {t('jobs.not_assigned')}
-                                        </div>
-                                    )}
-                                    {visit.strict_arrival && <StrictBadge />}
-                                    {visit.job.bring && (
-                                        <div
-                                            className={cn(
-                                                'flex items-center gap-1 font-medium',
-                                                visit.job.bring.done <
-                                                    visit.job.bring.total
-                                                    ? 'text-amber-700'
-                                                    : 'text-emerald-700',
-                                            )}
-                                        >
-                                            <PackageCheck className="size-3.5" />
-                                            {t('jobs.bring.title')}:{' '}
-                                            {t('jobs.bring.loaded', {
-                                                done: visit.job.bring.done,
-                                                total: visit.job.bring.total,
-                                            })}
-                                        </div>
-                                    )}
-                                </>
+                                (visit.assignees.length === 0 ||
+                                    visit.strict_arrival ||
+                                    visit.job.bring) && (
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5">
+                                        {visit.assignees.length === 0 && (
+                                            <span className="flex items-center gap-1 font-medium text-amber-700">
+                                                <UserX className="size-3.5" />
+                                                {t('jobs.not_assigned')}
+                                            </span>
+                                        )}
+                                        {visit.strict_arrival && (
+                                            <StrictBadge />
+                                        )}
+                                        {visit.job.bring && (
+                                            <span
+                                                className={cn(
+                                                    'flex items-center gap-1 font-medium',
+                                                    visit.job.bring.done <
+                                                        visit.job.bring.total
+                                                        ? 'text-amber-700'
+                                                        : 'text-emerald-700',
+                                                )}
+                                            >
+                                                <PackageCheck className="size-3.5" />
+                                                {t('jobs.bring.title')}:{' '}
+                                                {t('jobs.bring.loaded', {
+                                                    done: visit.job.bring.done,
+                                                    total: visit.job.bring
+                                                        .total,
+                                                })}
+                                            </span>
+                                        )}
+                                    </div>
+                                )
                             }
                         />
                     ))}
                 </ul>
 
                 {othersOnDay > 0 && (
-                    <Link
-                        href={calendar({ query: { view: 'day', date } })}
-                        className="da-card da-press flex min-h-12 items-center justify-between gap-3 p-4 text-sm"
-                    >
-                        <span className="text-muted-foreground">
-                            {t('jobs.others_on_day', { count: othersOnDay })}
-                        </span>
-                        <span className="flex shrink-0 items-center gap-1 font-semibold text-primary">
-                            {t('nav.calendar')}
-                            <ChevronRight className="size-4" />
-                        </span>
-                    </Link>
-                )}
-
-                {canBook && (
-                    <Button asChild className="h-14 w-full text-lg">
-                        <Link href={bookCustomer({ query: { book: 1 } })}>
-                            <Plus className="size-6" /> {t('nav.book_customer')}
-                        </Link>
-                    </Button>
+                    <div className="da-card overflow-hidden">
+                        <ListRow
+                            href={calendar({ query: { view: 'day', date } })}
+                            leading={
+                                <span className="da-soft inline-flex size-10 items-center justify-center rounded-[12px]">
+                                    <CalendarDays className="size-5" />
+                                </span>
+                            }
+                            title={t('jobs.others_on_day', {
+                                count: othersOnDay,
+                            })}
+                            subtitle={t('nav.calendar')}
+                            chevron
+                        />
+                    </div>
                 )}
             </div>
 
-            <QuickTripSheet open={tripOpen} onOpenChange={setTripOpen} />
+            <Fab
+                variant="secondary"
+                label={t('jobs.tabs.add_trip')}
+                icon={<Car />}
+                onClick={() => setTripOpen(true)}
+                data-test="trip-fab"
+            />
+
+            <QuickTripSheet
+                open={tripOpen}
+                onOpenChange={setTripOpen}
+                recent={recentStops}
+            />
         </>
     );
 }

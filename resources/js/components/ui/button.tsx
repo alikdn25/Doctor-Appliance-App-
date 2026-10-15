@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
  * - default (Primary): full volume and the blue glow — one main action in view;
  * - outline / secondary (Secondary): raised white or light blue cushion, no glow;
  * - tertiary / ghost: light volume or text with an icon (Edit, Add discount);
+ * - sky / success: the coloured Navigate and Call of a job card (same volume as Secondary);
  * - destructive: red text (Delete, Void); destructiveSolid: filled red, only in a confirmation dialog.
  * 48 px high on a phone, 40 on a desktop; radius 14; pressing sinks it by 1 px.
  */
@@ -21,6 +22,9 @@ const buttonVariants = cva(
         default: "da-primary",
         outline: "da-raised",
         secondary: "da-soft",
+        // Coloured field actions on a job card (UX-REDESIGN §24): Navigate light blue, Call green.
+        sky: "da-sky",
+        success: "da-success",
         tertiary: "da-tertiary",
         ghost: "text-link hover:bg-white/60",
         destructive: "da-destructive-text hover:bg-danger/5 focus-visible:ring-destructive/20",

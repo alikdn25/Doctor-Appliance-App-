@@ -1,20 +1,23 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
+    Car,
     ChevronLeft,
     ChevronRight,
     Download,
     MapPin,
-    Plus,
     Trash2,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMoney } from '@/components/billing/money';
 import { FormField } from '@/components/form-field';
 import { QuickTripSheet } from '@/components/jobs/quick-trip-sheet';
-import { PageHeader } from '@/components/page-header';
+import { ScreenHeader } from '@/components/screen-header';
+import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
+import { Fab } from '@/components/ui/fab';
+import { FilterChips } from '@/components/ui/filter-chips';
 import {
     Dialog,
     DialogContent,
@@ -23,10 +26,9 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
+import { edit as companySettings } from '@/routes/company/settings';
 import { show as showJob } from '@/routes/jobs';
 import {
     destroy,
@@ -70,8 +72,9 @@ const shiftMonth = (month: string, by: number) => {
 };
 
 /**
- * Mileage log: the month's trips with totals for the month and the year, "+ Trip" for one quick entry,
- * corrections of the trips made from the route and the CSV log for taxes.
+ * Mileage log (UX-REDESIGN §6.4): without a start address a setup card comes first; then the month and year
+ * totals, the person filter (Owner/Admin), one row per trip (date · route · distance, "Enter distance" when the
+ * distance was not found), + Trip as a floating button and the CSV exports under "⋯".
  */
 export default function Trips({
     month,
@@ -85,6 +88,8 @@ export default function Trips({
     people,
     types,
     today,
+    recentStops = [],
+    openManual = false,
 }: {
     month: string;
     person: string | null;
@@ -97,6 +102,8 @@ export default function Trips({
     people: Option[];
     types: Option[];
     today: string;
+    recentStops?: string[];
+    openManual?: boolean;
 }) {
     const t = useTrans();
     const time = useCompanyTime();
@@ -169,6 +176,15 @@ export default function Trips({
         }
     };
 
+    // "Enter by hand" from the Trip sheet of My Jobs.
+    useEffect(() => {
+        if (openManual) {
+            openForm(null);
+        }
+        // Only when the screen opens.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const remove = () => {
         if (editing && confirm(t('trips.confirm_remove'))) {
             router.delete(destroy(editing.id).url, {
@@ -196,19 +212,59 @@ export default function Trips({
         <>
             <Head title={t('trips.title')} />
 
-            <div className="max-w-3xl space-y-4 p-4 pb-24">
-                <PageHeader
-                    title={t('trips.title')}
-                    description={t('trips.description')}
-                    actions={
+            <ScreenHeader
+                title={t('trips.title')}
+                actions={
+                    <ActionSheet
+                        title={t('trips.title')}
+                        items={[
+                            {
+                                key: 'export-month',
+                                label: t('trips.export_month'),
+                                icon: <Download />,
+                                onSelect: () => {
+                                    window.location.href = exportMethod({
+                                        query: query({ period: 'month' }),
+                                    }).url;
+                                },
+                            },
+                            {
+                                key: 'export-year',
+                                label: t('trips.export_year'),
+                                icon: <Download />,
+                                onSelect: () => {
+                                    window.location.href = exportMethod({
+                                        query: query({}),
+                                    }).url;
+                                },
+                            },
+                        ]}
+                    />
+                }
+            />
+
+            <div className="mx-auto w-full max-w-3xl space-y-4 p-4 pb-28">
+                {/* Without a start address the first trip of a day has nowhere to count from: set it first. */}
+                {!startAddress && !startOpen && (
+                    <div
+                        className="da-card flex items-center gap-3 p-4"
+                        data-test="start-address-setup"
+                    >
+                        <span className="da-soft inline-flex size-10 shrink-0 items-center justify-center rounded-[12px]">
+                            <MapPin className="size-5" />
+                        </span>
+                        <p className="min-w-0 flex-1 text-sm">
+                            {t('trips.start_setup')}
+                        </p>
                         <Button
-                            className="h-11"
-                            onClick={() => setQuickOpen(true)}
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setStartOpen(true)}
                         >
-                            <Plus /> {t('trips.add').replace('+ ', '')}
+                            {t('trips.start_set')}
                         </Button>
-                    }
-                />
+                    </div>
+                )}
 
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" asChild>
@@ -221,7 +277,7 @@ export default function Trips({
                             <ChevronLeft />
                         </Link>
                     </Button>
-                    <span className="flex-1 text-center font-medium">
+                    <span className="flex-1 text-center font-semibold">
                         {new Intl.DateTimeFormat(
                             auth.company?.locale ?? 'en-US',
                             { month: 'long', year: 'numeric', timeZone: 'UTC' },
@@ -246,41 +302,37 @@ export default function Trips({
                         totals.year,
                     )}
                 </div>
-                {rate === null && (
-                    <p className="text-xs text-muted-foreground">
-                        {t('trips.no_rate', { unit: unitLabel })}
-                    </p>
+                {/* No rate yet: the Owner can set it; others see nothing about it. */}
+                {rate === null && auth.role?.value === 'owner' && (
+                    <Link
+                        href={companySettings()}
+                        className="inline-flex min-h-11 items-center text-sm font-semibold text-link"
+                    >
+                        {t('trips.set_rate', { unit: unitLabel })}
+                    </Link>
                 )}
 
                 {people.length > 0 && (
-                    <NativeSelect
-                        aria-label={t('trips.fields.person')}
-                        value={person ?? ''}
-                        onChange={(e) =>
+                    <FilterChips
+                        label={t('trips.fields.person')}
+                        selected={[person ?? '']}
+                        onChange={(value) =>
                             router.get(
                                 index().url,
-                                {
-                                    month,
-                                    ...(e.target.value
-                                        ? { person: e.target.value }
-                                        : {}),
-                                },
+                                { month, ...(value ? { person: value } : {}) },
                                 { preserveScroll: true },
                             )
                         }
-                    >
-                        <option value="">{t('trips.everyone')}</option>
-                        {people.map((p) => (
-                            <option key={p.value} value={p.value}>
-                                {p.label}
-                            </option>
-                        ))}
-                    </NativeSelect>
+                        chips={[
+                            { value: '', label: t('trips.everyone') },
+                            ...people,
+                        ]}
+                    />
                 )}
 
                 {startOpen ? (
                     <form
-                        className="space-y-2"
+                        className="da-card space-y-2 p-4"
                         onSubmit={(e) => {
                             e.preventDefault();
                             start.put(saveStartAddress().url, {
@@ -297,6 +349,7 @@ export default function Trips({
                         >
                             <Input
                                 id="start-address"
+                                autoFocus
                                 value={start.data.address}
                                 maxLength={255}
                                 onChange={(e) =>
@@ -304,28 +357,35 @@ export default function Trips({
                                 }
                             />
                         </FormField>
-                        <Button
-                            type="submit"
-                            className="h-11"
-                            disabled={start.processing}
-                        >
-                            {t('common.save')}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button type="submit" loading={start.processing}>
+                                {t('common.save')}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setStartOpen(false)}
+                            >
+                                {t('common.cancel')}
+                            </Button>
+                        </div>
                     </form>
                 ) : (
-                    <button
-                        type="button"
-                        className="flex min-h-11 w-full items-center gap-2 text-left text-sm"
-                        onClick={() => setStartOpen(true)}
-                    >
-                        <MapPin className="size-4 shrink-0 text-muted-foreground" />
-                        <span className="min-w-0 flex-1 truncate">
-                            {t('trips.start_address')}: {startAddress ?? '—'}
-                        </span>
-                        <span className="font-medium text-primary">
-                            {t('common.edit')}
-                        </span>
-                    </button>
+                    startAddress && (
+                        <button
+                            type="button"
+                            className="flex min-h-11 w-full items-center gap-2 text-left text-sm"
+                            onClick={() => setStartOpen(true)}
+                        >
+                            <MapPin className="size-4 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0 flex-1 truncate">
+                                {t('trips.start_address')}: {startAddress}
+                            </span>
+                            <span className="font-medium text-link">
+                                {t('common.edit')}
+                            </span>
+                        </button>
+                    )
                 )}
 
                 {trips.length === 0 ? (
@@ -342,7 +402,7 @@ export default function Trips({
                                     onClick={() => openForm(trip)}
                                 >
                                     <div className="min-w-0 flex-1 space-y-0.5">
-                                        <p className="text-sm font-medium">
+                                        <p className="text-sm font-semibold">
                                             {time.dateOnly(trip.date)} ·{' '}
                                             {typeLabel(trip.type)}
                                             {trip.driver && (
@@ -367,47 +427,35 @@ export default function Trips({
                                             </p>
                                         )}
                                     </div>
-                                    <span
-                                        className={cn(
-                                            'shrink-0 text-right text-sm font-semibold whitespace-nowrap tabular-nums',
-                                            trip.distance === null &&
-                                                'max-w-28 text-xs font-medium whitespace-normal text-amber-700',
-                                        )}
-                                    >
-                                        {trip.distance === null
-                                            ? t('trips.distance_unknown')
-                                            : `${trip.distance.toFixed(1)} ${unitLabel}`}
-                                    </span>
+                                    {trip.distance === null ? (
+                                        <span className="da-chip da-chip-danger inline-flex h-9 shrink-0 items-center rounded-full px-3 text-xs font-semibold">
+                                            {t('trips.enter_distance')}
+                                        </span>
+                                    ) : (
+                                        <span className="shrink-0 text-right text-sm font-semibold whitespace-nowrap tabular-nums">
+                                            {`${trip.distance.toFixed(1)} ${unitLabel}`}
+                                        </span>
+                                    )}
                                 </button>
                             </li>
                         ))}
                     </ul>
                 )}
-
-                <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" className="h-11" asChild>
-                        <a
-                            href={
-                                exportMethod({
-                                    query: query({ period: 'month' }),
-                                }).url
-                            }
-                        >
-                            <Download /> {t('trips.export_month')}
-                        </a>
-                    </Button>
-                    <Button variant="outline" className="h-11" asChild>
-                        <a href={exportMethod({ query: query({}) }).url}>
-                            <Download /> {t('trips.export_year')}
-                        </a>
-                    </Button>
-                </div>
             </div>
+
+            <Fab
+                label={t('trips.add_trip')}
+                showLabel
+                icon={<Car />}
+                onClick={() => setQuickOpen(true)}
+                data-test="trip-fab"
+            />
 
             <QuickTripSheet
                 open={quickOpen}
                 onOpenChange={setQuickOpen}
                 onManual={() => openForm(null)}
+                recent={recentStops}
             />
 
             <Dialog open={open} onOpenChange={setOpen}>

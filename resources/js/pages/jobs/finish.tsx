@@ -54,12 +54,14 @@ const NOTES_MAX = 500;
  */
 export default function FinishVisit({
     visitId,
+    result = 'completed',
     job,
     photoKinds,
     closureReasons,
     callback,
 }: {
     visitId: number;
+    result?: Result;
     job: {
         id: number;
         number: number;
@@ -83,7 +85,7 @@ export default function FinishVisit({
     const phoneText = usePhone();
     const money = useMoney(callback?.currency);
     const form = useForm({
-        result: 'completed' as Result,
+        result: result as Result,
         no_repair: 'customer_declined' as NoRepair,
         reason: '',
         invoice_diagnosis: !callback,

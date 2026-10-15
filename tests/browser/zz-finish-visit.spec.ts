@@ -18,7 +18,11 @@ test('the technician finishes a visit on the Finish visit screen with free-text 
     const tech = await context.newPage();
     await tech.goto(`http://127.0.0.1:8000/jobs/${fixture.job_id}`);
     await tech.getByRole('button', { name: 'Start job', exact: true }).click();
-    await tech.getByRole('link', { name: 'Finish job', exact: true }).click();
+    // The bottom bar follows the status: Start job, then Complete (or Waiting for parts).
+    await expect(
+        tech.getByRole('link', { name: 'Waiting for parts', exact: true }),
+    ).toBeVisible();
+    await tech.getByRole('link', { name: 'Complete', exact: true }).click();
     await expect(tech).toHaveURL(/\/visits\/\d+\/finish$/);
     await expect(tech.getByText('Jane Browser').first()).toBeVisible();
     await tech

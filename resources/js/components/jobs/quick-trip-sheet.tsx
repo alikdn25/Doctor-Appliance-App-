@@ -1,5 +1,5 @@
-import { useForm, usePage } from '@inertiajs/react';
-import { Car, LocateFixed, Navigation } from 'lucide-react';
+import { router, useForm, usePage } from '@inertiajs/react';
+import { Car, History, LocateFixed, Navigation } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { navigateUrl } from '@/components/calendar/types';
@@ -14,22 +14,26 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { useTrans } from '@/lib/i18n';
-import { quick } from '@/routes/trips';
+import { index as trips, quick } from '@/routes/trips';
 
 /**
- * "+ Trip": type where you are driving (a parts store) and tap Navigate: the trip is saved and Google Maps
- * opens with turn-by-turn directions. The phone's position is the start; the server measures the road
- * distance and counts the next job from this stop. "Save only" is for a trip already driven.
+ * "+ Trip" (UX-REDESIGN §6.3): type where you are driving (a parts store) or tap one of the recent stops, then
+ * Navigate: the trip is saved and Google Maps opens with turn-by-turn directions. The phone's position is the
+ * start; the server measures the road distance and counts the next job from this stop. "Save only" is for a trip
+ * already driven; "Enter by hand" opens the full form (SPEC §7.13).
  */
 export function QuickTripSheet({
     open,
     onOpenChange,
     onManual,
+    recent = [],
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    /** Opens the full form (another day, a known distance). */
+    /** Opens the full form (another day, a known distance); without it, Mileage opens with the form. */
     onManual?: () => void;
+    /** The person's last stores and suppliers. */
+    recent?: string[];
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -138,6 +142,35 @@ export function QuickTripSheet({
                         />
                         <InputError message={form.errors.to_address} />
                     </div>
+                    {recent.length > 0 && (
+                        <div className="space-y-1.5" data-test="trip-recent">
+                            <p className="flex items-center gap-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                <History className="size-3.5" />
+                                {t('trips.recent')}
+                            </p>
+                            <div className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 pb-1">
+                                {recent.map((stop) => (
+                                    <button
+                                        key={stop}
+                                        type="button"
+                                        aria-pressed={
+                                            form.data.to_address === stop
+                                        }
+                                        className="da-chip da-press inline-flex h-10 max-w-64 shrink-0 items-center rounded-full px-3.5 text-sm font-medium"
+                                        onClick={() =>
+                                            form.setData((d) => ({
+                                                ...d,
+                                                to_address: stop,
+                                                to_point: '',
+                                            }))
+                                        }
+                                    >
+                                        <span className="truncate">{stop}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     {locating && (
                         <p className="flex items-center gap-2 text-xs text-muted-foreground">
                             <LocateFixed className="size-4 animate-pulse" />
@@ -146,35 +179,38 @@ export function QuickTripSheet({
                     )}
                     <Button
                         type="submit"
-                        className="h-14 w-full text-base"
+                        size="lg"
+                        className="w-full"
                         disabled={empty}
                     >
                         <Navigation className="size-5" />
                         {t('trips.quick_navigate')}
                     </Button>
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                         <Button
                             type="button"
                             variant="outline"
-                            className="h-12 flex-1"
                             disabled={empty}
                             onClick={save}
                         >
                             {t('trips.quick_save')}
                         </Button>
-                        {onManual && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                className="h-12 flex-1"
-                                onClick={() => {
-                                    onOpenChange(false);
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                                onOpenChange(false);
+                                if (onManual) {
                                     onManual();
-                                }}
-                            >
-                                {t('trips.quick_manual')}
-                            </Button>
-                        )}
+                                } else {
+                                    router.visit(
+                                        trips({ query: { manual: 1 } }).url,
+                                    );
+                                }
+                            }}
+                        >
+                            {t('trips.quick_manual')}
+                        </Button>
                     </div>
                 </form>
             </SheetContent>

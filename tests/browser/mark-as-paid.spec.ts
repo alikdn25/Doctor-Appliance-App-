@@ -28,24 +28,27 @@ test('cash on site: Mark as paid from the job, then the review question and Comp
         .trim();
 
     await page.goto(`/jobs/${fixture.job_id}`);
-    await page
-        .getByRole('button', { name: new RegExp(`Mark ${number} as paid`) })
-        .click();
+    // One invoice owed: Take payment in the bottom bar; several: Mark … as paid for each.
+    const pay = async () => {
+        const specific = page.getByRole('button', {
+            name: new RegExp(`Mark ${number} as paid`),
+        });
+        if ((await specific.count()) > 0) {
+            await specific.click();
+        } else {
+            await page.locator('[data-test="bar-pay"]').click();
+        }
+    };
+    await pay();
     const dialog = page.getByRole('dialog');
     await dialog.getByRole('radio', { name: 'Cash' }).click();
     // Half now: the rest stays owed and the button shows it.
     await dialog.getByLabel('Amount').fill('50');
     await dialog.getByRole('button', { name: /Mark as paid · / }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(
-        page.getByRole('button', {
-            name: new RegExp(`Mark ${number} as paid`),
-        }),
-    ).toContainText('$62.00');
+    await expect(page.getByText(/\$62\.00/).first()).toBeVisible();
 
-    await page
-        .getByRole('button', { name: new RegExp(`Mark ${number} as paid`) })
-        .click();
+    await pay();
     await dialog.getByRole('radio', { name: 'Cash' }).click();
     await dialog.getByRole('button', { name: /Mark as paid · / }).click();
 

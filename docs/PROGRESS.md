@@ -1,3 +1,40 @@
+# October 15 — UX redesign, phase 4: technician screens
+
+UX-REDESIGN.md §6 and §24.
+
+1. **My Jobs** (§6.1): one line with [Day | Completed] and ‹ Today › (a tap on the date picks a day); the day in one
+   sentence ("3 jobs · next at 1:00 p.m."; Completed says "Last 30 days"); status chips only with more than three
+   jobs; + Trip is a floating button with a car; the "Today (1)" heading, the status circles and Book customer
+   (it is in the bottom bar) are gone; "more jobs for someone else" is a list row.
+2. **Job card** (§6.1, §24): compact — window "1–3 p.m." in bold with the status and an Overdue flag, customer,
+   address and "Washer · problem" on one line each, a 48 px appliance picture; three equal buttons: Navigate (light
+   blue), Call (green) and the visit step in white (On my way / Start job / Complete). The next job has an accent
+   border; a tap on the card opens the job (View job and the chevron removed). The jobs list uses the same card.
+3. **Job page** (§6.2): header "#1001 · Repair" with the visit time and technician (or "Started 9:04 a.m. · 36 min
+   on job"); "⋯" opens a bottom sheet with Close job, Change status, Set repair warranty, Edit job and Delete job.
+   Sections in the order of the work: customer (gate / buzzer large, About the customer, Navigate · Call · Text,
+   "Call Sam (on-site)"), Problem and notes for the team, appliances with the rating-plate camera, photos, Work done,
+   estimates and invoices (moved to the top once invoiced or paid), the signature, and Activity folded (messages,
+   schedule for the field, status history, details: source, brand, call type). The office keeps the schedule block
+   visible.
+4. **Bottom bar by status** (§6.2): scheduled — On my way / Start job; on the way — Start job; in progress —
+   Complete / Waiting for parts (opens Finish visit with "Part needed" chosen); money owed — Take payment (with the
+   balance) / Send invoice; waiting for parts — Schedule next time; completed — New invoice / New estimate; paid —
+   Complete job. On a desktop the bar stays at the bottom of the window as a card.
+5. **Work done saves by itself** a second after typing stops ("Saving… / Saved", retried on a weak signal) and when
+   the page is left; the Save button is gone.
+6. **Trip sheet** (§6.3): one line of explanation, "Recent" chips (the person's last five stores and suppliers),
+   Navigate / Save only / Enter by hand all visible; Enter by hand from My Jobs opens Mileage with the form.
+7. **Mileage** (§6.4): no long subtitle; a setup card first when there is no start address; month and year totals;
+   "Set rate per km" for the Owner only when no rate is set; the person filter as chips (Owner/Admin); "Enter
+   distance" chip when the distance was not found; Export month / year under "⋯"; + Trip as a floating button.
+
+- Tests: `tests/Feature/Jobs/TechnicianScreensTest.php` (autosave JSON, access and tenant isolation, Finish screen
+  with "Part needed", recent stops per person and company, Enter by hand); browser scenarios for My Jobs, the job
+  page (⋯ sheet, autosave, Activity), Trip sheet, Mileage, Take payment and Complete.
+- No migrations. Signature: still taken on the invoice (owner's earlier decision), so the job shows it once signed.
+- Next: phase 5 — booking and job forms (§7.1–7.3) with arrival windows and "Now" (§25).
+
 # October 15 — UX redesign, phase 3: app frame and navigation
 
 UX-REDESIGN.md §5, §22 and the menu item of §23.
@@ -23,7 +60,7 @@ UX-REDESIGN.md §5, §22 and the menu item of §23.
 - Tests: `tests/Feature/NavigationTest.php` (menu mode per role, saving, Expenses & taxes access, props for the
   frame); browser `tests/browser/navigation.spec.ts` (owner and technician bars, Field/Office swap, More search and
   groups, ← on child screens, unfinished strip, profile in the frame) and the updated menu scenarios.
-- Next: phase 4 — technician screens (§6) and the three buttons of the My Jobs card (§24).
+- Done in phase 4.
 
 # October 14 — UX redesign, phase 2: design tokens and the UI kit
 

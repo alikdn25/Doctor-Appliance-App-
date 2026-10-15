@@ -1,24 +1,20 @@
 import { Link } from '@inertiajs/react';
 import type { InertiaLinkProps } from '@inertiajs/react';
-import {
-    ArrowRight,
-    ChevronRight,
-    Clock,
-    MapPin,
-    Navigation,
-    Phone,
-    WashingMachine,
-} from 'lucide-react';
+import { ChevronRight, Navigation, Phone } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { applianceImageUrl } from '@/components/appliance-image';
-import { CustomerAvatar } from '@/components/customers/customer-avatar';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import { isFinishedJob } from '@/components/jobs/types';
 import { Button } from '@/components/ui/button';
+import { OverdueFlag } from '@/components/ui/status-badge';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+
+/** The three card buttons share the row on a phone: compact text and icon. */
+export const cardButton =
+    'h-12 gap-1.5 px-1.5 text-sm has-[>svg]:px-1.5 md:text-sm [&_svg]:size-4!';
 
 export type JobCardData = {
     number: number;
@@ -35,21 +31,29 @@ export type JobCardData = {
 };
 
 /**
- * The job card of the approved My Jobs mockup: face, number and status, time, name, address,
- * "Appliance • problem", the appliance picture, and Navigate · Call · View job.
+ * The compact job card (UX-REDESIGN §6.1, §24): the arrival window in bold with the status, the customer, the
+ * address and "Washer · problem" on one line each, the appliance picture on the right, and three equal buttons
+ * below: Navigate (light blue), Call (green) and the visit step, e.g. On my way (white). Tapping the card opens
+ * the job.
  */
 export function JobCard({
     job,
     href,
     time,
     extra,
-    highlight = false,
+    action,
+    accent = false,
+    overdue = false,
 }: {
     job: JobCardData;
     href: NonNullable<InertiaLinkProps['href']>;
     time: string | null;
     extra?: ReactNode;
-    highlight?: boolean;
+    /** The third button (On my way, Start job, Finish visit); without it Navigate and Call share the row. */
+    action?: ReactNode;
+    /** The next job by time: an accent border. */
+    accent?: boolean;
+    overdue?: boolean;
 }) {
     const t = useTrans();
     const types = job.appliance_types.join(', ');
@@ -64,101 +68,100 @@ export function JobCard({
         installation || several ? types : job.problem,
     ]
         .filter(Boolean)
-        .join(' • ');
+        .join(' · ');
+    const buttons = [job.address, job.phone, action].filter(Boolean).length;
 
     return (
         <li
+            data-test="job-card"
+            data-accent={accent || undefined}
             className={cn(
                 'da-card overflow-hidden',
-                highlight && 'ring-2 ring-[#FDBA74]',
+                accent && 'ring-2 ring-link',
                 // Finished work is muted (grey) in every list.
                 isFinishedJob(job.status) && 'opacity-60 grayscale',
             )}
         >
             <Link
                 href={href}
-                className="flex items-start gap-2 p-3 pb-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                className="flex items-start gap-3 p-3 pb-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             >
-                <CustomerAvatar
-                    icon={job.customer_icon}
-                    name={job.customer ?? undefined}
-                    size="lg"
-                />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-[13px]">
-                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                        <span className="text-[17px] font-bold">
-                            #{job.number}
-                        </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                        {time && (
+                            <span className="shrink-0 text-base font-bold whitespace-nowrap tabular-nums">
+                                {time}
+                            </span>
+                        )}
                         <StatusBadge
                             status={job.status}
                             label={job.status_label}
                         />
+                        {overdue && <OverdueFlag />}
                     </div>
-                    {time && (
-                        <div className="flex items-start gap-1.5 text-sm font-bold tabular-nums">
-                            <Clock className="mt-0.5 size-4 shrink-0 text-[#0A6CF5]" />
-                            {time}
-                        </div>
-                    )}
-                    <div className="truncate text-base font-bold">
+                    <div className="truncate text-base font-semibold">
                         {job.customer}
+                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                            #{job.number}
+                        </span>
                     </div>
                     {job.address && (
-                        <div className="flex items-start gap-1.5 text-muted-foreground">
-                            <MapPin className="mt-0.5 size-3.5 shrink-0" />
-                            <span className="line-clamp-2">{job.address}</span>
+                        <div className="truncate text-muted-foreground">
+                            {job.address}
                         </div>
                     )}
                     {line !== '' && (
-                        <div className="flex items-start gap-1.5 text-muted-foreground">
-                            <WashingMachine className="mt-0.5 size-3.5 shrink-0" />
-                            <span className="line-clamp-2">{line}</span>
+                        <div className="truncate text-muted-foreground">
+                            {line}
                         </div>
                     )}
-                    {extra}
+                    {extra && <div className="text-xs">{extra}</div>}
                 </div>
                 {job.picture && (
                     <img
                         src={applianceImageUrl(job.picture)}
                         alt=""
                         loading="lazy"
-                        className="h-[72px] w-16 shrink-0 self-center object-contain mix-blend-multiply"
+                        className="size-12 shrink-0 self-center object-contain mix-blend-multiply"
                     />
                 )}
-                <ChevronRight
-                    aria-hidden="true"
-                    className="size-4 shrink-0 self-center text-[#8A97A8]"
-                />
             </Link>
-            <div className="grid grid-cols-3 gap-2 px-3 pb-3">
-                {job.address ? (
-                    <Button asChild variant="outline" className="h-12">
-                        <a
-                            href={mapsUrl(job.address)}
-                            target="_blank"
-                            rel="noreferrer"
+            {buttons > 0 && (
+                <div
+                    className={cn(
+                        'grid gap-2 px-3 pb-3',
+                        buttons === 3
+                            ? 'grid-cols-3'
+                            : buttons === 2
+                              ? 'grid-cols-2'
+                              : 'grid-cols-1',
+                    )}
+                >
+                    {job.address && (
+                        <Button asChild variant="sky" className={cardButton}>
+                            <a
+                                href={mapsUrl(job.address)}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <Navigation /> {t('jobs.navigate')}
+                            </a>
+                        </Button>
+                    )}
+                    {job.phone && (
+                        <Button
+                            asChild
+                            variant="success"
+                            className={cardButton}
                         >
-                            <Navigation /> {t('jobs.navigate')}
-                        </a>
-                    </Button>
-                ) : (
-                    <span />
-                )}
-                {job.phone ? (
-                    <Button asChild variant="outline" className="h-12">
-                        <a href={telUrl(job.phone)}>
-                            <Phone /> {t('jobs.call')}
-                        </a>
-                    </Button>
-                ) : (
-                    <span />
-                )}
-                <Button asChild className="h-12">
-                    <Link href={href}>
-                        {t('jobs.view_job')} <ArrowRight />
-                    </Link>
-                </Button>
-            </div>
+                            <a href={telUrl(job.phone)}>
+                                <Phone /> {t('jobs.call')}
+                            </a>
+                        </Button>
+                    )}
+                    {action}
+                </div>
+            )}
         </li>
     );
 }

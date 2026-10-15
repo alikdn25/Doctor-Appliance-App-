@@ -121,7 +121,7 @@ test('the menu shows the everyday sections and opens money and settings on tap',
     await page.screenshot({ path: info.outputPath('menu.png') });
 });
 
-test('my jobs: day with arrows, Completed, + Trip, card with Navigate, Call and View job', async ({
+test('my jobs: Day | Completed with ‹ date ›, the day summary, + Trip button and cards with Navigate, Call and On my way', async ({
     page,
     browser,
 }, info) => {
@@ -131,23 +131,25 @@ test('my jobs: day with arrows, Completed, + Trip, card with Navigate, Call and 
     });
     const tech = await context.newPage();
     await tech.goto('http://127.0.0.1:8000/my-jobs');
-    // The day tab of My Jobs (the bottom bar has its own "Today").
-    const notBottomBar = tech.locator(':not([data-test^="bottom-nav"])');
-    const today = tech
-        .getByRole('link', { name: 'Today', exact: true })
-        .and(notBottomBar);
-    await expect(today).toBeVisible();
+    await expect(tech.getByRole('radio', { name: 'Day' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    );
     await expect(
-        tech.getByRole('link', { name: 'Completed', exact: true }),
+        tech.getByRole('radio', { name: 'Completed', exact: true }),
     ).toBeVisible();
-    await expect(tech.getByRole('button', { name: '+ Trip' })).toBeVisible();
-    await expect(tech.getByRole('link', { name: 'Upcoming' })).toHaveCount(0);
+    await expect(tech.locator('[data-test="trip-fab"]')).toBeVisible();
+    await expect(tech.locator('[data-test="day-summary"]')).toContainText(
+        /\d+ jobs?/,
+    );
+    const label = tech.locator('[data-test="day-label"]');
+    await expect(label).toContainText('Today');
 
     // The arrows move one day; the label becomes the date, and back again.
-    await tech.getByRole('link', { name: 'Next day' }).click();
-    await expect(today).toHaveCount(0);
-    await tech.getByRole('link', { name: 'Previous day' }).click();
-    await expect(today).toBeVisible();
+    await tech.getByRole('button', { name: 'Next day' }).click();
+    await expect(label).not.toContainText('Today');
+    await tech.getByRole('button', { name: 'Previous day' }).click();
+    await expect(label).toContainText('Today');
 
     const widths = await tech.evaluate(() => ({
         page: document.documentElement.scrollWidth,
@@ -155,10 +157,21 @@ test('my jobs: day with arrows, Completed, + Trip, card with Navigate, Call and 
     }));
     expect(widths.page).toBeLessThanOrEqual(widths.viewport);
 
-    const card = tech.locator('li', { hasText: 'Jane Browser' }).first();
+    const card = tech
+        .locator('[data-test="job-card"]', { hasText: 'Jane Browser' })
+        .first();
     await expect(card.getByRole('link', { name: /Navigate/ })).toBeVisible();
     await expect(card.getByRole('link', { name: /Call/ })).toBeVisible();
-    await expect(card.getByRole('link', { name: /View job/ })).toBeVisible();
+    await expect(card.getByRole('button', { name: /On my way/ })).toBeVisible();
+    await expect(card.getByRole('link', { name: /View job/ })).toHaveCount(0);
+    // The three buttons are the same size.
+    const sizes = await card
+        .locator('a[data-slot="button"], button[data-slot="button"]')
+        .evaluateAll((buttons) =>
+            buttons.map((b) => Math.round(b.getBoundingClientRect().width)),
+        );
+    expect(sizes).toHaveLength(3);
+    expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThanOrEqual(2);
     await expect(
         tech.getByRole('button', { name: /Get signature|Checklist/ }),
     ).toHaveCount(0);
@@ -166,9 +179,68 @@ test('my jobs: day with arrows, Completed, + Trip, card with Navigate, Call and 
         path: info.outputPath('my-jobs.png'),
         fullPage: true,
     });
-    await card.getByRole('link', { name: /View job/ }).click();
+
+    await tech.getByRole('radio', { name: 'Completed', exact: true }).click();
+    await expect(tech.locator('[data-test="day-summary"]')).toContainText(
+        'Last 30 days',
+    );
+
+    // Tapping the card opens the job.
+    await tech.getByRole('radio', { name: 'Day' }).click();
+    await card.getByText('Jane Browser').click();
+    await expect(tech).toHaveURL(/\/jobs\/\d+$/);
     await expect(tech.getByText('Checklist', { exact: true })).toHaveCount(0);
     await context.close();
+});
+
+test('job page: ⋯ holds the rare actions, Work done saves by itself, Activity is folded', async ({
+    page,
+}, info) => {
+    await page.goto(`/jobs/${fixture.job_id}`);
+    await page.locator('[data-test="action-sheet-button"]').click();
+    const sheet = page.locator('[data-test="action-sheet"]');
+    await expect(
+        sheet.getByRole('button', { name: /Close job/ }),
+    ).toBeVisible();
+    await expect(
+        sheet.getByRole('button', { name: 'Change status' }),
+    ).toBeVisible();
+    await expect(sheet.getByRole('button', { name: 'Edit job' })).toBeVisible();
+    await expect(
+        sheet.getByRole('button', { name: 'Delete job' }),
+    ).toBeVisible();
+    await page.screenshot({ path: info.outputPath('job-more.png') });
+    await page.keyboard.press('Escape');
+
+    const notes = page.getByRole('textbox', { name: 'Work done' });
+    await notes.fill('Drain filter clogged with a sock.');
+    await expect(page.locator('[data-test="autosave-state"]')).toHaveText(
+        /Saved/,
+    );
+    await expect(
+        page.getByRole('button', { name: 'Save', exact: true }),
+    ).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: 'Work done' })).toHaveValue(
+        'Drain filter clogged with a sock.',
+    );
+    await page.getByRole('textbox', { name: 'Work done' }).fill('');
+    await expect(page.locator('[data-test="autosave-state"]')).toHaveText(
+        /Saved/,
+    );
+
+    const activity = page.locator('[data-test="job-activity"]');
+    await expect(
+        activity.getByRole('heading', { name: 'Status history' }),
+    ).toBeHidden();
+    await activity.getByText('Activity', { exact: true }).click();
+    await expect(
+        activity.getByRole('heading', { name: 'Status history' }),
+    ).toBeVisible();
+    await page.screenshot({
+        path: info.outputPath('job-page-office.png'),
+        fullPage: true,
+    });
 });
 
 test('the address of a booked job can be corrected on Edit', async ({
@@ -193,8 +265,10 @@ test('the jobs list uses the mockup cards with count circles and folded filters'
 }, info) => {
     await page.goto('/jobs');
     await expect(page.getByRole('combobox')).toHaveCount(0);
-    const card = page.locator('li', { hasText: 'Jane Browser' }).first();
-    await expect(card.getByRole('link', { name: /View job/ })).toBeVisible();
+    const card = page
+        .locator('[data-test="job-card"]', { hasText: 'Jane Browser' })
+        .first();
+    await expect(card.getByRole('link', { name: /Navigate/ })).toBeVisible();
     await page.screenshot({
         path: info.outputPath('jobs-cards.png'),
         fullPage: true,

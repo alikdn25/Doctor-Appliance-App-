@@ -9,6 +9,11 @@ return [
     'remove' => 'Remove',
     'remove_tag' => 'Remove :tag',
     'more_actions' => 'More actions',
+    'autosave' => [
+        'saving' => 'Saving…',
+        'saved' => 'Saved',
+        'error' => 'Not saved yet. Trying again…',
+    ],
     'overdue' => 'Overdue',
     'today' => 'Today',
     'tomorrow' => 'Tomorrow',

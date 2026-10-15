@@ -15,8 +15,12 @@ test('+ Trip on My Jobs: type the store, Navigate opens Google Maps and the trip
     );
     const tech = await context.newPage();
     await tech.goto('http://127.0.0.1:8000/my-jobs');
-    await tech.getByRole('button', { name: '+ Trip' }).click();
+    await tech.getByRole('button', { name: 'Add trip' }).click();
     const sheet = tech.getByRole('dialog');
+    // Enter by hand is on the sheet without scrolling.
+    await expect(
+        sheet.getByRole('button', { name: 'Enter by hand' }),
+    ).toBeInViewport();
     await sheet
         .getByLabel('Store or address')
         .fill(`Reliable Parts ${info.project.name}`);
