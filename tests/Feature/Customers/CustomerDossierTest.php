@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Property;
 use App\Models\ServiceJob;
+use App\Support\Tenancy\CurrentCompany;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -60,4 +61,29 @@ test('a technician sees the totals of their own jobs only', function () {
         ->where('summary.jobs', 1)
         ->where('summary.money', [['currency' => 'CAD', 'paid' => 28050, 'owed' => 0]])
         ->has('history', 1));
+});
+
+test('the customer list says "Owes" with the open balance, only to people who see invoices', function () {
+    $other = Customer::factory()->for($this->company)->create(['first_name' => 'Nobody']);
+
+    $this->get(route('customers.index'))->assertInertia(fn (Assert $page) => $page
+        ->component('customers/index')
+        ->where('customers.data', fn ($rows) => collect($rows)->firstWhere('id', $this->customer->id)['owes'] === [['currency' => 'CAD', 'amount' => 18050]]
+            && collect($rows)->firstWhere('id', $other->id)['owes'] === []));
+});
+
+test('the customer list never adds another company\'s invoices to a balance', function () {
+    $foreignCompany = Company::factory()->create();
+    // The owner's earlier requests left their company current; a new member belongs to another one.
+    app(CurrentCompany::class)->forget();
+    $foreignOwner = memberOf($foreignCompany, UserRole::Owner);
+
+    $this->actingAs($foreignOwner)->get(route('customers.index'))->assertInertia(fn (Assert $page) => $page
+        ->where('customers.data', fn ($rows) => collect($rows)->pluck('id')->doesntContain($this->customer->id)));
+});
+
+test('the customer card and form offer countries by name', function () {
+    $this->get(route('customers.show', $this->customer))->assertInertia(fn (Assert $page) => $page
+        ->where('countries', fn ($countries) => collect($countries)->contains(fn ($c) => $c['value'] === 'CA' && $c['label'] === 'Canada')));
+    $this->get(route('customers.create'))->assertInertia(fn (Assert $page) => $page->has('countries'));
 });

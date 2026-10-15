@@ -13,6 +13,7 @@ import {
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
 import { store, update } from '@/routes/properties';
+import type { Option } from '@/types';
 import { PropertyFields } from './property-fields';
 import { emptyProperty, propertyToForm } from './types';
 import type { PropertyData, PropertyFormData } from './types';
@@ -23,7 +24,9 @@ export function PropertyDialog({
     customerId,
     property,
     customerName,
+    countries = [],
 }: {
+    countries?: Option[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
     customerId: number;
@@ -81,6 +84,7 @@ export function PropertyDialog({
                             form.setData({ ...form.data, ...patch })
                         }
                         errors={errors}
+                        countries={countries}
                     />
                     <label className="flex min-h-9 items-center gap-2 text-sm">
                         <Checkbox

@@ -5,6 +5,10 @@ import {
 } from '@/components/customers/address-autocomplete';
 import { FormField } from '@/components/form-field';
 import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
+import { MapPin } from 'lucide-react';
+import { useState } from 'react';
+import type { Option } from '@/types';
 import { Textarea } from '@/components/ui/textarea';
 import { usePage } from '@inertiajs/react';
 import { useTrans } from '@/lib/i18n';
@@ -27,9 +31,13 @@ const layout: [TextField, string, string?][] = [
     ['gate_code', 'sm:col-span-2'],
 ];
 
+/** Suggestions for a property's name ("Home", "Rental"…), one tap. */
+const LABEL_HINTS = ['home', 'rental', 'cottage', 'office'] as const;
+
 /**
- * Address, access and on-site contact fields of a property.
- * Errors are looked up as `${errorPrefix}${field}`.
+ * Address, access and on-site contact fields of a property (UX-REDESIGN §8.3): the address is one field with
+ * suggestions; the other fields open after a pick or with "Enter manually" (an existing address shows them all).
+ * The country is a list of country names. Errors are looked up as `${errorPrefix}${field}`.
  */
 export function PropertyFields({
     data,
@@ -37,14 +45,23 @@ export function PropertyFields({
     errors,
     errorPrefix = '',
     idPrefix = 'property',
+    countries = [],
 }: {
     data: PropertyFormData;
     onChange: (patch: Partial<PropertyFormData>) => void;
     errors: Record<string, string | undefined>;
     errorPrefix?: string;
     idPrefix?: string;
+    countries?: Option[];
 }) {
     const t = useTrans();
+    const [opened, setOpen] = useState(false);
+    // An address being typed or already saved shows all its fields.
+    const open =
+        opened ||
+        data.line1 !== '' ||
+        data.city !== '' ||
+        Object.keys(errors).some((key) => key.startsWith(errorPrefix));
     const { auth } = usePage().props;
     // State / Province / County and ZIP / Postal code / Postcode, as the company's country calls them.
     const labels =
@@ -86,13 +103,27 @@ export function PropertyFields({
                     autoComplete={autoComplete}
                     country={data.country || auth.company?.country || 'US'}
                     onChange={(value) => edit('line1', value)}
-                    onPick={(address) =>
+                    onPick={(address) => {
                         onChange({
                             ...address,
                             unit: address.unit ?? data.unit,
-                        })
-                    }
+                        });
+                        setOpen(true);
+                    }}
                 />
+            ) : field === 'country' && countries.length > 0 ? (
+                <NativeSelect
+                    id={`${idPrefix}-${field}`}
+                    value={data.country}
+                    autoComplete="country"
+                    onChange={(e) => edit('country', e.target.value)}
+                >
+                    {countries.map((country) => (
+                        <option key={country.value} value={country.value}>
+                            {country.label}
+                        </option>
+                    ))}
+                </NativeSelect>
             ) : (
                 <Input
                     id={`${idPrefix}-${field}`}
@@ -113,10 +144,55 @@ export function PropertyFields({
         </FormField>
     );
 
+    // The street field stays the same element when the rest opens, so typing keeps the focus.
+    if (!open) {
+        return (
+            <div className="grid gap-3 sm:grid-cols-2">
+                {input('line1', 'sm:col-span-2', 'address-line1')}
+                <button
+                    type="button"
+                    className="flex min-h-11 w-fit items-center gap-1.5 text-sm font-medium text-link"
+                    onClick={() => setOpen(true)}
+                >
+                    <MapPin className="size-4" />
+                    {t('properties.enter_manually')}
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="grid gap-3 sm:grid-cols-2">
-            {layout.map(([field, span, autoComplete]) =>
-                input(field, span, autoComplete),
+            {input('line1', 'sm:col-span-2', 'address-line1')}
+            {layout.slice(1).map(([field, span, autoComplete]) =>
+                field === 'label' ? (
+                    <div key="label" className="grid gap-1.5 sm:col-span-2">
+                        {input('label', '', autoComplete)}
+                        <div className="flex flex-wrap gap-1.5">
+                            {LABEL_HINTS.map((hint) => {
+                                const text = t(
+                                    `properties.label_hints.${hint}`,
+                                );
+
+                                return (
+                                    <button
+                                        key={hint}
+                                        type="button"
+                                        aria-pressed={data.label === text}
+                                        className="da-chip da-press inline-flex h-9 items-center rounded-full px-3 text-sm"
+                                        onClick={() =>
+                                            onChange({ label: text })
+                                        }
+                                    >
+                                        {text}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ) : (
+                    input(field, span, autoComplete)
+                ),
             )}
             <FormField
                 id={`${idPrefix}-access_notes`}

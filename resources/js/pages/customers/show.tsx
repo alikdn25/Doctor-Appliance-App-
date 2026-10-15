@@ -5,6 +5,7 @@ import {
     KeyRound,
     Mail,
     MapPin,
+    MessageSquare,
     Navigation,
     Pencil,
     Phone,
@@ -37,7 +38,9 @@ import type {
     AvatarStyle,
 } from '@/components/customers/customer-avatar';
 import { CustomerNotes } from '@/components/customers/customer-notes';
-import { PageHeader } from '@/components/page-header';
+import { ScreenHeader } from '@/components/screen-header';
+import { ActionSheet } from '@/components/ui/action-sheet';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { MessageHistory } from '@/components/messaging/message-history';
 import type { MessageItem } from '@/components/messaging/types';
@@ -45,6 +48,7 @@ import { Button } from '@/components/ui/button';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
+import { smsUrl } from '@/lib/sms';
 import { show as showAppliance } from '@/routes/appliances';
 import { destroy, edit, index } from '@/routes/customers';
 import { create as createJob } from '@/routes/jobs';
@@ -124,7 +128,8 @@ export default function CustomerShow({
     applianceTypes,
     manufacturers,
     messaging,
-}: Props) {
+    countries = [],
+}: Props & { countries?: Option[] }) {
     const t = useTrans();
     const time = useCompanyTime();
     const phoneText = usePhone();
@@ -141,15 +146,10 @@ export default function CustomerShow({
         customer.company_name &&
         [customer.first_name, customer.last_name].filter(Boolean).join(' ');
 
-    const remove = () => {
-        if (
-            confirm(
-                t('customers.confirm_delete', { name: customer.display_name }),
-            )
-        ) {
-            router.delete(destroy(customer.id).url);
-        }
-    };
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const remove = () => setDeleteOpen(true);
+    // The person replied STOP: texting is off (SPEC §7.7).
+    const smsOff = Boolean(customer.phones[0]?.sms_opted_out_at);
 
     const removeProperty = (property: PropertyRow) => {
         if (confirm(t('properties.confirm_delete'))) {
@@ -163,8 +163,36 @@ export default function CustomerShow({
         <>
             <Head title={customer.display_name} />
 
-            <div className="max-w-3xl space-y-6 p-4">
-                <div className="flex items-start gap-3">
+            <ScreenHeader
+                title={customer.display_name}
+                subtitle={contactPerson || undefined}
+                back={index()}
+                actions={
+                    <ActionSheet
+                        title={customer.display_name}
+                        items={[
+                            canUpdate && {
+                                key: 'edit',
+                                label: t('customers.edit'),
+                                icon: <Pencil />,
+                                onSelect: () =>
+                                    router.visit(edit(customer.id).url),
+                            },
+                            'separator' as const,
+                            canDelete && {
+                                key: 'delete',
+                                label: t('customers.delete'),
+                                icon: <Trash2 />,
+                                destructive: true,
+                                onSelect: remove,
+                            },
+                        ]}
+                    />
+                }
+            />
+
+            <div className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-6">
+                <div className="flex items-center gap-3">
                     {canUpdate ? (
                         <CustomerAvatarPicker
                             customerId={customer.id}
@@ -181,51 +209,86 @@ export default function CustomerShow({
                         />
                     )}
                     <div className="min-w-0 flex-1">
-                        <PageHeader
-                            title={customer.display_name}
-                            description={[
-                                customer.type_label,
-                                contactPerson,
-                                customer.lead_source_label,
-                                customer.payment_terms_label,
-                            ]
-                                .filter(Boolean)
-                                .join(' · ')}
-                            actions={
-                                canUpdate && (
-                                    <Button variant="outline" asChild>
-                                        <Link href={edit(customer.id)}>
-                                            <Pencil /> {t('common.edit')}
-                                        </Link>
-                                    </Button>
-                                )
-                            }
-                        />
+                        <h2 className="flex flex-wrap items-center gap-2 text-xl font-semibold">
+                            {customer.display_name}
+                            {customer.type !== 'residential' && (
+                                <span
+                                    className="da-badge rounded-full px-2.5 text-xs leading-6 font-medium"
+                                    data-test="customer-type"
+                                >
+                                    {customer.type_label}
+                                </span>
+                            )}
+                        </h2>
+                        {contactPerson && (
+                            <p className="text-sm text-muted-foreground">
+                                {contactPerson}
+                            </p>
+                        )}
                     </div>
                 </div>
-                <CustomerSummaryTiles summary={summary} />
-                <CustomerNotes notes={customer.notes} />
 
-                {(primaryPhone || primaryEmail) && (
-                    <div className="grid grid-cols-2 gap-2 sm:flex">
-                        {primaryPhone && (
-                            <Button asChild size="lg">
-                                <a href={telUrl(primaryPhone)}>
-                                    <Phone /> {t('customers.call')}
+                {/* Call · Text · Email · New job, right under the name (UX-REDESIGN §8.2). */}
+                <div
+                    className="grid auto-cols-fr grid-flow-col gap-2"
+                    data-test="customer-actions"
+                >
+                    {primaryPhone && (
+                        <Button asChild variant="outline" className="px-2">
+                            <a href={telUrl(primaryPhone)}>
+                                <Phone /> {t('customers.call')}
+                            </a>
+                        </Button>
+                    )}
+                    {primaryPhone &&
+                        (smsOff ? (
+                            <Button
+                                variant="outline"
+                                className="px-2"
+                                disabled
+                                title={t('messages.opted_out_hint')}
+                            >
+                                <MessageSquare /> {t('customers.text')}
+                            </Button>
+                        ) : (
+                            <Button asChild variant="outline" className="px-2">
+                                <a href={smsUrl(primaryPhone, '')}>
+                                    <MessageSquare /> {t('customers.text')}
                                 </a>
                             </Button>
-                        )}
-                        {primaryEmail && (
-                            <Button asChild size="lg" variant="outline">
-                                <a href={`mailto:${primaryEmail}`}>
-                                    <Mail /> {t('customers.send_email')}
-                                </a>
-                            </Button>
-                        )}
-                    </div>
+                        ))}
+                    {primaryEmail && (
+                        <Button asChild variant="outline" className="px-2">
+                            <a href={`mailto:${primaryEmail}`}>
+                                <Mail /> {t('customers.send_email')}
+                            </a>
+                        </Button>
+                    )}
+                    {canCreateJob && (
+                        <Button asChild className="px-2">
+                            <Link
+                                href={createJob({
+                                    query: {
+                                        book: 1,
+                                        customer_id: customer.id,
+                                    },
+                                })}
+                                data-test="customer-new-job"
+                            >
+                                <Plus /> {t('customers.new_job')}
+                            </Link>
+                        </Button>
+                    )}
+                </div>
+                {smsOff && (
+                    <p className="-mt-3 text-xs text-muted-foreground">
+                        {t('messages.opted_out_hint')}
+                    </p>
                 )}
 
-                <section className="space-y-2 rounded-lg border p-4">
+                <CustomerSummaryTiles summary={summary} />
+
+                <section className="da-card space-y-2 p-4">
                     <h2 className="text-sm font-medium">
                         {t('customers.sections.contacts')}
                     </h2>
@@ -286,14 +349,24 @@ export default function CustomerShow({
                             ))}
                         </div>
                     )}
-                    {customer.created_at && (
-                        <p className="pt-1 text-xs text-muted-foreground">
-                            {t('customers.customer_since', {
-                                date: time.dateOnly(customer.created_at),
-                            })}
-                        </p>
-                    )}
+                    <p className="pt-1 text-xs text-muted-foreground">
+                        {[
+                            customer.lead_source_label &&
+                                t('customers.details.source', {
+                                    source: customer.lead_source_label,
+                                }),
+                            customer.payment_terms_label,
+                            customer.created_at &&
+                                t('customers.customer_since', {
+                                    date: time.dateOnly(customer.created_at),
+                                }),
+                        ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                    </p>
                 </section>
+
+                <CustomerNotes notes={customer.notes} />
 
                 <section className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -521,17 +594,6 @@ export default function CustomerShow({
                         <h2 className="text-base font-medium">
                             {t('customers.sections.jobs')}
                         </h2>
-                        {canCreateJob && (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link
-                                    href={createJob({
-                                        query: { customer_id: customer.id },
-                                    })}
-                                >
-                                    <Plus /> {t('jobs.add')}
-                                </Link>
-                            </Button>
-                        )}
                     </div>
                     <CustomerHistory
                         rows={history}
@@ -539,17 +601,7 @@ export default function CustomerShow({
                     />
                 </section>
 
-                <section className="space-y-3">
-                    <h2 className="text-base font-medium">
-                        {t('messages.title')}
-                    </h2>
-                    <MessageHistory
-                        messages={messaging.messages}
-                        showJobLinks
-                    />
-                </section>
-
-                <section className="space-y-2">
+                <section id="documents" className="scroll-mt-24 space-y-2">
                     <h2 className="text-base font-medium">
                         {t('billing.section')}
                     </h2>
@@ -562,16 +614,32 @@ export default function CustomerShow({
                     )}
                 </section>
 
-                {canDelete && (
-                    <Button variant="destructive" onClick={remove}>
-                        <Trash2 /> {t('customers.delete')}
-                    </Button>
-                )}
+                <section className="space-y-3">
+                    <h2 className="text-base font-medium">
+                        {t('messages.title')}
+                    </h2>
+                    <MessageHistory
+                        messages={messaging.messages}
+                        showJobLinks
+                    />
+                </section>
 
                 {canViewHistory && (
                     <RecordHistory type="customer" id={customer.id} />
                 )}
             </div>
+
+            <ConfirmDialog
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                destructive
+                title={t('customers.delete')}
+                description={t('customers.confirm_delete', {
+                    name: customer.display_name,
+                })}
+                confirmLabel={t('customers.delete')}
+                onConfirm={() => router.delete(destroy(customer.id).url)}
+            />
 
             <PropertyDialog
                 open={propertyDialog.open}
@@ -581,6 +649,7 @@ export default function CustomerShow({
                 customerId={customer.id}
                 customerName={customer.display_name}
                 property={propertyDialog.property}
+                countries={countries}
             />
 
             <ApplianceDialog

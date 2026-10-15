@@ -27,10 +27,15 @@ export type HistoryRow = {
 };
 
 /** Jobs, paid and owed at a glance, one money line per currency. */
+/**
+ * Jobs · Paid · Owes on one compact line (UX-REDESIGN §8.2); Owes is red and jumps to the invoices.
+ */
 export function CustomerSummaryTiles({
     summary,
+    owesHref = '#documents',
 }: {
     summary: CustomerSummary;
+    owesHref?: string;
 }) {
     const t = useTrans();
     const money = useMoney();
@@ -38,48 +43,55 @@ export function CustomerSummaryTiles({
         summary.money.length > 0
             ? summary.money
             : [{ currency: undefined, paid: 0, owed: 0 }];
+    const owes = rows.some((row) => row.owed > 0);
 
     return (
         <dl
-            className="grid grid-cols-3 gap-2"
+            className="da-card flex flex-wrap items-center gap-x-5 gap-y-1 px-4 py-2.5 text-sm"
             aria-label={t('customers.summary.title')}
+            data-test="customer-summary"
         >
-            <div className="da-card min-w-0 px-2.5 py-3">
-                <dt className="text-xs text-muted-foreground">
+            <div className="flex items-baseline gap-1.5">
+                <dt className="text-muted-foreground">
                     {t('customers.summary.jobs')}
                 </dt>
-                <dd className="text-lg font-semibold tabular-nums">
-                    {summary.jobs}
-                </dd>
+                <dd className="font-semibold tabular-nums">{summary.jobs}</dd>
             </div>
-            <div className="da-card min-w-0 px-2.5 py-3">
-                <dt className="text-xs text-muted-foreground">
+            <div className="flex items-baseline gap-1.5">
+                <dt className="text-muted-foreground">
                     {t('customers.summary.paid')}
                 </dt>
-                {rows.map((row) => (
-                    <dd
-                        key={row.currency ?? ''}
-                        className="text-base font-semibold tracking-tight whitespace-nowrap text-emerald-700 tabular-nums sm:text-lg dark:text-emerald-400"
-                    >
-                        {money(row.paid, row.currency)}
-                    </dd>
-                ))}
+                <dd className="font-semibold whitespace-nowrap text-emerald-700 tabular-nums dark:text-emerald-400">
+                    {rows
+                        .map((row) => money(row.paid, row.currency))
+                        .join(' · ')}
+                </dd>
             </div>
-            <div className="da-card min-w-0 px-2.5 py-3">
-                <dt className="text-xs text-muted-foreground">
+            <div className="flex items-baseline gap-1.5">
+                <dt className="text-muted-foreground">
                     {t('customers.summary.owed')}
                 </dt>
-                {rows.map((row) => (
-                    <dd
-                        key={row.currency ?? ''}
-                        className={cn(
-                            'text-base font-semibold tracking-tight whitespace-nowrap tabular-nums sm:text-lg',
-                            row.owed > 0 && 'text-destructive',
-                        )}
-                    >
-                        {money(row.owed, row.currency)}
-                    </dd>
-                ))}
+                <dd
+                    className={cn(
+                        'font-semibold whitespace-nowrap tabular-nums',
+                        owes && 'text-destructive',
+                    )}
+                >
+                    {owes ? (
+                        <a
+                            href={owesHref}
+                            className="underline-offset-4 hover:underline"
+                        >
+                            {rows
+                                .map((row) => money(row.owed, row.currency))
+                                .join(' · ')}
+                        </a>
+                    ) : (
+                        rows
+                            .map((row) => money(row.owed, row.currency))
+                            .join(' · ')
+                    )}
+                </dd>
             </div>
         </dl>
     );

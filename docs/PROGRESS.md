@@ -1,3 +1,29 @@
+# October 15 — UX redesign, phase 7: customers and appliances
+
+UX-REDESIGN.md §8.
+
+1. **Customers** (§8.1): live search (no Search button), type and tag chips, one row per customer (avatar, name with
+   type and tags, phone · address on one line) with "Owes $X" in red when money is owed (only for people who see
+   invoices); + in the header.
+2. **Customer card** (§8.2): Call · Text · Email · **New job** (opens Book customer with the customer chosen) right
+   under the name; Text is off with "SMS off" when the customer replied STOP; Jobs · Paid · Owes on one line (Owes in
+   red, jumps to the invoices); order: contacts → about the customer → properties (Navigate) → appliances → jobs →
+   estimates & invoices → messages; Edit and Delete (with a confirmation) under "⋯"; the type is a badge by the name,
+   the source and payment terms are in the contacts' details.
+3. **New customer** (§8.3): the picture on top (tap → Man / Woman / Couple / Automatic, explanation behind (i)), then
+   the name (company name first for business types), phones and emails (formatted as typed, a star for Primary, ✕,
+   Add phone / Add email / Add second person as links, "Already a customer: … [Open]" right there), the service
+   address (one field; the rest opens after a pick or with "Enter manually"; the country is a list of names; label
+   chips Home / Rental / Cottage / Office), About the customer and tags (chips), and "More" folded (type, source,
+   payment terms with "Net 30 for stratas and property managers"). Save is pinned. No address typed = saved without.
+4. **Appliance** (§8.4): "Take photo" right in the empty rating-plate block; model and serial copy with one tap;
+   Edit and Delete under "⋯" (Delete with a confirmation).
+
+- No migrations.
+- Tests: Owes on the list (and only from the company's own invoices), countries offered by name; browser scenarios
+  for the list, the card actions and New job, the new-customer form and the icon sheet.
+- Next: phase 8 — calendar and map (§9).
+
 # October 15 — UX redesign, phase 6: Jobs tabs and the office job page
 
 UX-REDESIGN.md §7.4, §7.5 and the job-page part of §20.

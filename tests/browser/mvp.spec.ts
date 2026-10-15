@@ -40,6 +40,9 @@ test('customer context and a manual icon persist and follow a newly booked job',
     page,
 }, info) => {
     await page.goto(`/customers/${fixture.customer_id}/edit`);
+    // The icon is chosen in a sheet opened by tapping the picture (UX-REDESIGN §8.3).
+    const avatar = page.locator('[data-test="avatar-button"]');
+    await avatar.click();
     await page.getByRole('radio', { name: 'Automatic' }).click();
     await page.locator('#first_name').fill('Zzyxunknown');
     await expect(
@@ -49,6 +52,7 @@ test('customer context and a manual icon persist and follow a newly booked job',
     await page
         .locator('#notes')
         .fill(`${notes} Updated from ${info.project.name}.`);
+    await avatar.click();
     await page.getByRole('radio', { name: 'Woman', exact: true }).click();
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page).toHaveURL(
@@ -61,9 +65,11 @@ test('customer context and a manual icon persist and follow a newly booked job',
     ).toBeVisible();
     await screenshot(page, info, 'customer-context');
     await page.goto(`/customers/${fixture.customer_id}/edit`);
+    await page.locator('[data-test="avatar-button"]').click();
     await expect(
         page.getByRole('radio', { name: 'Woman', exact: true }),
     ).toHaveAttribute('aria-checked', 'true');
+    await page.keyboard.press('Escape');
     await expect(page.locator('#notes')).toHaveValue(
         `${notes} Updated from ${info.project.name}.`,
     );
@@ -391,4 +397,39 @@ test('office core screens load without runtime errors at both screen sizes', asy
         expect(width.page, path).toBeLessThanOrEqual(width.viewport + 1);
     }
     await screenshot(page, info, 'company-settings');
+});
+
+test('customers: live search, Owes, the card actions with New job, and the rating plate photo in its empty block', async ({
+    page,
+}, info) => {
+    await page.goto('/customers');
+    await expect(page.locator('[data-test="add-customer"]')).toBeVisible();
+    await page.locator('[data-slot="search-field"] input').fill('Jane Browser');
+    await expect(page).toHaveURL(/search=Jane/);
+    await page
+        .locator('[data-test="customer-list"] a', { hasText: 'Jane Browser' })
+        .first()
+        .click();
+    const actions = page.locator('[data-test="customer-actions"]');
+    await expect(actions.getByRole('link', { name: 'Call' })).toBeVisible();
+    await expect(actions.getByText('Text', { exact: true })).toBeVisible();
+    await expect(actions.getByRole('link', { name: 'New job' })).toBeVisible();
+    await expect(page.locator('[data-test="customer-summary"]')).toContainText(
+        'Owes',
+    );
+    await screenshot(page, info, 'customer-card');
+    await actions.getByRole('link', { name: 'New job' }).click();
+    await expect(page).toHaveURL(/book=1.*customer_id=/);
+    await expect(page.locator('[data-test="booking-customer"]')).toContainText(
+        'Jane Browser',
+    );
+
+    await page.goto('/customers/create');
+    await expect(page.locator('#first_name')).toBeVisible();
+    await expect(page.locator('#property-line1')).toBeVisible();
+    await expect(page.locator('#property-city')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Enter manually' }).click();
+    await expect(page.locator('#property-city')).toBeVisible();
+    await expect(page.locator('#property-country')).toHaveValue('CA');
+    await screenshot(page, info, 'customer-new');
 });

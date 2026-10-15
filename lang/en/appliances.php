@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'take_photo' => 'Take photo',
+    'copy' => 'Copy',
+    'copied' => 'Copied: :value',
     'take_plate_photo' => 'Take a photo of the rating plate',
     'add' => 'Add appliance',
     'edit' => 'Edit appliance',

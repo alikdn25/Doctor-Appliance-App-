@@ -23,6 +23,7 @@ use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\User;
 use App\Support\Billing\BillingPresenter;
+use App\Support\Locale\Countries;
 use App\Support\NameAvatar;
 use App\Support\PhoneNumber;
 use Illuminate\Http\JsonResponse;
@@ -50,17 +51,29 @@ class CustomerController extends Controller
             ->orderBy('display_name')
             ->orderBy('id')
             ->paginate(25)
-            ->withQueryString()
-            ->through(fn (Customer $customer) => [
-                'id' => $customer->id,
-                'display_name' => $customer->display_name,
-                'avatar_icon' => $customer->avatarIcon(),
-                'type' => $customer->type->value,
-                'type_label' => $customer->type->label(),
-                'phone' => $customer->primaryPhone?->number,
-                'address' => $customer->primaryProperty?->fullAddress(),
-                'tags' => $customer->tags,
-            ]);
+            ->withQueryString();
+        // "Owes $X" on each row (UX-REDESIGN §8.1): open balances of the page's customers, per currency.
+        $owes = Invoice::query()
+            ->whereIn('customer_id', Gate::allows('viewAny', Invoice::class) ? $customers->getCollection()->modelKeys() : [])
+            ->where('status', '!=', InvoiceStatus::Void->value)
+            ->where('balance', '>', 0)
+            ->selectRaw('customer_id, currency, sum(balance) as owed')
+            ->groupBy('customer_id', 'currency')
+            ->get()
+            ->groupBy('customer_id');
+        $customers->through(fn (Customer $customer) => [
+            'id' => $customer->id,
+            'display_name' => $customer->display_name,
+            'avatar_icon' => $customer->avatarIcon(),
+            'type' => $customer->type->value,
+            'type_label' => $customer->type->label(),
+            'phone' => $customer->primaryPhone?->number,
+            'address' => $customer->primaryProperty?->fullAddress(),
+            'tags' => $customer->tags,
+            'owes' => ($owes[$customer->id] ?? collect())
+                ->map(fn ($row) => ['currency' => $row->currency, 'amount' => (int) $row->owed])
+                ->values(),
+        ]);
 
         return Inertia::render('customers/index', [
             'customers' => $customers,
@@ -170,6 +183,7 @@ class CustomerController extends Controller
             'canCreateJob' => Gate::allows('create', ServiceJob::class),
             'applianceTypes' => ApplianceType::options(),
             'manufacturers' => self::manufacturers(),
+            'countries' => Countries::options(),
         ]);
     }
 
@@ -441,6 +455,7 @@ class CustomerController extends Controller
             'phoneLabels' => PhoneLabel::options(),
             'emailLabels' => EmailLabel::options(),
             'tags' => $this->tags(),
+            'countries' => Countries::options(),
         ];
     }
 }

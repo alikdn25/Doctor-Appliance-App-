@@ -115,6 +115,7 @@ return [
     ],
 
     'opted_out' => 'Unsubscribed from texts',
+    'opted_out_hint' => 'SMS off: this customer replied STOP. Call or email instead.',
     'opted_out_on' => 'Replied STOP on :date — no texts are sent to this number.',
 
     'send_sms' => 'Send SMS',
