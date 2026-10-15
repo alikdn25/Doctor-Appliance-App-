@@ -16,6 +16,7 @@ use App\Models\PaymentProviderConnection;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\SmsAccount;
+use App\Notifications\AppAlert;
 use App\Notifications\EstimateDecided;
 use App\Support\Billing\DocumentPrint;
 use App\Support\Billing\PublicDocument;
@@ -149,6 +150,11 @@ test('the customer approves with a drawn signature, picking an optional line', f
         && $n->details['number'] === $estimate->number
         && $n->details['signer'] === 'Maria Garcia');
     Notification::assertNotSentTo($tech, EstimateDecided::class);
+    // Push and the bell list for everyone in the company, the technician too (UX-REDESIGN §21.1); no second email.
+    Notification::assertSentTo([$this->owner, $owner2, $tech], AppAlert::class, fn (AppAlert $alert, array $channels) => $alert->kind === 'estimate_approved'
+        && str_contains($alert->body, 'Maria')
+        && in_array('database', $channels, true)
+        && ! in_array('mail', $channels, true));
 
     // The page now shows the approval and no buttons.
     $this->get(route('documents.public', $token))->assertInertia(fn (Assert $page) => $page
@@ -218,6 +224,7 @@ test('the customer declines with a reason; the office is told and they can still
         ->and($estimate->declined_ip)->toBe('127.0.0.1');
     Notification::assertSentTo($this->owner, EstimateDecided::class, fn (EstimateDecided $n) => ! $n->approved
         && $n->details['reason'] === 'Too expensive, buying a new washer');
+    Notification::assertSentTo($this->owner, AppAlert::class, fn (AppAlert $alert) => $alert->kind === 'estimate_declined');
 
     // Declining twice is refused; approving later is fine.
     $this->post(route('documents.public.decline', $token))->assertSessionHasErrors('estimate');

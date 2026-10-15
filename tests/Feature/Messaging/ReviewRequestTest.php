@@ -168,3 +168,31 @@ test('Google profiles are edited by the office; the brand picks its default', fu
     expect(inCompany($this->company, fn () => GoogleProfile::count()))->toBe(2);
     $this->get(route('brands.edit', $this->brand))->assertInertia(fn (Assert $page) => $page->has('googleProfiles', 2));
 });
+
+test('the review text can be changed for this customer; the link goes back at the end and the template stays', function () {
+    automaticSms();
+    $invoice = invoiceForJob();
+
+    $this->post(route('invoices.review-request', $invoice), [
+        'google_profile_id' => $this->profile->id,
+        'phone' => '604-555-0142',
+        'text' => 'Jane, thanks for having us over today!',
+    ])->assertSessionHasNoErrors();
+
+    $message = inCompany($this->company, fn () => Message::query()->sole());
+    expect($message->body)->toBe("Jane, thanks for having us over today!\nhttps://g.page/r/surrey/review")
+        ->and($message->service_job_id)->toBe($invoice->service_job_id);
+
+    // Kept as written when the link is still in the text.
+    $this->post(route('invoices.review-request', $invoice), [
+        'google_profile_id' => $this->profile->id,
+        'phone' => '604-555-0142',
+        'text' => 'Review us: https://g.page/r/surrey/review please',
+    ])->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => Message::query()->latest('id')->first()->body))
+        ->toBe('Review us: https://g.page/r/surrey/review please');
+
+    // The next customer gets the template text again.
+    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
+        ->where('reviewPrompt.profiles.0.text', fn (string $text) => ! str_contains($text, 'thanks for having us')));
+});

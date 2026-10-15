@@ -22,6 +22,8 @@ class AppAlert extends Notification
         public readonly string $title,
         public readonly string $body,
         public readonly ?string $url = null,
+        // Off when the same news already goes by its own email (an estimate decision).
+        public readonly bool $mail = true,
     ) {}
 
     /**
@@ -36,7 +38,7 @@ class AppAlert extends Notification
         return array_values(array_filter([
             'database',
             WebPushChannel::class,
-            AccountEmail::deliveryEnabled() ? 'mail' : null,
+            $this->mail && AccountEmail::deliveryEnabled() ? 'mail' : null,
         ]));
     }
 

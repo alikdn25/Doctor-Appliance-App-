@@ -99,6 +99,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
 
         Route::get('messages', [SmsInboxController::class, 'index'])->name('messages.index');
+        Route::get('messages/older', [SmsInboxController::class, 'older'])->name('messages.older');
         Route::post('messages/read', [SmsInboxController::class, 'read'])->name('messages.read');
         Route::post('messages/send', [SmsInboxController::class, 'send'])->middleware('throttle:30,1')->name('messages.send');
 
@@ -204,6 +205,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('estimates/{estimate}/send', [DocumentDeliveryController::class, 'sendEstimate'])->middleware('throttle:30,1')->name('estimates.send');
         Route::post('invoices/{invoice}/send', [DocumentDeliveryController::class, 'sendInvoice'])->middleware('throttle:30,1')->name('invoices.send');
         Route::post('estimates/{estimate}/sms', [DocumentDeliveryController::class, 'smsEstimate'])->middleware('throttle:30,1')->name('estimates.sms');
+        Route::post('estimates/{estimate}/link', [DocumentDeliveryController::class, 'estimateLink'])->middleware('throttle:30,1')->name('estimates.link');
+        Route::post('invoices/{invoice}/link', [DocumentDeliveryController::class, 'invoiceLink'])->middleware('throttle:30,1')->name('invoices.link');
+        Route::post('invoices/{invoice}/receipt', [DocumentDeliveryController::class, 'sendReceipt'])->middleware('throttle:30,1')->name('invoices.receipt');
         Route::post('invoices/{invoice}/sms', [DocumentDeliveryController::class, 'smsInvoice'])->middleware('throttle:30,1')->name('invoices.sms');
         Route::post('invoices/{invoice}/review-request', InvoiceReviewRequestController::class)->middleware('throttle:30,1')->name('invoices.review-request');
         Route::post('jobs/{job}/sms', [JobMessageController::class, 'sms'])->middleware('throttle:30,1')->name('jobs.sms');

@@ -2,7 +2,9 @@
 
 namespace App\Messaging;
 
+use App\Enums\MessageKind;
 use App\Enums\SmsMode;
+use App\Models\Customer;
 use App\Models\CustomerPhone;
 use App\Models\Message;
 use App\Models\MessageRead;
@@ -21,7 +23,8 @@ class SmsInbox
 
     public static function messages(User $user): Builder
     {
-        return Message::query()->visibleTo($user)->where('channel', Message::SMS)
+        // Texts from the company number, and those opened on a technician's phone (shown, replies go to the phone).
+        return Message::query()->visibleTo($user)->whereIn('channel', [Message::SMS, Message::TECHNICIAN_PHONE])
             ->whereRaw(self::PEER.' IS NOT NULL');
     }
 
@@ -45,7 +48,7 @@ class SmsInbox
     public static function hiddenFrom(User $user, string $phone): bool
     {
         return ! self::forPhone($user, $phone)->exists()
-            && Message::query()->where('channel', Message::SMS)->whereRaw(self::PEER.' = ?', [$phone])->exists();
+            && Message::query()->whereIn('channel', [Message::SMS, Message::TECHNICIAN_PHONE])->whereRaw(self::PEER.' = ?', [$phone])->exists();
     }
 
     /** A number no customer has and no earlier text links to a customer: it can be texted as it is. */
@@ -130,14 +133,63 @@ class SmsInbox
             default => $this->messenger->smsBlockedReason($recipient->customer, $recipient),
         };
 
+        $job = $recipient ? $this->job($user, $phone, $recipient) : null;
+
         return [
             'phone' => $phone,
             'sms_mode' => currentCompany()->sms_mode->value,
             'customer' => $recipient ? $recipient->customer->only(['id', 'display_name']) : null,
+            'job' => $job ? ['id' => $job->id, 'number' => $job->number] : null,
+            'templates' => $recipient ? $this->templates($recipient->customer, $job, $user) : [],
             'blocked' => $blocked,
             'messages' => $messages->through(fn (Message $message) => MessagingPresenter::item($message)),
             'unread_ids' => $unreadIds,
         ];
+    }
+
+    /**
+     * Older messages of a conversation, loaded while scrolling up (newest first, like the first page).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function older(User $user, string $phone, int $beforeId): array
+    {
+        abort_if(self::hiddenFrom($user, $phone), 404);
+
+        return self::forPhone($user, $phone)->with(['user', 'job'])->where('messages.id', '<', $beforeId)
+            ->latest('id')->limit(50)->get()
+            ->map(fn (Message $message) => MessagingPresenter::item($message))->values()->all();
+    }
+
+    /**
+     * Ready texts next to the reply box (On my way, Reminder, Invoice link, General), filled in for the customer and
+     * their latest job.
+     *
+     * @return list<array{key: string, label: string, text: string}>
+     */
+    private function templates(Customer $customer, ?ServiceJob $job, User $user): array
+    {
+        $company = currentCompany();
+        $visit = $job?->visits()->orderByDesc('scheduled_start')->first();
+        $context = MessageContext::for($customer, $job, $visit, $user);
+        $invoice = $job?->invoices()->outstanding()->where('balance', '>', 0)->latest('id')->first();
+        $kinds = array_filter([
+            $visit ? MessageKind::OnMyWay : null,
+            $visit ? MessageKind::VisitReminder : null,
+            MessageKind::General,
+        ]);
+
+        $templates = array_map(fn (MessageKind $kind) => [
+            'key' => $kind->value,
+            'label' => $kind->label(),
+            'text' => MessageTemplates::render($company, $kind, $context),
+        ], array_values($kinds));
+
+        if ($invoice) {
+            $templates[] = ['key' => MessageKind::InvoiceLink->value, 'label' => MessageKind::InvoiceLink->label(), 'text' => MessagingPresenter::documentText($invoice)];
+        }
+
+        return $templates;
     }
 
     public function markRead(User $user, string $phone, array $ids): void

@@ -57,17 +57,44 @@ class SaveBillingDocument
     /**
      * @param  array<string, mixed>  $data
      */
-    public function createInvoice(ServiceJob $job, array $data, User $user): Invoice
+    public function createInvoice(ServiceJob $job, array $data, User $user, ?Estimate $from = null): Invoice
     {
-        return DB::transaction(function () use ($job, $data, $user) {
+        return DB::transaction(function () use ($job, $data, $user, $from) {
+            // Lines taken from an approved estimate on the form (UX-REDESIGN §21.2): the estimate becomes invoiced.
+            $from = $from ? Estimate::query()->lockForUpdate()->findOrFail($from->id) : null;
+
+            if ($from && ($from->status !== EstimateStatus::Approved || $from->service_job_id !== $job->id)) {
+                throw ValidationException::withMessages(['estimate_id' => __('estimates.errors.already_invoiced')]);
+            }
+
             $invoice = new Invoice;
             $this->attachToJob($invoice, $job, $user);
             $invoice->number = $this->numbers->invoice();
+            $invoice->estimate_id = $from?->id;
             $this->fill($invoice, $data, $this->taxSnapshot($data['tax_rate_ids'] ?? []), $user);
+
+            if ($from) {
+                $this->markInvoiced($from, $invoice);
+            }
+
             $this->syncInvoice->handle($invoice, $user);
 
             return $invoice;
         });
+    }
+
+    /**
+     * The estimate is done; a deposit paid on it counts towards the invoice.
+     */
+    private function markInvoiced(Estimate $estimate, Invoice $invoice): void
+    {
+        $estimate->status = EstimateStatus::Invoiced;
+        $estimate->save();
+
+        Payment::query()
+            ->where('estimate_id', $estimate->id)
+            ->whereNull('invoice_id')
+            ->update(['invoice_id' => $invoice->id]);
     }
 
     /**
@@ -104,14 +131,7 @@ class SaveBillingDocument
                     ->all(),
             ], $estimate->taxes, $user, true);
 
-            $estimate->status = EstimateStatus::Invoiced;
-            $estimate->save();
-
-            // A deposit paid on the estimate counts towards the invoice.
-            Payment::query()
-                ->where('estimate_id', $estimate->id)
-                ->whereNull('invoice_id')
-                ->update(['invoice_id' => $invoice->id]);
+            $this->markInvoiced($estimate, $invoice);
 
             $this->syncInvoice->handle($invoice, $user);
 

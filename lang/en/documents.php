@@ -26,6 +26,10 @@ return [
     'no_email' => 'This customer has no email address yet. Type one here.',
     'copy_link' => 'Copy customer link',
     'link_copied' => 'Customer link copied.',
+    'link_failed' => 'Could not make the link. Try again.',
+    'send_menu' => 'Send',
+    'send_email' => 'Send by email',
+    'resend' => 'Send again',
 
     'default_message' => [
         'estimate' => "Hi :name,\n\nThank you for choosing :brand. Please find estimate :number for :total attached. You can also view it online with the link below.\n\nKind regards,\n:brand",
@@ -37,6 +41,20 @@ return [
         'subject' => ':kind :number from :brand',
         'view' => 'View :kind',
         'link_hint' => 'If the button does not work, copy this link into your browser:',
+    ],
+
+    'receipt' => [
+        'subject' => 'Receipt from :brand · :number',
+        'paid' => 'Paid',
+        'invoice' => 'Invoice :number',
+        'view' => 'View receipt online',
+        'pdf' => 'Download PDF',
+        'thanks' => 'Thank you for your business.',
+        'reference' => 'Ref. :reference',
+        'send' => 'Send receipt',
+        'sent' => 'Receipt sent to :email.',
+        'title' => 'Send receipt',
+        'description' => 'A receipt with the amount paid, the items and the PDF goes to the customer by email.',
     ],
 
     'public' => [

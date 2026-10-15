@@ -13,6 +13,9 @@ return [
     'confirm_delete' => 'Delete estimate :number?',
     'approve' => 'Customer approved',
     'decline' => 'Customer declined',
+    'mark_approved' => 'Mark approved',
+    'mark_declined' => 'Mark declined',
+    'invoice_diagnosis' => 'Invoice diagnosis only',
     'convert' => 'Create invoice',
     'confirm_convert' => 'Create an invoice from this estimate?',
     'confirm_convert_unapproved' => 'The customer has not approved this estimate yet. Create an invoice anyway?',
@@ -54,6 +57,7 @@ return [
 
     'statuses' => [
         'draft' => 'Draft',
+        'sent' => 'Sent',
         'approved' => 'Approved',
         'declined' => 'Declined',
         'invoiced' => 'Invoiced',

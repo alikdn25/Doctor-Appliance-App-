@@ -1,34 +1,42 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { RecordHistory } from '@/components/record-history';
 import {
     Ban,
-    CalendarPlus,
     CheckCircle2,
-    FilePen,
     CreditCard,
+    Download,
+    FilePen,
     Pencil,
     Receipt,
+    Stethoscope,
     Trash2,
     Undo2,
     XCircle,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import {
+    DeliveryStatus,
+    SendMenu,
+    useDocumentDelivery,
+} from '@/components/billing/document-delivery';
+import type { Delivery } from '@/components/billing/document-delivery';
 import { DocumentStatusBadge } from '@/components/billing/document-status-badge';
 import { fromMinor, useMoney } from '@/components/billing/money';
-import type { Delivery } from '@/components/billing/document-delivery';
-import { SignatureSection } from '@/components/jobs/signature-section';
-import type { SignatureData } from '@/components/jobs/signature-section';
-import { DocumentDelivery } from '@/components/billing/document-delivery';
 import type { OnlinePayment } from '@/components/billing/online-payment';
 import { OnlinePaymentSection } from '@/components/billing/online-payment';
-import type { DocumentSms, ReviewPrompt } from '@/components/messaging/types';
 import { PaymentDialog } from '@/components/billing/payment-dialog';
 import type { BillingDocument, PaymentData } from '@/components/billing/types';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
-import { PageHeader } from '@/components/page-header';
+import { SignatureSection } from '@/components/jobs/signature-section';
+import type { SignatureData } from '@/components/jobs/signature-section';
+import type { DocumentSms, ReviewPrompt } from '@/components/messaging/types';
+import { RecordHistory } from '@/components/record-history';
+import { ScreenHeader } from '@/components/screen-header';
+import { ActionSheet } from '@/components/ui/action-sheet';
+import type { ActionSheetItem } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
     Dialog,
     DialogContent,
@@ -36,7 +44,17 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
+import { OverdueFlag, StatusBadge } from '@/components/ui/status-badge';
+import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
@@ -71,6 +89,12 @@ type Can = {
     refund?: boolean;
 };
 
+/**
+ * Estimate or invoice (UX-REDESIGN §10.2, §10.4): where it stands in large type on top, one main action for its
+ * state at the bottom (Take payment; Send / Mark approved / Create invoice by the estimate's stage), "Send ▾" with
+ * Email, SMS and Copy link, PDF in the header, and the rare and dangerous actions (Refund, Void, Edit a paid
+ * invoice, Delete) under ⋯ with a confirmation.
+ */
 export default function BillingShow({
     document: doc,
     can,
@@ -81,6 +105,7 @@ export default function BillingShow({
     sms = null,
     reviewPrompt = null,
     signature = null,
+    diagnosisUrl = null,
 }: {
     document: BillingDocument;
     can: Can;
@@ -96,6 +121,8 @@ export default function BillingShow({
         data: SignatureData;
         can_sign: boolean;
     } | null;
+    /** "Invoice diagnosis only" on a declined estimate, when a diagnostic fee is set. */
+    diagnosisUrl?: string | null;
 }) {
     const canViewHistory = Boolean(usePage().props.auth.can?.viewChangeLog);
     const t = useTrans();
@@ -103,12 +130,43 @@ export default function BillingShow({
     const money = useMoney(doc.currency);
     const time = useCompanyTime();
     const [paymentOpen, setPaymentOpen] = useState(false);
+    const [takeOpen, setTakeOpen] = useState(false);
     const [voidOpen, setVoidOpen] = useState(false);
     const [refundOpen, setRefundOpen] = useState(false);
+    const [confirm, setConfirm] = useState<
+        null | 'delete' | 'revise' | 'edit-paid'
+    >(null);
     const [error, setError] = useState<string | undefined>();
     const isInvoice = doc.kind === 'invoice';
     const group = isInvoice ? 'invoices' : 'estimates';
     const balance = doc.balance ?? 0;
+    const kindLabel = t(isInvoice ? 'documents.invoice' : 'documents.estimate');
+    const send = useDocumentDelivery({
+        delivery: delivery ?? {
+            pdf_url: '',
+            send_url: '',
+            public_url: null,
+            link_url: '',
+            receipt_url: null,
+            can_send: false,
+            sent_at: null,
+            sent_to: null,
+            viewed_at: null,
+            email: '',
+            message: '',
+        },
+        kindLabel,
+        number: doc.number,
+        sms,
+        reviewPrompt,
+    });
+    // An estimate saved but not sent is a draft; once it went out it waits for the customer ("Sent").
+    const stage =
+        !isInvoice && doc.status === 'draft' && delivery?.sent_at
+            ? 'sent'
+            : doc.status;
+    const editUrl = isInvoice ? editInvoice(doc.id) : editEstimate(doc.id);
+    const paidSomething = isInvoice && (doc.amount_paid ?? 0) > 0;
 
     const options = {
         preserveScroll: true,
@@ -120,170 +178,386 @@ export default function BillingShow({
     const setDecision = (approved: boolean) =>
         router.put(decide(doc.id).url, { approved }, options);
 
-    // One tap once the customer approved; otherwise ask first.
-    const toInvoice = () => {
-        if (
-            doc.status === 'approved' ||
-            confirm(t('estimates.confirm_convert_unapproved'))
-        ) {
-            router.post(convert(doc.id).url, {}, options);
-        }
-    };
+    const toInvoice = () => router.post(convert(doc.id).url, {}, options);
 
-    const revise = () => {
-        if (confirm(t('estimates.confirm_revise'))) {
-            router.post(reviseRoute(doc.id).url, {}, options);
-        }
-    };
+    const editDocument = () =>
+        paidSomething ? setConfirm('edit-paid') : router.visit(editUrl);
 
-    const removeEstimate = () => {
-        if (confirm(t('estimates.confirm_delete', { number: doc.number }))) {
-            router.delete(destroyEstimate(doc.id).url);
-        }
-    };
+    const takePayment = () =>
+        online ? setTakeOpen(true) : setPaymentOpen(true);
 
     const removePayment = (payment: PaymentData) => {
         if (
-            !confirm(
+            !window.confirm(
                 t('payments.confirm_void', { amount: money(payment.amount) }),
             )
         ) {
             return;
         }
 
-        const reason = prompt(t('payments.void_reason_prompt')) ?? '';
+        const reason = window.prompt(t('payments.void_reason_prompt')) ?? '';
         router.post(voidPayment(payment.id).url, { reason }, options);
     };
+
+    // What the big line on top says.
+    const headline = isInvoice
+        ? doc.status === 'void'
+            ? { text: doc.status_label, tone: 'text-muted-foreground' }
+            : doc.status === 'refunded' || doc.status === 'partially_refunded'
+              ? {
+                    text: `${doc.status_label} · ${money(doc.amount_paid ?? 0)}`,
+                    tone: '',
+                }
+              : balance <= 0
+                ? {
+                      text: t('billing.headline.paid', {
+                          amount: money(doc.total),
+                      }),
+                      tone: 'text-success',
+                  }
+                : (doc.due_in_days ?? 0) < 0
+                  ? {
+                        text: t('billing.headline.overdue', {
+                            count: -(doc.due_in_days ?? 0),
+                            amount: money(balance),
+                        }),
+                        tone: 'text-danger',
+                    }
+                  : doc.due_on
+                    ? {
+                          text: t('billing.headline.due', {
+                              date: time.dateOnly(doc.due_on),
+                              amount: money(balance),
+                          }),
+                          tone: '',
+                      }
+                    : {
+                          text: t('billing.headline.balance', {
+                              amount: money(balance),
+                          }),
+                          tone: '',
+                      }
+        : { text: money(doc.total), tone: '' };
+
+    const moreItems: (ActionSheetItem | false | undefined)[] = isInvoice
+        ? [
+              can.update && {
+                  key: 'edit',
+                  label: t('invoices.edit'),
+                  icon: <Pencil />,
+                  onSelect: editDocument,
+              },
+              can.refund && {
+                  key: 'refund',
+                  label: t('payments.refunds.action'),
+                  icon: <Undo2 />,
+                  onSelect: () => setRefundOpen(true),
+              },
+              can.void && ('separator' as const),
+              can.void && {
+                  key: 'void',
+                  label: t('invoices.void'),
+                  icon: <Ban />,
+                  destructive: true,
+                  onSelect: () => setVoidOpen(true),
+              },
+          ]
+        : [
+              stage === 'sent' &&
+                  send.canSend && {
+                      key: 'resend',
+                      label: t('documents.resend'),
+                      icon: <Receipt />,
+                      onSelect: send.openEmail,
+                  },
+              stage !== 'draft' &&
+                  can.update && {
+                      key: 'edit',
+                      label: t('estimates.edit'),
+                      icon: <Pencil />,
+                      onSelect: () => router.visit(editUrl),
+                  },
+              can.update &&
+                  stage === 'declined' && {
+                      key: 'approve',
+                      label: t('estimates.mark_approved'),
+                      icon: <CheckCircle2 />,
+                      onSelect: () => setDecision(true),
+                  },
+              can.update &&
+                  stage === 'approved' &&
+                  !doc.online_approval && {
+                      key: 'decline',
+                      label: t('estimates.mark_declined'),
+                      icon: <XCircle />,
+                      onSelect: () => setDecision(false),
+                  },
+              can.revise && {
+                  key: 'revise',
+                  label: t('estimates.revise'),
+                  icon: <FilePen />,
+                  onSelect: () => setConfirm('revise'),
+              },
+              can.delete && ('separator' as const),
+              can.delete && {
+                  key: 'delete',
+                  label: t('common.delete'),
+                  icon: <Trash2 />,
+                  destructive: true,
+                  onSelect: () => setConfirm('delete'),
+              },
+          ];
+
+    // The bottom bar: one main action for the state, at most one more.
+    const bar = (() => {
+        if (isInvoice) {
+            if (doc.status === 'void') {
+                return null;
+            }
+
+            if (balance > 0 && can.recordPayment) {
+                return (
+                    <>
+                        <SendMenu actions={send} />
+                        <Button
+                            className="h-12 text-base md:h-11"
+                            onClick={takePayment}
+                            data-test="take-payment"
+                        >
+                            <CreditCard /> {t('payments.take')} ·{' '}
+                            {money(balance)}
+                        </Button>
+                    </>
+                );
+            }
+
+            return (
+                <>
+                    <SendMenu actions={send} />
+                    {send.openReceipt && (
+                        <Button
+                            variant="outline"
+                            className="h-12 md:h-11"
+                            onClick={send.openReceipt}
+                            data-test="send-receipt"
+                        >
+                            <Receipt /> {t('documents.receipt.send')}
+                        </Button>
+                    )}
+                </>
+            );
+        }
+
+        switch (stage) {
+            case 'draft':
+                return (
+                    <>
+                        {can.update && (
+                            <Button
+                                variant="outline"
+                                className="h-12 md:h-11"
+                                asChild
+                            >
+                                <Link href={editUrl}>
+                                    <Pencil /> {t('common.edit')}
+                                </Link>
+                            </Button>
+                        )}
+                        <SendMenu actions={send} primary />
+                    </>
+                );
+            case 'sent':
+                return can.update ? (
+                    <>
+                        <Button
+                            variant="outline"
+                            className="h-12 md:h-11"
+                            onClick={() => setDecision(false)}
+                        >
+                            <XCircle /> {t('estimates.mark_declined')}
+                        </Button>
+                        <Button
+                            className="h-12 text-base md:h-11"
+                            onClick={() => setDecision(true)}
+                        >
+                            <CheckCircle2 /> {t('estimates.mark_approved')}
+                        </Button>
+                    </>
+                ) : null;
+            case 'approved':
+                return can.convert ? (
+                    <Button
+                        className="h-12 text-base md:h-11"
+                        onClick={toInvoice}
+                        data-test="create-invoice"
+                    >
+                        <Receipt /> {t('estimates.convert')}
+                    </Button>
+                ) : null;
+            case 'declined':
+                return diagnosisUrl ? (
+                    <Button variant="outline" className="h-12 md:h-11" asChild>
+                        <Link href={diagnosisUrl}>
+                            <Stethoscope /> {t('estimates.invoice_diagnosis')}
+                        </Link>
+                    </Button>
+                ) : null;
+            default:
+                return null;
+        }
+    })();
 
     return (
         <>
             <Head title={t(`${group}.number`, { number: doc.number })} />
 
-            <div
-                className={
-                    can.recordPayment
-                        ? 'max-w-3xl space-y-6 p-4 pb-28 md:pb-4'
-                        : 'max-w-3xl space-y-6 p-4'
-                }
-            >
-                <PageHeader
-                    title={t(`${group}.number`, { number: doc.number })}
-                    description={[
-                        doc.brand,
-                        t('billing.issued', {
-                            date: time.dateOnly(doc.issued_on),
-                        }),
-                        doc.created_by
-                            ? t('billing.created_by', { name: doc.created_by })
-                            : null,
-                    ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    actions={
-                        can.update && (
-                            <Button variant="outline" asChild>
-                                <Link
-                                    href={
-                                        isInvoice
-                                            ? editInvoice(doc.id)
-                                            : editEstimate(doc.id)
-                                    }
+            <ScreenHeader
+                title={t(`${group}.number`, { number: doc.number })}
+                subtitle={[doc.customer.display_name, doc.brand]
+                    .filter(Boolean)
+                    .join(' · ')}
+                back={showJob(doc.job.id)}
+                actions={
+                    <>
+                        {delivery && (
+                            <IconButton
+                                label={t('documents.download_pdf')}
+                                variant="header"
+                                asChild
+                            >
+                                <a
+                                    href={delivery.pdf_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    data-test="document-pdf"
                                 >
-                                    <Pencil /> {t('common.edit')}
-                                </Link>
-                            </Button>
-                        )
-                    }
-                />
-
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <DocumentStatusBadge
-                        status={doc.status}
-                        label={doc.status_label}
-                        overdue={doc.overdue}
-                    />
-                    {/* Saved but not sent yet: the customer has not seen it and it can still be edited. */}
-                    {delivery &&
-                        !delivery.sent_at &&
-                        doc.status === 'unpaid' && (
-                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
-                                {t('billing.not_sent')}
-                            </span>
+                                    <Download />
+                                </a>
+                            </IconButton>
                         )}
-                    {doc.valid_until &&
-                        (doc.expired ? (
-                            <span className="font-medium text-amber-700 dark:text-amber-400">
-                                {t('estimates.expired_on', {
-                                    date: time.dateOnly(doc.valid_until),
-                                })}
-                            </span>
-                        ) : (
-                            <span className="text-muted-foreground">
-                                {t('estimates.valid_until_date', {
-                                    date: time.dateOnly(doc.valid_until),
-                                })}
-                            </span>
-                        ))}
-                    {doc.due_on && doc.status !== 'paid' && (
-                        <span className="text-muted-foreground">
-                            {t('invoices.due_date', {
-                                date: time.dateOnly(doc.due_on),
-                            })}
-                        </span>
-                    )}
-                    {doc.approved_at && (
-                        <span className="text-muted-foreground">
-                            {t('estimates.approved_at', {
-                                date: time.date(doc.approved_at),
-                            })}
-                        </span>
-                    )}
-                    {doc.declined_at && (
-                        <span className="text-muted-foreground">
-                            {t('estimates.declined_at', {
-                                date: time.date(doc.declined_at),
-                            })}
-                        </span>
-                    )}
-                    {doc.invoice && (
-                        <Link
-                            href={showInvoice(doc.invoice.id)}
-                            className="underline"
-                        >
-                            {t('estimates.invoiced_as', {
-                                number: doc.invoice.number,
-                            })}
-                        </Link>
-                    )}
-                    {doc.estimate && (
-                        <Link
-                            href={showEstimate(doc.estimate.id)}
-                            className="underline"
-                        >
-                            {t('invoices.from_estimate', {
-                                number: doc.estimate.number,
-                            })}
-                        </Link>
-                    )}
-                </div>
+                        <ActionSheet
+                            title={t(`${group}.number`, { number: doc.number })}
+                            items={moreItems}
+                        />
+                    </>
+                }
+            />
 
-                {doc.voided_at && (
-                    <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                        {t('invoices.voided_by', {
-                            date: time.date(doc.voided_at),
-                            name: doc.voided_by ?? '—',
-                        })}
-                        {doc.void_reason && ` — ${doc.void_reason}`}
+            <div className="mx-auto w-full max-w-3xl space-y-4 p-4 sm:p-6">
+                {/* Where it stands, in large type. */}
+                <section
+                    className="da-card space-y-2 p-4"
+                    data-test="document-status"
+                >
+                    <div className="flex flex-wrap items-center gap-2">
+                        {isInvoice ? (
+                            <DocumentStatusBadge
+                                status={doc.status}
+                                label={doc.status_label}
+                            />
+                        ) : (
+                            <StatusBadge
+                                status={stage}
+                                label={
+                                    stage === 'sent'
+                                        ? t('estimates.statuses.sent')
+                                        : doc.status_label
+                                }
+                            />
+                        )}
+                        {doc.overdue && <OverdueFlag />}
+                        {/* Saved but not sent yet: the customer has not seen it and it can still be edited. */}
+                        {isInvoice &&
+                            delivery &&
+                            !delivery.sent_at &&
+                            doc.status === 'unpaid' && (
+                                <span className="da-badge rounded-full px-2.5 text-xs leading-6 font-semibold">
+                                    {t('billing.not_sent')}
+                                </span>
+                            )}
+                    </div>
+                    <p
+                        className={`text-2xl font-bold tabular-nums ${headline.tone}`}
+                        data-test="document-headline"
+                    >
+                        {headline.text}
                     </p>
-                )}
+                    <p className="text-sm text-muted-foreground">
+                        {[
+                            t('billing.issued', {
+                                date: time.dateOnly(doc.issued_on),
+                            }),
+                            doc.valid_until
+                                ? doc.expired
+                                    ? t('estimates.expired_on', {
+                                          date: time.dateOnly(doc.valid_until),
+                                      })
+                                    : t('estimates.valid_until_date', {
+                                          date: time.dateOnly(doc.valid_until),
+                                      })
+                                : null,
+                            doc.approved_at
+                                ? t('estimates.approved_at', {
+                                      date: time.date(doc.approved_at),
+                                  })
+                                : null,
+                            doc.declined_at
+                                ? t('estimates.declined_at', {
+                                      date: time.date(doc.declined_at),
+                                  })
+                                : null,
+                            doc.created_by
+                                ? t('billing.created_by', {
+                                      name: doc.created_by,
+                                  })
+                                : null,
+                        ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                    </p>
+                    {(doc.invoice || doc.estimate) && (
+                        <p className="text-sm">
+                            {doc.invoice && (
+                                <Link
+                                    href={showInvoice(doc.invoice.id)}
+                                    className="font-medium underline"
+                                >
+                                    {t('estimates.invoiced_as', {
+                                        number: doc.invoice.number,
+                                    })}
+                                </Link>
+                            )}
+                            {doc.estimate && (
+                                <Link
+                                    href={showEstimate(doc.estimate.id)}
+                                    className="font-medium underline"
+                                >
+                                    {t('invoices.from_estimate', {
+                                        number: doc.estimate.number,
+                                    })}
+                                </Link>
+                            )}
+                        </p>
+                    )}
+                    {delivery && <DeliveryStatus delivery={delivery} />}
+                    {doc.voided_at && (
+                        <p className="text-sm text-muted-foreground">
+                            {t('invoices.voided_by', {
+                                date: time.date(doc.voided_at),
+                                name: doc.voided_by ?? '—',
+                            })}
+                            {doc.void_reason && ` — ${doc.void_reason}`}
+                        </p>
+                    )}
+                </section>
 
                 <InputError message={error} />
 
                 {/* Customer and job */}
-                <section className="grid gap-1 rounded-lg border p-3 text-sm">
+                <section className="da-card grid gap-1 p-4 text-sm">
                     <Link
                         href={showCustomer(doc.customer.id)}
-                        className="font-medium hover:underline"
+                        className="font-semibold hover:underline"
                     >
                         {doc.customer.display_name}
                     </Link>
@@ -309,7 +583,7 @@ export default function BillingShow({
 
                 {/* Lines and totals */}
                 <section className="space-y-3">
-                    <ul className="divide-y rounded-lg border">
+                    <ul className="da-card divide-y overflow-hidden">
                         {doc.items.map((item) => (
                             <li
                                 key={item.id}
@@ -536,7 +810,7 @@ export default function BillingShow({
                             <Button
                                 variant="outline"
                                 className="h-11 w-full bg-background sm:w-auto"
-                                onClick={revise}
+                                onClick={() => setConfirm('revise')}
                             >
                                 <FilePen /> {t('estimates.revise')}
                             </Button>
@@ -555,7 +829,7 @@ export default function BillingShow({
                         <h2 className="text-base font-medium">
                             {t('estimates.versions')}
                         </h2>
-                        <ul className="divide-y rounded-lg border text-sm">
+                        <ul className="da-card divide-y overflow-hidden text-sm">
                             {(doc.versions ?? []).map((v) => (
                                 <li key={v.id}>
                                     <Link
@@ -617,82 +891,6 @@ export default function BillingShow({
                     </p>
                 )}
 
-                {delivery && (
-                    <DocumentDelivery
-                        delivery={delivery}
-                        kindLabel={t(
-                            isInvoice
-                                ? 'documents.invoice'
-                                : 'documents.estimate',
-                        )}
-                        number={doc.number}
-                        sms={sms}
-                        reviewPrompt={reviewPrompt}
-                    />
-                )}
-
-                {isInvoice && online && balance > 0 && (
-                    <OnlinePaymentSection
-                        invoiceId={doc.id}
-                        online={online}
-                        balance={balance}
-                        currency={doc.currency}
-                    />
-                )}
-
-                {/* Estimate actions */}
-                {!isInvoice && doc.status === 'approved' && can.convert && (
-                    <section className="grid gap-2 sm:grid-cols-2">
-                        <Button className="h-12 text-base" onClick={toInvoice}>
-                            <Receipt /> {t('estimates.convert_approved')}
-                        </Button>
-                        <Button variant="outline" className="h-12" asChild>
-                            <Link href={showJob(doc.job.id)}>
-                                <CalendarPlus /> {t('estimates.schedule_visit')}
-                            </Link>
-                        </Button>
-                    </section>
-                )}
-                {!isInvoice && can.update && (
-                    <section className="grid gap-2 sm:grid-cols-2">
-                        {doc.status !== 'approved' && (
-                            <Button
-                                variant="outline"
-                                className="h-11"
-                                onClick={() => setDecision(true)}
-                            >
-                                <CheckCircle2 /> {t('estimates.approve')}
-                            </Button>
-                        )}
-                        {doc.status !== 'declined' && (
-                            <Button
-                                variant="outline"
-                                className="h-11"
-                                onClick={() => setDecision(false)}
-                            >
-                                <XCircle /> {t('estimates.decline')}
-                            </Button>
-                        )}
-                        {can.convert && doc.status !== 'approved' && (
-                            <Button
-                                className="h-11 sm:col-span-2"
-                                onClick={toInvoice}
-                            >
-                                <Receipt /> {t('estimates.convert')}
-                            </Button>
-                        )}
-                        {can.delete && (
-                            <Button
-                                variant="ghost"
-                                className="h-11 text-destructive sm:col-span-2"
-                                onClick={removeEstimate}
-                            >
-                                <Trash2 /> {t('common.delete')}
-                            </Button>
-                        )}
-                    </section>
-                )}
-
                 {/* Customer signature: taken when the work is done and invoiced */}
                 {signature && (signature.data || signature.can_sign) && (
                     <SignatureSection
@@ -715,7 +913,7 @@ export default function BillingShow({
                                 {t('payments.empty')}
                             </p>
                         ) : (
-                            <ul className="divide-y rounded-lg border">
+                            <ul className="da-card divide-y overflow-hidden">
                                 {(doc.payments ?? []).map((p) => (
                                     <li
                                         key={p.id}
@@ -824,45 +1022,17 @@ export default function BillingShow({
                                 ))}
                             </ul>
                         )}
-
-                        <div className="flex flex-wrap gap-2">
-                            {can.refund && (
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setRefundOpen(true)}
-                                >
-                                    <Undo2 /> {t('payments.refunds.action')}
-                                </Button>
-                            )}
-                            {can.void && (
-                                <Button
-                                    variant="ghost"
-                                    className="text-destructive"
-                                    onClick={() => setVoidOpen(true)}
-                                >
-                                    <Ban /> {t('invoices.void')}
-                                </Button>
-                            )}
-                        </div>
                     </section>
-                )}
-
-                {can.recordPayment && (
-                    <div className="da-pinned fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
-                        <Button
-                            className="h-12 w-full text-base md:w-auto"
-                            onClick={() => setPaymentOpen(true)}
-                        >
-                            <CreditCard /> {t('payments.record')} ·{' '}
-                            {money(balance)}
-                        </Button>
-                    </div>
                 )}
 
                 {canViewHistory && (
                     <RecordHistory type={doc.kind} id={doc.id} />
                 )}
             </div>
+
+            {bar && <StickyActionBar>{bar}</StickyActionBar>}
+
+            {send.dialogs}
 
             {can.recordPayment && (
                 <PaymentDialog
@@ -874,6 +1044,40 @@ export default function BillingShow({
                     methods={paymentMethods}
                     today={today}
                 />
+            )}
+            {isInvoice && online && balance > 0 && (
+                <Sheet open={takeOpen} onOpenChange={setTakeOpen}>
+                    <SheetContent
+                        side="bottom"
+                        className="mx-auto max-h-[92dvh] max-w-3xl gap-3 overflow-y-auto rounded-t-3xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+                        data-test="take-payment-sheet"
+                    >
+                        <SheetHeader className="p-0 pr-8">
+                            <SheetTitle>
+                                {t('payments.take')} · {money(balance)}
+                            </SheetTitle>
+                            <SheetDescription>
+                                {t('payments.take_hint')}
+                            </SheetDescription>
+                        </SheetHeader>
+                        <OnlinePaymentSection
+                            invoiceId={doc.id}
+                            online={online}
+                            balance={balance}
+                            currency={doc.currency}
+                        />
+                        <Button
+                            variant="outline"
+                            className="h-12 w-full text-base"
+                            onClick={() => {
+                                setTakeOpen(false);
+                                setPaymentOpen(true);
+                            }}
+                        >
+                            <CreditCard /> {t('payments.record')}
+                        </Button>
+                    </SheetContent>
+                </Sheet>
             )}
             {can.refund && (
                 <RefundDialog
@@ -891,6 +1095,39 @@ export default function BillingShow({
                     invoiceId={doc.id}
                 />
             )}
+            <ConfirmDialog
+                open={confirm === 'delete'}
+                onOpenChange={(open) => !open && setConfirm(null)}
+                title={t('estimates.confirm_delete', { number: doc.number })}
+                confirmLabel={t('common.delete')}
+                destructive
+                onConfirm={() => {
+                    setConfirm(null);
+                    router.delete(destroyEstimate(doc.id).url);
+                }}
+            />
+            <ConfirmDialog
+                open={confirm === 'revise'}
+                onOpenChange={(open) => !open && setConfirm(null)}
+                title={t('estimates.revise')}
+                description={t('estimates.confirm_revise')}
+                confirmLabel={t('estimates.revise')}
+                onConfirm={() => {
+                    setConfirm(null);
+                    router.post(reviseRoute(doc.id).url, {}, options);
+                }}
+            />
+            <ConfirmDialog
+                open={confirm === 'edit-paid'}
+                onOpenChange={(open) => !open && setConfirm(null)}
+                title={t('invoices.edit')}
+                description={t('invoices.edit_paid_warning')}
+                confirmLabel={t('invoices.edit')}
+                onConfirm={() => {
+                    setConfirm(null);
+                    router.visit(editUrl);
+                }}
+            />
         </>
     );
 }

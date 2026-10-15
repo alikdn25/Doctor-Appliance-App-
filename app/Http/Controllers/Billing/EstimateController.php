@@ -66,6 +66,12 @@ class EstimateController extends Controller
             'today' => $this->today(),
             'delivery' => BillingPresenter::delivery($estimate),
             'sms' => app(MessagingPresenter::class)->forDocument($estimate),
+            // "Invoice diagnosis only" once the customer said no to the repair, when a diagnostic fee is set.
+            'diagnosisUrl' => $estimate->status === EstimateStatus::Declined
+                && currentCompany()->diagnostic_service_id !== null
+                && Gate::allows('work', $estimate->job)
+                    ? route('invoices.create', ['job' => $estimate->service_job_id, 'diagnosis' => 1])
+                    : null,
         ]);
     }
 

@@ -14,6 +14,7 @@ use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Jobs\JobPresenter;
+use Carbon\CarbonImmutable;
 
 /**
  * Shapes estimates, invoices and payments for the React pages. Money stays in minor units, with its currency.
@@ -41,9 +42,23 @@ class BillingPresenter
             'balance' => $invoice ? $document->balance : null,
             'overdue' => $invoice && $document->isOverdue(),
             'due_on' => $invoice ? $document->due_on?->toDateString() : null,
+            // Days until the due date of money still owed (negative when overdue), for "Due in 5 days".
+            'due_in_days' => $invoice ? self::dueInDays($document) : null,
             'job_id' => $document->service_job_id,
             'customer' => $document->relationLoaded('customer') ? $document->customer?->display_name : null,
         ];
+    }
+
+    private static function dueInDays(Invoice $invoice): ?int
+    {
+        if ($invoice->due_on === null || $invoice->balance <= 0
+            || ! in_array($invoice->status, [InvoiceStatus::Unpaid, InvoiceStatus::PartiallyPaid], true)) {
+            return null;
+        }
+
+        $today = CarbonImmutable::now(currentCompany()->timezone)->startOfDay();
+
+        return (int) $today->diffInDays(CarbonImmutable::parse($invoice->due_on->toDateString(), currentCompany()->timezone), false);
     }
 
     /**
@@ -258,6 +273,9 @@ class BillingPresenter
             'pdf_url' => route($invoice ? 'invoices.pdf' : 'estimates.pdf', $document),
             'send_url' => route($invoice ? 'invoices.send' : 'estimates.send', $document),
             'public_url' => $document->public_token ? route('documents.public', $document->public_token) : null,
+            'link_url' => route($invoice ? 'invoices.link' : 'estimates.link', $document),
+            // "Send receipt" once money was taken (UX-REDESIGN §19).
+            'receipt_url' => $invoice && ! $document->isVoid() && $document->amount_paid > 0 ? route('invoices.receipt', $document) : null,
             'can_send' => $invoice ? ! $document->isVoid() : $document->status !== EstimateStatus::Revised,
             'sent_at' => JobPresenter::iso($document->sent_at),
             'sent_to' => $document->sent_to,

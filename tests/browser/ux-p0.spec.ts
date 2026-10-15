@@ -68,11 +68,13 @@ test('invoice copies the customer link instead of printing it', async ({
     page,
 }, info) => {
     await page.goto(`/invoices/${fixture.invoice_id}`);
+    await expectNoServiceText(page);
+    await screenshot(page, info, 'invoice');
+    // Send ▾ holds Email, SMS and Copy link (UX-REDESIGN §10.2).
+    await page.locator('[data-test="send-menu"]').click();
     await expect(
         page.getByRole('button', { name: 'Copy customer link' }),
     ).toBeVisible();
-    await expectNoServiceText(page);
-    await screenshot(page, info, 'invoice');
 });
 
 test('team members are one row each with actions under ⋯', async ({

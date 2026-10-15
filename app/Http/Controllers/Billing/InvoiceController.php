@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Billing;
 use App\Actions\Billing\CreateInvoicePaymentLink;
 use App\Actions\Billing\SaveBillingDocument;
 use App\Actions\Billing\VoidBillingRecord;
+use App\Enums\EstimateStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\VisitType;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Messaging\MessagingPresenter;
 use App\Messaging\ReviewRequests;
+use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\Service;
 use App\Models\ServiceJob;
@@ -108,6 +110,13 @@ class InvoiceController extends Controller
                 ->get()
                 ->map(fn ($row) => ['currency' => $row->currency, 'amount' => (int) $row->amount])
                 ->values(),
+            'overdueTotals' => (clone $base)->overdue()
+                ->selectRaw('currency, sum(balance) as amount')
+                ->groupBy('currency')
+                ->orderBy('currency')
+                ->get()
+                ->map(fn ($row) => ['currency' => $row->currency, 'amount' => (int) $row->amount])
+                ->values(),
         ]);
     }
 
@@ -118,6 +127,7 @@ class InvoiceController extends Controller
         // Due date from the customer's payment terms (or the company default), editable on the form.
         $terms = $job->customer()->withTrashed()->first()?->paymentTerms() ?? currentCompany()->default_payment_terms;
         $today = CarbonImmutable::now(currentCompany()->timezone)->startOfDay();
+        $prefill = $request->boolean('diagnosis') ? [self::diagnosisLine()] : self::callbackLines($job);
 
         return Inertia::render('billing/form', [
             'kind' => 'invoice',
@@ -130,13 +140,63 @@ class InvoiceController extends Controller
             'defaultDueOn' => $terms->dueOn($today)->format('Y-m-d'),
             'paymentTerms' => $terms->label(),
             // "Invoice diagnosis only" after the customer declined the repair: one line, the diagnostic fee.
-            'prefillItems' => $request->boolean('diagnosis') ? [self::diagnosisLine()] : self::callbackLines($job),
+            'prefillItems' => $prefill,
+            // The approved estimate the new invoice starts from (UX-REDESIGN §21.2), and every estimate of the job
+            // for "From estimate" in Add item.
+            'fromEstimateId' => $prefill === null ? $this->approvedEstimate($job)?->id : null,
+            'estimates' => self::jobEstimates($job),
             // A job may have several invoices (diagnosis, then repair), but a second one is shown before it is made.
             'existingInvoices' => $job->invoices()->get()
                 ->reject(fn (Invoice $invoice) => $invoice->isVoid())
                 ->map(fn (Invoice $invoice) => BillingPresenter::row($invoice))
                 ->values(),
         ]);
+    }
+
+    /**
+     * The estimate the customer approved (online or by "Mark approved") that is not invoiced yet, in the money
+     * settings a new invoice gets (otherwise "Create invoice" on the estimate keeps its own).
+     */
+    private function approvedEstimate(ServiceJob $job): ?Estimate
+    {
+        $company = currentCompany();
+
+        return $job->estimates()
+            ->where('status', EstimateStatus::Approved->value)
+            ->latest('id')
+            ->get()
+            ->first(fn (Estimate $estimate) => $estimate->currency === $company->currency
+                && $estimate->prices_include_tax === (bool) $company->prices_include_tax);
+    }
+
+    /**
+     * Estimates of the job with their lines, for "From estimate" when adding items.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function jobEstimates(ServiceJob $job): array
+    {
+        return $job->estimates()
+            ->where('status', '!=', EstimateStatus::Revised->value)
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Estimate $estimate) => [
+                'id' => $estimate->id,
+                'number' => $estimate->number,
+                'status' => $estimate->status->value,
+                'status_label' => $estimate->status->label(),
+                'currency' => $estimate->currency,
+                'discount_type' => $estimate->discount_type,
+                'discount_value' => $estimate->discount_value,
+                'notes' => $estimate->notes,
+                // Optional lines the customer did not pick are left out, as when the estimate is invoiced.
+                'items' => collect(BillingPresenter::document($estimate)['items'])
+                    ->filter(fn (array $item) => ! $item['optional'] || $item['selected'])
+                    ->values()
+                    ->all(),
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -187,7 +247,11 @@ class InvoiceController extends Controller
     {
         Gate::authorize('work', $job);
 
-        $invoice = $save->createInvoice($job, $request->document(), $request->user());
+        $data = $request->document();
+        $from = isset($data['estimate_id']) ? $job->estimates()->find($data['estimate_id']) : null;
+        unset($data['estimate_id']);
+
+        $invoice = $save->createInvoice($job, $data, $request->user(), $from);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('invoices.created', ['number' => $invoice->number])]);
 
@@ -259,6 +323,7 @@ class InvoiceController extends Controller
             'services' => BillingPresenter::serviceOptions($invoice->brand_id),
             'lineSetup' => BillingPresenter::lineSetup(),
             'today' => $this->today(),
+            'estimates' => self::jobEstimates($invoice->job),
         ]);
     }
 

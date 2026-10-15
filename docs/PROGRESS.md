@@ -1,3 +1,48 @@
+# October 15 — UX redesign, phase 9: invoices, estimates, payments, inbox
+
+UX-REDESIGN.md §10 with §18, §19, §21 and §26.
+
+1. **Invoices** (§10.1): Outstanding and Overdue (red) totals on top, chips Outstanding · Overdue · Paid · All, live
+   search, + in the header; rows "INV-12 Jane Cooper / Oct 8 · due Nov 7" with the amount owed and one badge (Paid,
+   Due in 5 days, Due today, Overdue 3 days); empty states "No outstanding invoices." with [Show all invoices]. There
+   are no draft invoices in the product, so there is no Drafts chip.
+2. **Invoice and estimate page** (§10.2, §10.4): status in large type on top ("Paid · $106.40", "Due Nov 8 ·
+   $106.40", "Overdue 3 days · $X"), sent/viewed under it; PDF is an icon in the header; "Send ▾" (Email, SMS, Copy
+   link) replaces the three buttons. Invoice: Take payment is the main button (a sheet with the provider's QR/link and
+   Mark as paid when a provider is connected, otherwise Mark as paid directly); Edit (with the "This invoice is paid"
+   warning), Refund and Void are under ⋯. Estimate by stage: Draft → Send ▾ + Edit; Sent (draft with sent_at, no new
+   status) → Mark approved + Mark declined; Approved → Create invoice; Declined → Invoice diagnosis only (when a
+   diagnostic fee is set); Delete, Revise, Send again under ⋯. "Copy link" makes the customer link on first use.
+3. **New invoice** (§10.3, §21.2): the short warning "This job already has INV-1 (Paid). You are creating a second
+   invoice." with links; a job with an approved estimate opens with its lines (saving links the estimate and marks
+   it invoiced, a deposit counts towards the invoice, as with Create invoice); Add item has "From estimate EST-1
+   (N lines)"; due date "Due Nov 8 (Net 30)"; Subtotal/Taxes pinned above Save; "Add at least one item" only after
+   Save.
+4. **Estimate decisions** (§21.1): when a customer approves or declines online, everyone in the company (owners,
+   admins, technicians, collectors; not subcontractors) gets a push and a line in the bell list; owners/admins keep
+   the email.
+5. **Review request** (§18): the dialog shows the Review request text filled in for the customer, editable for this
+   customer only; Send / Don't send; the review link goes back at the end if removed; the text is saved in the job's
+   messages.
+6. **Receipt email** (§19): "Send receipt" on a paid invoice (never automatic): brand banner with the logo on the
+   brand colour, amount and "Paid", date and how it was paid, lines, taxes, total, brand contacts, "View receipt
+   online", "Download PDF" and the PDF attached; one 600 px column of tables for Gmail/Outlook/Apple Mail.
+7. **SMS Inbox and chat** (§10.5, §26): the list is its own screen (live search, Unread only chip, empty state by
+   SMS mode with a Messaging settings link for the Owner); a conversation opens as a chat screen with ←: customer's
+   texts left, ours right, dates between days, status under ours (failed with the reason), earlier messages load on
+   scroll up, the reply box pinned at the bottom with Templates (On my way, Reminder, Invoice link, General); call,
+   job and customer in the header. In "From technician's phone" mode the texts opened on phones are listed and the
+   chat says "Replies go to the technician's phone". The job and customer pages show the last 2 messages and
+   "Open chat".
+
+- No migrations. Good / Better / Best estimate options (§10.4, SPEC §7.5) are not built: they need new tables, so
+  they wait for the owner's decision.
+- Tests: MoneyScreensTest (list totals and days, tenant isolation, invoice from an approved estimate), receipt and
+  Copy link (DocumentDeliveryTest), editable review text (ReviewRequestTest), push/bell alerts
+  (OnlineEstimateApprovalTest), chat templates, earlier messages, technician-phone mode, Open chat (SmsInboxTest);
+  browser scenarios updated.
+- Next: phase 10 — reports, expenses, cash, mileage (§11) with §17 and §23.
+
 # October 15 — UX redesign, phase 8: calendar and map
 
 UX-REDESIGN.md §9.
@@ -18,7 +63,7 @@ UX-REDESIGN.md §9.
 - No migrations (uses the "Goes on calls" flag added in phase 5).
 - Tests: lanes and their order, the admin lane only with a job, booking from an empty slot (CalendarTest); browser
   scenarios for Filters/Show completed, + Book with the shown day, a tap on an empty slot, map chips.
-- Next: phase 9 — invoices, estimates, payments, inbox (§10) with §21, §18, §19 and §26.
+- Next: phase 9 — invoices, estimates, payments, inbox (§10) with §21, §18, §19 and §26 (done, see above).
 
 # October 15 — UX redesign, phase 7: customers and appliances
 

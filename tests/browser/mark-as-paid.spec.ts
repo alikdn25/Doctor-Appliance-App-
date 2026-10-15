@@ -54,7 +54,7 @@ test('cash on site: Mark as paid from the job, then the review question and Comp
 
     // Paid in full: the review question first, then Complete job.
     await expect(page.getByText('Send Google Review request?')).toBeVisible();
-    await page.getByRole('button', { name: 'No', exact: true }).click();
+    await page.getByRole('button', { name: "Don't send" }).click();
     await expect(page.getByText('Paid in full')).toBeVisible();
     await expect(
         page.getByRole('button', { name: /Complete job|Finish job/ }),
