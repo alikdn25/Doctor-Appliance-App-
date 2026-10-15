@@ -58,6 +58,11 @@ test('editing a booked job changes the customer name and appliances are picked f
     page,
 }, info) => {
     await page.goto(`/jobs/${fixture.job_id}/edit`);
+    // The customer's own name and phone are folded, with a warning that they change every job.
+    await page.locator('[data-test="customer-details"] summary').click();
+    await expect(page.locator('[data-test="customer-details"]')).toContainText(
+        'Changes apply to all of',
+    );
     const first = page.locator('#ce-first_name');
     await expect(first).toHaveValue('Jane');
     await expect(page.locator('#ce-phone')).not.toHaveValue('');
@@ -79,6 +84,7 @@ test('editing a booked job changes the customer name and appliances are picked f
 
     // Put the fixture name back for the other scenarios.
     await page.goto(`/jobs/${fixture.job_id}/edit`);
+    await page.locator('[data-test="customer-details"] summary').click();
     await page.locator('#ce-first_name').fill('Jane');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByText('Jane Browser').first()).toBeVisible();
@@ -247,6 +253,9 @@ test('the address of a booked job can be corrected on Edit', async ({
     page,
 }) => {
     await page.goto(`/jobs/${fixture.job_id}/edit`);
+    // The address fields open on request instead of sitting under the address list.
+    await expect(page.locator('#ae-line1')).toHaveCount(0);
+    await page.locator('[data-test="edit-address"]').click();
     const street = page.locator('#ae-line1');
     await expect(street).toHaveValue('123 Browser Street');
     await page.locator('#ae-unit').fill('5');
@@ -254,6 +263,7 @@ test('the address of a booked job can be corrected on Edit', async ({
     await expect(page).toHaveURL(new RegExp(`/jobs/${fixture.job_id}$`));
     await expect(page.getByText(/123 Browser Street/).first()).toBeVisible();
     await page.goto(`/jobs/${fixture.job_id}/edit`);
+    await page.locator('[data-test="edit-address"]').click();
     await expect(page.locator('#ae-unit')).toHaveValue('5');
     await page.locator('#ae-unit').fill('');
     await page.getByRole('button', { name: 'Save', exact: true }).click();

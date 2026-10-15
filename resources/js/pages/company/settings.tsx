@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Plus, X } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { FormField } from '@/components/form-field';
 import { TimezoneSelect } from '@/components/timezone-select';
@@ -36,6 +36,7 @@ type CompanySettings = {
     estimate_prefix: string;
     estimate_next_number: number;
     business_hours: Record<string, Day>;
+    arrival_windows: { start: string; end: string }[];
     travel_buffer_minutes: number;
     estimate_valid_days: number | null;
     estimate_followup_days: number | null;
@@ -122,6 +123,7 @@ export default function CompanySettingsPage({
         estimate_prefix: company.estimate_prefix ?? '',
         estimate_next_number: company.estimate_next_number,
         business_hours: company.business_hours,
+        arrival_windows: company.arrival_windows,
         travel_buffer_minutes: company.travel_buffer_minutes,
         distance_unit: company.distance_unit,
         mileage_rate: company.mileage_rate ?? '',
@@ -520,6 +522,120 @@ export default function CompanySettingsPage({
                             </div>
                         );
                     })}
+                </section>
+
+                {/* Arrival windows offered when booking (UX-REDESIGN §25): any number, they may overlap. */}
+                <section className="grid gap-3" data-test="arrival-windows">
+                    <div>
+                        <h2 className="text-base font-medium">
+                            {t('company.arrival_windows')}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            {t('company.arrival_windows_hint')}
+                        </p>
+                    </div>
+                    {form.data.arrival_windows.map((window, index) => {
+                        const setWindow = (patch: Partial<typeof window>) =>
+                            form.setData(
+                                'arrival_windows',
+                                form.data.arrival_windows.map((w, i) =>
+                                    i === index ? { ...w, ...patch } : w,
+                                ),
+                            );
+
+                        return (
+                            <div key={index} className="grid gap-1">
+                                <div className="flex items-center gap-2 sm:max-w-sm">
+                                    <Input
+                                        type="time"
+                                        aria-label={t(
+                                            'company.arrival_window_from',
+                                        )}
+                                        className="flex-1"
+                                        value={window.start}
+                                        onChange={(e) =>
+                                            setWindow({
+                                                start: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    <span aria-hidden>–</span>
+                                    <Input
+                                        type="time"
+                                        aria-label={t(
+                                            'company.arrival_window_to',
+                                        )}
+                                        className="flex-1"
+                                        value={window.end}
+                                        onChange={(e) =>
+                                            setWindow({ end: e.target.value })
+                                        }
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label={t(
+                                            'company.arrival_window_remove',
+                                        )}
+                                        disabled={
+                                            form.data.arrival_windows.length ===
+                                            1
+                                        }
+                                        onClick={() =>
+                                            form.setData(
+                                                'arrival_windows',
+                                                form.data.arrival_windows.filter(
+                                                    (_, i) => i !== index,
+                                                ),
+                                            )
+                                        }
+                                    >
+                                        <X />
+                                    </Button>
+                                </div>
+                                <InputError
+                                    message={
+                                        errors[
+                                            `arrival_windows.${index}.start`
+                                        ] ??
+                                        errors[`arrival_windows.${index}.end`]
+                                    }
+                                />
+                            </div>
+                        );
+                    })}
+                    <InputError message={errors.arrival_windows} />
+                    <Button
+                        type="button"
+                        variant="tertiary"
+                        className="w-fit"
+                        onClick={() => {
+                            const last =
+                                form.data.arrival_windows[
+                                    form.data.arrival_windows.length - 1
+                                ];
+                            const shift = (hhmm: string) => {
+                                const hour = Math.min(
+                                    Number(hhmm.slice(0, 2)) + 2,
+                                    23,
+                                );
+
+                                return `${String(hour).padStart(2, '0')}${hhmm.slice(2)}`;
+                            };
+                            form.setData('arrival_windows', [
+                                ...form.data.arrival_windows,
+                                last
+                                    ? {
+                                          start: shift(last.start),
+                                          end: shift(last.end),
+                                      }
+                                    : { start: '09:00', end: '11:00' },
+                            ]);
+                        }}
+                    >
+                        <Plus /> {t('company.arrival_window_add')}
+                    </Button>
                 </section>
 
                 <section className="grid gap-3">

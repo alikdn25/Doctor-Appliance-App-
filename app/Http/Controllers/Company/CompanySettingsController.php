@@ -44,6 +44,7 @@ class CompanySettingsController extends Controller
                     ->mapWithKeys(fn (JobOutcome $o) => [$o->value => $company->closureReasons($o)])
                     ->all(),
                 'business_hours' => $company->business_hours ?? $company::defaultBusinessHours(),
+                'arrival_windows' => $company->arrivalWindows(),
                 'default_payment_terms' => $company->default_payment_terms->value,
                 'vertical' => $company->vertical->label(),
                 'distance_unit' => $company->distance_unit,

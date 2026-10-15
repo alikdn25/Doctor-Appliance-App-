@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import type { CountryCode } from 'libphonenumber-js/min';
 import {
+    AsYouType,
     getCountryCallingCode,
     isSupportedCountry,
     parsePhoneNumberFromString,
@@ -37,6 +38,15 @@ export function formatPhone(
 /** Keeps only characters a phone number can contain: digits, +, spaces, dashes, dots and brackets. */
 export function phoneCharacters(value: string): string {
     return value.replace(/[^\d+\-().\s]/g, '');
+}
+
+/** Formats a number while it is typed, in the company's country style ("(604) 555-01"). */
+export function formatAsYouType(value: string, country: string): string {
+    const region = isSupportedCountry(country)
+        ? (country as CountryCode)
+        : undefined;
+
+    return new AsYouType(region).input(phoneCharacters(value));
 }
 
 /** Whether the typed number can be a real phone number (read in the company's country when it has no +). */

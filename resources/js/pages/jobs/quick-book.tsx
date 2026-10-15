@@ -1,48 +1,47 @@
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
-    CalendarPlus,
+    CalendarDays,
+    ChevronDown,
+    ExternalLink,
+    MapPin,
     Search,
-    UserPlus,
-    UserRound,
-    Wrench,
+    X,
 } from 'lucide-react';
-import type { FormEvent } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ApplianceTypePicker } from '@/components/appliance-image';
 import {
     AddressAutocomplete,
     clearedPlace,
 } from '@/components/customers/address-autocomplete';
-import { ApplianceTypePicker } from '@/components/appliance-image';
 import { CustomerNotes } from '@/components/customers/customer-notes';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import type { Assignable } from '@/components/jobs/types';
-import { PageHeader } from '@/components/page-header';
+import { ScreenHeader } from '@/components/screen-header';
+import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
+import { DateChips } from '@/components/ui/date-chips';
+import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import { Textarea } from '@/components/ui/textarea';
+import { TimeWindowChips } from '@/components/ui/time-window-chips';
 import { useTrans } from '@/lib/i18n';
-import { isPossiblePhone, phoneCharacters } from '@/lib/phone';
+import { isPossiblePhone, usePhone } from '@/lib/phone';
 import { cn } from '@/lib/utils';
 import { index as brandsPage } from '@/routes/brands';
 import { create, index, lookup, store } from '@/routes/jobs';
 import type { Option } from '@/types';
-
-/** Two-hour arrival windows offered as chips: 9–11, 11–1, 1–3, 3–5. */
-const WINDOW_STARTS = [9, 11, 13, 15];
-const hhmm = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
-const addDays = (ymd: string, days: number) => {
-    const date = new Date(`${ymd}T00:00:00Z`);
-    date.setUTCDate(date.getUTCDate() + days);
-    return date.toISOString().slice(0, 10);
-};
 
 type CustomerChoice = {
     id: number;
     display_name: string;
     phone: string | null;
     notes: string | null;
+    jobs_count?: number;
     properties: {
         id: number;
         full_address: string;
@@ -51,6 +50,116 @@ type CustomerChoice = {
     }[];
 };
 
+type Window = { start: string; end: string };
+type Busy = { date: string; start: string; end: string };
+/** The chosen time: "Now", one of the company's windows, or a custom time typed below. */
+type Slot =
+    | { kind: 'now' }
+    | ({ kind: 'window' } & Window)
+    | { kind: 'custom' };
+
+/** Where the full job form picks up what was typed here ("Open full job form"). */
+export const JOB_DRAFT_KEY = 'job-draft';
+
+const toMinutes = (hhmm: string) =>
+    Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+const toHhmm = (minutes: number) => {
+    const m = Math.max(0, Math.min(minutes, 23 * 60 + 59));
+
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+};
+const addDays = (ymd: string, days: number) => {
+    const date = new Date(`${ymd}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+
+    return date.toISOString().slice(0, 10);
+};
+
+/** Customers found by phone or name, with [Use]. */
+function Matches({
+    matches,
+    onUse,
+}: {
+    matches: CustomerChoice[];
+    onUse: (choice: CustomerChoice) => void;
+}) {
+    const t = useTrans();
+
+    if (matches.length === 0) {
+        return null;
+    }
+
+    return (
+        <ul className="mt-2 space-y-2" data-test="customer-matches">
+            {matches.map((match) => (
+                <li
+                    key={match.id}
+                    className="da-card flex items-center gap-3 p-3 text-sm"
+                >
+                    <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold">
+                            {match.display_name}
+                        </span>
+                        <span className="block truncate text-muted-foreground">
+                            {[
+                                match.properties[0]?.full_address,
+                                match.jobs_count !== undefined &&
+                                    t('jobs.quick.jobs_count', {
+                                        count: match.jobs_count,
+                                    }),
+                            ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                        </span>
+                    </span>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => onUse(match)}
+                    >
+                        {t('jobs.quick.use')}
+                    </Button>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+/** A titled step of the form. */
+function Step({
+    title,
+    hint,
+    children,
+    className,
+}: {
+    title: string;
+    hint?: string;
+    children: ReactNode;
+    className?: string;
+}) {
+    return (
+        <section className={cn('space-y-2', className)}>
+            <div className="flex items-baseline justify-between gap-2">
+                <h2 className="text-sm font-semibold">{title}</h2>
+                {hint && (
+                    <span className="text-xs text-muted-foreground">
+                        {hint}
+                    </span>
+                )}
+            </div>
+            {children}
+        </section>
+    );
+}
+
+/**
+ * Book customer (UX-REDESIGN §7.1, §25) on one page, in the order of a phone call: Phone (a caller already in the
+ * book is offered after 3 digits), Name (the magnifier searches by name), Appliance, Problem, When (day chips and
+ * the company's arrival windows; "Now" first for today), Technician (free / busy in that window), Address
+ * (optional) and More details. Book is pinned at the bottom with what is still missing; ✕ cancels and "⋯" opens
+ * the full job form with what was typed.
+ */
 export default function QuickBook({
     booking,
     openInvoice,
@@ -60,7 +169,10 @@ export default function QuickBook({
     brands,
     jobTypes,
     applianceTypes,
-    assignableUsers,
+    leadSources = [],
+    arrivalWindows = [],
+    bookingTechnicians = [],
+    busy = {},
     customer: initialCustomer,
 }: {
     booking: boolean;
@@ -71,32 +183,36 @@ export default function QuickBook({
     brands: Option[];
     jobTypes: Option[];
     applianceTypes: Option[];
+    leadSources?: Option[];
     assignableUsers: Assignable[];
+    arrivalWindows?: Window[];
+    bookingTechnicians?: { id: number; name: string }[];
+    busy?: Record<number, Busy[]>;
     customer: CustomerChoice | null;
 }) {
     const t = useTrans();
+    const phoneText = usePhone();
     const { auth } = usePage().props;
-    const [existing, setExisting] = useState(initialCustomer !== null);
-    const [customer, setCustomer] = useState(initialCustomer);
-    const [search, setSearch] = useState('');
-    const [results, setResults] = useState<CustomerChoice[]>([]);
-    const [searchError, setSearchError] = useState(false);
-    const [searching, setSearching] = useState(false);
-    // Optional: the tech can add the appliance on site from the rating plate.
-    const [applianceType, setApplianceType] = useState('');
+    const country = auth.company?.country ?? 'US';
+    const locale = auth.company?.locale ?? 'en-US';
     const tracksAppliances = auth.company?.tracks_appliances ?? true;
-    // The first arrival window that still has an hour left today; after the last one, tomorrow morning.
-    const firstWindow = WINDOW_STARTS.find(
-        (from) => hhmm(from + 2 - 1) > nowTime,
-    );
-    const defaultDate =
-        bookingDate ?? (firstWindow === undefined ? addDays(today, 1) : today);
-    const defaultStart =
-        defaultDate === today && firstWindow !== undefined
-            ? firstWindow
-            : WINDOW_STARTS[0];
+    const [customer, setCustomer] = useState(initialCustomer);
+    const [applianceType, setApplianceType] = useState('');
+    const [nameSearch, setNameSearch] = useState(false);
+    const [matches, setMatches] = useState<CustomerChoice[]>([]);
+    const [addressOpen, setAddressOpen] = useState(false);
     const [phoneTouched, setPhoneTouched] = useState(false);
-    const [phoneMatches, setPhoneMatches] = useState<CustomerChoice[]>([]);
+
+    // The first window that has not started yet today; after the last one, tomorrow's first.
+    const upcomingToday = arrivalWindows.filter((w) => w.start > nowTime);
+    const firstDate =
+        bookingDate ?? (upcomingToday.length > 0 ? today : addDays(today, 1));
+    const firstWindow =
+        firstDate === today ? upcomingToday[0] : arrivalWindows[0];
+    const [slot, setSlot] = useState<Slot>(
+        firstWindow ? { kind: 'window', ...firstWindow } : { kind: 'custom' },
+    );
+
     const form = useForm({
         quick_booking: true,
         open_invoice: openInvoice,
@@ -105,6 +221,8 @@ export default function QuickBook({
             jobTypes.find((o) => o.value === 'repair')?.value ??
             jobTypes[0]?.value ??
             '',
+        lead_source: '',
+        notes: '',
         new_customer_mode: initialCustomer === null,
         customer_id: initialCustomer?.id ?? (null as number | null),
         property_id:
@@ -122,161 +240,158 @@ export default function QuickBook({
                 city: '',
                 region: '',
                 postal_code: '',
-                country: auth.company?.country ?? '',
+                country,
                 ...clearedPlace,
             },
         },
         description: '',
         add_visit: booking,
         visit: {
-            date: defaultDate,
-            start_time: hhmm(defaultStart),
-            end_time: hhmm(defaultStart + 2),
+            date: firstDate,
+            start_time: firstWindow?.start ?? '09:00',
+            end_time: firstWindow?.end ?? '11:00',
             estimated_duration_minutes: 60,
+            // One person on calls (a one-person business): booked to them. Otherwise Unassigned until picked.
             assignee_ids:
-                assignableUsers.length === 1
-                    ? [assignableUsers[0].id]
+                bookingTechnicians.length === 1
+                    ? [bookingTechnicians[0].id]
                     : ([] as number[]),
         },
     });
+    const { data } = form;
+    const errors = form.errors as Record<string, string | undefined>;
+    const existing = customer !== null;
+    const isToday = data.visit.date === today;
+    const technicianId = data.visit.assignee_ids[0] ?? null;
 
+    // "Now" (§25): from this minute until the technician's next job today, or one hour.
+    const nowRange = (userId: number | null): Window => {
+        const start = Math.floor(toMinutes(nowTime) / 5) * 5;
+        const next = (userId === null ? [] : (busy[userId] ?? []))
+            .filter((b) => b.date === today && toMinutes(b.start) > start)
+            .map((b) => toMinutes(b.start))
+            .sort((a, b) => a - b)[0];
+        const end =
+            next !== undefined && next - start >= 10 ? next : start + 60;
+
+        return { start: toHhmm(start), end: toHhmm(end) };
+    };
+    const times: Window =
+        slot.kind === 'now'
+            ? nowRange(technicianId)
+            : slot.kind === 'window'
+              ? { start: slot.start, end: slot.end }
+              : { start: data.visit.start_time, end: data.visit.end_time };
+
+    // Live search: the phone from 3 digits, the name (magnifier) from 2 letters.
+    // A search still running when Book is pressed is cancelled: a request after the booking would use up the
+    // "Booked …" message before the next screen shows it.
+    const lookupAbort = useRef<AbortController | null>(null);
+    const phoneDigits = data.new_customer.phone.replace(/\D/g, '');
+    const nameTerm = data.new_customer.first_name.trim();
     useEffect(() => {
-        if (!existing || search.trim().length < 2) return;
+        setMatches([]);
+        if (existing) return;
+        const byName = nameSearch && nameTerm.length >= 2;
+        if (!byName && phoneDigits.length < 3) return;
         const controller = new AbortController();
-        const timer = setTimeout(async () => {
-            try {
-                const response = await fetch(
-                    lookup({ query: { search } }).url,
-                    {
-                        headers: { Accept: 'application/json' },
-                        signal: controller.signal,
-                    },
-                );
-                if (!response.ok) throw new Error('Customer search failed');
-                const data: { customers: CustomerChoice[] } =
-                    await response.json();
-                setResults(data.customers);
-                setSearchError(false);
-            } catch {
-                if (!controller.signal.aborted) setSearchError(true);
-            } finally {
-                if (!controller.signal.aborted) setSearching(false);
-            }
+        lookupAbort.current = controller;
+        const timer = setTimeout(() => {
+            if (controller.signal.aborted) return;
+            fetch(
+                lookup({
+                    query: byName
+                        ? { search: nameTerm }
+                        : { search: phoneDigits, by: 'phone' },
+                }).url,
+                {
+                    headers: { Accept: 'application/json' },
+                    signal: controller.signal,
+                },
+            )
+                .then((response) => (response.ok ? response.json() : null))
+                .then((found: { customers: CustomerChoice[] } | null) =>
+                    setMatches(found?.customers ?? []),
+                )
+                .catch(() => undefined);
         }, 300);
+
         return () => {
             clearTimeout(timer);
             controller.abort();
         };
-    }, [search, existing]);
+    }, [phoneDigits, nameTerm, nameSearch, existing]);
 
-    const choose = (choice: CustomerChoice) => {
+    const useCustomer = (choice: CustomerChoice) => {
         setCustomer(choice);
-        setSearch('');
-        setResults([]);
+        setMatches([]);
+        setNameSearch(false);
+        form.clearErrors();
         const property =
             choice.properties.find((p) => p.is_primary) ?? choice.properties[0];
-        form.setData((data) => ({
-            ...data,
+        form.setData((d) => ({
+            ...d,
             new_customer_mode: false,
             customer_id: choice.id,
             property_id: property?.id ?? null,
         }));
     };
-    const switchMode = () => {
-        setExisting(!existing);
+    const changeCustomer = () => {
         setCustomer(null);
-        setSearch('');
-        setResults([]);
-        setSearchError(false);
-        setSearching(false);
-        form.clearErrors();
-        form.setData((data) => ({
-            ...data,
-            new_customer_mode: existing,
+        form.setData((d) => ({
+            ...d,
+            new_customer_mode: true,
             customer_id: null,
             property_id: null,
         }));
     };
-    const errors = form.errors as Record<string, string | undefined>;
-    const country = auth.company?.country ?? 'US';
+
     const phoneValid =
-        existing || isPossiblePhone(form.data.new_customer.phone, country);
-    // What is still missing, said in words next to the disabled button.
+        existing || isPossiblePhone(data.new_customer.phone, country);
+    const phoneError =
+        errors['new_customer.phone'] ??
+        (phoneTouched && data.new_customer.phone.trim() && !phoneValid
+            ? t('jobs.quick.phone_invalid')
+            : undefined);
+    // What is still missing, said next to Book.
     const missing = [
-        !form.data.brand_id && t('jobs.quick.missing.brand'),
-        existing && !form.data.customer_id && t('jobs.quick.missing.customer'),
-        existing &&
-            !!form.data.customer_id &&
-            !form.data.property_id &&
-            t('jobs.quick.missing.address'),
         !existing &&
-            !form.data.new_customer.phone.trim() &&
+            !data.new_customer.phone.trim() &&
             t('jobs.quick.missing.phone'),
         !existing &&
-            !!form.data.new_customer.phone.trim() &&
+            !!data.new_customer.phone.trim() &&
             !phoneValid &&
             t('jobs.quick.missing.valid_phone'),
         !existing &&
-            !form.data.new_customer.first_name.trim() &&
+            !data.new_customer.first_name.trim() &&
             t('jobs.quick.missing.name'),
+        existing && !data.property_id && t('jobs.quick.missing.address'),
+        !data.brand_id && t('jobs.quick.missing.brand'),
         booking &&
-            (!form.data.visit.date ||
-                !form.data.visit.start_time ||
-                form.data.visit.end_time <= form.data.visit.start_time) &&
+            (!data.visit.date || !times.start || times.end <= times.start) &&
             t('jobs.quick.missing.time'),
     ].filter((item): item is string => !!item);
-    const canSave = missing.length === 0;
-    const inPast =
-        booking &&
-        (form.data.visit.date < today ||
-            (form.data.visit.date === today &&
-                form.data.visit.end_time !== '' &&
-                form.data.visit.end_time <= nowTime));
-    const phoneError =
-        errors['new_customer.phone'] ??
-        (phoneTouched && form.data.new_customer.phone.trim() && !phoneValid
-            ? t('jobs.quick.phone_invalid')
-            : undefined);
-    // A caller who is already a customer: offer their card instead of creating a duplicate.
-    const phoneDigits = form.data.new_customer.phone.replace(/\D/g, '');
-    useEffect(() => {
-        setPhoneMatches([]);
-        if (existing || phoneDigits.length < 7) return;
-        const controller = new AbortController();
-        const timer = setTimeout(() => {
-            fetch(lookup({ query: { search: phoneDigits } }).url, {
-                headers: { Accept: 'application/json' },
-                signal: controller.signal,
-            })
-                .then((response) => (response.ok ? response.json() : null))
-                .then((data: { customers: CustomerChoice[] } | null) =>
-                    setPhoneMatches(data?.customers ?? []),
-                )
-                .catch(() => undefined);
-        }, 400);
-        return () => {
-            clearTimeout(timer);
-            controller.abort();
-        };
-    }, [phoneDigits, existing]);
-    const useExisting = (choice: CustomerChoice) => {
-        setExisting(true);
-        setPhoneMatches([]);
-        form.clearErrors();
-        choose(choice);
-    };
+    const ready = missing.length === 0;
+    const dirty =
+        data.new_customer.phone !== '' ||
+        data.new_customer.first_name !== '' ||
+        data.description !== '' ||
+        applianceType !== '';
+
     const sending = useRef(false);
     const submit = (event: FormEvent) => {
         event.preventDefault();
         // A double tap fires twice before `processing` re-renders: the ref stops the second job.
-        if (!canSave || form.processing || sending.current) return;
+        if (!ready || form.processing || sending.current) return;
         sending.current = true;
+        lookupAbort.current?.abort();
         // An appliance of that type already at the address is linked instead of added twice.
         const known = customer?.properties
-            .find((p) => p.id === form.data.property_id)
+            .find((p) => p.id === data.property_id)
             ?.appliances?.find((a) => a.type === applianceType);
-        form.transform((data) => ({
-            ...data,
+        form.transform((d) => ({
+            ...d,
+            visit: { ...d.visit, start_time: times.start, end_time: times.end },
             ...(applianceType === ''
                 ? {}
                 : known
@@ -289,55 +404,105 @@ export default function QuickBook({
             },
         });
     };
-    const title = t(booking ? 'nav.book_customer' : 'invoices.add');
-    const locale = auth.company?.locale;
-    const setProperty = (
-        changes: Partial<typeof form.data.new_customer.property>,
-    ) =>
-        form.setData('new_customer', {
-            ...form.data.new_customer,
-            property: { ...form.data.new_customer.property, ...changes },
+
+    const cancel = () => {
+        if (dirty && !confirm(t('jobs.quick.discard'))) return;
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            router.visit(index().url);
+        }
+    };
+    const openFullForm = () => {
+        try {
+            sessionStorage.setItem(
+                JOB_DRAFT_KEY,
+                JSON.stringify({
+                    customer_id: data.customer_id,
+                    phone: data.new_customer.phone,
+                    name: data.new_customer.first_name,
+                    description: data.description,
+                    notes: data.notes,
+                    appliance_type: applianceType,
+                }),
+            );
+        } catch {
+            // Without storage the full form simply opens empty.
+        }
+        router.visit(
+            create({
+                query: data.customer_id
+                    ? { customer_id: data.customer_id, draft: 1 }
+                    : { draft: 1 },
+            }).url,
+        );
+    };
+
+    const setVisit = (changes: Partial<typeof data.visit>) =>
+        form.setData('visit', { ...data.visit, ...changes });
+    const setNewCustomer = (changes: Partial<typeof data.new_customer>) =>
+        form.setData('new_customer', { ...data.new_customer, ...changes });
+    const setProperty = (changes: Partial<typeof data.new_customer.property>) =>
+        setNewCustomer({
+            property: { ...data.new_customer.property, ...changes },
         });
-    // One tap for the day and one for the arrival window; exact times stay editable below.
-    const dayChoices = [0, 1, 2, 3].map((offset) => {
-        const date = new Date(`${today}T00:00:00Z`);
-        date.setUTCDate(date.getUTCDate() + offset);
-        const ymd = date.toISOString().slice(0, 10);
-        return {
-            ymd,
-            label:
-                offset === 0
-                    ? t('jobs.quick.today')
-                    : offset === 1
-                      ? t('jobs.quick.tomorrow')
-                      : new Intl.DateTimeFormat(locale, {
-                            weekday: 'short',
-                            timeZone: 'UTC',
-                        }).format(date),
-            day: new Intl.DateTimeFormat(locale, {
-                month: 'short',
-                day: 'numeric',
+
+    const pickDay = (ymd: string) => {
+        setVisit({ date: ymd });
+        // A window that already started today, or "Now" on another day, moves to the first open window.
+        if (
+            (slot.kind === 'now' && ymd !== today) ||
+            (slot.kind === 'window' && ymd === today && slot.start <= nowTime)
+        ) {
+            const first = ymd === today ? upcomingToday[0] : arrivalWindows[0];
+            setSlot(first ? { kind: 'window', ...first } : { kind: 'custom' });
+        }
+    };
+    const pickWindow = (start: string) => {
+        if (start === 'now') {
+            setSlot({ kind: 'now' });
+            return;
+        }
+        const window = arrivalWindows.find((w) => w.start === start);
+        if (window) setSlot({ kind: 'window', ...window });
+    };
+    const hours = useMemo(
+        () =>
+            new Intl.DateTimeFormat(locale, {
+                hour: 'numeric',
+                minute: '2-digit',
                 timeZone: 'UTC',
-            }).format(date),
-        };
-    });
-    // Short range labels in the company's own time format, e.g. "9 – 11 a.m.".
-    const hourRange = new Intl.DateTimeFormat(locale, {
-        hour: 'numeric',
+            }),
+        [locale],
+    );
+    const range = (w: Window) =>
+        hours.formatRange(
+            new Date(`1970-01-01T${w.start}:00Z`),
+            new Date(`1970-01-01T${w.end}:00Z`),
+        );
+    // "free" or "busy 9–11" for each technician in the chosen day and time.
+    const availability = (userId: number) => {
+        const slotTimes = slot.kind === 'now' ? nowRange(userId) : times;
+        const clash = (busy[userId] ?? []).find(
+            (b) =>
+                b.date === data.visit.date &&
+                b.start < slotTimes.end &&
+                b.end > slotTimes.start,
+        );
+
+        return clash
+            ? t('jobs.quick.busy', { time: range(clash) })
+            : t('jobs.quick.free');
+    };
+    const pickedOutsideChips =
+        data.visit.date > addDays(today, 6) || data.visit.date < today;
+    const pickedLabel = new Intl.DateTimeFormat(locale, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
         timeZone: 'UTC',
-    });
-    const windows = WINDOW_STARTS.map((from) => ({
-        start: hhmm(from),
-        end: hhmm(from + 2),
-        // Windows that are already over today cannot be picked.
-        past: form.data.visit.date === today && hhmm(from + 2) <= nowTime,
-        label: hourRange.formatRange(
-            new Date(Date.UTC(1970, 0, 1, from)),
-            new Date(Date.UTC(1970, 0, 1, from + 2)),
-        ),
-    }));
-    const setVisit = (changes: Partial<typeof form.data.visit>) =>
-        form.setData('visit', { ...form.data.visit, ...changes });
+    }).format(new Date(`${data.visit.date}T00:00:00Z`));
+    const title = t(booking ? 'nav.book_customer' : 'invoices.add');
     const assigneeError = Object.entries(errors).find(([key]) =>
         key.startsWith('visit.assignee_ids'),
     )?.[1];
@@ -345,15 +510,40 @@ export default function QuickBook({
     return (
         <>
             <Head title={title} />
-            <div className="mx-auto w-full max-w-2xl p-4 sm:p-6">
-                <PageHeader
-                    title={title}
-                    description={t(
-                        booking ? 'jobs.quick.hint' : 'jobs.quick.invoice_hint',
-                    )}
-                />
+            <ScreenHeader
+                title={title}
+                leading={
+                    <IconButton
+                        label={t('common.cancel')}
+                        variant="header"
+                        onClick={cancel}
+                        data-test="booking-cancel"
+                    >
+                        <X />
+                    </IconButton>
+                }
+                actions={
+                    <ActionSheet
+                        title={title}
+                        items={[
+                            {
+                                key: 'full-form',
+                                label: t('jobs.quick.full_form'),
+                                icon: <ExternalLink />,
+                                onSelect: openFullForm,
+                            },
+                        ]}
+                    />
+                }
+            />
+
+            <form
+                onSubmit={submit}
+                className="mx-auto w-full max-w-2xl space-y-5 p-4 sm:p-6"
+                data-test="booking-form"
+            >
                 {brands.length === 0 && (
-                    <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
                         <p>
                             {t(
                                 auth.can.manageCompany
@@ -370,268 +560,420 @@ export default function QuickBook({
                         )}
                     </div>
                 )}
-                <form onSubmit={submit} className="space-y-5">
-                    <section className="da-card space-y-4 p-4 sm:p-5">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h2 className="flex items-center gap-2 font-semibold">
-                                <UserRound className="size-5 text-primary" />
-                                {t('jobs.fields.customer')}
-                            </h2>
+
+                {existing ? (
+                    /* The customer is chosen: one row with Change; their notes stay visible. */
+                    <section className="space-y-2" data-test="booking-customer">
+                        <div className="da-card flex items-center gap-3 p-3">
+                            <span className="min-w-0 flex-1">
+                                <span className="block truncate font-semibold">
+                                    {customer.display_name}
+                                </span>
+                                <span className="block truncate text-sm text-muted-foreground">
+                                    {[
+                                        phoneText(customer.phone),
+                                        customer.properties.find(
+                                            (p) => p.id === data.property_id,
+                                        )?.full_address,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                </span>
+                            </span>
                             <Button
                                 type="button"
-                                variant="outline"
-                                onClick={switchMode}
+                                variant="tertiary"
+                                size="sm"
+                                onClick={changeCustomer}
                             >
-                                {existing ? <UserPlus /> : <Search />}
-                                {t(
-                                    existing
-                                        ? 'jobs.quick.new_customer'
-                                        : 'jobs.quick.existing_customer',
-                                )}
+                                {t('jobs.quick.change')}
                             </Button>
                         </div>
-                        {existing ? (
-                            <>
-                                <FormField
-                                    id="booking-search"
-                                    label={t('jobs.quick.find_customer')}
-                                >
-                                    <Input
-                                        id="booking-search"
-                                        type="search"
-                                        value={search}
-                                        placeholder={t(
-                                            'jobs.quick.search_hint',
-                                        )}
-                                        onChange={(event) => {
-                                            const value = event.target.value;
-                                            setSearch(value);
-                                            setResults([]);
-                                            setSearchError(false);
-                                            setSearching(
-                                                value.trim().length >= 2,
-                                            );
-                                        }}
-                                    />
-                                </FormField>
-                                {search.trim().length >= 2 && (
-                                    <div className="space-y-2">
-                                        {results.map((choice) => (
-                                            <Button
-                                                key={choice.id}
-                                                type="button"
-                                                variant="outline"
-                                                className="h-auto min-h-11 w-full justify-start text-left whitespace-normal"
-                                                onClick={() => choose(choice)}
-                                            >
-                                                {choice.display_name}
-                                                {choice.phone &&
-                                                    ` · ${choice.phone}`}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchError && (
-                                    <InputError
-                                        message={t('jobs.quick.search_failed')}
-                                    />
-                                )}
-                                {searching && (
-                                    <p
-                                        role="status"
-                                        className="text-sm text-muted-foreground"
-                                    >
-                                        {t('jobs.quick.searching')}
-                                    </p>
-                                )}
-                                {search.trim().length >= 2 &&
-                                    !searching &&
-                                    !searchError &&
-                                    results.length === 0 && (
-                                        <p
-                                            role="status"
-                                            className="text-sm text-muted-foreground"
-                                        >
-                                            {t('jobs.quick.search_empty')}
-                                        </p>
-                                    )}
-                                {customer && (
-                                    <div className="space-y-2 rounded-xl bg-muted p-3">
-                                        <p className="font-semibold">
-                                            {customer.display_name}
-                                        </p>
-                                        <CustomerNotes notes={customer.notes} />
-                                        {customer.properties.length > 0 ? (
-                                            <FormField
-                                                id="booking-property"
-                                                label={t(
-                                                    'jobs.fields.property',
-                                                )}
-                                                error={errors.property_id}
-                                            >
-                                                <NativeSelect
-                                                    id="booking-property"
-                                                    value={
-                                                        form.data.property_id ??
-                                                        ''
-                                                    }
-                                                    onChange={(event) =>
-                                                        form.setData(
-                                                            'property_id',
-                                                            Number(
-                                                                event.target
-                                                                    .value,
-                                                            ),
-                                                        )
-                                                    }
-                                                >
-                                                    {customer.properties.map(
-                                                        (property) => (
-                                                            <option
-                                                                key={
-                                                                    property.id
-                                                                }
-                                                                value={
-                                                                    property.id
-                                                                }
-                                                            >
-                                                                {property.full_address ||
-                                                                    t(
-                                                                        'jobs.quick.address_pending',
-                                                                    )}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </NativeSelect>
-                                            </FormField>
-                                        ) : (
-                                            <p className="text-sm text-destructive">
-                                                {t(
-                                                    'jobs.quick.property_needed',
-                                                )}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-                                <InputError message={errors.customer_id} />
-                            </>
-                        ) : (
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <FormField
-                                    id="booking-phone"
-                                    label={t('customers.fields.phone')}
-                                    error={phoneError}
-                                >
-                                    <Input
-                                        id="booking-phone"
-                                        type="tel"
-                                        inputMode="tel"
-                                        autoComplete="tel"
-                                        required
-                                        maxLength={32}
-                                        value={form.data.new_customer.phone}
-                                        aria-invalid={!!phoneError}
-                                        onBlur={() => setPhoneTouched(true)}
-                                        onChange={(event) => {
-                                            form.clearErrors(
-                                                'new_customer.phone',
-                                            );
-                                            form.setData('new_customer', {
-                                                ...form.data.new_customer,
-                                                phone: phoneCharacters(
-                                                    event.target.value,
-                                                ),
-                                            });
-                                        }}
-                                    />
-                                    {phoneMatches.map((match) => (
-                                        <div
-                                            key={match.id}
-                                            role="status"
-                                            className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-blue-50 p-3 text-sm text-blue-950"
-                                        >
-                                            <span>
-                                                {t(
-                                                    'jobs.quick.already_customer',
-                                                    {
-                                                        name: match.display_name,
-                                                    },
-                                                )}
-                                                {match.properties[0]
-                                                    ?.full_address &&
-                                                    ` · ${match.properties[0].full_address}`}
-                                            </span>
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                onClick={() =>
-                                                    useExisting(match)
-                                                }
-                                            >
-                                                {t('jobs.quick.use_customer')}
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </FormField>
-                                <FormField
-                                    id="booking-name"
-                                    label={t('jobs.quick.name')}
-                                    error={errors['new_customer.first_name']}
-                                >
-                                    <Input
-                                        id="booking-name"
-                                        autoComplete="name"
-                                        required
-                                        maxLength={100}
-                                        value={
-                                            form.data.new_customer.first_name
-                                        }
-                                        onChange={(event) =>
-                                            form.setData('new_customer', {
-                                                ...form.data.new_customer,
-                                                first_name: event.target.value,
-                                            })
-                                        }
-                                    />
-                                </FormField>
-                                <FormField
-                                    id="booking-address"
-                                    label={t('jobs.quick.address')}
-                                    className="sm:col-span-2"
-                                    error={
-                                        errors['new_customer.property.line1']
+                        <CustomerNotes notes={customer.notes} />
+                        {customer.properties.length > 1 && (
+                            <FormField
+                                id="booking-property"
+                                label={t('jobs.fields.property')}
+                                error={errors.property_id}
+                            >
+                                <NativeSelect
+                                    id="booking-property"
+                                    value={data.property_id ?? ''}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'property_id',
+                                            Number(event.target.value),
+                                        )
                                     }
                                 >
-                                    <AddressAutocomplete
-                                        id="booking-address"
-                                        autoComplete="street-address"
-                                        value={
-                                            form.data.new_customer.property
-                                                .line1
+                                    {customer.properties.map((property) => (
+                                        <option
+                                            key={property.id}
+                                            value={property.id}
+                                        >
+                                            {property.full_address ||
+                                                t('jobs.quick.address_pending')}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </FormField>
+                        )}
+                        {customer.properties.length === 0 && (
+                            <p className="text-sm text-danger">
+                                {t('jobs.quick.property_needed')}
+                            </p>
+                        )}
+                        <InputError message={errors.customer_id} />
+                    </section>
+                ) : (
+                    <>
+                        <FormField
+                            id="booking-phone"
+                            label={t('customers.fields.phone')}
+                            error={phoneError}
+                        >
+                            <PhoneInput
+                                id="booking-phone"
+                                required
+                                autoFocus
+                                maxLength={32}
+                                country={country}
+                                value={data.new_customer.phone}
+                                aria-invalid={!!phoneError}
+                                onBlur={() => setPhoneTouched(true)}
+                                onChange={(phone) => {
+                                    form.clearErrors('new_customer.phone');
+                                    setNewCustomer({ phone });
+                                }}
+                            />
+                            {!nameSearch && (
+                                <Matches
+                                    matches={matches}
+                                    onUse={useCustomer}
+                                />
+                            )}
+                        </FormField>
+                        <FormField
+                            id="booking-name"
+                            label={t('jobs.quick.name')}
+                            error={errors['new_customer.first_name']}
+                        >
+                            <div className="relative">
+                                <Input
+                                    id="booking-name"
+                                    autoComplete="name"
+                                    required
+                                    maxLength={100}
+                                    className="pr-12"
+                                    placeholder={
+                                        nameSearch
+                                            ? t('jobs.quick.search_by_name')
+                                            : undefined
+                                    }
+                                    value={data.new_customer.first_name}
+                                    onChange={(event) =>
+                                        setNewCustomer({
+                                            first_name: event.target.value,
+                                        })
+                                    }
+                                />
+                                <button
+                                    type="button"
+                                    aria-label={t('jobs.quick.find_by_name')}
+                                    aria-pressed={nameSearch}
+                                    className={cn(
+                                        'absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-[14px] text-muted-foreground',
+                                        nameSearch && 'text-link',
+                                    )}
+                                    onClick={() => setNameSearch(!nameSearch)}
+                                >
+                                    <Search className="size-5" />
+                                </button>
+                            </div>
+                            {nameSearch && (
+                                <Matches
+                                    matches={matches}
+                                    onUse={useCustomer}
+                                />
+                            )}
+                        </FormField>
+                    </>
+                )}
+
+                {tracksAppliances && (
+                    <Step
+                        title={t('jobs.quick.appliance')}
+                        hint={t('jobs.quick.appliance_optional')}
+                    >
+                        <div className="max-h-56 overflow-y-auto rounded-2xl p-0.5">
+                            <ApplianceTypePicker
+                                compact
+                                label={t('jobs.quick.appliance')}
+                                options={applianceTypes}
+                                value={applianceType}
+                                onChange={(type) =>
+                                    setApplianceType(
+                                        type === applianceType ? '' : type,
+                                    )
+                                }
+                            />
+                        </div>
+                        <InputError
+                            message={
+                                errors['new_appliances.0.type'] ??
+                                errors.appliance_ids
+                            }
+                        />
+                    </Step>
+                )}
+
+                <FormField
+                    id="booking-problem"
+                    label={t('jobs.quick.problem')}
+                    error={errors.description}
+                >
+                    <Textarea
+                        id="booking-problem"
+                        rows={2}
+                        className="[field-sizing:content] min-h-16"
+                        placeholder={t('jobs.quick.problem_hint')}
+                        value={data.description}
+                        onChange={(event) =>
+                            form.setData('description', event.target.value)
+                        }
+                    />
+                </FormField>
+
+                {booking && (
+                    <Step title={t('jobs.quick.when')}>
+                        <div className="flex items-center gap-2">
+                            <DateChips
+                                className="min-w-0 flex-1"
+                                label={t('jobs.quick.day')}
+                                today={today}
+                                value={data.visit.date}
+                                onChange={pickDay}
+                            />
+                            <label
+                                className="da-chip da-press relative inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-2xl px-3 text-sm font-semibold whitespace-nowrap"
+                                data-state={pickedOutsideChips ? 'on' : 'off'}
+                            >
+                                <CalendarDays className="size-4" />
+                                {pickedOutsideChips
+                                    ? pickedLabel
+                                    : t('jobs.quick.pick_date')}
+                                <input
+                                    type="date"
+                                    min={today}
+                                    value={data.visit.date}
+                                    aria-label={t('jobs.quick.pick_date')}
+                                    className="absolute inset-0 cursor-pointer opacity-0"
+                                    onClick={(e) => {
+                                        try {
+                                            e.currentTarget.showPicker();
+                                        } catch {
+                                            // Older browsers open it by themselves.
                                         }
-                                        country={
-                                            form.data.new_customer.property
-                                                .country ||
-                                            auth.company?.country ||
-                                            'US'
-                                        }
-                                        onChange={(value) =>
-                                            setProperty({
-                                                line1: value,
-                                                ...clearedPlace,
-                                            })
-                                        }
-                                        onPick={(address) =>
-                                            setProperty({
-                                                ...address,
-                                                unit:
-                                                    address.unit ??
-                                                    form.data.new_customer
-                                                        .property.unit,
+                                    }}
+                                    onChange={(e) =>
+                                        e.target.value &&
+                                        pickDay(e.target.value)
+                                    }
+                                />
+                            </label>
+                        </div>
+                        <TimeWindowChips
+                            label={t('jobs.quick.arrival_window')}
+                            windows={arrivalWindows}
+                            nowTime={isToday ? nowTime : null}
+                            leading={
+                                isToday
+                                    ? {
+                                          value: 'now',
+                                          label: t('jobs.quick.now'),
+                                      }
+                                    : undefined
+                            }
+                            value={
+                                slot.kind === 'now'
+                                    ? 'now'
+                                    : slot.kind === 'window'
+                                      ? slot.start
+                                      : null
+                            }
+                            onChange={pickWindow}
+                        />
+                        {slot.kind === 'now' && (
+                            <p className="text-xs text-muted-foreground">
+                                {t('jobs.quick.now_hint', {
+                                    time: range(times),
+                                })}
+                            </p>
+                        )}
+                        {slot.kind === 'custom' ? (
+                            <div className="grid grid-cols-2 gap-3">
+                                <FormField
+                                    id="booking-date"
+                                    label={t('jobs.visit_fields.date')}
+                                    className="col-span-2"
+                                    error={errors['visit.date']}
+                                >
+                                    <Input
+                                        id="booking-date"
+                                        type="date"
+                                        required
+                                        value={data.visit.date}
+                                        onChange={(event) =>
+                                            setVisit({
+                                                date: event.target.value,
                                             })
                                         }
                                     />
                                 </FormField>
+                                <FormField
+                                    id="booking-from"
+                                    label={t('jobs.visit_fields.start_time')}
+                                    error={errors['visit.start_time']}
+                                >
+                                    <Input
+                                        id="booking-from"
+                                        type="time"
+                                        required
+                                        value={data.visit.start_time}
+                                        onChange={(event) =>
+                                            setVisit({
+                                                start_time: event.target.value,
+                                            })
+                                        }
+                                    />
+                                </FormField>
+                                <FormField
+                                    id="booking-to"
+                                    label={t('jobs.visit_fields.end_time')}
+                                    error={errors['visit.end_time']}
+                                >
+                                    <Input
+                                        id="booking-to"
+                                        type="time"
+                                        required
+                                        value={data.visit.end_time}
+                                        onChange={(event) =>
+                                            setVisit({
+                                                end_time: event.target.value,
+                                            })
+                                        }
+                                    />
+                                </FormField>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                className="min-h-11 text-sm font-medium text-link"
+                                onClick={() => {
+                                    setVisit({
+                                        start_time: times.start,
+                                        end_time: times.end,
+                                    });
+                                    setSlot({ kind: 'custom' });
+                                }}
+                            >
+                                {t('jobs.quick.custom_time')}
+                            </button>
+                        )}
+                        <InputError
+                            message={
+                                errors['visit.date'] ??
+                                errors['visit.start_time'] ??
+                                errors['visit.end_time']
+                            }
+                        />
+                    </Step>
+                )}
+
+                {booking && bookingTechnicians.length > 0 && (
+                    <Step title={t('jobs.quick.technician')}>
+                        <div
+                            role="radiogroup"
+                            aria-label={t('jobs.quick.technician')}
+                            className="flex flex-wrap gap-2"
+                        >
+                            {[
+                                ...bookingTechnicians.map((user) => ({
+                                    id: user.id as number | null,
+                                    name: user.name,
+                                    hint: availability(user.id),
+                                })),
+                                {
+                                    id: null,
+                                    name: t('calendar.unassigned'),
+                                    hint: '',
+                                },
+                            ].map((choice) => (
+                                <button
+                                    key={choice.id ?? 'none'}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={technicianId === choice.id}
+                                    aria-pressed={technicianId === choice.id}
+                                    onClick={() =>
+                                        setVisit({
+                                            assignee_ids:
+                                                choice.id === null
+                                                    ? []
+                                                    : [choice.id],
+                                        })
+                                    }
+                                    className="da-chip da-press flex min-h-12 flex-col items-start justify-center rounded-2xl px-4 text-left"
+                                >
+                                    <span className="text-sm font-semibold">
+                                        {choice.name}
+                                    </span>
+                                    {choice.hint && (
+                                        <span className="text-xs opacity-80">
+                                            {choice.hint}
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                        <InputError message={assigneeError} />
+                    </Step>
+                )}
+
+                {!existing && (
+                    <Step
+                        title={t('jobs.quick.address')}
+                        hint={t('jobs.quick.address_optional')}
+                    >
+                        <AddressAutocomplete
+                            id="booking-address"
+                            aria-label={t('jobs.quick.address')}
+                            autoComplete="street-address"
+                            value={data.new_customer.property.line1}
+                            country={
+                                data.new_customer.property.country || country
+                            }
+                            onChange={(value) =>
+                                setProperty({ line1: value, ...clearedPlace })
+                            }
+                            onPick={(address) => {
+                                setProperty({
+                                    ...address,
+                                    unit:
+                                        address.unit ??
+                                        data.new_customer.property.unit,
+                                });
+                                setAddressOpen(true);
+                            }}
+                        />
+                        <InputError
+                            message={
+                                errors['new_customer.property.line1'] ??
+                                errors['new_customer.property.city']
+                            }
+                        />
+                        {addressOpen ? (
+                            <div className="grid grid-cols-2 gap-3">
                                 <FormField
                                     id="booking-unit"
                                     label={t('jobs.quick.unit')}
@@ -641,9 +983,7 @@ export default function QuickBook({
                                         id="booking-unit"
                                         autoComplete="address-line2"
                                         maxLength={50}
-                                        value={
-                                            form.data.new_customer.property.unit
-                                        }
+                                        value={data.new_customer.property.unit}
                                         onChange={(event) =>
                                             setProperty({
                                                 unit: event.target.value,
@@ -654,15 +994,12 @@ export default function QuickBook({
                                 <FormField
                                     id="booking-city"
                                     label={t('properties.fields.city')}
-                                    error={errors['new_customer.property.city']}
                                 >
                                     <Input
                                         id="booking-city"
                                         autoComplete="address-level2"
                                         maxLength={100}
-                                        value={
-                                            form.data.new_customer.property.city
-                                        }
+                                        value={data.new_customer.property.city}
                                         onChange={(event) =>
                                             setProperty({
                                                 city: event.target.value,
@@ -671,24 +1008,45 @@ export default function QuickBook({
                                         }
                                     />
                                 </FormField>
-                                <FormField
-                                    id="booking-notes"
-                                    label={t('jobs.quick.customer_notes')}
-                                    className="sm:col-span-2"
-                                    error={errors['new_customer.notes']}
-                                >
-                                    <Input
-                                        id="booking-notes"
-                                        value={form.data.new_customer.notes}
-                                        onChange={(event) =>
-                                            form.setData('new_customer', {
-                                                ...form.data.new_customer,
-                                                notes: event.target.value,
-                                            })
-                                        }
-                                    />
-                                </FormField>
                             </div>
+                        ) : (
+                            <button
+                                type="button"
+                                className="flex min-h-11 items-center gap-1.5 text-sm font-medium text-link"
+                                onClick={() => setAddressOpen(true)}
+                            >
+                                <MapPin className="size-4" />
+                                {t('jobs.quick.enter_manually')}
+                            </button>
+                        )}
+                    </Step>
+                )}
+
+                {/* More details, folded: about the customer, brand, source, notes for the team. */}
+                <details className="da-card group" data-test="booking-more">
+                    <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                        <span className="flex-1">
+                            {t('jobs.quick.more_details')}
+                        </span>
+                        <ChevronDown className="size-5 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="space-y-3 border-t p-4">
+                        {!existing && (
+                            <FormField
+                                id="booking-notes"
+                                label={t('jobs.quick.customer_notes')}
+                                error={errors['new_customer.notes']}
+                            >
+                                <Input
+                                    id="booking-notes"
+                                    value={data.new_customer.notes}
+                                    onChange={(event) =>
+                                        setNewCustomer({
+                                            notes: event.target.value,
+                                        })
+                                    }
+                                />
+                            </FormField>
                         )}
                         {brands.length > 1 && (
                             <FormField
@@ -698,7 +1056,7 @@ export default function QuickBook({
                             >
                                 <NativeSelect
                                     id="booking-brand"
-                                    value={form.data.brand_id}
+                                    value={data.brand_id}
                                     onChange={(event) =>
                                         form.setData(
                                             'brand_id',
@@ -717,256 +1075,105 @@ export default function QuickBook({
                                 </NativeSelect>
                             </FormField>
                         )}
-                        {brands.length <= 1 && (
-                            <InputError message={errors.brand_id} />
-                        )}
-                    </section>
-                    <section className="da-card space-y-3 p-4 sm:p-5">
-                        <h2 className="flex items-center gap-2 font-semibold">
-                            <Wrench className="size-5 text-primary" />
-                            {t('jobs.quick.problem_title')}
-                        </h2>
-                        {tracksAppliances && (
-                            <div className="space-y-2">
-                                <span className="text-[13px] font-semibold">
-                                    {t('jobs.quick.appliance')}
-                                </span>
-                                <ApplianceTypePicker
-                                    label={t('jobs.quick.appliance')}
-                                    options={applianceTypes}
-                                    value={applianceType}
-                                    onChange={(type) =>
-                                        setApplianceType(
-                                            type === applianceType ? '' : type,
+                        {leadSources.length > 0 && (
+                            <FormField
+                                id="booking-source"
+                                label={t('jobs.fields.lead_source')}
+                                error={errors.lead_source}
+                            >
+                                <NativeSelect
+                                    id="booking-source"
+                                    value={data.lead_source}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'lead_source',
+                                            event.target.value,
                                         )
                                     }
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    {t('jobs.quick.appliance_hint')}
-                                </p>
-                                <InputError
-                                    message={
-                                        errors['new_appliances.0.type'] ??
-                                        errors.appliance_ids
-                                    }
-                                />
-                            </div>
+                                >
+                                    <option value="">—</option>
+                                    {leadSources.map((source) => (
+                                        <option
+                                            key={source.value}
+                                            value={source.value}
+                                        >
+                                            {source.label}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </FormField>
                         )}
                         <FormField
-                            id="booking-problem"
-                            label={t('jobs.quick.problem')}
-                            error={errors.description}
+                            id="booking-team-notes"
+                            label={t('jobs.fields.notes')}
+                            error={errors.notes}
                         >
                             <Textarea
-                                id="booking-problem"
+                                id="booking-team-notes"
                                 rows={2}
-                                placeholder={t('jobs.quick.problem_hint')}
-                                value={form.data.description}
+                                className="[field-sizing:content] min-h-16"
+                                value={data.notes}
                                 onChange={(event) =>
-                                    form.setData(
-                                        'description',
-                                        event.target.value,
-                                    )
+                                    form.setData('notes', event.target.value)
                                 }
                             />
                         </FormField>
-                    </section>
-                    {booking && (
-                        <section className="da-card space-y-4 p-4 sm:p-5">
-                            <h2 className="flex items-center gap-2 font-semibold">
-                                <CalendarPlus className="size-5 text-primary" />
-                                {t('jobs.quick.appointment')}
-                            </h2>
-                            <div className="grid grid-cols-4 gap-1.5">
-                                {dayChoices.map((choice) => (
-                                    <button
-                                        key={choice.ymd}
-                                        type="button"
-                                        aria-pressed={
-                                            form.data.visit.date === choice.ymd
-                                        }
-                                        onClick={() =>
-                                            setVisit({ date: choice.ymd })
-                                        }
-                                        className="da-chip da-press flex min-h-14 flex-col items-center justify-center rounded-2xl px-1 leading-tight"
-                                    >
-                                        <span className="text-xs font-semibold opacity-85">
-                                            {choice.label}
-                                        </span>
-                                        <span className="text-sm font-bold">
-                                            {choice.day}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                            <div>
-                                <p className="mb-1.5 text-sm font-medium">
-                                    {t('jobs.quick.arrival_window')}
-                                </p>
-                                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                                    {windows.map((w) => (
-                                        <button
-                                            key={w.start}
-                                            type="button"
-                                            aria-pressed={
-                                                form.data.visit.start_time ===
-                                                    w.start &&
-                                                form.data.visit.end_time ===
-                                                    w.end
-                                            }
-                                            disabled={w.past}
-                                            onClick={() =>
-                                                setVisit({
-                                                    start_time: w.start,
-                                                    end_time: w.end,
-                                                })
-                                            }
-                                            className="da-chip da-press min-h-12 rounded-2xl px-1 text-sm font-semibold disabled:line-through disabled:opacity-40"
-                                        >
-                                            {w.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormField
-                                    id="booking-date"
-                                    label={t('jobs.visit_fields.date')}
-                                    className="col-span-2"
-                                    error={errors['visit.date']}
-                                >
-                                    <Input
-                                        id="booking-date"
-                                        type="date"
-                                        required
-                                        value={form.data.visit.date}
-                                        onChange={(event) =>
-                                            form.setData('visit', {
-                                                ...form.data.visit,
-                                                date: event.target.value,
-                                            })
-                                        }
-                                    />
-                                </FormField>
-                                <FormField
-                                    id="booking-from"
-                                    label={t('jobs.visit_fields.start_time')}
-                                    error={errors['visit.start_time']}
-                                >
-                                    <Input
-                                        id="booking-from"
-                                        type="time"
-                                        required
-                                        value={form.data.visit.start_time}
-                                        onChange={(event) =>
-                                            form.setData('visit', {
-                                                ...form.data.visit,
-                                                start_time: event.target.value,
-                                            })
-                                        }
-                                    />
-                                </FormField>
-                                <FormField
-                                    id="booking-to"
-                                    label={t('jobs.visit_fields.end_time')}
-                                    error={errors['visit.end_time']}
-                                >
-                                    <Input
-                                        id="booking-to"
-                                        type="time"
-                                        required
-                                        value={form.data.visit.end_time}
-                                        onChange={(event) =>
-                                            form.setData('visit', {
-                                                ...form.data.visit,
-                                                end_time: event.target.value,
-                                            })
-                                        }
-                                    />
-                                </FormField>
-                            </div>
-                            {inPast && (
-                                <p
-                                    role="alert"
-                                    className="rounded-2xl bg-amber-50 p-3 text-sm font-medium text-amber-900"
-                                >
-                                    {t('jobs.quick.in_past')}
-                                </p>
+                    </div>
+                </details>
+                {brands.length <= 1 && <InputError message={errors.brand_id} />}
+
+                {Object.entries(errors)
+                    .filter(
+                        ([key]) =>
+                            ![
+                                'brand_id',
+                                'customer_id',
+                                'property_id',
+                                'description',
+                                'notes',
+                                'lead_source',
+                                'new_customer.first_name',
+                                'new_customer.phone',
+                                'new_customer.notes',
+                                'new_customer.property.line1',
+                                'new_customer.property.city',
+                                'new_customer.property.unit',
+                                'visit.date',
+                                'visit.start_time',
+                                'visit.end_time',
+                                'new_appliances.0.type',
+                                'appliance_ids',
+                            ].includes(key) &&
+                            !key.startsWith('visit.assignee_ids'),
+                    )
+                    .map(([key, message]) => (
+                        <InputError key={key} message={message} />
+                    ))}
+
+                <StickyActionBar>
+                    <div className="flex w-full items-center gap-3">
+                        <p
+                            role="status"
+                            data-test="booking-status"
+                            className={cn(
+                                'min-w-0 flex-1 text-sm',
+                                ready
+                                    ? 'font-semibold text-success'
+                                    : 'text-muted-foreground',
                             )}
-                            {assignableUsers.length > 1 && (
-                                <div>
-                                    <p className="mb-1.5 text-sm font-medium">
-                                        {t('jobs.quick.technician')}
-                                    </p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {[
-                                            ...assignableUsers.map((user) => ({
-                                                id: user.id as number | null,
-                                                name: user.name,
-                                            })),
-                                            {
-                                                id: null,
-                                                name: t('calendar.unassigned'),
-                                            },
-                                        ].map((choice) => (
-                                            <button
-                                                key={choice.id ?? 'none'}
-                                                type="button"
-                                                aria-pressed={
-                                                    (form.data.visit
-                                                        .assignee_ids[0] ??
-                                                        null) === choice.id
-                                                }
-                                                onClick={() =>
-                                                    setVisit({
-                                                        assignee_ids:
-                                                            choice.id === null
-                                                                ? []
-                                                                : [choice.id],
-                                                    })
-                                                }
-                                                className={cn(
-                                                    'da-chip da-press min-h-12 rounded-2xl px-4 text-sm font-semibold',
-                                                )}
-                                            >
-                                                {choice.name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            <InputError message={assigneeError} />
-                        </section>
-                    )}
-                    {Object.entries(errors)
-                        .filter(
-                            ([key]) =>
-                                ![
-                                    'brand_id',
-                                    'customer_id',
-                                    'property_id',
-                                    'description',
-                                    'new_customer.first_name',
-                                    'new_customer.phone',
-                                    'new_customer.notes',
-                                    'new_customer.property.line1',
-                                    'new_customer.property.city',
-                                    'new_customer.property.unit',
-                                    'visit.date',
-                                    'visit.start_time',
-                                    'visit.end_time',
-                                ].includes(key) &&
-                                !key.startsWith('visit.assignee_ids'),
-                        )
-                        .map(([key, message]) => (
-                            <InputError key={key} message={message} />
-                        ))}
-                    <div className="flex flex-wrap gap-3">
+                        >
+                            {ready
+                                ? t('jobs.quick.ready')
+                                : t('jobs.quick.missing.intro', {
+                                      items: missing.join(', '),
+                                  })}
+                        </p>
                         <Button
                             type="submit"
                             size="lg"
-                            className="min-h-14 flex-1 text-base"
-                            disabled={!canSave || form.processing}
+                            className="shrink-0 px-8"
+                            disabled={!ready}
+                            loading={form.processing}
                         >
                             {t(
                                 booking
@@ -974,28 +1181,9 @@ export default function QuickBook({
                                     : 'jobs.quick.continue_invoice',
                             )}
                         </Button>
-                        <Button asChild variant="outline" size="lg">
-                            <Link href={index()}>{t('common.cancel')}</Link>
-                        </Button>
                     </div>
-                    {!canSave && (
-                        <p
-                            role="status"
-                            className="text-sm text-muted-foreground"
-                        >
-                            {t('jobs.quick.missing.intro', {
-                                items: missing.join(', '),
-                            })}
-                        </p>
-                    )}
-                    <Link
-                        href={create()}
-                        className="inline-block text-sm text-muted-foreground underline underline-offset-4"
-                    >
-                        {t('jobs.quick.full_form')}
-                    </Link>
-                </form>
-            </div>
+                </StickyActionBar>
+            </form>
         </>
     );
 }

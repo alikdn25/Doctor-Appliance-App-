@@ -1,3 +1,36 @@
+# October 15 — UX redesign, phase 5: booking and job forms
+
+UX-REDESIGN.md §7.1–7.3 and §25.
+
+1. **Book customer** (§7.1) on one page in the order of a call: Phone first (formatted as typed; from 3 digits a caller
+   already in the book is offered as "Jane Cooper · 8450 128 St · 2 jobs [Use]", by phone number only), Name (the
+   magnifier searches by name), Appliance (4 columns, 40 px pictures, "Other" last, tap again to clear), Problem (grows
+   as you type), When, Technician, Address (optional, unit/city after a pick or "Enter manually"), More details (about
+   the customer, brand when more than one, source, notes for the team). A chosen customer is one row with Change and
+   their notes. Book is pinned at the bottom with "To save, add: …" → "Ready"; ✕ cancels (asks when something was
+   typed); "⋯ → Open full job form" carries what was typed.
+2. **When** (§25): day chips (Today, Tomorrow, 5 more days, Pick date) and the company's arrival windows; windows that
+   already started today are hidden; "Now" first for today — from now until the technician's next job (or one hour).
+   "Custom time" opens date / from / to.
+3. **Technician**: only people who go on calls (new "Goes on calls (shows in calendar)" on the Team screen; on for
+   Owners and Technicians), each with "free" or "busy 9–11" for the chosen day and window.
+4. After booking: the day in the calendar (My Jobs for people without the calendar) with "Booked #1005 · Tomorrow
+   9:00–11:00 a.m." and Open job.
+5. **Arrival windows** in Company settings: any number, may overlap; the default list is 9–11, 11–1, 1–3, 3–5.
+6. **Full job form** (§7.2): header with ←, Job type ("what kind of work") and Visit reason ("why we are going", hidden
+   for handyman) together, "Schedule it now" replaced by When (Later = Needs scheduling, day and window chips, custom
+   time), Save pinned at the bottom.
+7. **Edit job** (§7.3): the customer's name and phone folded under "Customer details" with "Changes apply to all of
+   Jane's jobs"; the address fields open with "Edit address" instead of sitting under the address list.
+
+- Migration (approved by the owner): `companies.arrival_windows` (JSON, empty = default windows) and
+  `company_user.shows_in_calendar` (on for existing Owners and Technicians). Columns only; no data removed.
+- Fixed: a customer search still running when Book was pressed used up the "Booked" message.
+- Tests: `tests/Feature/Jobs/BookingTest.php` (defaults per role and Team toggle, windows and busy times, tenant
+  isolation, settings validation, phone-only search with job counts, redirect and message), updated quick-entry,
+  booking and edit browser scenarios, a "Now" scenario. TripTest pinned to midday (it failed late in the evening).
+- Next: phase 6 — Jobs with Open / All / Deleted tabs (§7.4) and the office job page (§7.5).
+
 # October 15 — UX redesign, phase 4: technician screens
 
 UX-REDESIGN.md §6 and §24.

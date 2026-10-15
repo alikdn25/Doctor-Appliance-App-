@@ -54,6 +54,7 @@ class TeamController extends Controller
                 'role' => $m->role->value,
                 'role_label' => $m->role->label(),
                 'is_active' => $m->is_active,
+                'shows_in_calendar' => $m->shows_in_calendar,
                 'brand_ids' => $brandLinks->get($m->user_id, []),
                 'invitation_pending' => $m->user->last_login_at === null && in_array($m->user->email, $pendingEmails, true),
                 'is_self' => $m->user_id === $request->user()->id,
@@ -87,6 +88,10 @@ class TeamController extends Controller
     public function update(MemberRequest $request, Membership $membership, UpdateMember $update): RedirectResponse
     {
         $update->handle($membership, $request->role(), $request->boolean('is_active'), $request->brandIds());
+
+        if ($request->has('shows_in_calendar')) {
+            $membership->update(['shows_in_calendar' => $request->boolean('shows_in_calendar')]);
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('team.updated')]);
 

@@ -13,7 +13,18 @@ export function useFlashToast(): void {
                 return;
             }
 
-            toast[data.type](data.message);
+            toast[data.type](
+                data.message,
+                data.action
+                    ? {
+                          duration: 8000,
+                          action: {
+                              label: data.action.label,
+                              onClick: () => router.visit(data.action!.url),
+                          },
+                      }
+                    : undefined,
+            );
         });
     }, []);
 }

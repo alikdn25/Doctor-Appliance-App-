@@ -51,15 +51,31 @@ export function ApplianceTypePicker({
     value,
     onChange,
     label,
+    compact = false,
 }: {
     options: Option[];
     value: string;
     onChange: (value: string) => void;
     label: string;
+    /** Booking (UX-REDESIGN §7.1): 4 columns, 40 px pictures, 12 px labels, "Other" last. */
+    compact?: boolean;
 }) {
+    const shown = compact
+        ? [
+              ...options.filter((o) => o.value !== 'other'),
+              ...options.filter((o) => o.value === 'other'),
+          ]
+        : options;
+
     return (
-        <div role="group" aria-label={label} className="grid grid-cols-3 gap-2">
-            {options.map((o) => {
+        <div
+            role="group"
+            aria-label={label}
+            className={
+                compact ? 'grid grid-cols-4 gap-1.5' : 'grid grid-cols-3 gap-2'
+            }
+        >
+            {shown.map((o) => {
                 const on = o.value === value;
                 return (
                     <button
@@ -67,19 +83,33 @@ export function ApplianceTypePicker({
                         type="button"
                         aria-pressed={on}
                         onClick={() => onChange(o.value)}
-                        className="da-tile da-press relative flex flex-col items-center gap-1 px-1.5 pt-2 pb-2.5"
+                        className={
+                            compact
+                                ? 'da-tile da-press relative flex flex-col items-center gap-0.5 px-1 pt-1.5 pb-1.5'
+                                : 'da-tile da-press relative flex flex-col items-center gap-1 px-1.5 pt-2 pb-2.5'
+                        }
                     >
                         <img
                             src={applianceImageUrl(o.value)}
                             alt=""
                             loading="lazy"
-                            className="h-16 w-full object-contain mix-blend-multiply"
+                            className={
+                                compact
+                                    ? 'h-10 w-full object-contain mix-blend-multiply'
+                                    : 'h-16 w-full object-contain mix-blend-multiply'
+                            }
                         />
-                        <span className="flex min-h-8 items-center text-center text-[13px] leading-tight font-bold">
+                        <span
+                            className={
+                                compact
+                                    ? 'line-clamp-2 text-center text-xs leading-tight font-semibold'
+                                    : 'flex min-h-8 items-center text-center text-[13px] leading-tight font-bold'
+                            }
+                        >
                             {o.label}
                         </span>
                         {on && (
-                            <span className="da-primary absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full">
+                            <span className="da-primary absolute top-1 right-1 flex size-5 items-center justify-center rounded-full">
                                 <Check
                                     className="size-3.5"
                                     strokeWidth={3}

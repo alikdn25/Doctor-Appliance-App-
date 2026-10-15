@@ -19,11 +19,14 @@ export function ScreenHeader({
     title,
     subtitle,
     back,
+    leading,
     actions,
 }: {
     title: string;
     subtitle?: string;
     back?: NonNullable<InertiaLinkProps['href']>;
+    /** Replaces ← on the left, e.g. ✕ that closes a form (UX-REDESIGN §7.1). */
+    leading?: ReactNode;
     actions?: ReactNode;
 }) {
     const slot = useContext(ScreenHeaderSlot);
@@ -35,7 +38,7 @@ export function ScreenHeader({
 
     return createPortal(
         <div className="flex w-full items-center gap-3">
-            {backTo && <BackButton href={backTo} />}
+            {leading ?? (backTo && <BackButton href={backTo} />)}
             <div className="min-w-0 flex-1">
                 <h1 className="truncate text-xl leading-tight font-semibold text-white">
                     {title}

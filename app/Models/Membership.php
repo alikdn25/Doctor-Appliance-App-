@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property int $user_id
  * @property UserRole $role
  * @property bool $is_active
+ * @property bool $shows_in_calendar
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read User $user
@@ -33,7 +34,7 @@ class Membership extends Model
 
     protected $table = 'company_user';
 
-    protected $fillable = ['company_id', 'user_id', 'role', 'is_active', 'trip_start_address'];
+    protected $fillable = ['company_id', 'user_id', 'role', 'is_active', 'trip_start_address', 'shows_in_calendar'];
 
     protected $attributes = [
         'is_active' => true,
@@ -47,7 +48,18 @@ class Membership extends Model
         return [
             'role' => UserRole::class,
             'is_active' => 'boolean',
+            'shows_in_calendar' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // People who go on calls (Owners and Technicians) are offered as the technician when booking, unless set.
+        static::creating(function (Membership $membership) {
+            if (! array_key_exists('shows_in_calendar', $membership->getAttributes())) {
+                $membership->shows_in_calendar = in_array($membership->role, [UserRole::Owner, UserRole::Technician], true);
+            }
+        });
     }
 
     /**
@@ -67,5 +79,15 @@ class Membership extends Model
     {
         $query->where('is_active', true)
             ->whereIn('role', [UserRole::Owner->value, UserRole::Admin->value, UserRole::Technician->value]);
+    }
+
+    /**
+     * Assignable members who go on calls ("Shows in calendar"): the technicians offered when booking.
+     *
+     * @param  Builder<Membership>  $query
+     */
+    public function scopeInCalendar(Builder $query): void
+    {
+        $query->assignable()->where('shows_in_calendar', true);
     }
 }
