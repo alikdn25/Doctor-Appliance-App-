@@ -90,6 +90,8 @@ class HandleInertiaRequests extends Middleware
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
+                'menu_mode' => $company ? $user->menuMode() : 'field',
+                'can_choose_menu' => $company !== null && $user->canChooseMenu(),
                 'is_super_admin' => $user->is_super_admin,
                 'two_factor_enabled' => $user->hasEnabledTwoFactorAuthentication(),
             ],

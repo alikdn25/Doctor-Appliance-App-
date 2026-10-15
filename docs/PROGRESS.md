@@ -1,3 +1,30 @@
+# October 15 — UX redesign, phase 3: app frame and navigation
+
+UX-REDESIGN.md §5, §22 and the menu item of §23.
+
+1. **Bottom bar by role** (phones): Owner/Office — Today · Calendar · ＋ Book · Jobs (Office) or Invoices (Field) · More;
+   technician — Today · Mileage · My expenses · More. The active item is always lit; "＋ Book" books on the day the
+   calendar shows. One source for the bottom bar, More and the desktop sidebar (`hooks/use-app-navigation.ts`).
+2. **My menu: Field | Office** (§22) at the top of More, saved per person (new nullable `users.menu_mode`, migration
+   approved by the owner). Technicians always have Field and do not see the switch.
+3. **More is a bottom sheet** (§5.4): search over the menu, groups (open for the Owner), items of the bottom bar not
+   repeated, then profile, notifications, company switch and sign-out. No menu button in the header on phones.
+4. **Header** (§4.4, §5.3): compact (56 px on a phone), title 20/600; ← on every child screen (back through the app's
+   history, or to the parent screen when opened from a link); none on root screens.
+5. **Unfinished-jobs strip** (§5.2): total plus a counter per category (Overdue in red, Needs scheduling, Waiting for
+   parts/customer, On hold, Scheduled; zeros hidden), each opening the unfinished jobs with that filter.
+6. **Messages**: with automatic texting the inbox is an icon with the unread count in the header of Today and Jobs;
+   otherwise it is in More (and always in the desktop sidebar).
+7. **Expenses & taxes** (§23, Owner): one More item opening expenses, mileage and cash on hand with this month's
+   figures (the tax reserve of §17 joins it in phase 10). Office keeps its separate items.
+8. **Profile and security** in the same frame: personal settings now know the person's company, so they show the
+   bottom bar and ← (never redirecting people without a company).
+
+- Tests: `tests/Feature/NavigationTest.php` (menu mode per role, saving, Expenses & taxes access, props for the
+  frame); browser `tests/browser/navigation.spec.ts` (owner and technician bars, Field/Office swap, More search and
+  groups, ← on child screens, unfinished strip, profile in the frame) and the updated menu scenarios.
+- Next: phase 4 — technician screens (§6) and the three buttons of the My Jobs card (§24).
+
 # October 14 — UX redesign, phase 2: design tokens and the UI kit
 
 UX-REDESIGN.md §4 and §16.1 phase 2. The look follows the volumetric ux-preview mockups; where they differ, the

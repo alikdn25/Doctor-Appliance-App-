@@ -1,34 +1,42 @@
-import { Menu } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
+import { BackButton, useBackTarget } from '@/components/back-button';
 import { Breadcrumbs } from '@/components/breadcrumbs';
-import { useSidebar } from '@/components/ui/sidebar';
 import { useTrans } from '@/lib/i18n';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
+/**
+ * The compact navy header (UX-REDESIGN §4.4): on a phone ← (child screens only) and the screen's name; on a
+ * desktop the breadcrumbs. No menu button: More is in the bottom bar, the sidebar on a desktop.
+ * A screen with its own header (ScreenHeader) draws into the slot and replaces this content.
+ */
 export function AppSidebarHeader({
     breadcrumbs = [],
     slotRef,
 }: {
     breadcrumbs?: BreadcrumbItemType[];
-    /** Where a screen's own header (ScreenHeader) is drawn; it then replaces the default one. */
     slotRef?: (element: HTMLDivElement | null) => void;
 }) {
-    const { toggleSidebar, openMobile, state, isMobile } = useSidebar();
     const t = useTrans();
+    const backTo = useBackTarget();
+    const { component } = usePage();
+    const title =
+        breadcrumbs.length > 0
+            ? t(breadcrumbs[breadcrumbs.length - 1].title)
+            : '';
+
     return (
-        <header className="da-header sticky top-0 z-20 flex min-h-16 shrink-0 items-center justify-between gap-2 px-3 pt-2 pb-6 md:px-4">
+        <header
+            className="da-header sticky top-0 z-20 flex min-h-14 shrink-0 items-center justify-between gap-2 px-3 pt-2 pb-6 md:min-h-16 md:px-4"
+            data-component={component}
+        >
             <div ref={slotRef} className="da-header-slot contents" />
-            <div className="da-header-default flex min-w-0 items-center gap-3">
-                <button
-                    type="button"
-                    className="da-header-btn da-press flex h-11 shrink-0 items-center gap-2 px-4 text-sm font-semibold md:hidden"
-                    onClick={toggleSidebar}
-                    aria-label={t('nav.menu')}
-                    aria-expanded={isMobile ? openMobile : state === 'expanded'}
-                >
-                    <Menu className="size-5" aria-hidden="true" />{' '}
-                    {t('nav.menu')}
-                </button>
-                <div className="hidden min-w-0 text-white/80 sm:block [&_a]:text-white/80 [&_a:hover]:text-white [&_span]:text-white">
+            <div className="da-header-default flex min-w-0 flex-1 items-center gap-3">
+                {backTo && <BackButton href={backTo} className="md:hidden" />}
+                {/* Not a heading: screens give their own h1; this only names the screen on a phone. */}
+                <p className="truncate text-xl font-semibold text-white md:hidden">
+                    {title}
+                </p>
+                <div className="hidden min-w-0 text-white/80 md:block [&_a]:text-white/80 [&_a:hover]:text-white [&_span]:text-white">
                     <Breadcrumbs breadcrumbs={breadcrumbs} />
                 </div>
             </div>

@@ -9,21 +9,22 @@ test('visible menu and booking open the first visit directly from any working sc
     page,
 }, info) => {
     await page.goto('/company/settings');
-    // One menu: the sidebar on a computer, the Menu button on a phone (no second menu button on desktop).
-    const menu = page.getByRole('button', { name: 'Menu', exact: true });
+    // One menu: the sidebar on a computer, the bottom bar with "+ Book" and More on a phone (no menu button).
+    await expect(
+        page.getByRole('button', { name: 'Menu', exact: true }),
+    ).toHaveCount(0);
     if (info.project.name === 'mobile') {
-        await expect(menu).toBeVisible();
-        const bounds = await menu.boundingBox();
+        const book = page.locator('[data-test="bottom-nav-book"]');
+        const bounds = await book.boundingBox();
         expect(bounds!.height).toBeGreaterThanOrEqual(44);
-        await menu.click();
+        await book.click();
     } else {
-        await expect(menu).toBeHidden();
+        await page
+            .locator('[data-sidebar="content"]')
+            .last()
+            .getByRole('link', { name: 'Book customer', exact: true })
+            .click();
     }
-    await page
-        .locator('[data-sidebar="content"]')
-        .last()
-        .getByRole('link', { name: 'Book customer', exact: true })
-        .click();
     await expect(page).toHaveURL(/\/jobs\/create\?book=1$/);
     await expect(
         page.getByRole('heading', { name: 'Book customer', exact: true }),
