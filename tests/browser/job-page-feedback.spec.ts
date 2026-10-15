@@ -236,6 +236,16 @@ test('job page: ⋯ holds the rare actions, Work done saves by itself, Activity 
     );
 
     const activity = page.locator('[data-test="job-activity"]');
+    if (info.project.name === 'mobile') {
+        // Phone: Overview · Work · Money · Activity jump to their part; Activity opens.
+        const anchors = page.locator('[data-test="job-anchors"]');
+        await expect(anchors).toBeVisible();
+        await anchors.getByRole('button', { name: 'Activity' }).click();
+        await expect(
+            activity.getByRole('heading', { name: 'Status history' }),
+        ).toBeVisible();
+        await activity.locator('summary').click();
+    }
     await expect(
         activity.getByRole('heading', { name: 'Status history' }),
     ).toBeHidden();
@@ -270,24 +280,41 @@ test('the address of a booked job can be corrected on Edit', async ({
     await expect(page).toHaveURL(new RegExp(`/jobs/${fixture.job_id}$`));
 });
 
-test('the jobs list uses the mockup cards with count circles and folded filters', async ({
+test('Jobs: Open · All · Deleted, one line of chips, compact office cards and folded filters', async ({
     page,
 }, info) => {
     await page.goto('/jobs');
+    await expect(page.getByRole('radio', { name: /^Open/ })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    );
+    await expect(page.getByRole('button', { name: /^Overdue/ })).toBeVisible();
+    await page.screenshot({
+        path: info.outputPath('jobs-open.png'),
+        fullPage: true,
+    });
+
+    await page.getByRole('radio', { name: 'All', exact: true }).click();
+    await expect(page).toHaveURL(/tab=all/);
     await expect(page.getByRole('combobox')).toHaveCount(0);
     const card = page
         .locator('[data-test="job-card"]', { hasText: 'Jane Browser' })
         .first();
-    await expect(card.getByRole('link', { name: /Navigate/ })).toBeVisible();
+    // The office card: no Navigate, Call as an icon.
+    await expect(card.getByRole('link', { name: /Navigate/ })).toHaveCount(0);
+    await expect(card.getByRole('link', { name: 'Call' })).toBeVisible();
     await page.screenshot({
         path: info.outputPath('jobs-cards.png'),
         fullPage: true,
     });
-    const circle = page.getByRole('button', { name: /^Scheduled: \d+$/ });
-    await expect(circle).toBeVisible();
-    await circle.click();
+    const chip = page.getByRole('button', { name: /^Scheduled \d+$/ });
+    await chip.click();
     await expect(page).toHaveURL(/status=scheduled/);
     await page.getByRole('button', { name: 'Filters', exact: true }).click();
     await expect(page.getByRole('combobox').first()).toBeVisible();
     await page.screenshot({ path: info.outputPath('jobs-list.png') });
+
+    await page.getByRole('radio', { name: /^Deleted/ }).click();
+    await expect(page).toHaveURL(/tab=deleted/);
+    await expect(page.getByText(/can be restored for 30 days/)).toBeVisible();
 });

@@ -8,6 +8,7 @@ import { mapsUrl, telUrl } from '@/components/customers/types';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import { isFinishedJob } from '@/components/jobs/types';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { OverdueFlag } from '@/components/ui/status-badge';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -44,6 +45,8 @@ export function JobCard({
     action,
     accent = false,
     overdue = false,
+    office = false,
+    assignees = [],
 }: {
     job: JobCardData;
     href: NonNullable<InertiaLinkProps['href']>;
@@ -54,6 +57,9 @@ export function JobCard({
     /** The next job by time: an accent border. */
     accent?: boolean;
     overdue?: boolean;
+    /** The office list (§7.4): no Navigate, Call as an icon, the assignee's initials on the right. */
+    office?: boolean;
+    assignees?: string[];
 }) {
     const t = useTrans();
     const types = job.appliance_types.join(', ');
@@ -69,7 +75,16 @@ export function JobCard({
     ]
         .filter(Boolean)
         .join(' · ');
-    const buttons = [job.address, job.phone, action].filter(Boolean).length;
+    const buttons = office
+        ? 0
+        : [job.address, job.phone, action].filter(Boolean).length;
+    const initials = (name: string) =>
+        name
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part[0]?.toUpperCase())
+            .join('');
 
     return (
         <li
@@ -77,6 +92,7 @@ export function JobCard({
             data-accent={accent || undefined}
             className={cn(
                 'da-card overflow-hidden',
+                office && 'flex items-center pr-3',
                 accent && 'ring-2 ring-link',
                 // Finished work is muted (grey) in every list.
                 isFinishedJob(job.status) && 'opacity-60 grayscale',
@@ -84,7 +100,10 @@ export function JobCard({
         >
             <Link
                 href={href}
-                className="flex items-start gap-3 p-3 pb-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                className={cn(
+                    'flex min-w-0 flex-1 items-start gap-3 p-3 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+                    !office && 'pb-2',
+                )}
             >
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
                     <div className="flex min-w-0 items-center gap-1.5">
@@ -117,7 +136,31 @@ export function JobCard({
                     )}
                     {extra && <div className="text-xs">{extra}</div>}
                 </div>
-                {job.picture && (
+                {office && (
+                    <div className="flex shrink-0 flex-col items-end gap-2 self-center">
+                        {assignees.length > 0 ? (
+                            <span
+                                className="flex -space-x-2"
+                                title={assignees.join(', ')}
+                            >
+                                {assignees.slice(0, 2).map((name) => (
+                                    <span
+                                        key={name}
+                                        className="da-soft inline-flex size-9 items-center justify-center rounded-full text-xs font-bold ring-2 ring-white"
+                                        aria-label={name}
+                                    >
+                                        {initials(name)}
+                                    </span>
+                                ))}
+                            </span>
+                        ) : (
+                            <span className="text-xs font-medium text-amber-700">
+                                {t('jobs.unassigned')}
+                            </span>
+                        )}
+                    </div>
+                )}
+                {!office && job.picture && (
                     <img
                         src={applianceImageUrl(job.picture)}
                         alt=""
@@ -126,6 +169,13 @@ export function JobCard({
                     />
                 )}
             </Link>
+            {office && job.phone && (
+                <IconButton label={t('jobs.call')} asChild>
+                    <a href={telUrl(job.phone)}>
+                        <Phone />
+                    </a>
+                </IconButton>
+            )}
             {buttons > 0 && (
                 <div
                     className={cn(

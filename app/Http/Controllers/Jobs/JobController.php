@@ -29,7 +29,6 @@ use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\JobBringItem;
-use App\Models\JobChecklistItem;
 use App\Models\JobCostItem;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
@@ -42,6 +41,7 @@ use App\Models\User;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\CostAccess;
 use App\Support\Billing\JobProfit;
+use App\Support\Jobs\JobBacklog;
 use App\Support\Jobs\JobPresenter;
 use App\Support\PhoneNumber;
 use Carbon\CarbonImmutable;
@@ -61,15 +61,68 @@ class JobController extends Controller
 {
     private const CLOSED = ['completed', 'invoiced', 'paid', 'cancelled'];
 
+    /**
+     * Jobs (UX-REDESIGN §7.4): one screen with Open (the unfinished queue, by urgency), All (by visit date, newest
+     * first) and Deleted (restorable for 30 days). People without the office list see only Open.
+     */
     public function index(Request $request): Response|RedirectResponse
     {
-        if (! Gate::allows('viewAny', ServiceJob::class)) {
+        $user = $request->user();
+        $canAll = Gate::allows('viewAny', ServiceJob::class);
+        // Links with a filter of the full list (status, technician, dates…) open All; otherwise Open.
+        $allFilters = ['status', 'brand', 'technician', 'type', 'visit_type', 'outcome', 'strict', 'from', 'to'];
+        $tab = in_array($request->query('tab'), ['open', 'all', 'deleted'], true)
+            ? $request->query('tab')
+            : ($request->hasAny($allFilters) ? 'all' : 'open');
+
+        if (! $canAll) {
             Gate::authorize('viewMine', ServiceJob::class);
 
-            return to_route('jobs.mine');
+            // Technicians work from My Jobs; the unfinished queue is the only list they open.
+            if ($tab !== 'open' || ! $request->has('tab')) {
+                return to_route('jobs.mine');
+            }
         }
 
-        $user = $request->user();
+        if ($tab === 'deleted') {
+            Gate::authorize('viewTrash', ServiceJob::class);
+        }
+
+        $sort = in_array($request->query('sort'), ['urgency', 'newest', 'visit', 'number'], true) ? $request->query('sort') : '';
+        $shared = [
+            'tab' => $tab,
+            'sort' => $sort,
+            'canViewAll' => $canAll,
+            'canViewTrash' => Gate::allows('viewTrash', ServiceJob::class),
+            'canCreate' => Gate::allows('create', ServiceJob::class),
+            'deletedCount' => Gate::allows('viewTrash', ServiceJob::class)
+                ? ServiceJob::onlyTrashed()->visibleTo($user)->where('deleted_at', '>=', now()->subDays(ServiceJob::RESTORE_DAYS))->count()
+                : 0,
+        ];
+
+        if ($tab === 'open') {
+            $filters = [
+                'search' => trim((string) $request->query('search', '')),
+                'reason' => in_array($request->query('reason'), JobBacklog::REASONS, true) ? $request->query('reason') : '',
+                'sort' => $sort === 'newest' ? 'newest' : 'urgency',
+            ];
+
+            return Inertia::render('jobs/index', [
+                ...$shared,
+                'jobs' => JobBacklogController::jobs($user, $filters),
+                'filters' => $filters,
+            ]);
+        }
+
+        if ($tab === 'deleted') {
+            return Inertia::render('jobs/index', [
+                ...$shared,
+                'deleted' => $this->deletedJobs($user),
+                'days' => ServiceJob::RESTORE_DAYS,
+                'filters' => ['search' => ''],
+            ]);
+        }
+
         $timezone = currentCompany()->timezone;
         $filters = [
             'search' => trim((string) $request->query('search', '')),
@@ -88,6 +141,7 @@ class JobController extends Controller
         $type = JobType::tryFrom($filters['type']);
         $visitType = VisitType::tryFrom($filters['visit_type']);
         $outcome = JobOutcome::tryFrom($filters['outcome']);
+        $lastVisit = '(select max(v.scheduled_start) from job_visits v where v.service_job_id = service_jobs.id)';
 
         $jobs = ServiceJob::query()
             ->visibleTo($user)
@@ -113,12 +167,17 @@ class JobController extends Controller
                 }
             }))
             ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
-            ->orderByDesc('id')
+            ->when(
+                $sort === 'number',
+                fn ($q) => $q->orderByDesc('number'),
+                // By visit date, newest first; jobs without a visit after them (by when they were booked).
+                fn ($q) => $q->orderByRaw("{$lastVisit} desc nulls last")->orderByDesc('id'),
+            )
             ->paginate(25)
             ->withQueryString()
             ->through(fn (ServiceJob $job) => JobPresenter::row($job));
 
-        // Coloured count circles: visible jobs per status (other filters ignored), tap to filter.
+        // Status chips: visible jobs per status (other filters ignored), tap to filter.
         $statusCounts = ServiceJob::query()
             ->visibleTo($user)
             ->selectRaw('status, count(*) as total')
@@ -127,6 +186,7 @@ class JobController extends Controller
             ->map(fn ($total) => (int) $total);
 
         return Inertia::render('jobs/index', [
+            ...$shared,
             'jobs' => $jobs,
             'statusCounts' => $statusCounts,
             'filters' => $filters,
@@ -134,10 +194,8 @@ class JobController extends Controller
             'types' => currentCompany()->vertical->jobTypeOptions(),
             'visitTypes' => VisitType::options(),
             'outcomes' => JobOutcome::options(),
-            'canViewTrash' => Gate::allows('viewTrash', ServiceJob::class),
             'brands' => $this->brandOptions($user, activeOnly: false),
             'technicians' => $this->assignableUsers(),
-            'canCreate' => Gate::allows('create', ServiceJob::class),
         ]);
     }
 
@@ -340,7 +398,7 @@ class JobController extends Controller
         $timezone = currentCompany()->timezone;
         $job->load([
             'brand', 'customer.phones', 'property', 'appliances', 'visits.assignees', 'statusChanges.user',
-            'photos.user', 'checklistItems.doneBy', 'signer', 'estimates', 'invoices',
+            'photos.user', 'signer', 'estimates', 'invoices',
             'bringItems.checker', 'previousJob', 'followUps', 'closer',
         ]);
         $canUpdate = Gate::allows('update', $job);
@@ -417,13 +475,6 @@ class JobController extends Controller
                     'taken_at' => JobPresenter::iso($photo->taken_at),
                     'user' => $photo->user?->name,
                     'can_delete' => $canUpdate || ($photo->user_id === $user->id && Gate::allows('work', $job)),
-                ])->values(),
-                'checklist' => $job->checklistItems->map(fn (JobChecklistItem $item) => [
-                    'id' => $item->id,
-                    'label' => $item->label,
-                    'is_done' => $item->is_done,
-                    'done_by' => $item->doneBy?->name,
-                    'done_at' => JobPresenter::iso($item->done_at),
                 ])->values(),
                 'estimates' => $job->estimates->map(fn (Estimate $e) => BillingPresenter::row($e))->values(),
                 'invoices' => $job->invoices->map(fn (Invoice $i) => BillingPresenter::row($i))->values(),
@@ -587,7 +638,14 @@ class JobController extends Controller
             $job->delete();
         });
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.deleted_restorable', ['days' => ServiceJob::RESTORE_DAYS])]);
+        // "Job deleted · Undo" (UX-REDESIGN §7.5) for people who may restore it; the trash keeps it for 30 days.
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('jobs.deleted_restorable', ['days' => ServiceJob::RESTORE_DAYS]),
+            ...(Gate::allows('restore', $job) ? [
+                'action' => ['label' => __('jobs.undo'), 'url' => route('jobs.restore', $job, false), 'method' => 'post'],
+            ] : []),
+        ]);
 
         return Gate::allows('viewAny', ServiceJob::class) ? to_route('jobs.index') : to_route('jobs.mine');
     }
@@ -595,21 +653,31 @@ class JobController extends Controller
     /**
      * Jobs deleted in the last 30 days, which the office can restore.
      */
-    public function trash(Request $request): Response
+    /**
+     * Deleted jobs: the Deleted tab of Jobs. The old address opens that tab.
+     */
+    public function trash(): RedirectResponse
     {
         Gate::authorize('viewTrash', ServiceJob::class);
 
-        $jobs = ServiceJob::onlyTrashed()
-            ->visibleTo($request->user())
+        return to_route('jobs.index', ['tab' => 'deleted']);
+    }
+
+    /**
+     * Jobs deleted in the last 30 days, newest first, with Restore.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function deletedJobs(User $user): array
+    {
+        return ServiceJob::onlyTrashed()
+            ->visibleTo($user)
             ->where('deleted_at', '>=', now()->subDays(ServiceJob::RESTORE_DAYS))
             ->with(['customer', 'property', 'brand', 'deleter'])
             ->orderByDesc('deleted_at')
             ->limit(200)
-            ->get();
-
-        return Inertia::render('jobs/trash', [
-            'days' => ServiceJob::RESTORE_DAYS,
-            'jobs' => $jobs->map(fn (ServiceJob $job) => [
+            ->get()
+            ->map(fn (ServiceJob $job) => [
                 'id' => $job->id,
                 'number' => $job->number,
                 'customer' => $job->customer?->display_name,
@@ -618,8 +686,7 @@ class JobController extends Controller
                 'deleted_at' => JobPresenter::iso($job->deleted_at),
                 'deleted_by' => $job->deleter?->name,
                 'restorable_until' => JobPresenter::iso($job->deleted_at?->copy()->addDays(ServiceJob::RESTORE_DAYS)),
-            ])->values(),
-        ]);
+            ])->values()->all();
     }
 
     public function restore(ServiceJob $job): RedirectResponse

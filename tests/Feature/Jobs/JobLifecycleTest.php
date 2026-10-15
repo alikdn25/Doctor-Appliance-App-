@@ -51,10 +51,12 @@ describe('deleting jobs', function () {
         expect($job->trashed())->toBeTrue()->and($job->deleted_by)->toBe($this->owner->id)
             ->and(AuditLog::query()->where('action', 'job.deleted')->where('user_id', $this->owner->id)->exists())->toBeTrue();
 
-        $this->get(route('jobs.trash'))->assertInertia(fn (Assert $page) => $page
-            ->component('jobs/trash')
-            ->where('jobs.0.id', $this->job->id)
-            ->where('jobs.0.deleted_by', $this->owner->name));
+        // The old address opens the Deleted tab of Jobs.
+        $this->get(route('jobs.trash'))->assertRedirect(route('jobs.index', ['tab' => 'deleted']));
+        $this->get(route('jobs.index', ['tab' => 'deleted']))->assertInertia(fn (Assert $page) => $page
+            ->component('jobs/index')
+            ->where('deleted.0.id', $this->job->id)
+            ->where('deleted.0.deleted_by', $this->owner->name));
 
         $this->post(route('jobs.restore', $this->job))->assertRedirect(route('jobs.show', $this->job));
         expect(ServiceJob::withoutCompanyScope()->find($this->job->id))->not->toBeNull()
@@ -65,7 +67,7 @@ describe('deleting jobs', function () {
         $this->actingAs($this->owner)->delete(route('jobs.destroy', $this->job));
         $this->travel(31)->days();
 
-        $this->get(route('jobs.trash'))->assertInertia(fn (Assert $page) => $page->has('jobs', 0));
+        $this->get(route('jobs.index', ['tab' => 'deleted']))->assertInertia(fn (Assert $page) => $page->has('deleted', 0));
         $this->post(route('jobs.restore', $this->job))->assertForbidden();
     });
 
@@ -301,7 +303,7 @@ test('the job list filters by visit type, strict arrival and outcome', function 
     $declined = ServiceJob::factory()->for($this->property)->create(['brand_id' => $this->brand->id]);
     inCompany($this->company, fn () => $declined->forceFill(['outcome' => 'customer_declined', 'outcome_reason' => 'Other'])->save());
 
-    $ids = fn (array $query) => collect($this->get(route('jobs.index', $query))->viewData('page')['props']['jobs']['data'])->pluck('id')->all();
+    $ids = fn (array $query) => collect($this->get(route('jobs.index', ['tab' => 'all', ...$query]))->viewData('page')['props']['jobs']['data'])->pluck('id')->all();
 
     expect($ids(['visit_type' => 'callback']))->toBe([$callback->id])
         ->and($ids(['strict' => 1]))->toBe([$this->job->id])

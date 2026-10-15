@@ -30,7 +30,7 @@ beforeEach(function () {
 function jobIdsOn($test, $user): array
 {
     $ids = [];
-    $test->actingAs($user)->get(route('jobs.index'))->assertInertia(function (Assert $page) use (&$ids) {
+    $test->actingAs($user)->get(route('jobs.index', ['tab' => 'all']))->assertInertia(function (Assert $page) use (&$ids) {
         $ids = collect($page->toArray()['props']['jobs']['data'])->pluck('id')->sort()->values()->all();
     });
 

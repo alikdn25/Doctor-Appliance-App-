@@ -9,6 +9,7 @@ return [
     'margin' => 'Margin',
     'loss' => 'Loss',
     'job_costs' => 'Costs not on an invoice',
+    'internal' => 'Internal: never shown to the customer',
     'job_costs_hint' => 'Parts used on a no-charge job, consumables, materials included in an installation price. Internal only.',
     'add_cost' => 'Add cost',
     'remove_cost' => 'Remove cost',

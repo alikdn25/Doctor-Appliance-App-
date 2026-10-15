@@ -1,4 +1,3 @@
-import { User } from 'lucide-react';
 import { StrictBadge } from '@/components/jobs/job-outcome';
 import { JobCard } from '@/components/jobs/job-card';
 import type { JobRow } from '@/components/jobs/types';
@@ -7,7 +6,8 @@ import { useTrans } from '@/lib/i18n';
 import { show } from '@/routes/jobs';
 
 /**
- * Jobs as the cards of the approved My Jobs mockup.
+ * Jobs as compact office cards (UX-REDESIGN §7.4): window and status with a red Overdue flag, customer, address,
+ * appliance and problem; the assignees' initials and Call on the right. Tapping a card opens the job.
  */
 export function JobList({ jobs, empty }: { jobs: JobRow[]; empty: string }) {
     const t = useTrans();
@@ -22,44 +22,38 @@ export function JobList({ jobs, empty }: { jobs: JobRow[]; empty: string }) {
     }
 
     return (
-        <ul className="space-y-3">
-            {jobs.map((job) => (
-                <JobCard
-                    key={job.id}
-                    job={job}
-                    href={show(job.id)}
-                    time={
-                        job.visit
-                            ? time.window(
-                                  job.visit.scheduled_start,
-                                  job.visit.scheduled_end,
-                              )
-                            : t('jobs.not_scheduled')
-                    }
-                    extra={
-                        <>
-                            {job.visit && (
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                    <User className="size-3.5 shrink-0" />
-                                    {job.visit.assignees.length > 0
-                                        ? job.visit.assignees.join(', ')
-                                        : t('jobs.unassigned')}
-                                </div>
-                            )}
-                            {(job.backlog_reason_label ||
+        <ul className="space-y-2">
+            {jobs.map((job) => {
+                const reason =
+                    job.backlog_reason && job.backlog_reason !== 'overdue'
+                        ? job.backlog_reason_label
+                        : null;
+
+                return (
+                    <JobCard
+                        key={job.id}
+                        office
+                        job={job}
+                        href={show(job.id)}
+                        assignees={job.visit?.assignees ?? []}
+                        overdue={job.backlog_reason === 'overdue'}
+                        time={
+                            job.visit
+                                ? `${time.day(job.visit.scheduled_start)} · ${time.shortRange(
+                                      job.visit.scheduled_start,
+                                      job.visit.scheduled_end,
+                                  )}`
+                                : t('jobs.not_scheduled')
+                        }
+                        extra={
+                            (reason ||
                                 job.visit?.strict_arrival ||
                                 (job.outcome_label &&
                                     job.outcome !== 'repaired')) && (
-                                <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
-                                    {job.backlog_reason_label && (
-                                        <span
-                                            className={
-                                                job.backlog_reason === 'overdue'
-                                                    ? 'text-red-700 dark:text-red-300'
-                                                    : 'text-muted-foreground'
-                                            }
-                                        >
-                                            {job.backlog_reason_label}
+                                <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs font-medium">
+                                    {reason && (
+                                        <span className="text-muted-foreground">
+                                            {reason}
                                         </span>
                                     )}
                                     {job.visit?.strict_arrival && (
@@ -72,11 +66,11 @@ export function JobList({ jobs, empty }: { jobs: JobRow[]; empty: string }) {
                                             </span>
                                         )}
                                 </div>
-                            )}
-                        </>
-                    }
-                />
-            ))}
+                            )
+                        }
+                    />
+                );
+            })}
         </ul>
     );
 }

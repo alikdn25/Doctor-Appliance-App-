@@ -12,7 +12,7 @@ export type FlashToast = {
     type: 'success' | 'info' | 'warning' | 'error';
     message: string;
     /** A button in the toast, e.g. "Open job" after booking. */
-    action?: { label: string; url: string };
+    action?: { label: string; url: string; method?: 'get' | 'post' };
 };
 
 export type AuthLayoutProps = {

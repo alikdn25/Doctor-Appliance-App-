@@ -291,7 +291,7 @@ test('a signature must be a PNG with the signer\'s name', function () {
     $this->actingAs($this->owner)->get(route('jobs.signature.show', $this->job))->assertNotFound();
 });
 
-test('the job page lists photos, checklist and signature', function () {
+test('the job page lists photos and signature, never a checklist (removed, UX-REDESIGN §20)', function () {
     uploadPhoto();
     inCompany($this->company, fn () => $this->job->checklistItems()->create(['position' => 0, 'label' => 'Test run']));
     $this->post(route('jobs.signature.store', $this->job), [
@@ -303,7 +303,7 @@ test('the job page lists photos, checklist and signature', function () {
             ->where('job.photos.0.kind', 'before')
             ->where('job.photos.0.user', 'Tom Tech')
             ->where('job.photos.0.can_delete', true)
-            ->where('job.checklist.0.label', 'Test run')
+            ->missing('job.checklist')
             ->where('job.signature.name', 'Jane')
             ->where('job.signature.by', 'Tom Tech')
             ->has('photoKinds', 2));

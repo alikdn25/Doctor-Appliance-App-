@@ -447,7 +447,7 @@ test('manufacturer and tag suggestions only come from the current company', func
 test('the job list, search and my jobs only show jobs of the current company', function () {
     $this->actingAs($this->ownerA);
 
-    $this->get(route('jobs.index'))
+    $this->get(route('jobs.index', ['tab' => 'all']))
         ->assertInertia(fn (Assert $page) => $page
             ->where('jobs.total', 1)
             ->where('jobs.data.0.id', $this->jobA->id)
@@ -455,7 +455,7 @@ test('the job list, search and my jobs only show jobs of the current company', f
             ->where('technicians', fn ($people) => ! collect($people)->pluck('id')->contains($this->techB->id)));
 
     foreach ([(string) $this->jobB->number, 'Bella', '604-555-0202', 'Secret St', 'SECRETMODEL'] as $term) {
-        $this->get(route('jobs.index', ['search' => $term]))
+        $this->get(route('jobs.index', ['tab' => 'all', 'search' => $term]))
             ->assertInertia(fn (Assert $page) => $page->where('jobs.data', fn ($rows) => collect($rows)->pluck('id')->doesntContain($this->jobB->id)));
     }
 
