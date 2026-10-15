@@ -89,6 +89,11 @@ const pathOf = (href: Href) => new URL(toUrl(href), 'http://x').pathname;
  */
 export function useAppNavigation(): AppNavigation {
     const { auth, unreadMessages } = usePage().props;
+    const pageUrl = usePage().url;
+    // On the calendar, + Book books on the day it shows (UX-REDESIGN §9.1).
+    const shownDay = pageUrl.startsWith('/calendar')
+        ? new URL(pageUrl, 'http://x').searchParams.get('date')
+        : null;
     const can = auth.can ?? {};
     const role = auth.role?.value;
     const isOwner = role === 'owner';
@@ -107,7 +112,9 @@ export function useAppNavigation(): AppNavigation {
         item(
             'book',
             'nav.book_customer',
-            bookCustomer({ query: { book: 1 } }),
+            bookCustomer({
+                query: shownDay ? { book: 1, date: shownDay } : { book: 1 },
+            }),
             Plus,
         );
     const today =

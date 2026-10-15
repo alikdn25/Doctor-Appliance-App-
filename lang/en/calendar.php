@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'filters' => 'Filters',
+    'people' => 'People shown',
+    'got_it' => 'Got it',
+    'to_schedule_count' => '1 to schedule|:count to schedule',
+    'jobs_count' => '1 job|:count jobs',
+    'reschedule' => 'Reschedule',
     'show_completed' => 'Show completed',
     'title' => 'Calendar',
     'day' => 'Day',
@@ -27,7 +33,7 @@ return [
     'no_visits' => 'No jobs.',
     'conflict' => 'Overlaps another job (including :minutes min travel buffer)',
     'travel_buffer' => 'Travel buffer: :minutes min',
-    'drag_hint' => 'Drag a job to another time or person (on a phone: press and hold, then drag). Tap it for details.',
+    'drag_hint' => 'Tap an empty spot to book there. Drag a job to another time or person (on a phone: press and hold, then drag); tap it for details.',
     'moved' => 'Job moved.',
     'route' => 'Route of the day',
     'route_hint' => 'Addresses in time order. Use Map to see the day’s locations.',

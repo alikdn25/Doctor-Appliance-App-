@@ -1,12 +1,13 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
     AlertTriangle,
+    ChevronDown,
     ChevronLeft,
     ChevronRight,
     MapPin,
     Navigation,
     Pencil,
-    Plus,
+    SlidersHorizontal,
 } from 'lucide-react';
 import type { DragEvent, TouchEvent } from 'react';
 import { useRef, useState } from 'react';
@@ -25,12 +26,13 @@ import {
     routeUrl,
     toTime,
 } from '@/components/calendar/types';
+import { WeekAgenda } from '@/components/calendar/week-agenda';
 import { WeekGrid } from '@/components/calendar/week-grid';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import type { Assignable } from '@/components/jobs/types';
 import { isFinishedJob } from '@/components/jobs/types';
 import { VisitDialog } from '@/components/jobs/visit-dialog';
-import { PageHeader } from '@/components/page-header';
+import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -40,12 +42,18 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { useTouchDrag } from '@/hooks/use-touch-drag';
 import { useClock } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
-import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
 import { create as bookCustomer, show as showJob } from '@/routes/jobs';
 import { move, store as storeVisit } from '@/routes/visits';
@@ -63,6 +71,7 @@ type Props = {
     visits: CalendarVisit[];
     unscheduled: UnscheduledJob[];
     assignableUsers: Assignable[];
+    nowMinutes?: number;
 };
 
 /** New visits dropped on the calendar get a 2-hour arrival window and a 1-hour estimate. */
@@ -82,6 +91,7 @@ export default function CalendarPage({
     visits: allVisits,
     unscheduled,
     assignableUsers,
+    nowMinutes = 0,
 }: Props) {
     const t = useTrans();
     // Finished work is hidden by default; "Show completed" brings it back (greyed out). Remembered per device.
@@ -99,6 +109,47 @@ export default function CalendarPage({
             localStorage.setItem('calendar.showCompleted', on ? '1' : '0');
         } catch {
             // Storage unavailable (private mode): the choice lasts for this page only.
+        }
+    };
+    // Filters (UX-REDESIGN §9.1): Show completed and the people shown, in a sheet; remembered per device.
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [hiddenPeople, setHiddenPeople] = useState<number[]>(() => {
+        try {
+            return JSON.parse(
+                localStorage.getItem('calendar.hiddenPeople') ?? '[]',
+            ) as number[];
+        } catch {
+            return [];
+        }
+    });
+    const togglePerson = (id: number) => {
+        const next = hiddenPeople.includes(id)
+            ? hiddenPeople.filter((p) => p !== id)
+            : [...hiddenPeople, id];
+        setHiddenPeople(next);
+        try {
+            localStorage.setItem('calendar.hiddenPeople', JSON.stringify(next));
+        } catch {
+            // Storage unavailable: the choice lasts for this page only.
+        }
+    };
+    const shownLanes = lanes.filter(
+        (lane) => lane.id === null || !hiddenPeople.includes(lane.id),
+    );
+    // The drag hint is shown once, until "Got it".
+    const [hintSeen, setHintSeen] = useState(() => {
+        try {
+            return localStorage.getItem('calendar.hintSeen') === '1';
+        } catch {
+            return false;
+        }
+    });
+    const dismissHint = () => {
+        setHintSeen(true);
+        try {
+            localStorage.setItem('calendar.hintSeen', '1');
+        } catch {
+            // Storage unavailable: hidden for this page only.
         }
     };
     const visits = showCompleted
@@ -263,114 +314,227 @@ export default function CalendarPage({
                   }),
               });
 
-    const people = lanes.filter((lane) => lane.id !== null);
+    const people = shownLanes.filter((lane) => lane.id !== null);
+
+    const toSchedule = (
+        <>
+            <p className="mb-2 text-xs text-muted-foreground">
+                {t('calendar.to_schedule_hint')}
+            </p>
+            {unscheduled.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                    {t('calendar.nothing_to_schedule')}
+                </p>
+            ) : (
+                <ul className="max-h-96 space-y-2 overflow-y-auto">
+                    {unscheduled.map((job) => (
+                        <li key={job.id}>
+                            <button
+                                type="button"
+                                draggable
+                                onDragStart={(e) =>
+                                    startDrag(e, {
+                                        kind: 'job',
+                                        job,
+                                    })
+                                }
+                                onDragEnd={endDrag}
+                                onTouchStart={(e) =>
+                                    touch.begin(
+                                        e,
+                                        { kind: 'job', job },
+                                        `#${job.number} ${job.customer ?? ''}`,
+                                    )
+                                }
+                                onContextMenu={(e) => e.preventDefault()}
+                                onClick={() =>
+                                    !touch.consumeClick() && setScheduling(job)
+                                }
+                                className="block w-full cursor-grab rounded-md border bg-card p-2 text-left text-xs shadow-sm select-none [-webkit-touch-callout:none] hover:bg-muted/50"
+                            >
+                                <span className="flex items-center justify-between gap-2">
+                                    <span className="font-medium">
+                                        #{job.number} {job.customer}
+                                    </span>
+                                    <StatusBadge
+                                        status={job.status}
+                                        label={job.status_label}
+                                    />
+                                </span>
+                                <span className="block truncate text-muted-foreground">
+                                    {[
+                                        job.job_type_label,
+                                        job.appliances.join(', '),
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                </span>
+                                <span className="block truncate text-muted-foreground">
+                                    {job.address}
+                                </span>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </>
+    );
 
     return (
         <>
             <Head title={t('calendar.title')} />
 
-            <div className="space-y-4 p-4">
-                <PageHeader
-                    title={t('calendar.title')}
-                    description={title}
-                    actions={
-                        <Button asChild className="h-11">
-                            <Link
-                                href={bookCustomer({
-                                    query: { book: 1, date },
-                                })}
-                            >
-                                <Plus />
-                                {t('jobs.quick.book_day')}
-                            </Link>
-                        </Button>
-                    }
-                />
+            <ScreenHeader
+                title={t('calendar.title')}
+                subtitle={title}
+                actions={
+                    <button
+                        type="button"
+                        className={headerButtonClass}
+                        aria-label={t('calendar.filters')}
+                        onClick={() => setFiltersOpen(true)}
+                        data-test="calendar-filters"
+                    >
+                        <SlidersHorizontal className="size-5" />
+                    </button>
+                }
+            />
 
+            <div className="space-y-3 p-4">
+                {/* One line: Day | Week | Map, ‹ Today ›, and the date (tap to pick one). */}
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
-                        {(['day', 'week', 'map'] as const).map((v) => (
-                            <Link
-                                key={v}
-                                href={calendar({ query: { view: v, date } })}
-                                preserveScroll
-                                className={cn(
-                                    'rounded-md px-3 py-1.5 text-center text-sm font-medium',
-                                    view === v
-                                        ? 'bg-background shadow-sm'
-                                        : 'text-muted-foreground',
-                                )}
-                            >
-                                {t(`calendar.${v}`)}
-                            </Link>
-                        ))}
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="outline"
-                            size="icon"
+                    <SegmentedControl
+                        label={t('calendar.title')}
+                        value={view}
+                        onChange={(v) =>
+                            router.get(
+                                calendar().url,
+                                { view: v, date },
+                                { preserveScroll: true },
+                            )
+                        }
+                        options={(['day', 'week', 'map'] as const).map((v) => ({
+                            value: v,
+                            label: t(`calendar.${v}`),
+                        }))}
+                    />
+                    <div className="flex items-center">
+                        <button
+                            type="button"
+                            className="da-press flex size-10 items-center justify-center rounded-xl"
                             aria-label={t('calendar.previous')}
                             onClick={() => go({ date: previous })}
                         >
-                            <ChevronLeft />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={() => go({ date: today })}
-                            disabled={days.includes(today)}
-                        >
-                            {t('calendar.today')}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
+                            <ChevronLeft className="size-5" />
+                        </button>
+                        {!days.includes(today) && (
+                            <Button
+                                variant="tertiary"
+                                size="sm"
+                                onClick={() => go({ date: today })}
+                            >
+                                {t('calendar.today')}
+                            </Button>
+                        )}
+                        <label className="relative flex min-h-10 cursor-pointer items-center px-1 text-sm font-semibold whitespace-nowrap text-link underline decoration-dotted underline-offset-4">
+                            <span data-test="calendar-date">
+                                {days.includes(today) && view !== 'week'
+                                    ? t('calendar.today')
+                                    : dayLabel(date, locale)}
+                            </span>
+                            <input
+                                type="date"
+                                value={date}
+                                aria-label={t('jobs.visit_fields.date')}
+                                className="absolute inset-0 cursor-pointer opacity-0"
+                                onClick={(e) => {
+                                    try {
+                                        e.currentTarget.showPicker();
+                                    } catch {
+                                        // Older browsers open it by themselves.
+                                    }
+                                }}
+                                onChange={(e) =>
+                                    e.target.value &&
+                                    go({ date: e.target.value })
+                                }
+                            />
+                        </label>
+                        <button
+                            type="button"
+                            className="da-press flex size-10 items-center justify-center rounded-xl"
                             aria-label={t('calendar.next')}
                             onClick={() => go({ date: next })}
                         >
-                            <ChevronRight />
+                            <ChevronRight className="size-5" />
+                        </button>
+                    </div>
+                </div>
+
+                {!hintSeen && view !== 'map' && (
+                    <div
+                        className="da-card flex items-center gap-3 p-3 text-sm"
+                        data-test="calendar-hint"
+                    >
+                        <p className="min-w-0 flex-1 text-muted-foreground">
+                            {t('calendar.drag_hint')}
+                        </p>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={dismissHint}
+                        >
+                            {t('calendar.got_it')}
                         </Button>
                     </div>
-                    <Input
-                        type="date"
-                        className="w-auto"
-                        aria-label={t('jobs.visit_fields.date')}
-                        value={date}
-                        onChange={(e) =>
-                            e.target.value && go({ date: e.target.value })
-                        }
-                    />
-                    <label className="flex min-h-11 items-center gap-2 text-sm">
-                        <Checkbox
-                            checked={showCompleted}
-                            onCheckedChange={(c) => toggleCompleted(c === true)}
-                        />
-                        {t('calendar.show_completed')}
-                        {!showCompleted && hiddenCount > 0 && (
-                            <span className="text-muted-foreground">
-                                ({hiddenCount})
-                            </span>
-                        )}
-                    </label>
-                    <p className="text-xs text-muted-foreground">
-                        {t('calendar.drag_hint')}{' '}
-                        {t('calendar.travel_buffer', {
-                            minutes: travelBuffer,
-                        })}
-                    </p>
-                </div>
+                )}
+
+                {/* Phones: the jobs to schedule fold above the grid (§9.2); on wide screens they are a column. */}
+                <details
+                    className="da-card group xl:hidden"
+                    data-test="to-schedule-phone"
+                >
+                    <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                        <span className="flex-1">
+                            {t('calendar.to_schedule_count', {
+                                count: unscheduled.length,
+                            })}
+                        </span>
+                        <ChevronDown className="size-5 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="border-t p-3">{toSchedule}</div>
+                </details>
 
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
                     <div className="min-w-0">
                         {view === 'map' ? (
                             <DayMap
                                 visits={visits}
-                                lanes={lanes}
+                                lanes={shownLanes}
                                 onOpen={open}
                             />
                         ) : view === 'day' ? (
                             <DayGrid
                                 date={date}
-                                lanes={lanes}
+                                lanes={shownLanes}
+                                nowMinutes={date === today ? nowMinutes : null}
+                                onEmptySlot={(lane, minutes) =>
+                                    router.visit(
+                                        bookCustomer({
+                                            query: {
+                                                book: 1,
+                                                date,
+                                                start: toTime(
+                                                    Math.floor(minutes / 30) *
+                                                        30,
+                                                ),
+                                                ...(lane.id !== null
+                                                    ? { technician: lane.id }
+                                                    : {}),
+                                            },
+                                        }).url,
+                                    )
+                                }
                                 visits={visits}
                                 hours={hours}
                                 travelBuffer={travelBuffer}
@@ -382,92 +546,41 @@ export default function CalendarPage({
                                 onOpen={open}
                             />
                         ) : (
-                            <WeekGrid
-                                days={days}
-                                today={today}
-                                lanes={lanes}
-                                visits={visits}
-                                travelBuffer={travelBuffer}
-                                dragging={dragging}
-                                onVisitDragStart={dragVisit}
-                                onDragEnd={endDrag}
-                                onVisitTouchStart={touchVisit}
-                                onDrop={drop}
-                                onOpen={open}
-                            />
+                            <>
+                                <div className="md:hidden">
+                                    <WeekAgenda
+                                        days={days}
+                                        today={today}
+                                        visits={visits}
+                                        onOpen={open}
+                                        onReschedule={setEditing}
+                                    />
+                                </div>
+                                <div className="hidden md:block">
+                                    <WeekGrid
+                                        days={days}
+                                        today={today}
+                                        lanes={shownLanes}
+                                        visits={visits}
+                                        travelBuffer={travelBuffer}
+                                        dragging={dragging}
+                                        onVisitDragStart={dragVisit}
+                                        onDragEnd={endDrag}
+                                        onVisitTouchStart={touchVisit}
+                                        onDrop={drop}
+                                        onOpen={open}
+                                    />
+                                </div>
+                            </>
                         )}
                     </div>
 
                     <aside className="space-y-4">
-                        <section className="space-y-2 rounded-lg border p-3">
+                        <section className="da-card hidden space-y-2 p-3 xl:block">
                             <h2 className="text-sm font-medium">
                                 {t('calendar.to_schedule')}
                             </h2>
-                            <p className="text-xs text-muted-foreground">
-                                {t('calendar.to_schedule_hint')}
-                            </p>
-                            {unscheduled.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                    {t('calendar.nothing_to_schedule')}
-                                </p>
-                            ) : (
-                                <ul className="max-h-96 space-y-2 overflow-y-auto">
-                                    {unscheduled.map((job) => (
-                                        <li key={job.id}>
-                                            <button
-                                                type="button"
-                                                draggable
-                                                onDragStart={(e) =>
-                                                    startDrag(e, {
-                                                        kind: 'job',
-                                                        job,
-                                                    })
-                                                }
-                                                onDragEnd={endDrag}
-                                                onTouchStart={(e) =>
-                                                    touch.begin(
-                                                        e,
-                                                        { kind: 'job', job },
-                                                        `#${job.number} ${job.customer ?? ''}`,
-                                                    )
-                                                }
-                                                onContextMenu={(e) =>
-                                                    e.preventDefault()
-                                                }
-                                                onClick={() =>
-                                                    !touch.consumeClick() &&
-                                                    setScheduling(job)
-                                                }
-                                                className="block w-full cursor-grab rounded-md border bg-card p-2 text-left text-xs shadow-sm select-none [-webkit-touch-callout:none] hover:bg-muted/50"
-                                            >
-                                                <span className="flex items-center justify-between gap-2">
-                                                    <span className="font-medium">
-                                                        #{job.number}{' '}
-                                                        {job.customer}
-                                                    </span>
-                                                    <StatusBadge
-                                                        status={job.status}
-                                                        label={job.status_label}
-                                                    />
-                                                </span>
-                                                <span className="block truncate text-muted-foreground">
-                                                    {[
-                                                        job.job_type_label,
-                                                        job.appliances.join(
-                                                            ', ',
-                                                        ),
-                                                    ]
-                                                        .filter(Boolean)
-                                                        .join(' · ')}
-                                                </span>
-                                                <span className="block truncate text-muted-foreground">
-                                                    {job.address}
-                                                </span>
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
+                            {toSchedule}
                         </section>
 
                         {view === 'day' && (
@@ -566,6 +679,68 @@ export default function CalendarPage({
                     </aside>
                 </div>
             </div>
+
+            <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <SheetContent
+                    side="bottom"
+                    className="gap-3 px-4 pt-4"
+                    data-test="calendar-filters-sheet"
+                >
+                    <SheetHeader className="p-0 pr-12">
+                        <SheetTitle>{t('calendar.filters')}</SheetTitle>
+                        <SheetDescription className="sr-only">
+                            {t('calendar.filters')}
+                        </SheetDescription>
+                    </SheetHeader>
+                    <label className="flex min-h-11 items-center gap-2 text-sm">
+                        <Checkbox
+                            checked={showCompleted}
+                            onCheckedChange={(c) => toggleCompleted(c === true)}
+                        />
+                        {t('calendar.show_completed')}
+                        {!showCompleted && hiddenCount > 0 && (
+                            <span className="text-muted-foreground">
+                                ({hiddenCount})
+                            </span>
+                        )}
+                    </label>
+                    <div className="space-y-1">
+                        <p className="text-sm font-semibold">
+                            {t('calendar.people')}
+                        </p>
+                        {lanes
+                            .filter((lane) => lane.id !== null)
+                            .map((lane) => (
+                                <label
+                                    key={lane.id}
+                                    className="flex min-h-11 items-center gap-2 text-sm"
+                                >
+                                    <Checkbox
+                                        checked={
+                                            !hiddenPeople.includes(lane.id!)
+                                        }
+                                        onCheckedChange={() =>
+                                            togglePerson(lane.id!)
+                                        }
+                                    />
+                                    {lane.name}
+                                </label>
+                            ))}
+                    </div>
+                    <p className="flex items-center gap-2 pb-[env(safe-area-inset-bottom)] text-xs text-muted-foreground">
+                        <span
+                            className="inline-block h-4 w-8 rounded"
+                            style={{
+                                backgroundImage:
+                                    'repeating-linear-gradient(135deg, var(--muted-foreground) 0 1px, transparent 1px 6px)',
+                            }}
+                        />
+                        {t('calendar.travel_buffer', {
+                            minutes: travelBuffer,
+                        })}
+                    </p>
+                </SheetContent>
+            </Sheet>
 
             {touch.ghost && (
                 <div

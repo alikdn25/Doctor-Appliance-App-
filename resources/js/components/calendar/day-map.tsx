@@ -6,7 +6,7 @@ import { isFinishedJob } from '@/components/jobs/types';
 import { cn } from '@/lib/utils';
 import { inLane, routeUrl } from '@/components/calendar/types';
 import { Button } from '@/components/ui/button';
-import { NativeSelect } from '@/components/ui/native-select';
+import { FilterChips } from '@/components/ui/filter-chips';
 import {
     googleMapsKeyRejected,
     loadGoogleMapsLibrary,
@@ -173,21 +173,19 @@ export function DayMap({
     }, [key, mapId, stops, onOpen]);
 
     return (
-        <section className="space-y-3 rounded-xl border bg-card p-3">
-            <label className="block space-y-1 text-sm font-medium">
-                <span>{t('calendar.map_person')}</span>
-                <NativeSelect
-                    value={person}
-                    onChange={(event) => setPerson(event.target.value)}
-                >
-                    <option value="all">{t('calendar.all_people')}</option>
-                    {lanes.map((lane) => (
-                        <option key={String(lane.id)} value={String(lane.id)}>
-                            {lane.name ?? t('calendar.unassigned')}
-                        </option>
-                    ))}
-                </NativeSelect>
-            </label>
+        <section className="da-card space-y-3 p-3">
+            <FilterChips
+                label={t('calendar.map_person')}
+                selected={[person]}
+                onChange={setPerson}
+                chips={[
+                    { value: 'all', label: t('calendar.all_people') },
+                    ...lanes.map((lane) => ({
+                        value: String(lane.id),
+                        label: lane.name ?? t('calendar.unassigned'),
+                    })),
+                ]}
+            />
             {stops.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                     {t('calendar.no_visits')}

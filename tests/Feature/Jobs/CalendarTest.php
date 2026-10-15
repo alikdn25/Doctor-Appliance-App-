@@ -60,9 +60,10 @@ test('the day view shows lanes per person and the day\'s visits in local time', 
             ->where('days', ['2030-06-12'])
             ->where('previous', '2030-06-11')
             ->where('next', '2030-06-13')
+            // People with work that day first, then the others who go on calls, then Unassigned (§9.2).
             ->where('lanes', [
-                ['id' => $this->owner->id, 'name' => 'Alex Owner', 'inactive' => false],
                 ['id' => $this->tech->id, 'name' => 'Tom Tech', 'inactive' => false],
+                ['id' => $this->owner->id, 'name' => 'Alex Owner', 'inactive' => false],
                 ['id' => null, 'name' => null, 'inactive' => false],
             ])
             ->has('visits', 1)
@@ -318,4 +319,27 @@ test('map coordinates respect brand and tenant permissions', function () {
     expect(collect(calendarProps(['view' => 'map'])['visits'])->pluck('id')->all())->toBe([$mine->id]);
     $this->actingAs($this->tech);
     $this->get(route('calendar', ['view' => 'map']))->assertForbidden();
+});
+
+test('lanes are the people who go on calls; an office admin shows only with a job of their own', function () {
+    $admin = memberOf($this->company, UserRole::Admin, ['name' => 'Olivia Office']);
+    $lanes = fn () => collect($this->get(route('calendar'))->viewData('page')['props']['lanes'])->pluck('name')->all();
+
+    expect($lanes())->toBe(['Alex Owner', 'Tom Tech', null]);
+
+    visitAt('2030-06-12 13:00', 60, [$admin]);
+
+    expect($lanes())->toBe(['Olivia Office', 'Alex Owner', 'Tom Tech', null]);
+});
+
+test('booking from an empty calendar slot brings the time and the person', function () {
+    $this->get(route('jobs.create', ['book' => 1, 'date' => '2030-06-12', 'start' => '13:30', 'technician' => $this->tech->id]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('jobs/quick-book')
+            ->where('bookingDate', '2030-06-12')
+            ->where('bookingStart', '13:30')
+            ->where('bookingTechnician', $this->tech->id));
+
+    $this->get(route('jobs.create', ['book' => 1, 'start' => '25:00']))
+        ->assertInertia(fn (Assert $page) => $page->where('bookingStart', null));
 });

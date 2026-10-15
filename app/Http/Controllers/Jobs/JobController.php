@@ -322,6 +322,9 @@ class JobController extends Controller
             'booking' => $request->boolean('book'),
             'openInvoice' => $request->boolean('invoice'),
             'bookingDate' => $request->input('date'),
+            // A tap on an empty calendar slot: its time and person (UX-REDESIGN §9.1).
+            'bookingStart' => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $request->query('start')) === 1 ? $request->query('start') : null,
+            'bookingTechnician' => $request->integer('technician') ?: null,
             'customer' => $customer ? self::customerOption($customer) : null,
             'today' => CarbonImmutable::now(currentCompany()->timezone)->format('Y-m-d'),
             // Company clock, so the booking form never suggests a window that has already passed.

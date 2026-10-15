@@ -9,21 +9,28 @@ test('completed work is hidden from the calendar until "Show completed", then sh
     page,
 }) => {
     await page.goto(`/calendar?view=day&date=${fixture.today}`);
-    const toggle = page.getByRole('checkbox', { name: 'Show completed' });
-    await expect(toggle).not.toBeChecked();
-
+    // "Show completed" is in the Filters sheet (UX-REDESIGN §9.1).
+    const filters = async () => {
+        await page.locator('[data-test="calendar-filters"]').click();
+        return page
+            .locator('[data-test="calendar-filters-sheet"]')
+            .getByRole('checkbox', { name: /Show completed/ });
+    };
     const finished = page.getByRole('button', { name: /Jane Browser/ });
     const before = await finished.count();
+    const toggle = await filters();
+    await expect(toggle).not.toBeChecked();
     await toggle.check();
+    await page.keyboard.press('Escape');
     await expect(finished).toHaveCount(before + 1);
     await expect(page.locator('.grayscale')).toHaveCount(1);
 
     // The choice is remembered on this device.
     await page.reload();
-    await expect(
-        page.getByRole('checkbox', { name: 'Show completed' }),
-    ).toBeChecked();
-    await page.getByRole('checkbox', { name: 'Show completed' }).uncheck();
+    const again = await filters();
+    await expect(again).toBeChecked();
+    await again.uncheck();
+    await page.keyboard.press('Escape');
 });
 
 test('completed jobs are greyed out in the jobs list', async ({ page }) => {

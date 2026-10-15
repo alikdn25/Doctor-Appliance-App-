@@ -65,6 +65,8 @@ class CalendarController extends Controller
             'hours' => $this->hours($company, $from, $to, $visits, $timezone),
             'travelBuffer' => $company->travel_buffer_minutes,
             'lanes' => $this->lanes($visits),
+            // The red "now" line (§9.2): minutes since the company's midnight, on today's day view.
+            'nowMinutes' => (int) $today->diffInMinutes(CarbonImmutable::now($timezone)),
             'visits' => $visits->map(fn (JobVisit $visit) => [
                 ...$this->visit($visit, $timezone),
                 'conflict' => in_array($visit->id, $conflicts, true),
@@ -115,28 +117,34 @@ class CalendarController extends Controller
     }
 
     /**
-     * One lane per person who can be assigned, plus anyone assigned to a shown visit
-     * who no longer can (so no visit disappears), plus "unassigned".
+     * Lanes (UX-REDESIGN §9.2): the people who go on calls ("Shows in calendar"), plus anyone else with a shown
+     * visit (so no visit disappears; marked inactive when they can no longer be assigned), plus "unassigned" last.
+     * People with work in the shown days come first.
      *
      * @param  Collection<int, JobVisit>  $visits
      * @return list<array{id: int|null, name: string|null, inactive: bool}>
      */
     private function lanes(Collection $visits): array
     {
-        $active = Membership::query()->assignable()->with('user')->get()
-            ->filter(fn (Membership $m) => $m->user !== null)
-            ->map(fn (Membership $m) => $m->user);
+        $assignable = Membership::query()->assignable()->with('user')->get()
+            ->filter(fn (Membership $m) => $m->user !== null);
+        $onCalls = $assignable->where('shows_in_calendar', true)->map(fn (Membership $m) => $m->user);
+        $busy = $visits->flatMap(fn (JobVisit $v) => $v->assignees)->unique('id');
 
-        $others = $visits->flatMap(fn (JobVisit $v) => $v->assignees)
+        $lanes = $onCalls
+            ->concat($busy->reject(fn (User $u) => $onCalls->contains('id', $u->id)))
             ->unique('id')
-            ->reject(fn (User $u) => $active->contains('id', $u->id));
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'inactive' => ! $assignable->contains('user_id', $u->id),
+                'busy' => $busy->contains('id', $u->id),
+            ])
+            ->sortBy(fn (array $lane) => [$lane['busy'] ? 0 : 1, mb_strtolower($lane['name'])])
+            ->map(fn (array $lane) => ['id' => $lane['id'], 'name' => $lane['name'], 'inactive' => $lane['inactive']])
+            ->values();
 
-        return $active->sortBy(fn (User $u) => mb_strtolower($u->name))
-            ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name, 'inactive' => false])
-            ->concat($others->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name, 'inactive' => true]))
-            ->push(['id' => null, 'name' => null, 'inactive' => false])
-            ->values()
-            ->all();
+        return $lanes->push(['id' => null, 'name' => null, 'inactive' => false])->all();
     }
 
     /**
