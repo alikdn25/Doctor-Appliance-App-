@@ -1,6 +1,13 @@
 <?php
 
 return [
+    'enter_manually' => 'Enter manually',
+    'label_hints' => [
+        'home' => 'Home',
+        'rental' => 'Rental',
+        'cottage' => 'Cottage',
+        'office' => 'Office',
+    ],
     'add' => 'Add property',
     'edit' => 'Edit property',
     'empty' => 'No properties yet.',

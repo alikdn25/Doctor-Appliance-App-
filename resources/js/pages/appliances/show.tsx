@@ -1,5 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
+    Camera,
+    Copy,
     History,
     MapPin,
     Pencil,
@@ -7,16 +9,21 @@ import {
     ShieldCheck,
     Trash2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ApplianceDialog } from '@/components/customers/appliance-dialog';
 import type { ApplianceData } from '@/components/customers/appliance-dialog';
 import { StatusBadge } from '@/components/jobs/status-badge';
-import { PageHeader } from '@/components/page-header';
+import { ScreenHeader } from '@/components/screen-header';
+import { ActionSheet } from '@/components/ui/action-sheet';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { IconButton } from '@/components/ui/icon-button';
+import { compressImage } from '@/lib/image';
+import { toast } from '@/lib/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
-import { destroy } from '@/routes/appliances';
+import { destroy, update } from '@/routes/appliances';
 import { index, show as showCustomer } from '@/routes/customers';
 import { show as showJob } from '@/routes/jobs';
 import type { Option } from '@/types';
@@ -60,11 +67,44 @@ export default function ApplianceShow({
         .filter(Boolean)
         .join(' ');
 
-    const remove = () => {
-        if (confirm(t('appliances.confirm_delete'))) {
-            router.delete(destroy(appliance.id).url);
-        }
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const plateInput = useRef<HTMLInputElement>(null);
+
+    // Take photo right in the empty rating-plate block (UX-REDESIGN §8.4).
+    const takePlate = async (file: File | undefined) => {
+        if (!file) return;
+        setUploading(true);
+        const { blob, filename } = await compressImage(file, 2400, 0.9);
+        router.post(
+            update(appliance.id).url,
+            {
+                _method: 'put',
+                type: appliance.type,
+                manufacturer: appliance.manufacturer ?? '',
+                model_number: appliance.model_number ?? '',
+                serial_number: appliance.serial_number ?? '',
+                install_date: appliance.install_date ?? '',
+                purchase_date: appliance.purchase_date ?? '',
+                warranty_expires_on: appliance.warranty_expires_on ?? '',
+                warranty_notes: appliance.warranty_notes ?? '',
+                notes: appliance.notes ?? '',
+                rating_plate: new File([blob], filename, { type: blob.type }),
+            },
+            {
+                forceFormData: true,
+                preserveScroll: true,
+                onFinish: () => setUploading(false),
+            },
+        );
     };
+
+    // Model and serial are copied with one tap when ordering parts.
+    const copy = (value: string) =>
+        navigator.clipboard
+            ?.writeText(value)
+            .then(() => toast.success(t('appliances.copied', { value })))
+            .catch(() => undefined);
 
     // Dates come as YYYY-MM-DD; show them in the company's regional format.
     const plainDate = (ymd: string | null) => (ymd ? time.dateOnly(ymd) : null);
@@ -80,21 +120,35 @@ export default function ApplianceShow({
         <>
             <Head title={title} />
 
-            <div className="max-w-3xl space-y-6 p-4">
-                <PageHeader
-                    title={title}
-                    actions={
-                        canUpdate && (
-                            <Button
-                                variant="outline"
-                                onClick={() => setEditing(true)}
-                            >
-                                <Pencil /> {t('common.edit')}
-                            </Button>
-                        )
-                    }
-                />
+            <ScreenHeader
+                title={title}
+                subtitle={customer.display_name}
+                actions={
+                    canUpdate && (
+                        <ActionSheet
+                            title={title}
+                            items={[
+                                {
+                                    key: 'edit',
+                                    label: t('appliances.edit'),
+                                    icon: <Pencil />,
+                                    onSelect: () => setEditing(true),
+                                },
+                                'separator',
+                                {
+                                    key: 'delete',
+                                    label: t('appliances.delete'),
+                                    icon: <Trash2 />,
+                                    destructive: true,
+                                    onSelect: () => setDeleteOpen(true),
+                                },
+                            ]}
+                        />
+                    )
+                }
+            />
 
+            <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
                 {customer.can_view ? (
                     <Link
                         href={showCustomer(customer.id)}
@@ -156,8 +210,20 @@ export default function ApplianceShow({
                                     <dt className="text-muted-foreground">
                                         {t(`appliances.fields.${field}`)}
                                     </dt>
-                                    <dd className="text-right font-medium break-all select-all">
+                                    <dd className="flex items-center justify-end gap-1 text-right font-medium break-all select-all">
                                         {value ?? '—'}
+                                        {value &&
+                                            (field === 'model_number' ||
+                                                field === 'serial_number') && (
+                                                <IconButton
+                                                    variant="plain"
+                                                    label={t('appliances.copy')}
+                                                    className="size-9 shrink-0"
+                                                    onClick={() => copy(value)}
+                                                >
+                                                    <Copy className="size-4" />
+                                                </IconButton>
+                                            )}
                                     </dd>
                                 </div>
                             ))}
@@ -201,9 +267,39 @@ export default function ApplianceShow({
                                 />
                             </a>
                         ) : (
-                            <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                            <div
+                                className="da-card flex flex-col items-center gap-3 border border-dashed p-5 text-center text-sm text-muted-foreground"
+                                data-test="rating-plate-empty"
+                            >
                                 {t('appliances.no_rating_plate')}
-                            </p>
+                                {canUpdate && (
+                                    <>
+                                        <Button
+                                            variant="secondary"
+                                            loading={uploading}
+                                            onClick={() =>
+                                                plateInput.current?.click()
+                                            }
+                                        >
+                                            <Camera />{' '}
+                                            {t('appliances.take_photo')}
+                                        </Button>
+                                        <input
+                                            ref={plateInput}
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            className="hidden"
+                                            data-test="rating-plate-input"
+                                            onChange={(e) =>
+                                                void takePlate(
+                                                    e.target.files?.[0],
+                                                )
+                                            }
+                                        />
+                                    </>
+                                )}
+                            </div>
                         )}
                     </section>
                 </div>
@@ -280,13 +376,17 @@ export default function ApplianceShow({
                         </ol>
                     )}
                 </section>
-
-                {canUpdate && (
-                    <Button variant="destructive" onClick={remove}>
-                        <Trash2 /> {t('appliances.delete')}
-                    </Button>
-                )}
             </div>
+
+            <ConfirmDialog
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                destructive
+                title={t('appliances.delete')}
+                description={t('appliances.confirm_delete')}
+                confirmLabel={t('appliances.delete')}
+                onConfirm={() => router.delete(destroy(appliance.id).url)}
+            />
 
             <ApplianceDialog
                 open={editing}

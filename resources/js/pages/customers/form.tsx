@@ -1,5 +1,13 @@
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { Plus, TriangleAlert, UserPlus, X } from 'lucide-react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import {
+    ChevronDown,
+    Info,
+    Plus,
+    Star,
+    TriangleAlert,
+    UserPlus,
+    X,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import {
@@ -12,15 +20,24 @@ import { emptyProperty } from '@/components/customers/types';
 import type { PropertyFormData } from '@/components/customers/types';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
-import { PageHeader } from '@/components/page-header';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import { PhoneInput } from '@/components/ui/phone-input';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
+import { StickyActionBar } from '@/components/ui/sticky-action-bar';
+import { TagInput } from '@/components/ui/tag-input';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
 import { formatPhone } from '@/lib/phone';
+import { cn } from '@/lib/utils';
 import { duplicates, index, show, store, update } from '@/routes/customers';
 import type { Option } from '@/types';
 
@@ -57,7 +74,7 @@ type FormData = {
     company_name: string;
     lead_source: string;
     payment_terms: string;
-    tags: string;
+    tags: string[];
     notes: string;
     phones: Phone[];
     emails: Email[];
@@ -76,6 +93,7 @@ type Props = {
     phoneLabels: Option[];
     emailLabels: Option[];
     tags: string[];
+    countries?: Option[];
 };
 
 /** Warns about existing customers with the same phone or email. Never blocks saving. */
@@ -134,6 +152,7 @@ export default function CustomerForm({
     phoneLabels,
     emailLabels,
     tags,
+    countries = [],
 }: Props) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -146,7 +165,7 @@ export default function CustomerForm({
         company_name: customer?.company_name ?? '',
         lead_source: customer?.lead_source ?? '',
         payment_terms: customer?.payment_terms ?? '',
-        tags: customer?.tags.join(', ') ?? '',
+        tags: customer?.tags ?? [],
         notes: customer?.notes ?? '',
         phones: customer?.phones.map(
             ({ id, label, contact_name, number, is_primary }) => ({
@@ -224,10 +243,9 @@ export default function CustomerForm({
             ...data,
             phones: data.phones.filter((p) => p.number.trim() !== ''),
             emails: data.emails.filter((m) => m.email.trim() !== ''),
-            tags: data.tags
-                .split(',')
-                .map((tag) => tag.trim())
-                .filter(Boolean),
+            // No address typed: the customer is saved without one (it can be added later).
+            add_property:
+                data.add_property && data.property.line1.trim() !== '',
         }));
 
         if (customer) {
@@ -239,6 +257,19 @@ export default function CustomerForm({
 
     const isBusiness = form.data.type !== 'residential';
     const title = customer ? customer.display_name : t('customers.add');
+    const country = auth.company?.country ?? 'US';
+    const [iconOpen, setIconOpen] = useState(false);
+    const [iconHint, setIconHint] = useState(false);
+    const addPhone = () =>
+        form.setData('phones', [
+            ...form.data.phones,
+            {
+                label: 'mobile',
+                contact_name: '',
+                number: '',
+                is_primary: form.data.phones.length === 0,
+            },
+        ]);
 
     const text = (
         field: 'first_name' | 'last_name' | 'company_name',
@@ -260,145 +291,75 @@ export default function CustomerForm({
         </FormField>
     );
 
+    // "Already a customer: Jane Cooper [Open]" right where the phone or email is typed (SPEC §7.1).
+    const duplicateNote = found.length > 0 && (
+        <div
+            role="status"
+            data-test="customer-duplicate"
+            className="flex flex-wrap items-center gap-2 rounded-2xl bg-amber-50 p-3 text-sm text-amber-950"
+        >
+            <TriangleAlert className="size-4 shrink-0" />
+            {found.map((d) => (
+                <span key={d.id} className="flex flex-wrap items-center gap-2">
+                    {t('customers.already_customer', { name: d.display_name })}
+                    <Button asChild size="sm" variant="tertiary">
+                        <Link href={show(d.id)}>{t('customers.open')}</Link>
+                    </Button>
+                </span>
+            ))}
+        </div>
+    );
+
     return (
         <>
             <Head title={title} />
+            <ScreenHeader
+                title={title}
+                back={customer ? show(customer.id) : index()}
+            />
 
-            <form onSubmit={submit} className="max-w-2xl space-y-8 p-4">
-                <PageHeader title={title} />
-
+            <form
+                onSubmit={submit}
+                className="mx-auto w-full max-w-2xl space-y-6 p-4 sm:p-6"
+                data-test="customer-form"
+            >
+                {/* 1. Name, with the icon on the left (tap to choose). */}
                 <section className="grid gap-4 sm:grid-cols-2">
-                    <h2 className="text-base font-medium sm:col-span-2">
-                        {t('customers.sections.details')}
-                    </h2>
-                    <div className="flex items-start gap-3 sm:col-span-2">
-                        <CustomerAvatar
-                            icon={
-                                form.data.type === 'residential'
-                                    ? suggestedIcon
-                                    : 'business'
-                            }
-                        />
-                        {form.data.type === 'residential' && (
-                            <FormField
-                                id="avatar_style"
-                                label={t('customers.fields.avatar_style')}
-                                hint={t('customers.avatar_hint')}
-                                error={errors.avatar_style}
-                            >
-                                <div
-                                    id="avatar_style"
-                                    role="radiogroup"
-                                    className="flex flex-wrap gap-2"
-                                >
-                                    {(
-                                        [
-                                            'man',
-                                            'woman',
-                                            'couple',
-                                            'auto',
-                                        ] as const
-                                    ).map((style) => (
-                                        <button
-                                            key={style}
-                                            type="button"
-                                            role="radio"
-                                            aria-checked={
-                                                form.data.avatar_style === style
-                                            }
-                                            onClick={() =>
-                                                form.setData(
-                                                    'avatar_style',
-                                                    style as AvatarStyle,
-                                                )
-                                            }
-                                            className={`min-h-11 rounded-2xl px-4 text-sm font-semibold shadow-sm transition ${
-                                                form.data.avatar_style === style
-                                                    ? 'bg-primary text-primary-foreground'
-                                                    : 'bg-card text-foreground ring-1 ring-border'
-                                            }`}
-                                        >
-                                            {t(`customers.icons.${style}`)}
-                                        </button>
-                                    ))}
-                                </div>
-                            </FormField>
-                        )}
+                    <div className="flex items-center gap-3 sm:col-span-2">
+                        <button
+                            type="button"
+                            className="da-press rounded-full"
+                            aria-label={t('customers.fields.avatar_style')}
+                            onClick={() => setIconOpen(true)}
+                            disabled={form.data.type !== 'residential'}
+                            data-test="avatar-button"
+                        >
+                            <CustomerAvatar
+                                size="lg"
+                                icon={
+                                    form.data.type === 'residential'
+                                        ? suggestedIcon
+                                        : 'business'
+                                }
+                            />
+                        </button>
+                        <p className="text-sm text-muted-foreground">
+                            {form.data.type === 'residential'
+                                ? t('customers.icon_tap')
+                                : form.data.type !== 'residential' &&
+                                  types.find((o) => o.value === form.data.type)
+                                      ?.label}
+                        </p>
                     </div>
-                    <FormField
-                        id="type"
-                        label={t('customers.fields.type')}
-                        error={errors.type}
-                    >
-                        <NativeSelect
-                            id="type"
-                            value={form.data.type}
-                            onChange={(e) =>
-                                form.setData('type', e.target.value)
-                            }
-                        >
-                            {types.map((type) => (
-                                <option key={type.value} value={type.value}>
-                                    {type.label}
-                                </option>
-                            ))}
-                        </NativeSelect>
-                    </FormField>
-                    <FormField
-                        id="lead_source"
-                        label={t('customers.fields.lead_source')}
-                        error={errors.lead_source}
-                    >
-                        <NativeSelect
-                            id="lead_source"
-                            value={form.data.lead_source}
-                            onChange={(e) =>
-                                form.setData('lead_source', e.target.value)
-                            }
-                        >
-                            <option value="">
-                                {t('customers.lead_sources.none')}
-                            </option>
-                            {leadSources.map((source) => (
-                                <option key={source.value} value={source.value}>
-                                    {source.label}
-                                </option>
-                            ))}
-                        </NativeSelect>
-                    </FormField>
-                    <FormField
-                        id="payment_terms"
-                        label={t('customers.fields.payment_terms')}
-                        hint={t('customers.payment_terms_hint')}
-                        error={errors.payment_terms}
-                    >
-                        <NativeSelect
-                            id="payment_terms"
-                            value={form.data.payment_terms}
-                            onChange={(e) =>
-                                form.setData('payment_terms', e.target.value)
-                            }
-                        >
-                            <option value="">
-                                {t('customers.company_default_terms', {
-                                    terms: defaultPaymentTerms,
-                                })}
-                            </option>
-                            {paymentTerms.map((terms) => (
-                                <option key={terms.value} value={terms.value}>
-                                    {terms.label}
-                                </option>
-                            ))}
-                        </NativeSelect>
-                    </FormField>
                     {isBusiness &&
                         text('company_name', 'organization', 'sm:col-span-2')}
                     {text('first_name', 'given-name')}
                     {text('last_name', 'family-name')}
                 </section>
 
-                <section className="grid gap-4">
-                    <h2 className="text-base font-medium">
+                {/* 2. Phones and emails. */}
+                <section className="grid gap-3">
+                    <h2 className="text-base font-semibold">
                         {t('customers.sections.contacts')}
                     </h2>
 
@@ -407,12 +368,12 @@ export default function CustomerForm({
                             key={phone.id ?? `new-${i}`}
                             className="grid gap-1"
                         >
-                            <div className="flex items-end gap-2">
+                            <div className="flex items-center gap-2">
                                 <NativeSelect
                                     aria-label={t(
                                         'customers.fields.phone_label',
                                     )}
-                                    className="h-9 w-28 shrink-0"
+                                    className="w-32 shrink-0"
                                     value={phone.label}
                                     onChange={(e) =>
                                         setRow('phones', i, {
@@ -426,17 +387,14 @@ export default function CustomerForm({
                                         </option>
                                     ))}
                                 </NativeSelect>
-                                <Input
-                                    type="tel"
-                                    inputMode="tel"
-                                    autoComplete="tel"
+                                <PhoneInput
                                     aria-label={t('customers.fields.phone')}
                                     placeholder={t('customers.fields.phone')}
+                                    country={country}
+                                    className="min-w-0 flex-1"
                                     value={phone.number}
-                                    onChange={(e) =>
-                                        setRow('phones', i, {
-                                            number: e.target.value,
-                                        })
+                                    onChange={(number) =>
+                                        setRow('phones', i, { number })
                                     }
                                 />
                                 <PrimaryToggle
@@ -477,60 +435,18 @@ export default function CustomerForm({
                             />
                         </div>
                     ))}
-                    <div className="flex flex-wrap gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                                form.setData('phones', [
-                                    ...form.data.phones,
-                                    {
-                                        label: 'mobile',
-                                        contact_name: '',
-                                        number: '',
-                                        is_primary:
-                                            form.data.phones.length === 0,
-                                    },
-                                ])
-                            }
-                        >
-                            <Plus /> {t('customers.add_phone')}
-                        </Button>
-                        {form.data.type === 'residential' && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                    form.setData('phones', [
-                                        ...form.data.phones,
-                                        {
-                                            label: 'mobile',
-                                            contact_name: '',
-                                            number: '',
-                                            is_primary:
-                                                form.data.phones.length === 0,
-                                        },
-                                    ])
-                                }
-                            >
-                                <UserPlus /> {t('customers.add_second_person')}
-                            </Button>
-                        )}
-                    </div>
 
                     {form.data.emails.map((email, i) => (
                         <div
                             key={email.id ?? `new-${i}`}
                             className="grid gap-1"
                         >
-                            <div className="flex items-end gap-2">
+                            <div className="flex items-center gap-2">
                                 <NativeSelect
                                     aria-label={t(
                                         'customers.fields.email_label',
                                     )}
-                                    className="h-9 w-28 shrink-0"
+                                    className="w-32 shrink-0"
                                     value={email.label}
                                     onChange={(e) =>
                                         setRow('emails', i, {
@@ -547,6 +463,7 @@ export default function CustomerForm({
                                 <Input
                                     type="email"
                                     autoComplete="email"
+                                    className="min-w-0 flex-1"
                                     aria-label={t('customers.fields.email')}
                                     placeholder={t('customers.fields.email')}
                                     value={email.email}
@@ -571,102 +488,77 @@ export default function CustomerForm({
                             <InputError message={errors[`emails.${i}.email`]} />
                         </div>
                     ))}
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="justify-self-start"
-                        onClick={() =>
-                            form.setData('emails', [
-                                ...form.data.emails,
-                                {
-                                    label: 'personal',
-                                    email: '',
-                                    is_primary: form.data.emails.length === 0,
-                                },
-                            ])
-                        }
-                    >
-                        <Plus /> {t('customers.add_email')}
-                    </Button>
 
-                    {found.length > 0 && (
-                        <Alert>
-                            <TriangleAlert />
-                            <AlertTitle>
-                                {t('customers.duplicate_title')}
-                            </AlertTitle>
-                            <AlertDescription>
-                                <p>{t('customers.duplicate_text')}</p>
-                                <ul className="mt-1 space-y-1">
-                                    {found.map((d) => (
-                                        <li key={d.id}>
-                                            <Link
-                                                href={show(d.id)}
-                                                className="font-medium underline underline-offset-4"
-                                            >
-                                                {d.display_name}
-                                            </Link>{' '}
-                                            · {d.matches.join(', ')}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </AlertDescription>
-                        </Alert>
-                    )}
+                    {duplicateNote}
+
+                    <div className="flex flex-wrap gap-x-4">
+                        <Button
+                            type="button"
+                            variant="link"
+                            className="h-11 px-0"
+                            onClick={addPhone}
+                        >
+                            <Plus /> {t('customers.add_phone')}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="link"
+                            className="h-11 px-0"
+                            onClick={() =>
+                                form.setData('emails', [
+                                    ...form.data.emails,
+                                    {
+                                        label: 'personal',
+                                        email: '',
+                                        is_primary:
+                                            form.data.emails.length === 0,
+                                    },
+                                ])
+                            }
+                        >
+                            <Plus /> {t('customers.add_email')}
+                        </Button>
+                        {form.data.type === 'residential' && (
+                            <Button
+                                type="button"
+                                variant="link"
+                                className="h-11 px-0"
+                                onClick={addPhone}
+                            >
+                                <UserPlus /> {t('customers.add_second_person')}
+                            </Button>
+                        )}
+                    </div>
                 </section>
 
+                {/* 3. Service address (new customers): one field; the rest opens after a pick. */}
                 {!customer && (
-                    <section className="grid gap-4">
-                        <label className="flex min-h-9 items-center gap-2 text-base font-medium">
-                            <Checkbox
-                                checked={form.data.add_property}
-                                onCheckedChange={(c) =>
-                                    form.setData('add_property', c === true)
-                                }
-                            />
-                            {t('customers.add_first_property')}
-                        </label>
-                        {form.data.add_property && (
-                            <PropertyFields
-                                data={form.data.property}
-                                onChange={(patch) =>
-                                    form.setData('property', {
-                                        ...form.data.property,
-                                        ...patch,
-                                    })
-                                }
-                                errors={errors}
-                                errorPrefix="property."
-                            />
-                        )}
+                    <section className="grid gap-3">
+                        <div className="flex items-baseline justify-between gap-2">
+                            <h2 className="text-base font-semibold">
+                                {t('customers.service_address')}
+                            </h2>
+                            <span className="text-xs text-muted-foreground">
+                                {t('customers.address_optional')}
+                            </span>
+                        </div>
+                        <PropertyFields
+                            data={form.data.property}
+                            onChange={(patch) =>
+                                form.setData('property', {
+                                    ...form.data.property,
+                                    ...patch,
+                                })
+                            }
+                            errors={errors}
+                            errorPrefix="property."
+                            countries={countries}
+                        />
                     </section>
                 )}
 
+                {/* 4. About the customer and tags. */}
                 <section className="grid gap-4">
-                    <h2 className="text-base font-medium">
-                        {t('customers.sections.other')}
-                    </h2>
-                    <FormField
-                        id="tags"
-                        label={t('customers.fields.tags')}
-                        error={errors.tags ?? errors['tags.0']}
-                        hint={t('customers.tags_hint')}
-                    >
-                        <Input
-                            id="tags"
-                            list="customer-tags"
-                            value={form.data.tags}
-                            onChange={(e) =>
-                                form.setData('tags', e.target.value)
-                            }
-                        />
-                        <datalist id="customer-tags">
-                            {tags.map((tag) => (
-                                <option key={tag} value={tag} />
-                            ))}
-                        </datalist>
-                    </FormField>
                     <FormField
                         id="notes"
                         label={t('customers.fields.notes')}
@@ -675,30 +567,217 @@ export default function CustomerForm({
                     >
                         <Textarea
                             id="notes"
-                            rows={3}
+                            rows={2}
+                            className="[field-sizing:content]"
                             value={form.data.notes}
                             onChange={(e) =>
                                 form.setData('notes', e.target.value)
                             }
                         />
                     </FormField>
+                    <FormField
+                        id="tags"
+                        label={t('customers.fields.tags')}
+                        error={errors.tags ?? errors['tags.0']}
+                    >
+                        <TagInput
+                            id="tags"
+                            value={form.data.tags}
+                            suggestions={tags}
+                            onChange={(value) => form.setData('tags', value)}
+                        />
+                    </FormField>
                 </section>
 
-                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                    <Button type="button" variant="outline" asChild>
-                        <Link href={customer ? show(customer.id) : index()}>
-                            {t('common.cancel')}
-                        </Link>
+                {/* 5. More: type, source, payment terms. */}
+                <details
+                    className="da-card group"
+                    data-test="customer-more"
+                    open={
+                        !!(
+                            errors.type ||
+                            errors.lead_source ||
+                            errors.payment_terms
+                        ) || undefined
+                    }
+                >
+                    <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                        <span className="flex-1">{t('customers.more')}</span>
+                        <ChevronDown className="size-5 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="grid gap-4 border-t p-4 sm:grid-cols-2">
+                        <FormField
+                            id="type"
+                            label={t('customers.fields.type')}
+                            error={errors.type}
+                        >
+                            <NativeSelect
+                                id="type"
+                                value={form.data.type}
+                                onChange={(e) =>
+                                    form.setData('type', e.target.value)
+                                }
+                            >
+                                {types.map((type) => (
+                                    <option key={type.value} value={type.value}>
+                                        {type.label}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FormField>
+                        <FormField
+                            id="lead_source"
+                            label={t('customers.fields.lead_source')}
+                            error={errors.lead_source}
+                        >
+                            <NativeSelect
+                                id="lead_source"
+                                value={form.data.lead_source}
+                                onChange={(e) =>
+                                    form.setData('lead_source', e.target.value)
+                                }
+                            >
+                                <option value="">
+                                    {t('customers.lead_sources.none')}
+                                </option>
+                                {leadSources.map((source) => (
+                                    <option
+                                        key={source.value}
+                                        value={source.value}
+                                    >
+                                        {source.label}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FormField>
+                        <FormField
+                            id="payment_terms"
+                            label={t('customers.fields.payment_terms')}
+                            hint={t('customers.payment_terms_hint_short')}
+                            error={errors.payment_terms}
+                            className="sm:col-span-2"
+                        >
+                            <NativeSelect
+                                id="payment_terms"
+                                value={form.data.payment_terms}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'payment_terms',
+                                        e.target.value,
+                                    )
+                                }
+                            >
+                                <option value="">
+                                    {t('customers.company_default_terms', {
+                                        terms: defaultPaymentTerms,
+                                    })}
+                                </option>
+                                {paymentTerms.map((terms) => (
+                                    <option
+                                        key={terms.value}
+                                        value={terms.value}
+                                    >
+                                        {terms.label}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FormField>
+                    </div>
+                </details>
+
+                <StickyActionBar>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="lg"
+                        className="md:order-first"
+                        onClick={() =>
+                            router.visit(
+                                (customer ? show(customer.id) : index()).url,
+                            )
+                        }
+                    >
+                        {t('common.cancel')}
                     </Button>
-                    <Button type="submit" disabled={form.processing}>
+                    <Button
+                        type="submit"
+                        size="lg"
+                        loading={form.processing}
+                        data-test="customer-save"
+                    >
                         {t('common.save')}
                     </Button>
-                </div>
+                </StickyActionBar>
             </form>
+
+            {/* The icon: Man / Woman / Couple / Automatic, with the explanation behind (i). */}
+            <Sheet open={iconOpen} onOpenChange={setIconOpen}>
+                <SheetContent side="bottom" className="gap-2 px-3 pt-4">
+                    <SheetHeader className="p-0 px-2 pr-12">
+                        <SheetTitle className="flex items-center gap-1">
+                            {t('customers.fields.avatar_style')}
+                            <button
+                                type="button"
+                                aria-label={t('customers.avatar_hint')}
+                                aria-expanded={iconHint}
+                                className="flex size-8 items-center justify-center rounded-full text-muted-foreground"
+                                onClick={() => setIconHint(!iconHint)}
+                            >
+                                <Info className="size-4" />
+                            </button>
+                        </SheetTitle>
+                        <SheetDescription
+                            className={iconHint ? undefined : 'sr-only'}
+                        >
+                            {t('customers.avatar_hint')}
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div
+                        role="radiogroup"
+                        className="grid grid-cols-4 gap-2 pb-[env(safe-area-inset-bottom)]"
+                    >
+                        {(['man', 'woman', 'couple', 'auto'] as const).map(
+                            (style) => (
+                                <button
+                                    key={style}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={
+                                        form.data.avatar_style === style
+                                    }
+                                    aria-pressed={
+                                        form.data.avatar_style === style
+                                    }
+                                    onClick={() => {
+                                        form.setData(
+                                            'avatar_style',
+                                            style as AvatarStyle,
+                                        );
+                                        setIconOpen(false);
+                                    }}
+                                    className="da-chip da-press flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold"
+                                >
+                                    <span aria-hidden="true">
+                                        <CustomerAvatar
+                                            icon={
+                                                style === 'auto'
+                                                    ? nameIcon
+                                                    : style
+                                            }
+                                        />
+                                    </span>
+                                    {t(`customers.icons.${style}`)}
+                                </button>
+                            ),
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
         </>
     );
 }
 
+/** The primary phone or email: a star with "Primary" (UX-REDESIGN §8.3). */
 function PrimaryToggle({
     checked,
     onChange,
@@ -709,20 +788,22 @@ function PrimaryToggle({
     const t = useTrans();
 
     return (
-        <label
-            className="flex h-9 shrink-0 items-center gap-1 text-xs"
+        <button
+            type="button"
+            aria-pressed={checked}
+            aria-label={t('customers.make_primary')}
             title={t('customers.primary')}
+            onClick={onChange}
+            className={cn(
+                'flex h-11 shrink-0 items-center gap-1 rounded-xl px-1.5 text-xs font-medium',
+                checked ? 'text-amber-600' : 'text-muted-foreground',
+            )}
         >
-            <input
-                type="radio"
-                checked={checked}
-                onChange={onChange}
-                className="size-4"
-            />
+            <Star className={cn('size-5', checked && 'fill-current')} />
             <span className="hidden sm:inline">
-                {t('customers.make_primary')}
+                {checked ? t('customers.primary') : t('customers.make_primary')}
             </span>
-        </label>
+        </button>
     );
 }
 
@@ -734,7 +815,7 @@ function RemoveButton({ onClick }: { onClick: () => void }) {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-9 shrink-0"
+            className="size-11 shrink-0"
             aria-label={t('common.remove')}
             onClick={onClick}
         >

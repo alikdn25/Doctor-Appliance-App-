@@ -1,6 +1,19 @@
 <?php
 
 return [
+    'owes' => 'Owes :amount',
+    'text' => 'Text',
+    'icon_tap' => 'Tap the picture to choose man, woman or couple.',
+    'already_customer' => 'Already a customer: :name',
+    'open' => 'Open',
+    'service_address' => 'Service address',
+    'address_optional' => 'Optional — can be added later',
+    'more' => 'More: type, source, payment terms',
+    'payment_terms_hint_short' => 'Net 30 for stratas and property managers.',
+    'new_job' => 'New job',
+    'details' => [
+        'source' => 'Source: :source',
+    ],
     'title' => 'Customers',
     'description' => 'Customers with their properties and appliances.',
     'add' => 'Add customer',
