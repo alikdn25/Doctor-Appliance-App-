@@ -102,9 +102,13 @@ test('cash rows keep the name, amount and action apart', async ({
     await expect(action).toBeVisible();
     // The name never runs under the amount or the button.
     const row = action.locator('xpath=ancestor::li[1]');
+    // Name above the amount (UX-REDESIGN §11.3), both left of the button.
     const name = await row.getByRole('link').boundingBox();
     const amount = await row.locator('span.tabular-nums').boundingBox();
-    expect(name!.x + name!.width).toBeLessThanOrEqual(amount!.x + 1);
+    const button = await action.boundingBox();
+    expect(name!.y + name!.height).toBeLessThanOrEqual(amount!.y + 1);
+    expect(name!.x + name!.width).toBeLessThanOrEqual(button!.x + 1);
+    expect(amount!.x + amount!.width).toBeLessThanOrEqual(button!.x + 1);
     await screenshot(page, info, 'cash');
 });
 

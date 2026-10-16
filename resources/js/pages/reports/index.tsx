@@ -52,6 +52,8 @@ function Fold({
     children: ReactNode;
     open?: boolean;
 }) {
+    const t = useTrans();
+
     return (
         <details className="da-card group overflow-hidden" open={open}>
             <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-2 [&::-webkit-details-marker]:hidden">
@@ -66,7 +68,9 @@ function Fold({
                 <ChevronDown className="size-5 shrink-0 transition-transform group-open:rotate-180" />
             </summary>
             <div className="space-y-3 border-t p-4">
-                {hint && <InfoHint title={title} hint={hint} />}
+                {hint && (
+                    <InfoHint title={t('reports.how_counted')} hint={hint} />
+                )}
                 {children}
             </div>
         </details>

@@ -33,7 +33,7 @@ test('reports open on the month with four figures and the period in one tap', as
     await expect(page.getByLabel('From')).toBeVisible();
 
     // The profit breakdown opens on tap.
-    await page.getByText('Profit breakdown').click();
+    await page.locator('summary', { hasText: 'Profit breakdown' }).click();
     await expect(
         page.getByText('Revenue of closed jobs (without taxes)'),
     ).toBeVisible();

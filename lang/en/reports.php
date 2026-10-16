@@ -7,6 +7,7 @@ return [
     'to' => 'To',
     'apply' => 'Show',
     'no_data' => 'No data for this period',
+    'how_counted' => 'How it is counted',
     'avg' => 'avg :amount',
     'jobs_n' => ':count job|:count jobs',
     'profit_short' => 'profit :amount (:margin)',
