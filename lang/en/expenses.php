@@ -59,6 +59,7 @@ return [
         'to' => 'To',
     ],
     'hub' => [
+        'tax_reserve' => 'To move for :month: :value',
         'this_month' => 'This month: :value',
         'on_hand' => 'On hand now: :value',
     ],

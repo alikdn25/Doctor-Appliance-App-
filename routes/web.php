@@ -3,6 +3,7 @@
 use App\Http\Controllers\Accounting\BusinessExpenseCategoryController;
 use App\Http\Controllers\Accounting\BusinessExpenseController;
 use App\Http\Controllers\Accounting\ExpensesHubController;
+use App\Http\Controllers\Accounting\TaxReserveController;
 use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
@@ -225,6 +226,12 @@ Route::middleware(['auth', 'active'])->group(function () {
 
         Route::put('settings/menu-mode', MenuModeController::class)->name('menu-mode.update');
         Route::get('expenses-and-taxes', ExpensesHubController::class)->name('expenses-hub');
+        // Tax reserve (UX-REDESIGN §17), Owner only.
+        Route::get('expenses-and-taxes/tax-reserve', [TaxReserveController::class, 'index'])->name('tax-reserve.index');
+        Route::put('expenses-and-taxes/tax-reserve/settings', [TaxReserveController::class, 'settings'])->name('tax-reserve.settings');
+        Route::post('expenses-and-taxes/tax-reserve/transfers', [TaxReserveController::class, 'store'])->name('tax-reserve.transfers.store');
+        Route::delete('expenses-and-taxes/tax-reserve/transfers/{transfer}', [TaxReserveController::class, 'destroy'])->name('tax-reserve.transfers.destroy');
+        Route::get('expenses-and-taxes/tax-reserve/export.csv', [TaxReserveController::class, 'export'])->name('tax-reserve.export');
 
         // Data protection: deleted items (30 days, restorable) and the change log (Owner).
         Route::get('deleted-items', [TrashController::class, 'index'])->name('trash.index');

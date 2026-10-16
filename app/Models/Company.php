@@ -68,6 +68,12 @@ use Illuminate\Support\Carbon;
  * @property bool $timezone_pending
  * @property array<string, array{closed: bool, open: string|null, close: string|null}>|null $business_hours
  * @property list<array{start: string, end: string}>|null $arrival_windows
+ * @property bool $tax_reserve_enabled
+ * @property string $tax_reserve_rate Income and dividend tax, %
+ * @property bool $tax_reserve_deduct_expense_tax
+ * @property string $tax_reserve_basis paid or issued
+ * @property int|null $tax_reserve_reminder_day
+ * @property string|null $tax_reserve_reminded_month
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -125,6 +131,11 @@ class Company extends Model
         'message_templates',
         'distance_unit',
         'mileage_rate',
+        'tax_reserve_enabled',
+        'tax_reserve_rate',
+        'tax_reserve_deduct_expense_tax',
+        'tax_reserve_basis',
+        'tax_reserve_reminder_day',
     ];
 
     protected $attributes = [
@@ -194,6 +205,10 @@ class Company extends Model
             'technicians_see_costs' => 'boolean',
             'accepts_cash' => 'boolean',
             'timezone_pending' => 'boolean',
+            'tax_reserve_enabled' => 'boolean',
+            'tax_reserve_rate' => 'decimal:2',
+            'tax_reserve_deduct_expense_tax' => 'boolean',
+            'tax_reserve_reminder_day' => 'integer',
         ];
     }
 
