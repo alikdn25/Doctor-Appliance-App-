@@ -12,7 +12,6 @@ use App\Enums\JobStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\UserRole;
 use App\Models\Brand;
-use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\GoogleProfile;
@@ -78,7 +77,6 @@ class DemoSeeder extends Seeder
                 'created_at' => now(), 'updated_at' => now(),
             ]);
 
-            ChecklistTemplate::createDefaults();
             Service::createDefaults();
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true, 'sort_order' => 1]);
             TaxRate::create(['name' => 'PST', 'rate' => 7, 'is_default' => true, 'sort_order' => 2, 'is_recoverable' => false]);
@@ -94,7 +92,6 @@ class DemoSeeder extends Seeder
             $this->member($coastal, $tech, UserRole::Technician);
 
             $this->brand('Coastal Appliance Repair', '#1D4ED8', $this->bcAddress('Victoria'), '250-555-0100');
-            ChecklistTemplate::createDefaults();
             Service::createDefaults();
             TaxRate::create(['name' => 'GST', 'rate' => 5, 'is_default' => true]);
 
@@ -109,7 +106,6 @@ class DemoSeeder extends Seeder
             $brand = $this->brand('Lone Star Appliance Repair', '#9A3412',
                 ['line1' => '500 W 2nd St', 'city' => 'Austin', 'region' => 'TX', 'postal_code' => '78701', 'country' => 'US'],
                 '512-555-0100');
-            ChecklistTemplate::createDefaults();
             Service::createDefaults();
             // Austin: Texas 6.25% + local 2% = 8.25%, entered as one combined rate.
             TaxRate::create(['name' => 'Sales tax', 'rate' => 8.25, 'is_default' => true]);

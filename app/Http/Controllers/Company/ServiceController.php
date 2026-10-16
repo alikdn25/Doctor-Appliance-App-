@@ -7,7 +7,6 @@ use App\Enums\WarrantyUnit;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Models\Brand;
-use App\Models\ChecklistTemplate;
 use App\Models\Service;
 use App\Services\AuditLogger;
 use App\Support\Billing\CostAccess;
@@ -23,13 +22,13 @@ use Inertia\Response;
 
 /**
  * The company's services (start of the price book, SPEC §7.11). The starting list comes from the
- * vertical; the office sets names and prices. Edited as one list, like checklists.
+ * vertical; the office sets names and prices. Edited as one list.
  */
 class ServiceController extends Controller
 {
     public function edit(): Response
     {
-        Gate::authorize('manage', ChecklistTemplate::class);
+        Gate::authorize('manageCatalog');
 
         return Inertia::render('company/services', [
             'services' => Service::query()->orderBy('sort_order')->orderBy('id')->get()
@@ -58,7 +57,7 @@ class ServiceController extends Controller
 
     public function update(Request $request, AuditLogger $audit): RedirectResponse
     {
-        Gate::authorize('manage', ChecklistTemplate::class);
+        Gate::authorize('manageCatalog');
 
         $currency = currentCompany()->currency;
         $request->replace(MoneyInput::cleanPaths($request->input(), ['services.*.unit_price', 'services.*.unit_cost']));

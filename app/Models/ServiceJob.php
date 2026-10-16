@@ -199,14 +199,6 @@ class ServiceJob extends Model
     }
 
     /**
-     * @return HasMany<JobChecklistItem, $this>
-     */
-    public function checklistItems(): HasMany
-    {
-        return $this->hasMany(JobChecklistItem::class)->orderBy('position')->orderBy('id');
-    }
-
-    /**
      * @return HasMany<Estimate, $this>
      */
     public function estimates(): HasMany
@@ -272,24 +264,6 @@ class ServiceJob extends Model
     public function signer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'signed_by');
-    }
-
-    /**
-     * Replaces the checklist with the company's template for the job type
-     * (only while nothing has been ticked, so finished work is never lost).
-     */
-    public function applyChecklistTemplate(): void
-    {
-        if ($this->checklistItems()->where('is_done', true)->exists()) {
-            return;
-        }
-
-        $this->checklistItems()->delete();
-        $items = ChecklistTemplate::query()->where('job_type', $this->job_type->value)->first()?->items ?? [];
-
-        foreach (array_values($items) as $i => $label) {
-            $this->checklistItems()->create(['position' => $i, 'label' => $label]);
-        }
     }
 
     /**

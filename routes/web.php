@@ -18,7 +18,6 @@ use App\Http\Controllers\Billing\PaymentLinkController;
 use App\Http\Controllers\Billing\PriceBookController;
 use App\Http\Controllers\Company\BotTokenController;
 use App\Http\Controllers\Company\BrandController;
-use App\Http\Controllers\Company\ChecklistController;
 use App\Http\Controllers\Company\CompanySettingsController;
 use App\Http\Controllers\Company\DetectTimezoneController;
 use App\Http\Controllers\Company\GoogleProfileController;
@@ -143,7 +142,6 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('jobs/{job}/photos/{photo}', [JobFieldController::class, 'showPhoto'])->name('jobs.photos.show');
         Route::delete('jobs/{job}/photos/{photo}', [JobFieldController::class, 'destroyPhoto'])->name('jobs.photos.destroy');
         Route::post('jobs/{job}/appliances/{appliance}/rating-plate', [JobFieldController::class, 'ratingPlate'])->name('jobs.appliances.rating-plate');
-        Route::put('jobs/{job}/checklist/{item}', [JobFieldController::class, 'toggleChecklistItem'])->name('jobs.checklist.toggle');
         Route::put('jobs/{job}/bring/{item}', [JobFieldController::class, 'toggleBringItem'])->name('jobs.bring.toggle');
         Route::post('jobs/{job}/signature', [JobFieldController::class, 'storeSignature'])->name('jobs.signature.store');
         Route::get('jobs/{job}/signature', [JobFieldController::class, 'showSignature'])->name('jobs.signature.show');
@@ -246,8 +244,6 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company.settings.edit');
             Route::put('settings', [CompanySettingsController::class, 'update'])->name('company.settings.update');
             Route::put('timezone', DetectTimezoneController::class)->name('company.timezone.detect');
-            Route::get('checklists', [ChecklistController::class, 'edit'])->name('company.checklists.edit');
-            Route::put('checklists', [ChecklistController::class, 'update'])->name('company.checklists.update');
             Route::get('messaging', [MessagingSettingsController::class, 'edit'])->name('company.messaging.edit');
             Route::put('messaging', [MessagingSettingsController::class, 'update'])->name('company.messaging.update');
             Route::post('messaging/number', [MessagingSettingsController::class, 'provision'])->middleware('throttle:5,1')->name('company.messaging.provision');
