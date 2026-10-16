@@ -36,9 +36,12 @@ export type ProfitData = {
 export function ProfitSummary({
     data,
     currency,
+    breakdownOnly = false,
 }: {
     data: ProfitData;
     currency: string;
+    /** Only the lines and the missing costs (the totals are shown elsewhere). */
+    breakdownOnly?: boolean;
 }) {
     const t = useTrans();
     const money = useMoney(currency);
@@ -65,7 +68,9 @@ export function ProfitSummary({
             className="space-y-3"
             aria-label={t('reports.profit_summary.title')}
         >
-            <div className="grid grid-cols-2 gap-2">
+            <div
+                className={breakdownOnly ? 'hidden' : 'grid grid-cols-2 gap-2'}
+            >
                 <div className="da-card p-3">
                     <p className="text-xs text-muted-foreground">
                         {t('reports.profit_summary.basis')}

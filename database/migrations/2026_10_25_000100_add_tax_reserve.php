@@ -28,7 +28,8 @@ return new class extends Migration
 
         Schema::create('tax_reserve_transfers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
+            // No cascade: deleting a company never takes its records with it (data protection).
+            $table->foreignId('company_id')->constrained();
             // First day of the month the money was set aside for.
             $table->date('month');
             // Minor units of the currency.

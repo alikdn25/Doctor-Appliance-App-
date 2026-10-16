@@ -1,17 +1,29 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
+    ChevronDown,
     Download,
     FileImage,
     Pencil,
     Plus,
-    Search,
+    SlidersHorizontal,
     Trash2,
+    X,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { useMoney } from '@/components/billing/money';
 import { FormField } from '@/components/form-field';
-import { PageHeader } from '@/components/page-header';
+import { ScreenHeader } from '@/components/screen-header';
+import { ActionSheet } from '@/components/ui/action-sheet';
+import { Fab } from '@/components/ui/fab';
+import { formatRange, PeriodPicker } from '@/components/ui/period-picker';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { PaginationLinks } from '@/components/pagination-links';
 import type { Paginated } from '@/components/pagination-links';
 import { Button } from '@/components/ui/button';
@@ -50,6 +62,7 @@ export default function BusinessExpenses({
     employees,
     employeeTotals,
     companyView,
+    today,
 }: {
     expenses: Paginated<ExpenseRow>;
     categories: ExpenseCategory[];
@@ -65,12 +78,15 @@ export default function BusinessExpenses({
         total: number;
     }[];
     companyView: boolean;
+    today: string;
 }) {
     const t = useTrans();
     const money = useMoney(currency);
     const time = useCompanyTime();
     const { errors } = usePage().props;
     const [query, setQuery] = useState(filters);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const locale = usePage().props.auth.company?.locale ?? 'en-US';
     const [categoryOpen, setCategoryOpen] = useState(false);
     const [editingCategory, setEditingCategory] =
         useState<ExpenseCategory | null>(null);
@@ -82,11 +98,41 @@ export default function BusinessExpenses({
 
     function apply(event: FormEvent) {
         event.preventDefault();
-        router.get(index().url, filterParams(query), {
-            preserveState: true,
-            replace: true,
-        });
+        setFiltersOpen(false);
+        router.get(
+            index().url,
+            filterParams({ ...query, from: filters.from, to: filters.to }),
+            {
+                preserveState: true,
+                replace: true,
+            },
+        );
     }
+
+    // Filters other than the period, as chips with ✕.
+    const activeFilters = [
+        filters.category && {
+            key: 'category' as const,
+            label:
+                categories.find((c) => String(c.id) === filters.category)
+                    ?.name ?? filters.category,
+        },
+        filters.employee && {
+            key: 'employee' as const,
+            label:
+                employees.find((e) => String(e.id) === filters.employee)
+                    ?.name ?? filters.employee,
+        },
+        filters.search && {
+            key: 'search' as const,
+            label: `“${filters.search}”`,
+        },
+    ].filter(
+        (
+            chip,
+        ): chip is { key: 'category' | 'employee' | 'search'; label: string } =>
+            Boolean(chip),
+    );
 
     function openCategory(category: ExpenseCategory | null) {
         setEditingCategory(category);
@@ -117,37 +163,89 @@ export default function BusinessExpenses({
     return (
         <>
             <Head title={t('expenses.title')} />
-            <div className="space-y-6 p-4">
-                <PageHeader
-                    title={t('expenses.title')}
-                    description={t('expenses.description')}
-                    actions={
-                        <>
-                            <Button
-                                variant="outline"
-                                className="min-h-11"
-                                asChild
-                            >
-                                <a
-                                    href={
-                                        download({
-                                            query: filterParams(filters),
-                                        }).url
-                                    }
-                                >
-                                    <Download />
-                                    {t('expenses.export')}
-                                </a>
-                            </Button>
-                            <Button className="min-h-11" asChild>
-                                <Link href={create()}>
-                                    <Plus />
-                                    {t('expenses.add')}
-                                </Link>
-                            </Button>
-                        </>
+            <ScreenHeader
+                title={t('expenses.title')}
+                subtitle={formatRange(filters.from, filters.to, today, locale)}
+                actions={
+                    <ActionSheet
+                        title={t('expenses.title')}
+                        items={[
+                            {
+                                key: 'export',
+                                label: t('expenses.export'),
+                                icon: <Download />,
+                                onSelect: () => {
+                                    window.location.href = download({
+                                        query: filterParams(filters),
+                                    }).url;
+                                },
+                            },
+                        ]}
+                    />
+                }
+            />
+            <div className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:p-6">
+                <PeriodPicker
+                    from={filters.from}
+                    to={filters.to}
+                    today={today}
+                    onChange={(from, to, period) =>
+                        router.get(
+                            index().url,
+                            {
+                                ...filterParams({ ...filters, from, to }),
+                                period,
+                            },
+                            {
+                                preserveState: true,
+                                preserveScroll: true,
+                                replace: true,
+                            },
+                        )
                     }
                 />
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                        variant="outline"
+                        className="h-10 rounded-full"
+                        onClick={() => {
+                            setQuery(filters);
+                            setFiltersOpen(true);
+                        }}
+                        data-test="expense-filters"
+                    >
+                        <SlidersHorizontal />
+                        {activeFilters.length > 0
+                            ? t('expenses.filters_count', {
+                                  count: activeFilters.length,
+                              })
+                            : t('expenses.filters')}
+                    </Button>
+                    {activeFilters.map((chip) => (
+                        <button
+                            key={chip.key}
+                            type="button"
+                            className="da-chip da-press inline-flex h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium"
+                            aria-pressed="true"
+                            aria-label={t('expenses.remove_filter', {
+                                filter: chip.label,
+                            })}
+                            onClick={() =>
+                                router.get(
+                                    index().url,
+                                    filterParams({
+                                        ...filters,
+                                        [chip.key]: '',
+                                    }),
+                                    { preserveState: true, replace: true },
+                                )
+                            }
+                        >
+                            {chip.label}
+                            <X className="size-4" aria-hidden="true" />
+                        </button>
+                    ))}
+                </div>
                 <p className="text-sm text-muted-foreground">
                     {t(
                         companyView
@@ -155,216 +253,6 @@ export default function BusinessExpenses({
                             : 'expenses.own_hint',
                     )}
                 </p>
-                <form
-                    onSubmit={apply}
-                    className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_2fr_auto]"
-                >
-                    <FormField
-                        id="from"
-                        label={t('expenses.fields.from')}
-                        error={errors.from}
-                    >
-                        <Input
-                            id="from"
-                            type="date"
-                            required
-                            value={query.from}
-                            onChange={(event) =>
-                                setQuery({ ...query, from: event.target.value })
-                            }
-                        />
-                    </FormField>
-                    <FormField
-                        id="to"
-                        label={t('expenses.fields.to')}
-                        error={errors.to}
-                    >
-                        <Input
-                            id="to"
-                            type="date"
-                            required
-                            min={query.from}
-                            value={query.to}
-                            onChange={(event) =>
-                                setQuery({ ...query, to: event.target.value })
-                            }
-                        />
-                    </FormField>
-                    <FormField
-                        id="category"
-                        label={t('expenses.fields.category')}
-                    >
-                        <NativeSelect
-                            id="category"
-                            value={query.category}
-                            onChange={(event) =>
-                                setQuery({
-                                    ...query,
-                                    category: event.target.value,
-                                })
-                            }
-                        >
-                            <option value="">
-                                {t('expenses.all_categories')}
-                            </option>
-                            {categories.map((category) => (
-                                <option key={category.id} value={category.id}>
-                                    {category.name}
-                                </option>
-                            ))}
-                        </NativeSelect>
-                    </FormField>
-                    {companyView && (
-                        <FormField
-                            id="employee"
-                            label={t('expenses.fields.employee')}
-                            error={errors.employee}
-                        >
-                            <NativeSelect
-                                id="employee"
-                                value={query.employee}
-                                onChange={(event) =>
-                                    setQuery({
-                                        ...query,
-                                        employee: event.target.value,
-                                    })
-                                }
-                            >
-                                <option value="">
-                                    {t('expenses.all_employees')}
-                                </option>
-                                {employees.map((employee) => (
-                                    <option
-                                        key={employee.id}
-                                        value={employee.id}
-                                    >
-                                        {employee.name}
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                        </FormField>
-                    )}
-                    <FormField id="search" label={t('common.search')}>
-                        <Input
-                            id="search"
-                            type="search"
-                            placeholder={t('expenses.search')}
-                            value={query.search}
-                            onChange={(event) =>
-                                setQuery({
-                                    ...query,
-                                    search: event.target.value,
-                                })
-                            }
-                        />
-                    </FormField>
-                    <div className="flex items-end gap-2">
-                        <Button
-                            type="submit"
-                            variant="outline"
-                            className="min-h-11"
-                            aria-label={t('common.search')}
-                        >
-                            <Search />
-                        </Button>
-                        <Button variant="ghost" className="min-h-11" asChild>
-                            <Link href={index()}>{t('expenses.clear')}</Link>
-                        </Button>
-                    </div>
-                </form>
-                {companyView && (
-                    <section className="space-y-3">
-                        <h2 className="font-semibold">
-                            {t('expenses.by_employee')}
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            {t('expenses.employee_hint')}
-                        </p>
-                        {employeeTotals.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                {t('expenses.empty')}
-                            </p>
-                        ) : (
-                            <div className="overflow-x-auto rounded-lg border">
-                                <table className="w-full min-w-[500px] text-sm">
-                                    <thead className="bg-muted/50">
-                                        <tr>
-                                            <th className="px-3 py-3 text-left">
-                                                {t('expenses.fields.employee')}
-                                            </th>
-                                            {(
-                                                [
-                                                    'price',
-                                                    'tax',
-                                                    'total',
-                                                ] as const
-                                            ).map((field) => (
-                                                <th
-                                                    key={field}
-                                                    className="px-3 py-3 text-right"
-                                                >
-                                                    {t(
-                                                        `expenses.fields.${field}`,
-                                                    )}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {employeeTotals.map((employee) => (
-                                            <tr
-                                                key={`${employee.id}-${employee.currency}`}
-                                            >
-                                                <td className="px-3 py-3">
-                                                    {employee.id ? (
-                                                        <Link
-                                                            className="font-medium underline"
-                                                            href={index({
-                                                                query: filterParams(
-                                                                    {
-                                                                        ...filters,
-                                                                        employee:
-                                                                            String(
-                                                                                employee.id,
-                                                                            ),
-                                                                    },
-                                                                ),
-                                                            })}
-                                                        >
-                                                            {employee.name}
-                                                        </Link>
-                                                    ) : (
-                                                        employee.name
-                                                    )}
-                                                    <span className="ml-2 text-xs text-muted-foreground">
-                                                        {employee.currency}
-                                                    </span>
-                                                </td>
-                                                {(
-                                                    [
-                                                        'price',
-                                                        'tax',
-                                                        'total',
-                                                    ] as const
-                                                ).map((field) => (
-                                                    <td
-                                                        key={field}
-                                                        className="px-3 py-3 text-right whitespace-nowrap tabular-nums"
-                                                    >
-                                                        {money(
-                                                            employee[field],
-                                                            employee.currency,
-                                                        )}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </section>
-                )}
                 <section className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
                         <h2 className="font-semibold">
@@ -812,7 +700,183 @@ export default function BusinessExpenses({
                     </>
                 )}
                 <PaginationLinks links={expenses.links} />
+
+                {companyView && employeeTotals.length > 0 && (
+                    <details
+                        className="da-card group overflow-hidden"
+                        data-test="expenses-by-employee"
+                    >
+                        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-2 font-semibold [&::-webkit-details-marker]:hidden">
+                            <span className="flex-1">
+                                {t('expenses.by_employee')}
+                            </span>
+                            <ChevronDown className="size-5 transition-transform group-open:rotate-180" />
+                        </summary>
+                        <ul className="divide-y border-t text-sm">
+                            {employeeTotals.map((employee) => (
+                                <li
+                                    key={`${employee.id}-${employee.currency}`}
+                                    className="flex flex-wrap items-baseline justify-between gap-x-3 px-4 py-2.5"
+                                >
+                                    {employee.id ? (
+                                        <Link
+                                            className="font-medium underline"
+                                            href={index({
+                                                query: filterParams({
+                                                    ...filters,
+                                                    employee: String(
+                                                        employee.id,
+                                                    ),
+                                                }),
+                                            })}
+                                        >
+                                            {employee.name}
+                                        </Link>
+                                    ) : (
+                                        <span className="font-medium">
+                                            {employee.name}
+                                        </span>
+                                    )}
+                                    <span className="text-muted-foreground tabular-nums">
+                                        {t('expenses.employee_line', {
+                                            price: money(
+                                                employee.price,
+                                                employee.currency,
+                                            ),
+                                            tax: money(
+                                                employee.tax,
+                                                employee.currency,
+                                            ),
+                                            total: money(
+                                                employee.total,
+                                                employee.currency,
+                                            ),
+                                        })}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="border-t px-4 py-2 text-xs text-muted-foreground">
+                            {t('expenses.employee_hint')}
+                        </p>
+                    </details>
+                )}
             </div>
+
+            <Fab
+                label={t('expenses.add')}
+                icon={<Plus />}
+                onClick={() => router.visit(create())}
+                data-test="add-expense"
+            />
+
+            <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <SheetContent
+                    side="bottom"
+                    className="mx-auto max-w-3xl gap-3 rounded-t-3xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+                >
+                    <SheetHeader className="p-0 pr-8">
+                        <SheetTitle>{t('expenses.filters')}</SheetTitle>
+                        <SheetDescription className="sr-only">
+                            {t('expenses.filters')}
+                        </SheetDescription>
+                    </SheetHeader>
+                    <form onSubmit={apply} className="space-y-3">
+                        <FormField
+                            id="category"
+                            label={t('expenses.fields.category')}
+                        >
+                            <NativeSelect
+                                id="category"
+                                value={query.category}
+                                onChange={(event) =>
+                                    setQuery({
+                                        ...query,
+                                        category: event.target.value,
+                                    })
+                                }
+                            >
+                                <option value="">
+                                    {t('expenses.all_categories')}
+                                </option>
+                                {categories.map((category) => (
+                                    <option
+                                        key={category.id}
+                                        value={category.id}
+                                    >
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FormField>
+                        {companyView && (
+                            <FormField
+                                id="employee"
+                                label={t('expenses.fields.employee')}
+                                error={errors.employee}
+                            >
+                                <NativeSelect
+                                    id="employee"
+                                    value={query.employee}
+                                    onChange={(event) =>
+                                        setQuery({
+                                            ...query,
+                                            employee: event.target.value,
+                                        })
+                                    }
+                                >
+                                    <option value="">
+                                        {t('expenses.all_employees')}
+                                    </option>
+                                    {employees.map((employee) => (
+                                        <option
+                                            key={employee.id}
+                                            value={employee.id}
+                                        >
+                                            {employee.name}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </FormField>
+                        )}
+                        <FormField id="search" label={t('common.search')}>
+                            <Input
+                                id="search"
+                                type="search"
+                                placeholder={t('expenses.search')}
+                                value={query.search}
+                                onChange={(event) =>
+                                    setQuery({
+                                        ...query,
+                                        search: event.target.value,
+                                    })
+                                }
+                            />
+                        </FormField>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="h-11"
+                                onClick={() =>
+                                    setQuery({
+                                        ...query,
+                                        category: '',
+                                        employee: '',
+                                        search: '',
+                                    })
+                                }
+                            >
+                                {t('expenses.clear')}
+                            </Button>
+                            <Button type="submit" className="h-11">
+                                {t('expenses.apply_filters')}
+                            </Button>
+                        </div>
+                    </form>
+                </SheetContent>
+            </Sheet>
+
             <Dialog open={categoryOpen} onOpenChange={setCategoryOpen}>
                 <DialogContent>
                     <DialogHeader>
