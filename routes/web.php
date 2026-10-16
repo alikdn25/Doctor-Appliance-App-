@@ -242,6 +242,7 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::post('booking-bot', [BotTokenController::class, 'store'])->middleware('throttle:10,1')->name('company.booking-bot.store');
             Route::delete('booking-bot/{token}', [BotTokenController::class, 'destroy'])->name('company.booking-bot.destroy');
             Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company.settings.edit');
+            Route::get('settings/{section}', [CompanySettingsController::class, 'edit'])->name('company.settings.section');
             Route::put('settings', [CompanySettingsController::class, 'update'])->name('company.settings.update');
             Route::put('timezone', DetectTimezoneController::class)->name('company.timezone.detect');
             Route::get('messaging', [MessagingSettingsController::class, 'edit'])->name('company.messaging.edit');

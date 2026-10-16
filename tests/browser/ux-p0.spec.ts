@@ -115,7 +115,7 @@ test('cash rows keep the name, amount and action apart', async ({
 test('company settings speak plainly about payments and cash', async ({
     page,
 }, info) => {
-    await page.goto('/company/settings');
+    await page.goto('/company/settings/payments');
     await expect(
         page.getByText('Technicians can record cash payments.'),
     ).toBeVisible();

@@ -65,7 +65,7 @@ test('visible menu and booking open the first visit directly from any working sc
 test('time zone search uses familiar cities countries and UTC offsets and markup settings are absent', async ({
     page,
 }, info) => {
-    await page.goto('/company/settings');
+    await page.goto('/company/settings/region');
     await page.locator('#timezone-search').fill('Vancouver');
     const option = page.locator('#timezone option[value="America/Vancouver"]');
     await expect(option).toHaveText(/UTC-0[78]:00.*Vancouver, Canada/);

@@ -3,6 +3,7 @@
 use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Company;
+use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     $this->company = Company::factory()->create(['name' => 'Old Name']);
@@ -79,4 +80,28 @@ test('estimate follow-up delay is optional and bounded', function () {
     foreach ([0, 91, 1.5] as $value) {
         $this->put(route('company.settings.update'), settingsPayload(['estimate_followup_days' => $value]))->assertSessionHasErrors('estimate_followup_days');
     }
+});
+
+test('settings open as a hub of short pages; a change is saved from its own page (UX-REDESIGN §12.1)', function () {
+    $company = Company::factory()->create();
+    $owner = memberOf($company, UserRole::Owner);
+    $this->actingAs($owner);
+
+    $this->get(route('company.settings.edit'))->assertInertia(fn (Assert $page) => $page
+        ->component('company/settings')
+        ->where('section', null)
+        ->where('hub.team', 1)
+        ->has('hub.sms_mode'));
+
+    $this->get(route('company.settings.section', 'warranty'))->assertInertia(fn (Assert $page) => $page
+        ->where('section', 'warranty')->where('hub', null));
+    $this->get(route('company.settings.section', 'nowhere'))->assertNotFound();
+
+    $props = $this->get(route('company.settings.section', 'mileage'))->viewData('page')['props']['company'];
+    $this->put(route('company.settings.update'), [...$props, 'section' => 'mileage', 'distance_unit' => 'mi'])
+        ->assertRedirect(route('company.settings.section', 'mileage'));
+    expect($company->fresh()->distance_unit)->toBe('mi');
+
+    $tech = memberOf($company, UserRole::Technician);
+    $this->actingAs($tech)->get(route('company.settings.section', 'region'))->assertForbidden();
 });
