@@ -10,7 +10,9 @@ import {
     toMinor,
 } from '@/components/billing/money';
 import InputError from '@/components/input-error';
-import { PageHeader } from '@/components/page-header';
+import { ScreenHeader } from '@/components/screen-header';
+import { FilterChips } from '@/components/ui/filter-chips';
+import { SearchField } from '@/components/ui/search-field';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -102,6 +104,18 @@ export default function Services({
     const rows = form.data.services;
     // Services are folded to one line each; tap a line to edit it. New and invalid ones are open.
     const [openKeys, setOpenKeys] = useState<Set<number>>(new Set());
+    const [query, setQuery] = useState('');
+    const [kindFilter, setKindFilter] = useState('');
+    // New rows always show, so a line just added can be filled in.
+    const shown = (row: (typeof rows)[number]) =>
+        (row.id === null || kindFilter === '' || row.kind === kindFilter) &&
+        (row.id === null ||
+            query.trim() === '' ||
+            [row.name, row.category, row.part_number]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase()
+                .includes(query.trim().toLowerCase()));
     const isOpen = (row: Row, index: number) =>
         openKeys.has(row.key) ||
         Object.keys(errors).some((key) => key.startsWith(`services.${index}.`));
@@ -150,14 +164,35 @@ export default function Services({
         <>
             <Head title={t('services.title')} />
 
-            <form onSubmit={submit} className="max-w-3xl space-y-4 p-4">
-                <PageHeader
-                    title={t('services.title')}
-                    description={t('services.description')}
-                />
+            <ScreenHeader title={t('services.title')} />
+            <form
+                onSubmit={submit}
+                className="mx-auto w-full max-w-3xl space-y-4 p-4 sm:p-6"
+            >
                 <p className="text-sm text-muted-foreground">
                     {t('services.hint', { currency })}
                 </p>
+                <SearchField
+                    value={query}
+                    placeholder={t('services.search')}
+                    onSearch={setQuery}
+                />
+                <FilterChips
+                    label={t('services.kind_filter')}
+                    selected={[kindFilter]}
+                    onChange={(value) => setKindFilter(value)}
+                    chips={[
+                        { value: '', label: t('services.all_kinds') },
+                        ...(['service', 'part', 'material'] as const).map(
+                            (kind) => ({
+                                value: kind,
+                                label: t(`billing.kinds.${kind}`),
+                                count: rows.filter((r) => r.kind === kind)
+                                    .length,
+                            }),
+                        ),
+                    ]}
+                />
 
                 {rows.length === 0 && (
                     <p className="text-sm text-muted-foreground">
@@ -166,348 +201,415 @@ export default function Services({
                 )}
 
                 <ul className="space-y-3">
-                    {rows.map((row, i) => (
-                        <li key={row.key} className="da-card space-y-3 p-3">
-                            <button
-                                type="button"
-                                aria-expanded={isOpen(row, i)}
-                                onClick={() => toggle(row.key)}
-                                className="flex min-h-11 w-full items-center gap-3 text-left"
-                            >
-                                <span className="min-w-0 flex-1">
-                                    <span className="block truncate font-semibold">
-                                        {row.name || t('services.new')}
-                                    </span>
-                                    <span className="block truncate text-xs text-muted-foreground">
-                                        {[
-                                            t(`billing.kinds.${row.kind}`),
-                                            row.category,
-                                            !row.is_active &&
-                                                t('services.inactive'),
-                                        ]
-                                            .filter(Boolean)
-                                            .join(' · ')}
-                                    </span>
-                                </span>
-                                <span className="shrink-0 font-semibold tabular-nums">
-                                    {row.unit_price.trim() === ''
-                                        ? t('services.no_price')
-                                        : Number.isNaN(Number(row.unit_price))
-                                          ? row.unit_price
-                                          : formatMoney(
-                                                toMinor(
-                                                    row.unit_price,
-                                                    currency,
-                                                ),
-                                                currency,
-                                                auth.company?.locale,
-                                            )}
-                                </span>
-                                <ChevronDown
-                                    className={`size-5 shrink-0 transition-transform ${isOpen(row, i) ? 'rotate-180' : ''}`}
-                                    aria-hidden="true"
-                                />
-                            </button>
-                            {isOpen(row, i) && (
-                                <>
-                                    <div className="flex items-start gap-2">
-                                        <label className="grid flex-1 gap-1 text-xs font-semibold text-muted-foreground">
-                                            {t('services.fields.name')}
-                                            <Input
-                                                value={row.name}
-                                                onChange={(e) =>
-                                                    setRow(i, {
-                                                        name: e.target.value,
-                                                    })
-                                                }
-                                            />
-                                            <InputError
-                                                message={
-                                                    errors[`services.${i}.name`]
-                                                }
-                                            />
-                                        </label>
-                                        <label className="grid w-36 gap-1 text-xs font-semibold text-muted-foreground">
-                                            {t('services.fields.unit_price')}
-                                            <div className="relative">
-                                                <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
-                                                    {symbol}
-                                                </span>
-                                                <Input
-                                                    placeholder={t(
-                                                        'services.price_placeholder',
-                                                    )}
-                                                    inputMode="decimal"
-                                                    style={{
-                                                        paddingLeft: `${symbol.length * 0.6 + 1}rem`,
-                                                    }}
-                                                    value={row.unit_price}
-                                                    onChange={(e) =>
-                                                        setRow(i, {
-                                                            unit_price:
-                                                                e.target.value,
-                                                        })
-                                                    }
-                                                />
-                                            </div>
-                                            <InputError
-                                                message={
-                                                    errors[
-                                                        `services.${i}.unit_price`
-                                                    ]
-                                                }
-                                            />
-                                        </label>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="mt-5 size-10"
-                                            aria-label={t('services.remove')}
-                                            onClick={() =>
-                                                form.setData(
-                                                    'services',
-                                                    rows.filter(
-                                                        (_, j) => j !== i,
+                    {rows.map(
+                        (row, i) =>
+                            shown(row) && (
+                                <li
+                                    key={row.key}
+                                    className="da-card space-y-3 p-3"
+                                >
+                                    <button
+                                        type="button"
+                                        aria-expanded={isOpen(row, i)}
+                                        onClick={() => toggle(row.key)}
+                                        className="flex min-h-11 w-full items-center gap-3 text-left"
+                                    >
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate font-semibold">
+                                                {row.name || t('services.new')}
+                                            </span>
+                                            <span className="block truncate text-xs text-muted-foreground">
+                                                {[
+                                                    t(
+                                                        `billing.kinds.${row.kind}`,
                                                     ),
-                                                )
+                                                    row.category,
+                                                    !row.is_active &&
+                                                        t('services.inactive'),
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                            </span>
+                                        </span>
+                                        <span
+                                            className={
+                                                row.unit_price.trim() === ''
+                                                    ? 'shrink-0 text-sm text-muted-foreground'
+                                                    : 'shrink-0 font-semibold tabular-nums'
                                             }
                                         >
-                                            <Trash2 />
-                                        </Button>
-                                    </div>
-                                    <Input
-                                        aria-label={t(
-                                            'services.fields.description',
-                                        )}
-                                        placeholder={t(
-                                            'services.fields.description',
-                                        )}
-                                        value={row.description}
-                                        onChange={(e) =>
-                                            setRow(i, {
-                                                description: e.target.value,
-                                            })
-                                        }
-                                    />
-                                    <Input
-                                        aria-label={t(
-                                            'services.fields.category',
-                                        )}
-                                        placeholder={t(
-                                            'services.fields.category',
-                                        )}
-                                        list="price-book-categories"
-                                        maxLength={80}
-                                        value={row.category}
-                                        onChange={(e) =>
-                                            setRow(i, {
-                                                category: e.target.value,
-                                            })
-                                        }
-                                    />
-                                    <InputError
-                                        message={
-                                            errors[`services.${i}.category`]
-                                        }
-                                    />
-                                    {brands.length > 0 && (
-                                        <fieldset className="space-y-2 rounded-lg bg-muted/30 p-3">
-                                            <legend className="text-sm font-medium">
-                                                {t(
-                                                    'services.brand_availability',
-                                                )}
-                                            </legend>
-                                            <p className="text-xs text-muted-foreground">
-                                                {t('services.all_brands_hint')}
-                                            </p>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() =>
-                                                    setRow(i, { brand_ids: [] })
-                                                }
-                                            >
-                                                {t('services.all_brands')}
-                                            </Button>
-                                            <div className="flex flex-wrap gap-x-4 gap-y-2">
-                                                {brands.map((brand) => (
-                                                    <label
-                                                        key={brand.id}
-                                                        className="flex min-h-10 items-center gap-2 text-sm"
-                                                    >
-                                                        <Checkbox
-                                                            checked={row.brand_ids.includes(
-                                                                brand.id,
+                                            {row.unit_price.trim() === ''
+                                                ? t('services.no_price')
+                                                : Number.isNaN(
+                                                        Number(row.unit_price),
+                                                    )
+                                                  ? row.unit_price
+                                                  : formatMoney(
+                                                        toMinor(
+                                                            row.unit_price,
+                                                            currency,
+                                                        ),
+                                                        currency,
+                                                        auth.company?.locale,
+                                                    )}
+                                        </span>
+                                        <ChevronDown
+                                            className={`size-5 shrink-0 transition-transform ${isOpen(row, i) ? 'rotate-180' : ''}`}
+                                            aria-hidden="true"
+                                        />
+                                    </button>
+                                    {isOpen(row, i) && (
+                                        <>
+                                            <div className="flex items-start gap-2">
+                                                <label className="grid flex-1 gap-1 text-xs font-semibold text-muted-foreground">
+                                                    {t('services.fields.name')}
+                                                    <Input
+                                                        value={row.name}
+                                                        onChange={(e) =>
+                                                            setRow(i, {
+                                                                name: e.target
+                                                                    .value,
+                                                            })
+                                                        }
+                                                    />
+                                                    <InputError
+                                                        message={
+                                                            errors[
+                                                                `services.${i}.name`
+                                                            ]
+                                                        }
+                                                    />
+                                                </label>
+                                                <label className="grid w-36 gap-1 text-xs font-semibold text-muted-foreground">
+                                                    {t(
+                                                        'services.fields.unit_price',
+                                                    )}
+                                                    <div className="relative">
+                                                        <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">
+                                                            {symbol}
+                                                        </span>
+                                                        <Input
+                                                            placeholder={t(
+                                                                'services.price_placeholder',
                                                             )}
-                                                            onCheckedChange={(
-                                                                checked,
-                                                            ) =>
+                                                            inputMode="decimal"
+                                                            style={{
+                                                                paddingLeft: `${symbol.length * 0.6 + 1}rem`,
+                                                            }}
+                                                            value={
+                                                                row.unit_price
+                                                            }
+                                                            onChange={(e) =>
                                                                 setRow(i, {
-                                                                    brand_ids:
-                                                                        checked ===
-                                                                        true
-                                                                            ? [
-                                                                                  ...row.brand_ids,
-                                                                                  brand.id,
-                                                                              ]
-                                                                            : row.brand_ids.filter(
-                                                                                  (
-                                                                                      id,
-                                                                                  ) =>
-                                                                                      id !==
-                                                                                      brand.id,
-                                                                              ),
+                                                                    unit_price:
+                                                                        e.target
+                                                                            .value,
                                                                 })
                                                             }
                                                         />
-                                                        {brand.name}
-                                                    </label>
-                                                ))}
+                                                    </div>
+                                                    <InputError
+                                                        message={
+                                                            errors[
+                                                                `services.${i}.unit_price`
+                                                            ]
+                                                        }
+                                                    />
+                                                </label>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="mt-5 size-10"
+                                                    aria-label={t(
+                                                        'services.remove',
+                                                    )}
+                                                    onClick={() =>
+                                                        form.setData(
+                                                            'services',
+                                                            rows.filter(
+                                                                (_, j) =>
+                                                                    j !== i,
+                                                            ),
+                                                        )
+                                                    }
+                                                >
+                                                    <Trash2 />
+                                                </Button>
                                             </div>
+                                            <Input
+                                                aria-label={t(
+                                                    'services.fields.description',
+                                                )}
+                                                placeholder={t(
+                                                    'services.fields.description',
+                                                )}
+                                                value={row.description}
+                                                onChange={(e) =>
+                                                    setRow(i, {
+                                                        description:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                            />
+                                            <Input
+                                                aria-label={t(
+                                                    'services.fields.category',
+                                                )}
+                                                placeholder={t(
+                                                    'services.fields.category',
+                                                )}
+                                                list="price-book-categories"
+                                                maxLength={80}
+                                                value={row.category}
+                                                onChange={(e) =>
+                                                    setRow(i, {
+                                                        category:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                            />
                                             <InputError
                                                 message={
                                                     errors[
-                                                        `services.${i}.brand_ids`
+                                                        `services.${i}.category`
                                                     ]
                                                 }
                                             />
-                                        </fieldset>
-                                    )}
-                                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                        <NativeSelect
-                                            aria-label={t(
-                                                'billing.kinds.service',
+                                            {brands.length > 0 && (
+                                                <fieldset className="space-y-2 rounded-lg bg-muted/30 p-3">
+                                                    <legend className="text-sm font-medium">
+                                                        {t(
+                                                            'services.brand_availability',
+                                                        )}
+                                                    </legend>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {t(
+                                                            'services.all_brands_hint',
+                                                        )}
+                                                    </p>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            setRow(i, {
+                                                                brand_ids: [],
+                                                            })
+                                                        }
+                                                    >
+                                                        {t(
+                                                            'services.all_brands',
+                                                        )}
+                                                    </Button>
+                                                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                                        {brands.map((brand) => (
+                                                            <label
+                                                                key={brand.id}
+                                                                className="flex min-h-10 items-center gap-2 text-sm"
+                                                            >
+                                                                <Checkbox
+                                                                    checked={row.brand_ids.includes(
+                                                                        brand.id,
+                                                                    )}
+                                                                    onCheckedChange={(
+                                                                        checked,
+                                                                    ) =>
+                                                                        setRow(
+                                                                            i,
+                                                                            {
+                                                                                brand_ids:
+                                                                                    checked ===
+                                                                                    true
+                                                                                        ? [
+                                                                                              ...row.brand_ids,
+                                                                                              brand.id,
+                                                                                          ]
+                                                                                        : row.brand_ids.filter(
+                                                                                              (
+                                                                                                  id,
+                                                                                              ) =>
+                                                                                                  id !==
+                                                                                                  brand.id,
+                                                                                          ),
+                                                                            },
+                                                                        )
+                                                                    }
+                                                                />
+                                                                {brand.name}
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                    <InputError
+                                                        message={
+                                                            errors[
+                                                                `services.${i}.brand_ids`
+                                                            ]
+                                                        }
+                                                    />
+                                                </fieldset>
                                             )}
-                                            value={row.kind}
-                                            onChange={(e) =>
-                                                setRow(i, {
-                                                    kind: e.target.value,
-                                                })
-                                            }
-                                        >
-                                            {(
-                                                [
-                                                    'service',
-                                                    'part',
-                                                    'material',
-                                                ] as const
-                                            ).map((k) => (
-                                                <option key={k} value={k}>
-                                                    {t(`billing.kinds.${k}`)}
-                                                </option>
-                                            ))}
-                                        </NativeSelect>
-                                        {row.kind !== 'service' && (
-                                            <Input
-                                                aria-label={t(
-                                                    'billing.line.part_number',
-                                                )}
-                                                placeholder={t(
-                                                    'billing.line.part_number',
-                                                )}
-                                                value={row.part_number}
-                                                onChange={(e) =>
-                                                    setRow(i, {
-                                                        part_number:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                            />
-                                        )}
-                                        {row.kind !== 'service' && (
-                                            <Input
-                                                aria-label={t(
-                                                    'billing.line.cost',
-                                                )}
-                                                placeholder={t(
-                                                    'billing.line.cost',
-                                                )}
-                                                inputMode="decimal"
-                                                value={row.unit_cost}
-                                                onChange={(e) =>
-                                                    setRow(i, {
-                                                        unit_cost:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                            />
-                                        )}
-                                        {/* Materials carry no warranty. */}
-                                        {row.kind !== 'material' && (
-                                            <div className="col-span-2 grid grid-cols-[6rem_1fr] gap-2 sm:col-span-1">
-                                                <Input
-                                                    aria-label={t(
-                                                        'billing.warranty',
-                                                    )}
-                                                    placeholder={t(
-                                                        'services.warranty_default',
-                                                    )}
-                                                    inputMode="numeric"
-                                                    value={row.warranty_value}
-                                                    onChange={(e) =>
-                                                        setRow(i, {
-                                                            warranty_value:
-                                                                e.target.value.replace(
-                                                                    /\D/g,
-                                                                    '',
-                                                                ),
-                                                        })
-                                                    }
-                                                />
+                                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                                 <NativeSelect
                                                     aria-label={t(
-                                                        'billing.warranty',
+                                                        'billing.kinds.service',
                                                     )}
-                                                    value={row.warranty_unit}
+                                                    value={row.kind}
                                                     onChange={(e) =>
                                                         setRow(i, {
-                                                            warranty_unit:
-                                                                e.target.value,
+                                                            kind: e.target
+                                                                .value,
                                                         })
                                                     }
                                                 >
-                                                    {warrantyUnits.map((u) => (
+                                                    {(
+                                                        [
+                                                            'service',
+                                                            'part',
+                                                            'material',
+                                                        ] as const
+                                                    ).map((k) => (
                                                         <option
-                                                            key={u.value}
-                                                            value={u.value}
+                                                            key={k}
+                                                            value={k}
                                                         >
-                                                            {u.label}
+                                                            {t(
+                                                                `billing.kinds.${k}`,
+                                                            )}
                                                         </option>
                                                     ))}
                                                 </NativeSelect>
+                                                {row.kind !== 'service' && (
+                                                    <Input
+                                                        aria-label={t(
+                                                            'billing.line.part_number',
+                                                        )}
+                                                        placeholder={t(
+                                                            'billing.line.part_number',
+                                                        )}
+                                                        value={row.part_number}
+                                                        onChange={(e) =>
+                                                            setRow(i, {
+                                                                part_number:
+                                                                    e.target
+                                                                        .value,
+                                                            })
+                                                        }
+                                                    />
+                                                )}
+                                                {row.kind !== 'service' && (
+                                                    <Input
+                                                        aria-label={t(
+                                                            'billing.line.cost',
+                                                        )}
+                                                        placeholder={t(
+                                                            'billing.line.cost',
+                                                        )}
+                                                        inputMode="decimal"
+                                                        value={row.unit_cost}
+                                                        onChange={(e) =>
+                                                            setRow(i, {
+                                                                unit_cost:
+                                                                    e.target
+                                                                        .value,
+                                                            })
+                                                        }
+                                                    />
+                                                )}
+                                                {/* Materials carry no warranty. */}
+                                                {row.kind !== 'material' && (
+                                                    <div className="col-span-2 grid grid-cols-[6rem_1fr] gap-2 sm:col-span-1">
+                                                        <Input
+                                                            aria-label={t(
+                                                                'billing.warranty',
+                                                            )}
+                                                            placeholder={t(
+                                                                'services.warranty_default',
+                                                            )}
+                                                            inputMode="numeric"
+                                                            value={
+                                                                row.warranty_value
+                                                            }
+                                                            onChange={(e) =>
+                                                                setRow(i, {
+                                                                    warranty_value:
+                                                                        e.target.value.replace(
+                                                                            /\D/g,
+                                                                            '',
+                                                                        ),
+                                                                })
+                                                            }
+                                                        />
+                                                        <NativeSelect
+                                                            aria-label={t(
+                                                                'billing.warranty',
+                                                            )}
+                                                            value={
+                                                                row.warranty_unit
+                                                            }
+                                                            onChange={(e) =>
+                                                                setRow(i, {
+                                                                    warranty_unit:
+                                                                        e.target
+                                                                            .value,
+                                                                })
+                                                            }
+                                                        >
+                                                            {warrantyUnits.map(
+                                                                (u) => (
+                                                                    <option
+                                                                        key={
+                                                                            u.value
+                                                                        }
+                                                                        value={
+                                                                            u.value
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            u.label
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </NativeSelect>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                    <div className="flex gap-4">
-                                        <label className="flex min-h-9 items-center gap-2 text-sm">
-                                            <Checkbox
-                                                checked={row.taxable}
-                                                onCheckedChange={(c) =>
-                                                    setRow(i, {
-                                                        taxable: c === true,
-                                                    })
-                                                }
-                                            />
-                                            {t('services.fields.taxable')}
-                                        </label>
-                                        <label className="flex min-h-9 items-center gap-2 text-sm">
-                                            <Checkbox
-                                                checked={row.is_active}
-                                                onCheckedChange={(c) =>
-                                                    setRow(i, {
-                                                        is_active: c === true,
-                                                    })
-                                                }
-                                            />
-                                            {t('services.fields.is_active')}
-                                        </label>
-                                    </div>
-                                </>
-                            )}
-                        </li>
-                    ))}
+                                            <div className="flex gap-4">
+                                                <label className="flex min-h-9 items-center gap-2 text-sm">
+                                                    <Checkbox
+                                                        checked={row.taxable}
+                                                        onCheckedChange={(c) =>
+                                                            setRow(i, {
+                                                                taxable:
+                                                                    c === true,
+                                                            })
+                                                        }
+                                                    />
+                                                    {t(
+                                                        'services.fields.taxable',
+                                                    )}
+                                                </label>
+                                                <label className="flex min-h-9 items-center gap-2 text-sm">
+                                                    <Checkbox
+                                                        checked={row.is_active}
+                                                        onCheckedChange={(c) =>
+                                                            setRow(i, {
+                                                                is_active:
+                                                                    c === true,
+                                                            })
+                                                        }
+                                                    />
+                                                    {t(
+                                                        'services.fields.is_active',
+                                                    )}
+                                                </label>
+                                            </div>
+                                        </>
+                                    )}
+                                </li>
+                            ),
+                    )}
                 </ul>
 
                 <Button

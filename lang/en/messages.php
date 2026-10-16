@@ -56,6 +56,10 @@ return [
     'settings_description' => 'How customers get texts and emails, message templates, and SMS registration.',
 
     'mode' => 'How customers get texts',
+    'quiet_title' => 'Quiet hours',
+    'placeholders_label' => 'Insert a detail',
+    'preview' => 'Preview',
+    'sms_count' => ':chars characters · :parts SMS',
     'quiet_from' => 'Quiet hours from',
     'quiet_until' => 'until',
     'quiet_hint' => 'No automatic texts at night (company time zone); they go out when the quiet hours end.',

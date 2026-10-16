@@ -4,7 +4,8 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
-import { PageHeader } from '@/components/page-header';
+import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
+import { ActionSheet } from '@/components/ui/action-sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -123,35 +124,47 @@ export default function TaxesIndex({
         <>
             <Head title={t('taxes.title')} />
 
-            <div className="max-w-2xl p-4">
-                <PageHeader
-                    title={t('taxes.title')}
-                    description={t('taxes.description')}
-                    actions={
-                        canManage && (
-                            <Button onClick={() => openForm(null)}>
-                                <Plus /> {t('taxes.add')}
-                            </Button>
-                        )
-                    }
-                />
+            <ScreenHeader
+                title={t('taxes.title')}
+                actions={
+                    canManage && (
+                        <button
+                            type="button"
+                            className={headerButtonClass}
+                            aria-label={t('taxes.add')}
+                            title={t('taxes.add')}
+                            onClick={() => openForm(null)}
+                        >
+                            <Plus className="size-5" />
+                        </button>
+                    )
+                }
+            />
+
+            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6">
+                <p className="text-sm text-muted-foreground">
+                    {t('taxes.description')}
+                </p>
 
                 {taxRates.length === 0 ? (
                     <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                         {t('taxes.empty')}
                     </p>
                 ) : (
-                    <ul className="divide-y rounded-lg border">
+                    <ul
+                        className="da-card divide-y overflow-hidden"
+                        data-test="tax-list"
+                    >
                         {taxRates.map((taxRate) => (
                             <li
                                 key={taxRate.id}
                                 className="flex items-center gap-3 px-4 py-3"
                             >
-                                <div className="flex flex-1 flex-wrap items-center gap-2">
-                                    <span className="font-medium">
+                                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                                    <span className="font-semibold">
                                         {taxRate.name}
                                     </span>
-                                    <span className="text-muted-foreground">
+                                    <span className="text-muted-foreground tabular-nums">
                                         {formatRate(taxRate.rate)}
                                     </span>
                                     {taxRate.is_compound && (
@@ -160,21 +173,18 @@ export default function TaxesIndex({
                                         </Badge>
                                     )}
                                     {taxRate.is_default && (
-                                        <Badge>{t('taxes.default')}</Badge>
-                                    )}
-                                    {taxRate.applies_to !== null && (
-                                        <span className="text-xs text-muted-foreground">
-                                            {t('taxes.applies_to_list', {
-                                                kinds: taxRate.applies_to
-                                                    .map((kind) =>
-                                                        t(
-                                                            `billing.kinds.${kind}`,
-                                                        ),
-                                                    )
-                                                    .join(', '),
-                                            })}
+                                        <span className="da-chip inline-flex h-6 items-center rounded-full px-2.5 text-xs font-semibold">
+                                            {t('taxes.default')}
                                         </span>
                                     )}
+                                    {/* On what it is charged: Labour · Parts · Materials (SPEC §7.6). */}
+                                    <span className="basis-full text-sm text-muted-foreground">
+                                        {(taxRate.applies_to ?? KINDS)
+                                            .map((kind) =>
+                                                t(`billing.kinds.${kind}`),
+                                            )
+                                            .join(' · ')}
+                                    </span>
                                     {!taxRate.is_active && (
                                         <Badge variant="secondary">
                                             {t('common.inactive')}
@@ -182,26 +192,26 @@ export default function TaxesIndex({
                                     )}
                                 </div>
                                 {canManage && (
-                                    <div className="flex gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="size-10"
-                                            aria-label={t('common.edit')}
-                                            onClick={() => openForm(taxRate)}
-                                        >
-                                            <Pencil />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="size-10"
-                                            aria-label={t('common.delete')}
-                                            onClick={() => remove(taxRate)}
-                                        >
-                                            <Trash2 />
-                                        </Button>
-                                    </div>
+                                    <ActionSheet
+                                        title={taxRate.name}
+                                        variant="plain"
+                                        items={[
+                                            {
+                                                key: 'edit',
+                                                label: t('common.edit'),
+                                                icon: <Pencil />,
+                                                onSelect: () =>
+                                                    openForm(taxRate),
+                                            },
+                                            {
+                                                key: 'delete',
+                                                label: t('common.delete'),
+                                                icon: <Trash2 />,
+                                                destructive: true,
+                                                onSelect: () => remove(taxRate),
+                                            },
+                                        ]}
+                                    />
                                 )}
                             </li>
                         ))}

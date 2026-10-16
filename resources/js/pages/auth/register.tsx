@@ -56,7 +56,7 @@ export default function Register({
                                 id="email"
                                 name="email"
                                 type="email"
-                                autoComplete="email"
+                                autoComplete="username"
                                 required
                                 maxLength={255}
                                 className="h-12 rounded-xl"

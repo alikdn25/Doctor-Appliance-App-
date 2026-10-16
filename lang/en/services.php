@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'search' => 'Search the price book',
+    'kind_filter' => 'Type',
+    'all_kinds' => 'All',
     'title' => 'Services',
     'description' => 'Your services and prices. The list started from your business type; change it as you like.',
     'hint' => 'Prices are in :currency. Leave empty if it depends on the job.',

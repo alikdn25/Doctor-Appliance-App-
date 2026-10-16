@@ -93,7 +93,12 @@ test('a tax set for parts and materials skips labor until ticked on the line', a
         })
         .check();
     await dialog.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('on Part, Material').first()).toBeVisible();
+    await expect(
+        page
+            .getByRole('listitem')
+            .filter({ hasText: name })
+            .getByText('Part · Material', { exact: true }),
+    ).toBeVisible();
 
     await page.goto(`/jobs/${fixture.job_id}/invoices/create`);
     for (const [kind, label] of [
@@ -124,7 +129,11 @@ test('a tax set for parts and materials skips labor until ticked on the line', a
     await page
         .getByRole('listitem')
         .filter({ hasText: name })
-        .getByRole('button', { name: 'Edit' })
+        .locator('[data-test="action-sheet-button"]')
+        .click();
+    await page
+        .locator('[data-test="action-sheet"]')
+        .getByRole('button', { name: 'Edit', exact: true })
         .click();
     await dialog
         .getByRole('checkbox', {

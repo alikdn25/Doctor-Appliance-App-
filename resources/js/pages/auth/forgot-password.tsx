@@ -47,7 +47,7 @@ export default function ForgotPassword({
                                         id="email"
                                         type="email"
                                         name="email"
-                                        autoComplete="off"
+                                        autoComplete="username"
                                         autoFocus
                                         placeholder="email@example.com"
                                     />
