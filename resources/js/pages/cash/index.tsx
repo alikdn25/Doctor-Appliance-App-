@@ -4,7 +4,8 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { fromMinor, useMoney } from '@/components/billing/money';
 import { FormField } from '@/components/form-field';
-import { PageHeader } from '@/components/page-header';
+import { ScreenHeader } from '@/components/screen-header';
+import { InfoHint } from '@/components/ui/info-hint';
 import { PaginationLinks } from '@/components/pagination-links';
 import type { Paginated } from '@/components/pagination-links';
 import { Button } from '@/components/ui/button';
@@ -101,11 +102,10 @@ export default function CashIndex({
         <>
             <Head title={t('cash.title')} />
 
-            <div className="max-w-3xl space-y-6 p-4">
-                <PageHeader
-                    title={t('cash.title')}
-                    description={t('cash.hint')}
-                />
+            <ScreenHeader title={t('cash.title')} />
+
+            <div className="mx-auto w-full max-w-3xl space-y-4 p-4 sm:p-6">
+                <InfoHint title={t('cash.on_hand')} hint={t('cash.hint')} />
 
                 {!acceptsCash && (
                     <p className="rounded-lg bg-muted p-3 text-sm">
@@ -113,36 +113,53 @@ export default function CashIndex({
                     </p>
                 )}
 
-                <ul className="divide-y rounded-lg border">
+                <ul
+                    className="da-card divide-y overflow-hidden"
+                    data-test="cash-people"
+                >
                     {people.map((p) => {
                         const entries = Object.entries(p.balances).filter(
                             ([, amount]) => amount !== 0,
                         );
+                        const owes = (p.balances[currency] ?? 0) > 0;
 
                         return (
                             <li
                                 key={p.id}
-                                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 p-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto]"
+                                className="flex items-center gap-3 px-3 py-2.5"
                             >
-                                <Link
-                                    href={index({ query: { user: p.id } })}
-                                    className="min-w-0 truncate font-medium hover:underline"
+                                <span
+                                    className="da-soft flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+                                    aria-hidden="true"
                                 >
-                                    {p.name}
-                                </Link>
-                                <span className="text-right tabular-nums">
-                                    {entries.length === 0
-                                        ? t('cash.nothing')
-                                        : entries
-                                              .map(([cur, amount]) =>
-                                                  money(amount, cur),
-                                              )
-                                              .join(' · ')}
+                                    {p.name
+                                        .split(' ')
+                                        .map((part) => part[0])
+                                        .slice(0, 2)
+                                        .join('')
+                                        .toUpperCase()}
                                 </span>
+                                <div className="min-w-0 flex-1">
+                                    <Link
+                                        href={index({ query: { user: p.id } })}
+                                        className="block truncate font-medium hover:underline"
+                                    >
+                                        {p.name}
+                                    </Link>
+                                    <span className="block text-lg font-bold tabular-nums">
+                                        {entries.length === 0
+                                            ? money(0)
+                                            : entries
+                                                  .map(([cur, amount]) =>
+                                                      money(amount, cur),
+                                                  )
+                                                  .join(' · ')}
+                                    </span>
+                                </div>
                                 <Button
                                     variant="outline"
-                                    size="sm"
-                                    className="col-span-2 justify-self-start sm:col-span-1"
+                                    className="h-11 shrink-0"
+                                    disabled={!owes}
                                     onClick={() => openFor(p)}
                                 >
                                     <Banknote /> {t('cash.record_deposit')}
@@ -161,7 +178,7 @@ export default function CashIndex({
                             {t('cash.empty')}
                         </p>
                     ) : (
-                        <ul className="divide-y rounded-lg border">
+                        <ul className="da-card divide-y overflow-hidden">
                             {movements.data.map((m) => (
                                 <li
                                     key={m.id}

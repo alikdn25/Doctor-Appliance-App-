@@ -64,6 +64,7 @@ class BusinessExpenseController extends Controller
             'expenses' => $expenses, 'categories' => $categories, 'filters' => $filters,
             'currency' => currentCompany()->currency,
             'employees' => $employees, 'employeeTotals' => $employeeTotals, 'companyView' => $companyView,
+            'today' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
         ]);
     }
 
@@ -162,6 +163,9 @@ class BusinessExpenseController extends Controller
             'taxRates' => BillingPresenter::taxOptions($expense?->taxes ?? []),
             'currency' => $expense?->currency ?? currentCompany()->currency,
             'today' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
+            // The last three categories this person used, as chips (UX-REDESIGN §11.2).
+            'recentCategoryIds' => BusinessExpense::query()->where('created_by', $request->user()->id)
+                ->latest('id')->limit(30)->pluck('category_id')->unique()->take(3)->values(),
         ]);
     }
 

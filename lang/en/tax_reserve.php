@@ -1,0 +1,57 @@
+<?php
+
+return [
+    'title' => 'Tax reserve',
+    'hint' => 'How much to move to your tax account each month. You make the transfer in your bank and mark it here.',
+    'card_title' => 'Move to the tax account for :month',
+    'off' => 'Turn on the tax reserve to see each month how much to set aside for taxes.',
+    'set_up' => 'Set up tax reserve',
+    'income_tax' => 'Income and dividend tax (:rate% of :profit)',
+    'loss' => 'No income tax: the month ended with a loss.',
+    'total' => 'Total to move',
+    'moved' => 'Moved',
+    'left' => 'Left to move',
+    'done' => 'All moved for this month.',
+    'collected' => 'collected :amount',
+    'deducted' => 'minus :amount paid on expenses',
+    'behind_title' => 'Not moved for earlier months',
+    'history' => 'Transfers',
+    'no_history' => 'No transfers marked yet.',
+    'export' => 'Download CSV (by month)',
+    'basis_paid' => 'Based on invoices paid in the month.',
+    'basis_issued' => 'Based on invoices issued in the month.',
+    'no_taxes' => 'No sales tax this month.',
+
+    'settings' => [
+        'title' => 'Settings',
+        'enabled' => 'Tax reserve on',
+        'rate' => 'Income and dividend tax, %',
+        'deduct_expense_tax' => 'Take off sales tax paid on expenses',
+        'deduct_expense_tax_hint' => 'Recoverable taxes of the same name paid on business expenses are subtracted.',
+        'basis' => 'Count by',
+        'basis_paid' => 'Invoices paid',
+        'basis_issued' => 'Invoices issued',
+        'reminder_day' => 'Remind me on day',
+        'reminder_none' => 'No reminder',
+        'save' => 'Save settings',
+        'saved' => 'Tax reserve settings saved.',
+    ],
+
+    'transfer' => [
+        'mark' => 'Mark transfer',
+        'title' => 'Mark transfer for :month',
+        'amount' => 'Amount',
+        'date' => 'Date',
+        'note' => 'Note',
+        'save' => 'Mark as moved',
+        'saved' => 'Transfer marked.',
+        'remove' => 'Remove',
+        'removed' => 'Transfer removed.',
+        'confirm_remove' => 'Remove this transfer? Use it only for one marked by mistake.',
+    ],
+
+    'reminder' => [
+        'title' => 'Tax reserve for :month',
+        'body' => 'Move :amount to the tax account for :month.',
+    ],
+];

@@ -30,3 +30,4 @@ Schedule::command('backup:check --quiet-ok')->hourlyAt(50)->when(fn () => Backup
 
 // Watchdog: at 7:00 company time, alert the Owner when customers, jobs or invoices suddenly drop.
 Schedule::command('ops:watchdog')->hourlyAt(0)->withoutOverlapping();
+Schedule::command('tax-reserve:remind')->hourlyAt(12)->withoutOverlapping();

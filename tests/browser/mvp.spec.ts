@@ -143,10 +143,12 @@ test('business expenses save custom categories, actual named taxes and a private
         mimeType: 'image/png',
         buffer: png,
     });
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.locator('[data-test="save-expense"]').click();
     await expect(page).toHaveURL(/\/business-expenses\?from=/);
+    // Search is in the Filters sheet (UX-REDESIGN §11.2).
+    await page.locator('[data-test="expense-filters"]').click();
     await page.locator('#search').fill(`Browser fuel ${info.project.name}`);
-    await page.getByRole('button', { name: 'Search', exact: true }).click();
+    await page.getByRole('button', { name: 'Show', exact: true }).click();
     await expect(page).toHaveURL(
         (url) =>
             url.searchParams.get('search') ===

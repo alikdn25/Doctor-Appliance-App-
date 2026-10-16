@@ -1,17 +1,18 @@
-import { Head, router } from '@inertiajs/react';
-import { Download } from 'lucide-react';
-import type { FormEvent } from 'react';
-import { useState } from 'react';
-import { useMoney } from '@/components/billing/money';
-import { PageHeader } from '@/components/page-header';
-import { BusinessReport } from '@/components/reports/business-report';
+import { Head, router, usePage } from '@inertiajs/react';
+import { ChevronDown, Download } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { formatMoney, useMoney } from '@/components/billing/money';
 import { ProfitSummary } from '@/components/reports/profit-summary';
 import type { ProfitData } from '@/components/reports/profit-summary';
-import type { BusinessReportData } from '@/components/reports/business-report';
+import { ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { InfoHint } from '@/components/ui/info-hint';
+import { formatRange, PeriodPicker } from '@/components/ui/period-picker';
+import type { Period } from '@/components/ui/period-picker';
 import { useTrans } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { expenses, index, receipts } from '@/routes/reports';
+import { exportMethod as taxReserveCsv } from '@/routes/tax-reserve';
 
 type Profit = {
     jobs: number;
@@ -22,15 +23,69 @@ type Profit = {
     margin: number | null;
 };
 type Rate = { jobs: number; callbacks: number; rate: number | null };
+type Revenue = {
+    currency: string;
+    invoices: number;
+    revenue: number;
+    average: number | null;
+};
+type RevenueGroup = Revenue & { key: string; name: string };
+type Business = {
+    totals: Revenue[];
+    byBrand: RevenueGroup[];
+    byTechnician: RevenueGroup[];
+    byJobType: RevenueGroup[];
+    bySource: RevenueGroup[];
+    conversion: { estimates: number; approved: number; rate: number | null };
+};
+/** A section that opens on tap, with an (i) for how it is counted. */
+function Fold({
+    title,
+    hint,
+    summary,
+    children,
+    open = false,
+}: {
+    title: string;
+    hint?: string;
+    summary?: string;
+    children: ReactNode;
+    open?: boolean;
+}) {
+    const t = useTrans();
+
+    return (
+        <details className="da-card group overflow-hidden" open={open}>
+            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-2 [&::-webkit-details-marker]:hidden">
+                <span className="min-w-0 flex-1">
+                    <span className="block font-semibold">{title}</span>
+                    {summary && (
+                        <span className="block truncate text-sm text-muted-foreground">
+                            {summary}
+                        </span>
+                    )}
+                </span>
+                <ChevronDown className="size-5 shrink-0 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="space-y-3 border-t p-4">
+                {hint && (
+                    <InfoHint title={t('reports.how_counted')} hint={hint} />
+                )}
+                {children}
+            </div>
+        </details>
+    );
+}
 
 /**
- * Office reports: profit and margin, warranty callback rate, no-charge jobs, exports for the bookkeeper.
+ * Reports (UX-REDESIGN §11.1): the period in one tap (Day · Week · Month · Year · Custom, ‹ › moves it), four
+ * figures on top with the base each counts (invoices issued, jobs closed), then sections that open on tap with
+ * one row per brand, person, job type or source.
  */
 export default function Reports({
     from,
     to,
     currency,
-    totals,
     byTechnician,
     byAppliance,
     callbacks,
@@ -45,7 +100,7 @@ export default function Reports({
     to: string;
     currency: string;
     totals: Profit;
-    business: BusinessReportData;
+    business: Business;
     byTechnician: (Profit & { name: string })[];
     byAppliance: (Profit & { name: string })[];
     callbacks: {
@@ -62,108 +117,136 @@ export default function Reports({
 }) {
     const t = useTrans();
     const money = useMoney(currency);
-    const [period, setPeriod] = useState({ from, to });
+    const { auth } = usePage().props;
+    const locale = auth.company?.locale ?? 'en-US';
 
-    // Day / week (from Monday) / month / year, each up to today.
-    const presets = (() => {
-        const [y, m, d] = today.split('-').map(Number);
-        const date = new Date(Date.UTC(y, m - 1, d));
-        const monday = new Date(date);
-        monday.setUTCDate(d - ((date.getUTCDay() + 6) % 7));
-
-        return {
-            day: today,
-            week: monday.toISOString().slice(0, 10),
-            month: `${today.slice(0, 7)}-01`,
-            year: `${today.slice(0, 4)}-01-01`,
-        } as const;
-    })();
-    const choose = (start: string) =>
+    const go = (start: string, end: string, period: Period) =>
         router.get(
             index().url,
-            { from: start, to: today },
-            { preserveState: false },
+            { from: start, to: end, period },
+            { preserveScroll: true, replace: true },
         );
 
-    const apply = (e: FormEvent) => {
-        e.preventDefault();
-        router.get(index().url, period, { preserveState: true });
-    };
+    const range = formatRange(from, to, today, locale);
 
-    const pct = (value: number | null) => (value === null ? '—' : `${value}%`);
+    const pct = (value: number | null) =>
+        value === null ? t('reports.no_data') : `${value}%`;
+    const revenueMain =
+        business.totals.find((row) => row.currency === currency) ??
+        business.totals[0];
+    const otherRevenue = business.totals.filter((row) => row !== revenueMain);
+    const cur = (amount: number, code: string) =>
+        formatMoney(amount, code, locale);
 
-    const profitTable = (
-        title: string,
-        rows: (Profit & { name: string })[],
-    ) => (
-        <div className="space-y-1">
-            <h3 className="text-sm font-medium">{title}</h3>
-            <div className="overflow-x-auto rounded-lg border">
-                <table className="w-full text-sm">
-                    <thead className="bg-muted/50 text-xs text-muted-foreground">
-                        <tr>
-                            <th className="p-2 text-left"></th>
-                            <th className="p-2 text-right">
-                                {t('reports.jobs')}
-                            </th>
-                            <th className="p-2 text-right">
-                                {t('reports.revenue')}
-                            </th>
-                            <th className="p-2 text-right">
-                                {t('reports.cost')}
-                            </th>
-                            <th className="p-2 text-right">
-                                {t('reports.profit')}
-                            </th>
-                            <th className="p-2 text-right">
-                                {t('reports.margin')}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                        {rows.map((r) => (
-                            <tr key={r.name}>
-                                <td className="p-2">{r.name}</td>
-                                <td className="p-2 text-right tabular-nums">
-                                    {r.jobs}
-                                </td>
-                                <td className="p-2 text-right tabular-nums">
-                                    {money(r.revenue)}
-                                </td>
-                                <td className="p-2 text-right tabular-nums">
-                                    {r.cost === null
-                                        ? t('billing.private_cost')
-                                        : money(r.cost + r.fees)}
-                                </td>
-                                <td className="p-2 text-right tabular-nums">
-                                    {r.profit === null
-                                        ? t('billing.private_cost')
-                                        : money(r.profit)}
-                                </td>
-                                <td className="p-2 text-right tabular-nums">
-                                    {pct(r.margin)}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-
-    const rateTable = (title: string, rows: (Rate & { name: string })[]) => (
-        <div className="space-y-1">
-            <h3 className="text-sm font-medium">{title}</h3>
-            <ul className="divide-y rounded-lg border text-sm">
-                {rows.map((r) => (
-                    <li key={r.name} className="flex justify-between gap-2 p-2">
-                        <span>{r.name}</span>
-                        <span className="tabular-nums">
-                            {r.callbacks} / {r.jobs} · {pct(r.rate)}
+    const revenueRows = (rows: RevenueGroup[]) =>
+        rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+                {t('reports.no_data')}
+            </p>
+        ) : (
+            <ul className="divide-y text-sm">
+                {rows.map((row) => (
+                    <li
+                        key={`${row.key}-${row.currency}`}
+                        className="flex flex-wrap items-baseline justify-between gap-x-3 py-2"
+                    >
+                        <span className="min-w-0 font-medium">{row.name}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                            {[
+                                t('reports.invoices_n', {
+                                    count: row.invoices,
+                                }),
+                                cur(row.revenue, row.currency),
+                                row.average !== null
+                                    ? t('reports.avg', {
+                                          amount: cur(
+                                              row.average,
+                                              row.currency,
+                                          ),
+                                      })
+                                    : null,
+                            ]
+                                .filter(Boolean)
+                                .join(' · ')}
                         </span>
                     </li>
                 ))}
             </ul>
+        );
+
+    const profitRows = (rows: (Profit & { name: string })[]) =>
+        rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+                {t('reports.no_data')}
+            </p>
+        ) : (
+            <ul className="divide-y text-sm">
+                {rows.map((row) => (
+                    <li
+                        key={row.name}
+                        className="flex flex-wrap items-baseline justify-between gap-x-3 py-2"
+                    >
+                        <span className="min-w-0 font-medium">{row.name}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                            {[
+                                t('reports.jobs_n', { count: row.jobs }),
+                                money(row.revenue),
+                                row.profit === null
+                                    ? t('billing.private_cost')
+                                    : t('reports.profit_short', {
+                                          amount: money(row.profit),
+                                          margin: pct(row.margin),
+                                      }),
+                            ].join(' · ')}
+                        </span>
+                    </li>
+                ))}
+            </ul>
+        );
+
+    const rateRows = (title: string, rows: (Rate & { name: string })[]) => (
+        <div className="space-y-1">
+            <h3 className="text-sm font-medium">{title}</h3>
+            {rows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                    {t('reports.no_data')}
+                </p>
+            ) : (
+                <ul className="divide-y text-sm">
+                    {rows.map((row) => (
+                        <li
+                            key={row.name}
+                            className="flex justify-between gap-2 py-2"
+                        >
+                            <span>{row.name}</span>
+                            <span className="text-muted-foreground tabular-nums">
+                                {row.callbacks} / {row.jobs} · {pct(row.rate)}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+
+    const kpi = (
+        label: string,
+        value: string,
+        caption: string,
+        tone?: string,
+        test?: string,
+    ) => (
+        <div className="da-card p-3" data-test={test}>
+            <p className="text-xs font-medium text-muted-foreground">{label}</p>
+            <p
+                className={cn(
+                    'text-xl font-bold whitespace-nowrap tabular-nums',
+                    tone,
+                )}
+            >
+                {value}
+            </p>
+            <p className="text-xs text-muted-foreground">{caption}</p>
         </div>
     );
 
@@ -171,207 +254,202 @@ export default function Reports({
         <>
             <Head title={t('reports.title')} />
 
-            <div className="max-w-4xl space-y-8 p-4">
-                <PageHeader
-                    title={t('reports.title')}
-                    description={t('reports.period_hint')}
-                />
+            <ScreenHeader title={t('reports.title')} subtitle={range} />
 
-                <div
-                    className="da-track grid grid-cols-4 gap-1 p-1"
-                    role="group"
-                    aria-label={t('reports.profit_summary.period')}
+            <div className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:p-6">
+                <PeriodPicker from={from} to={to} today={today} onChange={go} />
+
+                <section
+                    className="grid grid-cols-2 gap-3"
+                    aria-label={t('reports.profit_summary.title')}
                 >
-                    {(['day', 'week', 'month', 'year'] as const).map((key) => (
-                        <button
-                            key={key}
-                            type="button"
-                            className="da-chip min-h-11 rounded-xl text-sm font-medium"
-                            aria-pressed={from === presets[key] && to === today}
-                            onClick={() => choose(presets[key])}
-                        >
-                            {t(`reports.profit_summary.periods.${key}`)}
-                        </button>
-                    ))}
-                </div>
-
-                <form
-                    onSubmit={apply}
-                    className="flex flex-wrap items-end gap-2"
-                >
-                    <label className="text-sm">
-                        {t('reports.from')}
-                        <Input
-                            type="date"
-                            value={period.from}
-                            onChange={(e) =>
-                                setPeriod({ ...period, from: e.target.value })
-                            }
-                        />
-                    </label>
-                    <label className="text-sm">
-                        {t('reports.to')}
-                        <Input
-                            type="date"
-                            value={period.to}
-                            onChange={(e) =>
-                                setPeriod({ ...period, to: e.target.value })
-                            }
-                        />
-                    </label>
-                    <Button type="submit">{t('reports.apply')}</Button>
-                </form>
-
-                <ProfitSummary data={profit} currency={currency} />
-
-                <BusinessReport data={business} />
-
-                <section className="space-y-3">
-                    <h2 className="text-base font-medium">
-                        {t('reports.profit_title')}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                        {t('reports.profit_currency_hint', { currency })}
-                    </p>
-                    {totals.jobs === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            {t('reports.empty')}
-                        </p>
-                    ) : (
-                        <>
-                            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                {(
-                                    [
-                                        [
-                                            'reports.revenue',
-                                            money(totals.revenue),
-                                        ],
-                                        [
-                                            'reports.cost',
-                                            totals.cost === null
-                                                ? t('billing.private_cost')
-                                                : money(totals.cost),
-                                        ],
-                                        ['reports.fees', money(totals.fees)],
-                                        [
-                                            'reports.profit',
-                                            `${totals.profit === null ? t('billing.private_cost') : money(totals.profit)} · ${pct(totals.margin)}`,
-                                        ],
-                                    ] as const
-                                ).map(([label, value]) => (
-                                    <div
-                                        key={label}
-                                        className="rounded-lg border p-3"
-                                    >
-                                        <dt className="text-xs text-muted-foreground">
-                                            {t(label)}
-                                        </dt>
-                                        <dd className="text-lg font-semibold tabular-nums">
-                                            {value}
-                                        </dd>
-                                    </div>
-                                ))}
-                            </dl>
-                            {profitTable(
-                                t('reports.by_technician'),
-                                byTechnician,
-                            )}
-                            {profitTable(
-                                t('reports.by_appliance'),
-                                byAppliance,
-                            )}
-                        </>
+                    {kpi(
+                        t('reports.revenue_basis'),
+                        revenueMain
+                            ? cur(revenueMain.revenue, revenueMain.currency)
+                            : money(0),
+                        t('reports.revenue_based_on', {
+                            count: revenueMain?.invoices ?? 0,
+                            range,
+                        }),
+                        undefined,
+                        'kpi-revenue',
+                    )}
+                    {kpi(
+                        t('reports.profit_summary.basis'),
+                        profit.profit === null
+                            ? t('billing.private_cost')
+                            : `${money(profit.profit)}${profit.margin !== null ? ` · ${profit.margin}%` : ''}`,
+                        t('reports.profit_summary.based_on', {
+                            count: profit.jobs,
+                            range,
+                        }),
+                        profit.profit !== null && profit.profit < 0
+                            ? 'text-danger'
+                            : undefined,
+                        'kpi-profit',
+                    )}
+                    {kpi(
+                        t('reports.average_ticket'),
+                        revenueMain?.average != null
+                            ? cur(revenueMain.average, revenueMain.currency)
+                            : t('reports.no_data'),
+                        t('reports.invoices_n', {
+                            count: revenueMain?.invoices ?? 0,
+                        }),
+                    )}
+                    {kpi(
+                        t('reports.conversion_title'),
+                        business.conversion.rate === null
+                            ? t('reports.no_data')
+                            : `${business.conversion.rate}%`,
+                        t('reports.conversion_count', {
+                            approved: business.conversion.approved,
+                            estimates: t('reports.estimates_n', {
+                                count: business.conversion.estimates,
+                            }),
+                        }),
                     )}
                 </section>
-
-                <section className="space-y-3">
-                    <h2 className="text-base font-medium">
-                        {t('reports.callbacks_title')}
-                    </h2>
+                {otherRevenue.length > 0 && (
                     <p className="text-sm text-muted-foreground">
-                        {t('reports.callbacks_hint')}
+                        {t('reports.other_currencies', {
+                            list: otherRevenue
+                                .map((row) => cur(row.revenue, row.currency))
+                                .join(' · '),
+                        })}
                     </p>
-                    <p className="text-sm">
-                        {t('reports.callbacks')}: {callbacks.total.callbacks} /{' '}
-                        {callbacks.total.jobs} · {pct(callbacks.total.rate)}
+                )}
+
+                <Fold
+                    title={t('reports.sections.profit')}
+                    hint={t('reports.period_hint')}
+                    summary={
+                        profit.profit === null
+                            ? undefined
+                            : money(profit.profit)
+                    }
+                >
+                    <ProfitSummary
+                        data={profit}
+                        currency={currency}
+                        breakdownOnly
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        {t('reports.profit_currency_hint', { currency })}
                     </p>
+                </Fold>
+
+                <Fold
+                    title={t('reports.by_brand')}
+                    hint={t('reports.revenue_hint')}
+                >
+                    {revenueRows(business.byBrand)}
+                </Fold>
+
+                <Fold
+                    title={t('reports.by_technician')}
+                    hint={t('reports.revenue_hint')}
+                >
+                    <h3 className="text-sm font-medium">
+                        {t('reports.revenue_basis')}
+                    </h3>
+                    {revenueRows(business.byTechnician)}
+                    <h3 className="pt-2 text-sm font-medium">
+                        {t('reports.profit_summary.basis')}
+                    </h3>
+                    {profitRows(byTechnician)}
+                </Fold>
+
+                <Fold title={t('reports.by_job_type')}>
+                    {revenueRows(business.byJobType)}
+                </Fold>
+
+                <Fold title={t('reports.by_source')}>
+                    {revenueRows(business.bySource)}
+                </Fold>
+
+                <Fold title={t('reports.by_appliance')}>
+                    {profitRows(byAppliance)}
+                </Fold>
+
+                <Fold
+                    title={t('reports.callbacks_title')}
+                    hint={t('reports.callbacks_hint')}
+                    summary={`${callbacks.total.callbacks} / ${callbacks.total.jobs} · ${pct(callbacks.total.rate)}`}
+                >
                     <div className="grid gap-4 md:grid-cols-3">
-                        {rateTable(
+                        {rateRows(
                             t('reports.by_technician'),
                             callbacks.byTechnician,
                         )}
-                        {rateTable(t('reports.by_brand'), callbacks.byBrand)}
-                        {rateTable(
+                        {rateRows(t('reports.by_brand'), callbacks.byBrand)}
+                        {rateRows(
                             t('reports.by_appliance'),
                             callbacks.byAppliance,
                         )}
                     </div>
-                </section>
+                </Fold>
 
-                <section className="space-y-3">
-                    <h2 className="text-base font-medium">
-                        {t('reports.no_charge_title')}
-                    </h2>
-                    <p className="text-sm">
-                        {t('reports.count')}: {noCharge.count} ·{' '}
-                        {t('reports.loss')}:{' '}
-                        {noCharge.loss === null
+                <Fold
+                    title={t('reports.no_charge_title')}
+                    summary={`${noCharge.count} · ${
+                        noCharge.loss === null
                             ? t('billing.private_cost')
-                            : money(noCharge.loss)}
-                    </p>
-                    <ul className="divide-y rounded-lg border text-sm">
-                        {noCharge.byTechnician.map((r) => (
-                            <li
-                                key={r.name}
-                                className="flex justify-between gap-2 p-2"
-                            >
-                                <span>{r.name}</span>
-                                <span className="tabular-nums">
-                                    {r.count} ·{' '}
-                                    {r.loss === null
-                                        ? t('billing.private_cost')
-                                        : money(r.loss)}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
-                </section>
+                            : money(noCharge.loss)
+                    }`}
+                >
+                    {noCharge.byTechnician.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            {t('reports.no_data')}
+                        </p>
+                    ) : (
+                        <ul className="divide-y text-sm">
+                            {noCharge.byTechnician.map((row) => (
+                                <li
+                                    key={row.name}
+                                    className="flex justify-between gap-2 py-2"
+                                >
+                                    <span>{row.name}</span>
+                                    <span className="text-muted-foreground tabular-nums">
+                                        {row.count} ·{' '}
+                                        {row.loss === null
+                                            ? t('billing.private_cost')
+                                            : money(row.loss)}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </Fold>
 
-                <section className="space-y-2">
-                    <h2 className="text-base font-medium">
-                        {t('reports.exports')}
-                    </h2>
+                <Fold title={t('reports.exports')}>
                     <div className="flex flex-wrap gap-2">
                         <Button variant="outline" asChild>
-                            <a
-                                href={
-                                    expenses({
-                                        query: {
-                                            from: period.from,
-                                            to: period.to,
-                                        },
-                                    }).url
-                                }
-                            >
+                            <a href={expenses({ query: { from, to } }).url}>
                                 <Download /> {t('reports.expenses_csv')}
                             </a>
                         </Button>
                         <Button variant="outline" asChild>
-                            <a
-                                href={
-                                    receipts({
-                                        query: {
-                                            from: period.from,
-                                            to: period.to,
-                                        },
-                                    }).url
-                                }
-                            >
+                            <a href={receipts({ query: { from, to } }).url}>
                                 <Download /> {t('reports.receipts_zip')}
                             </a>
                         </Button>
+                        {auth.role?.value === 'owner' && (
+                            <Button variant="outline" asChild>
+                                <a
+                                    href={
+                                        taxReserveCsv({
+                                            query: { year: from.slice(0, 4) },
+                                        }).url
+                                    }
+                                >
+                                    <Download /> {t('reports.tax_reserve_csv')}
+                                </a>
+                            </Button>
+                        )}
                     </div>
-                </section>
+                </Fold>
             </div>
         </>
     );

@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\BusinessExpense;
 use App\Models\Trip;
+use App\Support\Reports\TaxReserve;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,8 +15,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * More → "Expenses & taxes" (UX-REDESIGN §23), for the Owner: business expenses, mileage and cash on hand in one
- * place, each with this month's figure.
+ * More → "Expenses & taxes" (UX-REDESIGN §23), for the Owner: business expenses, the tax reserve, mileage and cash
+ * on hand in one place, each with its figure.
  */
 class ExpensesHubController extends Controller
 {
@@ -40,6 +41,12 @@ class ExpensesHubController extends Controller
             'distance' => round($company->distance_unit === 'mi' ? $kilometres / 1.609344 : $kilometres, 1),
             'distanceUnit' => $company->distance_unit,
             'cash' => (int) $cash,
+            // Tax reserve (§17): what is left to move for the month just finished.
+            'taxReserve' => $company->tax_reserve_enabled ? (function () use ($now, $request) {
+                $reserve = TaxReserve::month($now->subMonthNoOverflow()->startOfMonth(), $request->user());
+
+                return ['month' => $reserve['month'], 'left' => $reserve['left'], 'total' => $reserve['total']];
+            })() : null,
         ]);
     }
 }

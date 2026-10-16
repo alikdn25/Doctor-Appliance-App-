@@ -1,12 +1,13 @@
-import { Head } from '@inertiajs/react';
-import { Banknote, Car, Wallet } from 'lucide-react';
+import { Head, usePage } from '@inertiajs/react';
+import { Banknote, Car, Landmark, Wallet } from 'lucide-react';
 import { useMoney } from '@/components/billing/money';
-import { PageHeader } from '@/components/page-header';
+import { ScreenHeader } from '@/components/screen-header';
 import { ListRow } from '@/components/ui/list-row';
 import { useTrans } from '@/lib/i18n';
 import { index as cash } from '@/routes/cash';
 import { index as expenses } from '@/routes/expenses';
 import { expensesHub } from '@/routes';
+import { index as taxReserve } from '@/routes/tax-reserve';
 import { index as trips } from '@/routes/trips';
 
 const tile =
@@ -20,23 +21,31 @@ export default function ExpensesHub({
     distance,
     distanceUnit,
     cash: onHand,
+    taxReserve: reserve = null,
 }: {
     month: string;
     expenses: number;
     distance: number;
     distanceUnit: 'km' | 'mi';
     cash: number;
+    taxReserve?: { month: string; left: number; total: number } | null;
 }) {
     const t = useTrans();
     const money = useMoney();
+    const { auth } = usePage().props;
+    const monthName = (value: string) =>
+        new Intl.DateTimeFormat(auth.company?.locale ?? 'en-US', {
+            month: 'long',
+            timeZone: 'UTC',
+        }).format(new Date(`${value}T12:00:00Z`));
 
     return (
         <>
             <Head title={t('nav.expenses_and_taxes')} />
 
-            <div className="max-w-3xl space-y-4 p-4">
-                <PageHeader title={t('nav.expenses_and_taxes')} />
+            <ScreenHeader title={t('nav.expenses_and_taxes')} />
 
+            <div className="mx-auto w-full max-w-3xl space-y-4 p-4 sm:p-6">
                 <div className="da-card divide-y overflow-hidden">
                     <ListRow
                         href={expenses()}
@@ -49,6 +58,24 @@ export default function ExpensesHub({
                         subtitle={t('expenses.hub.this_month', {
                             value: money(spent),
                         })}
+                        chevron
+                    />
+                    <ListRow
+                        href={taxReserve()}
+                        leading={
+                            <span className={tile}>
+                                <Landmark />
+                            </span>
+                        }
+                        title={t('tax_reserve.title')}
+                        subtitle={
+                            reserve
+                                ? t('expenses.hub.tax_reserve', {
+                                      month: monthName(reserve.month),
+                                      value: money(reserve.left),
+                                  })
+                                : t('tax_reserve.set_up')
+                        }
                         chevron
                     />
                     <ListRow

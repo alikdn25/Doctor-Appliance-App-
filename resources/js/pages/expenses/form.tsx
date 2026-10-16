@@ -9,7 +9,8 @@ import {
 } from '@/components/billing/money';
 import { FilePicker } from '@/components/file-picker';
 import { FormField } from '@/components/form-field';
-import { PageHeader } from '@/components/page-header';
+import { ScreenHeader } from '@/components/screen-header';
+import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import type { TaxOption } from '@/components/billing/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -42,14 +43,19 @@ export default function BusinessExpenseForm({
     currency,
     today,
     taxRates,
+    recentCategoryIds = [],
 }: {
     expense: ExpenseRow | null;
     categories: ExpenseCategory[];
     currency: string;
     today: string;
     taxRates: TaxOption[];
+    recentCategoryIds?: number[];
 }) {
     const t = useTrans();
+    const recent = recentCategoryIds
+        .map((id) => categories.find((c) => c.id === id && c.is_active))
+        .filter((c): c is ExpenseCategory => c !== undefined);
     const money = useMoney(currency);
     const title = t(expense ? 'expenses.edit' : 'expenses.add');
     const form = useForm<ExpenseForm>({
@@ -128,15 +134,54 @@ export default function BusinessExpenseForm({
         });
     }
 
+    const receiptField = (
+        <FormField
+            id="receipt"
+            label={t('expenses.receipt_optional')}
+            error={form.errors.receipt}
+            hint={t('expenses.receipt_hint')}
+        >
+            <FilePicker
+                id="receipt"
+                accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+                file={form.data.receipt}
+                label={t('expenses.add_receipt')}
+                onChange={(file) => form.setData('receipt', file)}
+            />
+            {expense?.receipt_url && (
+                <div className="space-y-1 text-sm">
+                    <a
+                        href={expense.receipt_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                    >
+                        {expense.receipt_name ?? t('expenses.view_receipt')}
+                    </a>
+                    <p className="text-xs text-muted-foreground">
+                        {t('expenses.receipt_keep')}
+                    </p>
+                </div>
+            )}
+            {form.progress && (
+                <progress
+                    aria-label={t('expenses.receipt_optional')}
+                    value={form.progress.percentage}
+                    max={100}
+                    className="w-full"
+                />
+            )}
+        </FormField>
+    );
+
     return (
         <>
             <Head title={title} />
-            <div className="mx-auto w-full max-w-3xl p-4">
-                <PageHeader
-                    title={title}
-                    description={t('expenses.description')}
-                />
+            <ScreenHeader title={title} back={index()} />
+            <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">
                 <form onSubmit={submit} className="space-y-5">
+                    {/* Receipt first: snap it, then fill in the rest (UX-REDESIGN §11.2). */}
+                    {!expense && receiptField}
                     <div className="grid gap-4 sm:grid-cols-2">
                         <FormField
                             id="spent_on"
@@ -153,6 +198,34 @@ export default function BusinessExpenseForm({
                                 }
                             />
                         </FormField>
+                        {recent.length > 0 && (
+                            <div
+                                className="flex flex-wrap gap-2 sm:col-span-2"
+                                role="group"
+                                aria-label={t('expenses.recent_categories')}
+                            >
+                                {recent.map((category) => (
+                                    <button
+                                        key={category.id}
+                                        type="button"
+                                        aria-pressed={
+                                            form.data.category_id ===
+                                            String(category.id)
+                                        }
+                                        className="da-chip da-press inline-flex h-10 items-center rounded-full px-3.5 text-sm font-medium"
+                                        onClick={() => {
+                                            form.setData(
+                                                'category_id',
+                                                String(category.id),
+                                            );
+                                            form.setData('new_category', '');
+                                        }}
+                                    >
+                                        {category.name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         <FormField
                             id="category_id"
                             label={t('expenses.fields.category')}
@@ -244,6 +317,7 @@ export default function BusinessExpenseForm({
                         <FormField
                             id="amount"
                             label={`${t('expenses.fields.price')} (${currency})`}
+                            hint={t('expenses.price_hint')}
                             error={form.errors.amount}
                         >
                             <Input
@@ -411,52 +485,7 @@ export default function BusinessExpenseForm({
                             {t('expenses.fields.tax')}: {money(taxTotal)}
                         </p>
                     </fieldset>
-                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/40 p-4">
-                        <p className="text-sm text-muted-foreground">
-                            {t('expenses.price_hint')}
-                        </p>
-                        <p className="font-semibold tabular-nums">
-                            {t('expenses.fields.total')}: {money(total)}
-                        </p>
-                    </div>
-                    <FormField
-                        id="receipt"
-                        label={t('expenses.receipt_optional')}
-                        error={form.errors.receipt}
-                        hint={t('expenses.receipt_hint')}
-                    >
-                        <FilePicker
-                            id="receipt"
-                            accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
-                            file={form.data.receipt}
-                            label={t('expenses.add_receipt')}
-                            onChange={(file) => form.setData('receipt', file)}
-                        />
-                        {expense?.receipt_url && (
-                            <div className="space-y-1 text-sm">
-                                <a
-                                    href={expense.receipt_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline"
-                                >
-                                    {expense.receipt_name ??
-                                        t('expenses.view_receipt')}
-                                </a>
-                                <p className="text-xs text-muted-foreground">
-                                    {t('expenses.receipt_keep')}
-                                </p>
-                            </div>
-                        )}
-                        {form.progress && (
-                            <progress
-                                aria-label={t('expenses.receipt_optional')}
-                                value={form.progress.percentage}
-                                max={100}
-                                className="w-full"
-                            />
-                        )}
-                    </FormField>
+                    {expense && receiptField}
                     <FormField
                         id="notes"
                         label={t('expenses.fields.notes')}
@@ -471,18 +500,24 @@ export default function BusinessExpenseForm({
                             }
                         />
                     </FormField>
-                    <div className="flex gap-3">
+                    <StickyActionBar>
+                        <Button
+                            variant="outline"
+                            className="h-12 !flex-none md:h-11"
+                            asChild
+                        >
+                            <Link href={index()}>{t('common.cancel')}</Link>
+                        </Button>
                         <Button
                             type="submit"
                             disabled={form.processing}
-                            className="min-h-11 flex-1 sm:flex-none"
+                            className="h-12 md:h-11"
+                            data-test="save-expense"
                         >
-                            {t('common.save')}
+                            {t('common.save')} · {t('expenses.fields.total')}{' '}
+                            {money(total)}
                         </Button>
-                        <Button variant="outline" className="min-h-11" asChild>
-                            <Link href={index()}>{t('common.cancel')}</Link>
-                        </Button>
-                    </div>
+                    </StickyActionBar>
                 </form>
             </div>
         </>

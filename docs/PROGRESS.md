@@ -1,3 +1,34 @@
+# October 16 — UX redesign, phase 10: reports, expenses, cash, mileage, tax reserve
+
+UX-REDESIGN.md §11, §17 and the content of §23. Migration approved by the owner on October 15.
+
+1. **Tax reserve** (§17): Expenses & taxes → Tax reserve (Owner only). Settings: on/off, income and dividend tax %
+   (default 21), take off the recoverable sales tax paid on expenses, count by invoices paid (default) or issued,
+   reminder day (1–28). The month card "Move to the tax account for September": each sales tax by its name (no tax
+   names or countries in the code), income tax = rate × net profit as in Reports (0 on a loss), total; Mark transfer
+   (amount, date, note); earlier months still short; the transfers; CSV by month (also under "For the bookkeeper").
+   Paid basis: each payment carries its share of the invoice's taxes; refunds take theirs back; void payments do not
+   count. Reminder: `tax-reserve:remind` hourly, from 9:00 on the chosen day, once a month, push + bell to Owners.
+2. **Reports** (§11.1): Day · Week · Month · Year · Custom with ‹ ›, applies at once (no Show button); From / To only
+   in Custom. Four figures: Revenue · invoices issued ("Based on 1 invoice issued Oct 1–9"), Profit · jobs closed with
+   margin ("Based on 0 jobs closed Oct 1–9"), Average invoice, Estimate conversion. Sections that open on tap:
+   Profit breakdown, By brand, By technician, By job type, By lead source, By appliance type, Warranty callbacks,
+   No-charge jobs, For the bookkeeper. Rows read "Doctor Appliance — 1 invoice · $95.00 · avg $95.00"; methods behind
+   (i); empty figures say "No data for this period". Calculations unchanged.
+3. **Business expenses** (§11.2): the same period control; Category / Employee / Search in a "Filters (N)" sheet with
+   active filters as chips with ✕; Export CSV under ⋯; "+" as a FAB; Expenses by employee folded (Owner/Admin).
+   No grand total (SPEC). New expense: receipt first, the last 3 categories as chips, the price hint under Price,
+   "Save · Total $X" pinned at the bottom.
+4. **Cash on hand** (§11.3): one row per person with initials, the amount large, Record deposit only when there is
+   cash to hand in; the hint behind (i).
+5. **Mileage** (§11.4): the person chips from phase 4 already cover it.
+
+- Migration `2026_10_25_000100_add_tax_reserve`: six `companies.tax_reserve_*` columns and the
+  `tax_reserve_transfers` table (no cascading deletes). Nothing removed.
+- Tests: TaxReserveTest (paid basis, refunds, issued basis with expense tax, transfers and months short, CSV, Owner
+  only and tenant isolation, reminder once); tenant isolation list; browser profit.spec and updated expense scenario.
+- Next: phase 11 — settings, sign-in, admin (§12) with the rest of §20 (checklists).
+
 # October 15 — UX redesign, phase 9b: Good / Better / Best on estimates
 
 SPEC §7.5, UX-REDESIGN §10.4, §21.2. Migration approved by the owner on October 15.

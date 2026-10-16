@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'on_hand' => 'Cash on hand',
     'title' => 'Cash on hand',
     'hint' => 'Cash each person collected and has not handed to the office yet. Entries are never deleted: reverse a wrong one with a reason.',
     'balance' => 'On hand',
