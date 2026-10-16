@@ -16,11 +16,13 @@ import { NumberHint } from '@/components/billing/number-hint';
 import { depositFor } from '@/components/billing/estimate-approval';
 import { AddItemSheet } from '@/components/billing/add-item-sheet';
 import {
+    ESTIMATE_OPTIONS,
     LineEditor,
     newLine,
     servicePatch,
 } from '@/components/billing/line-editor';
 import type {
+    EstimateOption,
     Line,
     LineKind,
     LineSetup,
@@ -38,6 +40,7 @@ import type {
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import { ScreenHeader } from '@/components/screen-header';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -155,6 +158,7 @@ export default function BillingForm({
             tax_rate_ids: item.tax_rate_ids ?? null,
             optional: kind === 'estimate' && item.optional,
             selected: kind === 'estimate' ? item.selected : true,
+            option_name: kind === 'estimate' ? (item.option_name ?? '') : '',
             kind: item.kind,
             service_id: item.service_id,
             part_number: item.part_number ?? '',
@@ -260,12 +264,28 @@ export default function BillingForm({
                     compound: r.is_compound,
                 },
         );
+    // Good / Better / Best offered on this estimate; the totals show the chosen one.
+    const offered = ESTIMATE_OPTIONS.filter((option) =>
+        data.items.some((line) => line.option_name === option),
+    );
+    const [chosenOption, setChosenOption] = useState<EstimateOption | null>(
+        () =>
+            (document?.items.find((item) => item.option_name && item.selected)
+                ?.option_name as EstimateOption | undefined) ?? null,
+    );
+    const chosen =
+        chosenOption && offered.includes(chosenOption)
+            ? chosenOption
+            : (offered[0] ?? null);
+    const lineIncluded = (line: Line) =>
+        line.option_name
+            ? line.option_name === chosen
+            : !line.optional || line.selected;
     const totals = computeTotals({
         items: data.items.map((line) => ({
             ...line,
             tax_rate_ids: lineTaxIds(line),
-            included:
-                (!line.optional || line.selected) && line.bill_to_customer,
+            included: lineIncluded(line) && line.bill_to_customer,
         })),
         discount_type: data.discount_type,
         discount_value: data.discount_value,
@@ -462,7 +482,13 @@ export default function BillingForm({
                           }
                     : {}),
                 ...(kind === 'estimate'
-                    ? { optional: line.optional, selected: line.selected }
+                    ? {
+                          optional: line.option_name ? false : line.optional,
+                          selected: line.option_name
+                              ? line.option_name === chosen
+                              : line.selected,
+                          option_name: line.option_name || null,
+                      }
                     : {}),
             })),
             estimate_id: kind === 'invoice' && !document ? d.estimate_id : null,
@@ -894,6 +920,27 @@ export default function BillingForm({
                             )}
                         </div>
                     </FormField>
+                )}
+
+                {kind === 'estimate' && chosen && offered.length > 0 && (
+                    <div className="space-y-1" data-test="option-totals">
+                        <p className="text-sm font-medium">
+                            {t('estimates.options.title')}
+                        </p>
+                        <SegmentedControl
+                            label={t('estimates.options.title')}
+                            className="w-full"
+                            value={chosen}
+                            onChange={setChosenOption}
+                            options={offered.map((option) => ({
+                                value: option,
+                                label: t(`estimates.options.${option}`),
+                            }))}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            {t('estimates.options.form_hint')}
+                        </p>
+                    </div>
                 )}
 
                 <dl

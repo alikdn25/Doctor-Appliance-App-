@@ -555,3 +555,53 @@ test('online optional selection recalculates the taxes selected on each item and
     $estimate = inCompany($this->company, fn () => $estimate->fresh());
     expect($estimate->total)->toBe(16750)->and($estimate->tax_total)->toBe(1750);
 });
+
+function optionsEstimate(Company $company, ServiceJob $job): Estimate
+{
+    test()->post(route('estimates.store', $job), documentPayload([
+        'items' => [
+            ['description' => 'Diagnosis', 'quantity' => '1', 'unit_price' => '50.00', 'taxable' => false],
+            ['description' => 'Repair the old pump', 'quantity' => '1', 'unit_price' => '100.00', 'taxable' => false, 'option_name' => 'good'],
+            ['description' => 'New pump', 'quantity' => '1', 'unit_price' => '200.00', 'taxable' => false, 'option_name' => 'better', 'selected' => true],
+            ['description' => 'New washer', 'quantity' => '1', 'unit_price' => '900.00', 'taxable' => false, 'option_name' => 'best'],
+        ],
+    ]))->assertSessionHasNoErrors();
+
+    return inCompany($company, fn () => Estimate::query()->latest('id')->first());
+}
+
+test('Good / Better / Best: each option has its total; the chosen one is in the estimate total', function () {
+    $estimate = optionsEstimate($this->company, $this->job);
+
+    expect($estimate->total)->toBe(25000);
+    $this->get(route('estimates.show', $estimate))->assertInertia(fn (Assert $page) => $page
+        ->where('document.options', fn ($options) => collect($options)->map(fn ($o) => [$o['name'], $o['total'], $o['chosen']])->all() === [
+            ['good', 15000, false], ['better', 25000, true], ['best', 95000, false],
+        ]));
+});
+
+test('the customer picks an option online; the invoice gets only its lines', function () {
+    $estimate = optionsEstimate($this->company, $this->job);
+    $token = estimateToken($this->company, $estimate);
+
+    // An option must be picked.
+    approveOnline($token)->assertSessionHasErrors('option');
+
+    approveOnline($token, ['option' => 'best'])->assertSessionHasNoErrors();
+    $estimate = inCompany($this->company, fn () => $estimate->fresh());
+    expect($estimate->status)->toBe(EstimateStatus::Approved)
+        ->and($estimate->total)->toBe(95000);
+
+    $this->actingAs($this->owner)->post(route('estimates.convert', $estimate))->assertSessionHasNoErrors();
+    $lines = inCompany($this->company, fn () => Invoice::query()->latest('id')->first()->items()->pluck('description')->all());
+    expect($lines)->toBe(['Diagnosis', 'New washer']);
+});
+
+test('"Mark approved" approves the option shown in the office', function () {
+    $estimate = optionsEstimate($this->company, $this->job);
+
+    $this->put(route('estimates.decide', $estimate), ['approved' => true, 'option' => 'good'])->assertSessionHasNoErrors();
+
+    expect(inCompany($this->company, fn () => $estimate->fresh()->total))->toBe(15000);
+    $this->put(route('estimates.decide', $estimate), ['approved' => true, 'option' => 'cheap'])->assertSessionHasErrors('option');
+});

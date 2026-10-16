@@ -31,6 +31,8 @@ export type DocumentItem = {
     /** Estimates: the customer may add it; counted only when selected. */
     optional: boolean;
     selected: boolean;
+    /** Estimates: Good / Better / Best; null = in every option. */
+    option_name?: 'good' | 'better' | 'best' | null;
     kind: 'service' | 'part' | 'material';
     service_id: number | null;
     part_number: string | null;
@@ -130,6 +132,13 @@ export type BillingDocument = DocumentRow & {
         ip: string | null;
     } | null;
     decline_reason?: string | null;
+    /** Good / Better / Best with each one's total. */
+    options?: {
+        name: 'good' | 'better' | 'best';
+        label: string;
+        total: number;
+        chosen: boolean;
+    }[];
     revision?: number;
     revised_at?: string | null;
     revised_from?: string | null;
