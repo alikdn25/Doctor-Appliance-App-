@@ -7,6 +7,7 @@ import { PaginationLinks } from '@/components/pagination-links';
 import type { Paginated } from '@/components/pagination-links';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FilterChips } from '@/components/ui/filter-chips';
 import { SearchField } from '@/components/ui/search-field';
@@ -14,7 +15,12 @@ import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { index, show, start } from '@/routes/invoices';
 
-type Filters = { search: string; status: string };
+type Filters = {
+    search: string;
+    status: string;
+    sort?: string;
+    dir?: 'asc' | 'desc';
+};
 type Total = { currency: string; amount: number };
 
 const FILTERS = ['outstanding', 'overdue', 'paid', 'all'] as const;
@@ -88,7 +94,7 @@ export default function InvoicesIndex({
                 }
             />
 
-            <div className="mx-auto w-full max-w-3xl space-y-3 p-4 sm:p-6">
+            <div className="mx-auto w-full max-w-3xl space-y-3 p-4 sm:p-6 lg:max-w-[1440px]">
                 <div className="grid grid-cols-2 gap-3">
                     <button
                         type="button"
@@ -171,57 +177,128 @@ export default function InvoicesIndex({
                         />
                     </div>
                 ) : (
-                    <ul
-                        className="da-card divide-y overflow-hidden"
-                        data-test="invoice-list"
-                    >
-                        {invoices.data.map((invoice) => (
-                            <li key={invoice.id}>
-                                <Link
-                                    href={show(invoice.id)}
-                                    className="flex min-h-16 items-center gap-3 px-3 py-2.5 hover:bg-black/[0.03]"
-                                >
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex min-w-0 items-center gap-2">
-                                            <span className="shrink-0 font-semibold">
-                                                {invoice.number}
-                                            </span>
-                                            <span className="truncate">
-                                                {invoice.customer}
-                                            </span>
-                                        </div>
-                                        <div className="truncate text-sm text-muted-foreground">
-                                            {invoice.due_on
-                                                ? t('invoices.issued_due', {
-                                                      issued: time.dateOnly(
+                    <>
+                        <DataTable
+                            className="hidden lg:block"
+                            label={t('invoices.title')}
+                            rows={invoices.data}
+                            rowKey={(invoice) => invoice.id}
+                            rowHref={(invoice) => show(invoice.id)}
+                            sort={filters.sort}
+                            dir={filters.dir}
+                            sortUrl={index().url}
+                            query={{
+                                search: filters.search,
+                                status: filters.status,
+                            }}
+                            columns={[
+                                {
+                                    key: 'number',
+                                    label: '#',
+                                    sort: 'number',
+                                    render: (r) => r.number,
+                                },
+                                {
+                                    key: 'customer',
+                                    label: t('invoices.customer'),
+                                    sort: 'customer',
+                                    render: (r) => r.customer,
+                                },
+                                {
+                                    key: 'issued',
+                                    label: t('invoices.columns.issued'),
+                                    sort: 'issued',
+                                    render: (r) => time.dateOnly(r.issued_on),
+                                },
+                                {
+                                    key: 'due',
+                                    label: t('invoices.columns.due'),
+                                    sort: 'due',
+                                    render: (r) =>
+                                        r.due_on
+                                            ? time.dateOnly(r.due_on)
+                                            : '—',
+                                },
+                                {
+                                    key: 'total',
+                                    label: t('billing.total'),
+                                    sort: 'total',
+                                    align: 'right',
+                                    render: (r) => money(r.total, r.currency),
+                                },
+                                {
+                                    key: 'balance',
+                                    label: t('invoices.balance'),
+                                    sort: 'balance',
+                                    align: 'right',
+                                    render: (r) =>
+                                        money(r.balance ?? 0, r.currency),
+                                },
+                                {
+                                    key: 'status',
+                                    label: t('invoices.columns.status'),
+                                    sort: 'status',
+                                    render: (r) => (
+                                        <InvoiceDueBadge invoice={r} />
+                                    ),
+                                },
+                            ]}
+                        />
+                        <ul
+                            className="da-card divide-y overflow-hidden lg:hidden"
+                            data-test="invoice-list"
+                        >
+                            {invoices.data.map((invoice) => (
+                                <li key={invoice.id}>
+                                    <Link
+                                        href={show(invoice.id)}
+                                        className="flex min-h-16 items-center gap-3 px-3 py-2.5 hover:bg-black/[0.03]"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex min-w-0 items-center gap-2">
+                                                <span className="shrink-0 font-semibold">
+                                                    {invoice.number}
+                                                </span>
+                                                <span className="truncate">
+                                                    {invoice.customer}
+                                                </span>
+                                            </div>
+                                            <div className="truncate text-sm text-muted-foreground">
+                                                {invoice.due_on
+                                                    ? t('invoices.issued_due', {
+                                                          issued: time.dateOnly(
+                                                              invoice.issued_on,
+                                                          ),
+                                                          due: time.dateOnly(
+                                                              invoice.due_on,
+                                                          ),
+                                                      })
+                                                    : time.dateOnly(
                                                           invoice.issued_on,
-                                                      ),
-                                                      due: time.dateOnly(
-                                                          invoice.due_on,
-                                                      ),
-                                                  })
-                                                : time.dateOnly(
-                                                      invoice.issued_on,
-                                                  )}
+                                                      )}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex shrink-0 flex-col items-end gap-1">
-                                        <span className="font-semibold tabular-nums">
-                                            {money(
-                                                invoice.balance !== null &&
-                                                    invoice.balance > 0 &&
-                                                    invoice.status !== 'void'
-                                                    ? invoice.balance
-                                                    : invoice.total,
-                                                invoice.currency,
-                                            )}
-                                        </span>
-                                        <InvoiceDueBadge invoice={invoice} />
-                                    </div>
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
+                                        <div className="flex shrink-0 flex-col items-end gap-1">
+                                            <span className="font-semibold tabular-nums">
+                                                {money(
+                                                    invoice.balance !== null &&
+                                                        invoice.balance > 0 &&
+                                                        invoice.status !==
+                                                            'void'
+                                                        ? invoice.balance
+                                                        : invoice.total,
+                                                    invoice.currency,
+                                                )}
+                                            </span>
+                                            <InvoiceDueBadge
+                                                invoice={invoice}
+                                            />
+                                        </div>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </>
                 )}
 
                 <PaginationLinks links={invoices.links} />

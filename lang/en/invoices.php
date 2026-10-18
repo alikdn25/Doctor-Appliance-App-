@@ -36,6 +36,11 @@ return [
     'due_in_days' => 'Due in 1 day|Due in :count days',
     'due_today' => 'Due today',
     'filter' => 'Show',
+    'columns' => [
+        'issued' => 'Issued',
+        'due' => 'Due',
+        'status' => 'Status',
+    ],
     'filters' => [
         'outstanding' => 'Outstanding',
         'overdue' => 'Overdue',

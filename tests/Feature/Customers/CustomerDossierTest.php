@@ -87,3 +87,22 @@ test('the customer card and form offer countries by name', function () {
         ->where('countries', fn ($countries) => collect($countries)->contains(fn ($c) => $c['value'] === 'CA' && $c['label'] === 'Canada')));
     $this->get(route('customers.create'))->assertInertia(fn (Assert $page) => $page->has('countries'));
 });
+
+test('the desktop customer table shows jobs and the last job and sorts by them', function () {
+    app(CurrentCompany::class)->forget();
+    $company = Company::factory()->create();
+    $owner = memberOf($company, UserRole::Owner);
+    $busy = Customer::factory()->for($company)->create(['first_name' => 'Busy', 'last_name' => 'One']);
+    $quiet = Customer::factory()->for($company)->create(['first_name' => 'Quiet', 'last_name' => 'Two']);
+    $property = Property::factory()->for($busy)->create();
+    ServiceJob::factory()->for($property)->create();
+    ServiceJob::factory()->for($property)->create();
+
+    $this->actingAs($owner)->get(route('customers.index', ['sort' => 'jobs', 'dir' => 'desc']))->assertInertia(fn (Assert $page) => $page
+        ->where('customers.data.0.id', $busy->id)
+        ->where('customers.data.0.jobs_count', 2)
+        ->where('customers.data.0.last_job_at', fn ($at) => $at !== null)
+        ->where('customers.data.1.id', $quiet->id)
+        ->where('customers.data.1.jobs_count', 0)
+        ->where('customers.data.1.last_job_at', null));
+});

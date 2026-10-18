@@ -130,3 +130,17 @@ test('an invoice cannot claim an estimate that is not approved or is from anothe
     expect($estimate->fresh()->status)->toBe(EstimateStatus::Approved)
         ->and(inCompany($this->company, fn () => Invoice::query()->sole()->estimate_id))->toBeNull();
 });
+
+test('the desktop invoice table sorts by a column on the server; unknown columns fall back to the newest first', function () {
+    $small = moneyInvoice(['items' => [['description' => 'A', 'quantity' => '1', 'unit_price' => '10.00', 'taxable' => false]]]);
+    $big = moneyInvoice(['items' => [['description' => 'B', 'quantity' => '1', 'unit_price' => '900.00', 'taxable' => false]]]);
+
+    $this->get(route('invoices.index', ['status' => 'all', 'sort' => 'total', 'dir' => 'asc']))->assertInertia(fn (Assert $page) => $page
+        ->where('filters.sort', 'total')->where('filters.dir', 'asc')
+        ->where('invoices.data.0.number', $small->number)
+        ->where('invoices.data.1.number', $big->number));
+    $this->get(route('invoices.index', ['status' => 'all', 'sort' => 'total', 'dir' => 'desc']))->assertInertia(fn (Assert $page) => $page
+        ->where('invoices.data.0.number', $big->number));
+    $this->get(route('invoices.index', ['status' => 'all', 'sort' => 'password; drop table']))->assertInertia(fn (Assert $page) => $page
+        ->where('filters.sort', 'issued')->where('filters.dir', 'desc'));
+});

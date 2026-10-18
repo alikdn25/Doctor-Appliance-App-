@@ -1,6 +1,14 @@
 <?php
 
 return [
+    'columns' => [
+        'name' => 'Name',
+        'phone' => 'Phone',
+        'address' => 'Address',
+        'jobs' => 'Jobs',
+        'owes' => 'Owes',
+        'last_job' => 'Last job',
+    ],
     'owes' => 'Owes :amount',
     'text' => 'Text',
     'icon_tap' => 'Tap the picture to choose man, woman or couple.',

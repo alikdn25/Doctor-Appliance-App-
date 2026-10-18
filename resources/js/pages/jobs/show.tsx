@@ -758,552 +758,642 @@ export default function JobShow({
                 }
             />
 
-            <div className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-6">
-                {/* Phone: jump to a part of the page (UX-REDESIGN §7.5). */}
-                <nav
-                    aria-label={t('jobs.job_number', { number: job.number })}
-                    className="sticky top-0 z-20 -mx-4 -mt-4 flex [scrollbar-width:none] gap-2 overflow-x-auto bg-background/90 px-4 py-2 backdrop-blur md:hidden"
-                    data-test="job-anchors"
-                >
-                    {(
-                        [
-                            ['overview', 'overview'],
-                            ['work', 'work'],
-                            ['documents', 'money'],
-                            ['activity', 'activity'],
-                        ] as const
-                    ).map(([target, label]) => (
-                        <button
-                            key={target}
-                            type="button"
-                            className="da-chip da-press inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-sm font-medium"
-                            onClick={() => {
-                                const element = document.getElementById(target);
-                                if (element instanceof HTMLDetailsElement) {
-                                    element.open = true;
-                                }
-                                element?.scrollIntoView({
-                                    behavior: 'smooth',
-                                    block: 'start',
-                                });
-                            }}
+            {/* Desktop (UX-REDESIGN §13): the job on the left; status, money, schedule and history on the right, kept
+                in view while the page scrolls. On a phone both columns are one list in the usual order. */}
+            <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6 lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-6">
+                <div className="contents lg:col-start-1 lg:row-start-1 lg:block lg:min-w-0 lg:space-y-5">
+                    <div className="order-1 empty:hidden">
+                        {/* Phone: jump to a part of the page (UX-REDESIGN §7.5). */}
+                        <nav
+                            aria-label={t('jobs.job_number', {
+                                number: job.number,
+                            })}
+                            className="sticky top-0 z-20 -mx-4 -mt-4 flex [scrollbar-width:none] gap-2 overflow-x-auto bg-background/90 px-4 py-2 backdrop-blur md:hidden"
+                            data-test="job-anchors"
                         >
-                            {t(`jobs.anchors.${label}`)}
-                        </button>
-                    ))}
-                </nav>
-                <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge
-                        status={job.status}
-                        label={job.status_label}
-                        className="h-7 px-3 text-sm"
-                    />
-                    <span className="da-badge rounded-full px-2.5 py-0.5 text-xs font-medium">
-                        {job.visit_type_label}
-                    </span>
-                </div>
-
-                {job.outcome && job.outcome_label && (
-                    <OutcomeCard
-                        outcome={job.outcome}
-                        label={job.outcome_label}
-                        reason={job.outcome_reason}
-                        note={job.outcome_note}
-                        closedAt={job.closed_at}
-                        closedBy={job.closed_by}
-                    />
-                )}
-
-                <FollowUpLinks
-                    visitTypeLabel={job.visit_type_label}
-                    previous={job.previous_job}
-                    followUps={job.follow_ups}
-                />
-
-                {myVisit?.strict_arrival && myVisit.status === 'scheduled' && (
-                    <p className="flex items-center gap-2 rounded-lg bg-red-600 p-3 text-sm font-semibold text-white">
-                        <AlarmClock className="size-5 shrink-0" />
-                        {t('jobs.strict.banner', {
-                            window: time.window(
-                                myVisit.scheduled_start,
-                                myVisit.scheduled_end,
-                            ),
-                        })}
-                    </p>
-                )}
-
-                {/* With an invoice out, money comes first. */}
-                {moneyFirst && documents}
-
-                {/* Customer: name, address, the gate code large (needed at the door), notes, Navigate · Call · Text. */}
-                <section
-                    id="overview"
-                    className="da-card scroll-mt-28 space-y-3 p-4"
-                    data-test="job-customer"
-                >
-                    <div className="flex items-start gap-3">
-                        {can.updateCustomer ? (
-                            <CustomerAvatarPicker
-                                customerId={job.customer.id}
-                                icon={job.customer.avatar_icon}
-                                style={job.customer.avatar_style}
-                                name={job.customer.display_name}
-                                size="lg"
-                            />
-                        ) : (
-                            <CustomerAvatar
-                                icon={job.customer.avatar_icon}
-                                name={job.customer.display_name}
-                                size="lg"
+                            {(
+                                [
+                                    ['overview', 'overview'],
+                                    ['work', 'work'],
+                                    ['documents', 'money'],
+                                    ['activity', 'activity'],
+                                ] as const
+                            ).map(([target, label]) => (
+                                <button
+                                    key={target}
+                                    type="button"
+                                    className="da-chip da-press inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-sm font-medium"
+                                    onClick={() => {
+                                        const element =
+                                            document.getElementById(target);
+                                        if (
+                                            element instanceof
+                                            HTMLDetailsElement
+                                        ) {
+                                            element.open = true;
+                                        }
+                                        element?.scrollIntoView({
+                                            behavior: 'smooth',
+                                            block: 'start',
+                                        });
+                                    }}
+                                >
+                                    {t(`jobs.anchors.${label}`)}
+                                </button>
+                            ))}
+                        </nav>
+                    </div>
+                    <div className="order-3 empty:hidden">
+                        {job.outcome && job.outcome_label && (
+                            <OutcomeCard
+                                outcome={job.outcome}
+                                label={job.outcome_label}
+                                reason={job.outcome_reason}
+                                note={job.outcome_note}
+                                closedAt={job.closed_at}
+                                closedBy={job.closed_by}
                             />
                         )}
-                        <div className="min-w-0 flex-1">
-                            {can.viewCustomer ? (
-                                <Link
-                                    href={showCustomer(job.customer.id)}
-                                    className="text-lg font-semibold underline-offset-4 hover:underline"
-                                >
-                                    {job.customer.display_name}
-                                </Link>
-                            ) : (
-                                <span className="text-lg font-semibold">
-                                    {job.customer.display_name}
-                                </span>
-                            )}
-                            <p className="text-sm leading-relaxed text-muted-foreground">
-                                {property.full_address ||
-                                    t('jobs.quick.address_pending')}
-                            </p>
-                            {property.full_address &&
-                                (!property.line1 || !property.city) && (
-                                    <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
-                                        {t('jobs.quick.address_pending')}
-                                    </p>
-                                )}
-                        </div>
                     </div>
-
-                    {property.gate_code && (
-                        <div
-                            className="da-soft flex items-center gap-3 rounded-2xl px-3 py-2"
-                            data-test="gate-code"
-                        >
-                            <KeyRound className="size-5 shrink-0" />
-                            <span>
-                                <span className="block text-xs font-medium tracking-wide uppercase opacity-80">
-                                    {t('jobs.gate_label')}
-                                </span>
-                                <span className="text-xl font-bold tabular-nums select-all">
-                                    {property.gate_code}
-                                </span>
-                            </span>
-                        </div>
-                    )}
-                    {(property.access_notes || property.site_contact_name) && (
-                        <div className="space-y-1 text-sm">
-                            {property.site_contact_name && (
-                                <div className="flex items-center gap-2">
-                                    <User className="size-4" />
-                                    {t('properties.site_contact')}:{' '}
-                                    {property.site_contact_name}
-                                </div>
-                            )}
-                            {property.access_notes && (
-                                <p className="whitespace-pre-line">
-                                    {property.access_notes}
+                    <div className="order-4 empty:hidden">
+                        <FollowUpLinks
+                            visitTypeLabel={job.visit_type_label}
+                            previous={job.previous_job}
+                            followUps={job.follow_ups}
+                        />
+                    </div>
+                    <div className="order-5 empty:hidden">
+                        {myVisit?.strict_arrival &&
+                            myVisit.status === 'scheduled' && (
+                                <p className="flex items-center gap-2 rounded-lg bg-red-600 p-3 text-sm font-semibold text-white">
+                                    <AlarmClock className="size-5 shrink-0" />
+                                    {t('jobs.strict.banner', {
+                                        window: time.window(
+                                            myVisit.scheduled_start,
+                                            myVisit.scheduled_end,
+                                        ),
+                                    })}
                                 </p>
                             )}
-                        </div>
-                    )}
+                    </div>
+                    <div className="order-7">
+                        {/* Customer: name, address, the gate code large (needed at the door), notes, Navigate · Call · Text. */}
+                        <section
+                            id="overview"
+                            className="da-card scroll-mt-28 space-y-3 p-4"
+                            data-test="job-customer"
+                        >
+                            <div className="flex items-start gap-3">
+                                {can.updateCustomer ? (
+                                    <CustomerAvatarPicker
+                                        customerId={job.customer.id}
+                                        icon={job.customer.avatar_icon}
+                                        style={job.customer.avatar_style}
+                                        name={job.customer.display_name}
+                                        size="lg"
+                                    />
+                                ) : (
+                                    <CustomerAvatar
+                                        icon={job.customer.avatar_icon}
+                                        name={job.customer.display_name}
+                                        size="lg"
+                                    />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                    {can.viewCustomer ? (
+                                        <Link
+                                            href={showCustomer(job.customer.id)}
+                                            className="text-lg font-semibold underline-offset-4 hover:underline"
+                                        >
+                                            {job.customer.display_name}
+                                        </Link>
+                                    ) : (
+                                        <span className="text-lg font-semibold">
+                                            {job.customer.display_name}
+                                        </span>
+                                    )}
+                                    <p className="text-sm leading-relaxed text-muted-foreground">
+                                        {property.full_address ||
+                                            t('jobs.quick.address_pending')}
+                                    </p>
+                                    {property.full_address &&
+                                        (!property.line1 || !property.city) && (
+                                            <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                                                {t(
+                                                    'jobs.quick.address_pending',
+                                                )}
+                                            </p>
+                                        )}
+                                </div>
+                            </div>
 
-                    <CustomerNotes notes={job.customer.notes} />
+                            {property.gate_code && (
+                                <div
+                                    className="da-soft flex items-center gap-3 rounded-2xl px-3 py-2"
+                                    data-test="gate-code"
+                                >
+                                    <KeyRound className="size-5 shrink-0" />
+                                    <span>
+                                        <span className="block text-xs font-medium tracking-wide uppercase opacity-80">
+                                            {t('jobs.gate_label')}
+                                        </span>
+                                        <span className="text-xl font-bold tabular-nums select-all">
+                                            {property.gate_code}
+                                        </span>
+                                    </span>
+                                </div>
+                            )}
+                            {(property.access_notes ||
+                                property.site_contact_name) && (
+                                <div className="space-y-1 text-sm">
+                                    {property.site_contact_name && (
+                                        <div className="flex items-center gap-2">
+                                            <User className="size-4" />
+                                            {t('properties.site_contact')}:{' '}
+                                            {property.site_contact_name}
+                                        </div>
+                                    )}
+                                    {property.access_notes && (
+                                        <p className="whitespace-pre-line">
+                                            {property.access_notes}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
-                    <div className="grid auto-cols-fr grid-flow-col gap-2">
-                        {property.line1 && property.city && (
-                            <Button asChild variant="outline" className="px-2">
-                                <a
-                                    href={mapsUrl(property.full_address)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    <Navigation /> {t('jobs.navigate')}
-                                </a>
-                            </Button>
-                        )}
-                        {phone && (
-                            <Button asChild variant="outline" className="px-2">
-                                <a href={telUrl(phone)}>
-                                    <Phone /> {t('jobs.call')}
-                                </a>
-                            </Button>
-                        )}
-                        {phone &&
-                            (textFromPhone ? (
-                                <Button
-                                    variant="outline"
-                                    className="px-2"
-                                    onClick={() =>
-                                        openOnPhone(
-                                            job.id,
-                                            'general',
-                                            messaging.phone!,
-                                            messaging.texts.general,
-                                        )
-                                    }
-                                >
-                                    <MessageSquare /> {t('jobs.text')}
-                                </Button>
-                            ) : (
-                                messaging.mode !== 'automatic' && (
+                            <CustomerNotes notes={job.customer.notes} />
+
+                            <div className="grid auto-cols-fr grid-flow-col gap-2">
+                                {property.line1 && property.city && (
                                     <Button
                                         asChild
                                         variant="outline"
                                         className="px-2"
                                     >
                                         <a
-                                            href={`sms:${phone.replace(/[^\d+]/g, '')}`}
+                                            href={mapsUrl(
+                                                property.full_address,
+                                            )}
+                                            target="_blank"
+                                            rel="noreferrer"
                                         >
-                                            <MessageSquare /> {t('jobs.text')}
+                                            <Navigation /> {t('jobs.navigate')}
                                         </a>
                                     </Button>
-                                )
-                            ))}
-                    </div>
-                    {property.site_contact_phone && (
-                        <Button asChild variant="outline" className="w-full">
-                            <a href={telUrl(property.site_contact_phone)}>
-                                <Phone />{' '}
-                                {t('jobs.call_on_site', {
-                                    name:
-                                        property.site_contact_name ??
-                                        phoneText(property.site_contact_phone),
-                                })}
-                            </a>
-                        </Button>
-                    )}
-
-                    {/* Other numbers, e.g. the second person of a couple: Call and SMS for each. */}
-                    {job.customer.phones.length > 1 && (
-                        <ul className="space-y-2 text-sm">
-                            {job.customer.phones.slice(1).map((p) => (
-                                <li
-                                    key={p.id}
-                                    className="flex flex-wrap items-center gap-2"
-                                >
-                                    <span className="min-w-0 flex-1">
-                                        <span className="block font-semibold">
-                                            {p.contact_name ??
-                                                phoneText(p.number)}
-                                        </span>
-                                        <span className="block text-xs text-muted-foreground">
-                                            {[
-                                                p.contact_name &&
-                                                    phoneText(p.number),
-                                                p.label_text,
-                                            ]
-                                                .filter(Boolean)
-                                                .join(' · ')}
-                                        </span>
-                                    </span>
-                                    <IconButton label={t('jobs.call')} asChild>
-                                        <a href={telUrl(p.number)}>
-                                            <Phone />
-                                        </a>
-                                    </IconButton>
-                                    <IconButton label={t('jobs.sms')} asChild>
-                                        <a href={smsUrl(p.number, '')}>
-                                            <MessageSquare />
-                                        </a>
-                                    </IconButton>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </section>
-
-                {/* Problem and notes for the team */}
-                {(job.description || job.notes) && (
-                    <Section title={t('jobs.sections.problem')}>
-                        <div className="da-card space-y-2 p-4">
-                            {job.description && (
-                                <p className="whitespace-pre-line">
-                                    {job.description}
-                                </p>
-                            )}
-                            {job.notes && (
-                                <div
-                                    className={cn(
-                                        job.description && 'border-t pt-2',
-                                    )}
-                                >
-                                    <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                        {t('jobs.fields.notes')}
-                                    </h3>
-                                    <p className="text-sm whitespace-pre-line">
-                                        {job.notes}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    </Section>
-                )}
-
-                <BringList
-                    jobId={job.id}
-                    items={job.bring_items}
-                    canTick={can.work}
-                />
-
-                {/* Appliances */}
-                <div id="work" className="scroll-mt-28" aria-hidden="true" />
-                {showAppliances && (
-                    <Section
-                        title={t('jobs.sections.appliances')}
-                        action={
-                            can.work && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() =>
-                                        setApplianceDialog({
-                                            open: true,
-                                            appliance: null,
-                                        })
-                                    }
-                                >
-                                    <Plus /> {t('jobs.appliance.add')}
-                                </Button>
-                            )
-                        }
-                    >
-                        {job.appliances.length === 0 ? (
-                            <p className="da-card p-4 text-sm text-muted-foreground">
-                                {t('appliances.empty')}
-                            </p>
-                        ) : (
-                            <ul className="da-card divide-y overflow-hidden">
-                                {job.appliances.map((a) => (
-                                    <li
-                                        key={a.id}
-                                        className="flex min-h-14 items-center gap-3 px-3 py-2"
+                                )}
+                                {phone && (
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="px-2"
                                     >
-                                        <ApplianceImage
-                                            type={a.type}
-                                            className="size-14"
-                                        />
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-                                                {a.removed ? (
-                                                    <span className="text-muted-foreground line-through">
-                                                        {applianceTitle(a)}
-                                                    </span>
-                                                ) : (
-                                                    <Link
-                                                        href={showAppliance(
-                                                            a.id,
+                                        <a href={telUrl(phone)}>
+                                            <Phone /> {t('jobs.call')}
+                                        </a>
+                                    </Button>
+                                )}
+                                {phone &&
+                                    (textFromPhone ? (
+                                        <Button
+                                            variant="outline"
+                                            className="px-2"
+                                            onClick={() =>
+                                                openOnPhone(
+                                                    job.id,
+                                                    'general',
+                                                    messaging.phone!,
+                                                    messaging.texts.general,
+                                                )
+                                            }
+                                        >
+                                            <MessageSquare /> {t('jobs.text')}
+                                        </Button>
+                                    ) : (
+                                        messaging.mode !== 'automatic' && (
+                                            <Button
+                                                asChild
+                                                variant="outline"
+                                                className="px-2"
+                                            >
+                                                <a
+                                                    href={`sms:${phone.replace(/[^\d+]/g, '')}`}
+                                                >
+                                                    <MessageSquare />{' '}
+                                                    {t('jobs.text')}
+                                                </a>
+                                            </Button>
+                                        )
+                                    ))}
+                            </div>
+                            {property.site_contact_phone && (
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    className="w-full"
+                                >
+                                    <a
+                                        href={telUrl(
+                                            property.site_contact_phone,
+                                        )}
+                                    >
+                                        <Phone />{' '}
+                                        {t('jobs.call_on_site', {
+                                            name:
+                                                property.site_contact_name ??
+                                                phoneText(
+                                                    property.site_contact_phone,
+                                                ),
+                                        })}
+                                    </a>
+                                </Button>
+                            )}
+
+                            {/* Other numbers, e.g. the second person of a couple: Call and SMS for each. */}
+                            {job.customer.phones.length > 1 && (
+                                <ul className="space-y-2 text-sm">
+                                    {job.customer.phones.slice(1).map((p) => (
+                                        <li
+                                            key={p.id}
+                                            className="flex flex-wrap items-center gap-2"
+                                        >
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block font-semibold">
+                                                    {p.contact_name ??
+                                                        phoneText(p.number)}
+                                                </span>
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {[
+                                                        p.contact_name &&
+                                                            phoneText(p.number),
+                                                        p.label_text,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </span>
+                                            </span>
+                                            <IconButton
+                                                label={t('jobs.call')}
+                                                asChild
+                                            >
+                                                <a href={telUrl(p.number)}>
+                                                    <Phone />
+                                                </a>
+                                            </IconButton>
+                                            <IconButton
+                                                label={t('jobs.sms')}
+                                                asChild
+                                            >
+                                                <a href={smsUrl(p.number, '')}>
+                                                    <MessageSquare />
+                                                </a>
+                                            </IconButton>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </section>
+                    </div>
+                    <div className="order-8 space-y-5 empty:hidden">
+                        {/* Problem and notes for the team */}
+                        {(job.description || job.notes) && (
+                            <Section title={t('jobs.sections.problem')}>
+                                <div className="da-card space-y-2 p-4">
+                                    {job.description && (
+                                        <p className="whitespace-pre-line">
+                                            {job.description}
+                                        </p>
+                                    )}
+                                    {job.notes && (
+                                        <div
+                                            className={cn(
+                                                job.description &&
+                                                    'border-t pt-2',
+                                            )}
+                                        >
+                                            <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                                {t('jobs.fields.notes')}
+                                            </h3>
+                                            <p className="text-sm whitespace-pre-line">
+                                                {job.notes}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </Section>
+                        )}
+                        <BringList
+                            jobId={job.id}
+                            items={job.bring_items}
+                            canTick={can.work}
+                        />
+                    </div>
+                    <div className="order-9 space-y-5">
+                        {/* Appliances */}
+                        <div
+                            id="work"
+                            className="scroll-mt-28"
+                            aria-hidden="true"
+                        />
+                        {showAppliances && (
+                            <Section
+                                title={t('jobs.sections.appliances')}
+                                action={
+                                    can.work && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                                setApplianceDialog({
+                                                    open: true,
+                                                    appliance: null,
+                                                })
+                                            }
+                                        >
+                                            <Plus /> {t('jobs.appliance.add')}
+                                        </Button>
+                                    )
+                                }
+                            >
+                                {job.appliances.length === 0 ? (
+                                    <p className="da-card p-4 text-sm text-muted-foreground">
+                                        {t('appliances.empty')}
+                                    </p>
+                                ) : (
+                                    <ul className="da-card divide-y overflow-hidden">
+                                        {job.appliances.map((a) => (
+                                            <li
+                                                key={a.id}
+                                                className="flex min-h-14 items-center gap-3 px-3 py-2"
+                                            >
+                                                <ApplianceImage
+                                                    type={a.type}
+                                                    className="size-14"
+                                                />
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                                                        {a.removed ? (
+                                                            <span className="text-muted-foreground line-through">
+                                                                {applianceTitle(
+                                                                    a,
+                                                                )}
+                                                            </span>
+                                                        ) : (
+                                                            <Link
+                                                                href={showAppliance(
+                                                                    a.id,
+                                                                )}
+                                                                className="underline-offset-4 hover:underline"
+                                                            >
+                                                                {applianceTitle(
+                                                                    a,
+                                                                )}
+                                                            </Link>
                                                         )}
-                                                        className="underline-offset-4 hover:underline"
-                                                    >
-                                                        {applianceTitle(a)}
-                                                    </Link>
-                                                )}
-                                                {a.under_warranty && (
-                                                    <ShieldCheck
-                                                        className="size-4 text-emerald-600"
-                                                        aria-label={t(
-                                                            'appliances.under_warranty',
+                                                        {a.under_warranty && (
+                                                            <ShieldCheck
+                                                                className="size-4 text-emerald-600"
+                                                                aria-label={t(
+                                                                    'appliances.under_warranty',
+                                                                )}
+                                                            />
                                                         )}
+                                                    </div>
+                                                    <div className="text-xs break-all text-muted-foreground select-all">
+                                                        {[
+                                                            a.model_number &&
+                                                                t(
+                                                                    'appliances.model',
+                                                                    {
+                                                                        model: a.model_number,
+                                                                    },
+                                                                ),
+                                                            a.serial_number &&
+                                                                t(
+                                                                    'appliances.serial',
+                                                                    {
+                                                                        serial: a.serial_number,
+                                                                    },
+                                                                ),
+                                                        ]
+                                                            .filter(Boolean)
+                                                            .join(' · ')}
+                                                    </div>
+                                                </div>
+                                                {can.work && !a.removed && (
+                                                    <RatingPlateButton
+                                                        jobId={job.id}
+                                                        applianceId={a.id}
+                                                        url={a.rating_plate_url}
                                                     />
                                                 )}
-                                            </div>
-                                            <div className="text-xs break-all text-muted-foreground select-all">
-                                                {[
-                                                    a.model_number &&
-                                                        t('appliances.model', {
-                                                            model: a.model_number,
-                                                        }),
-                                                    a.serial_number &&
-                                                        t('appliances.serial', {
-                                                            serial: a.serial_number,
-                                                        }),
-                                                ]
-                                                    .filter(Boolean)
-                                                    .join(' · ')}
-                                            </div>
-                                        </div>
-                                        {can.work && !a.removed && (
-                                            <RatingPlateButton
-                                                jobId={job.id}
-                                                applianceId={a.id}
-                                                url={a.rating_plate_url}
-                                            />
-                                        )}
-                                        {can.work && !a.removed && (
-                                            <IconButton
-                                                variant="plain"
-                                                label={t('jobs.appliance.edit')}
-                                                onClick={() =>
-                                                    setApplianceDialog({
-                                                        open: true,
-                                                        appliance: a,
-                                                    })
-                                                }
-                                            >
-                                                <Pencil />
-                                            </IconButton>
-                                        )}
-                                    </li>
-                                ))}
-                            </ul>
+                                                {can.work && !a.removed && (
+                                                    <IconButton
+                                                        variant="plain"
+                                                        label={t(
+                                                            'jobs.appliance.edit',
+                                                        )}
+                                                        onClick={() =>
+                                                            setApplianceDialog({
+                                                                open: true,
+                                                                appliance: a,
+                                                            })
+                                                        }
+                                                    >
+                                                        <Pencil />
+                                                    </IconButton>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </Section>
                         )}
-                    </Section>
-                )}
-
-                <PhotoSection
-                    jobId={job.id}
-                    visitId={myVisitId}
-                    photos={job.photos}
-                    kinds={photoKinds}
-                    canAdd={can.work}
-                />
-
-                {can.work ? (
-                    <WorkDone jobId={job.id} notes={job.tech_notes} />
-                ) : (
-                    <Section title={t('jobs.sections.tech_notes')}>
-                        <p className="text-sm whitespace-pre-line text-muted-foreground">
-                            {job.tech_notes ?? '—'}
-                        </p>
-                    </Section>
-                )}
-
-                {!moneyFirst && documents}
-
-                {/* The signature is taken on the invoice; the job only shows it once signed. */}
-                {job.signature && (
-                    <SignatureSection
-                        jobId={job.id}
-                        signature={job.signature}
-                        customerName={job.customer.display_name}
-                        canSign={false}
-                    />
-                )}
-
-                {/* The office plans the schedule here; for the field it is part of Activity. */}
-                {can.update && schedule}
-
-                {/* Activity, folded: texts, the schedule, the status history and the details. */}
-                <details
-                    id="activity"
-                    className="da-card group scroll-mt-28"
-                    data-test="job-activity"
-                >
-                    <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 [&::-webkit-details-marker]:hidden">
-                        <History className="size-5 shrink-0 text-muted-foreground" />
-                        <span className="min-w-0 flex-1">
-                            <span className="block font-semibold">
-                                {t('jobs.sections.activity')}
-                            </span>
-                            <span className="block truncate text-sm text-muted-foreground">
-                                {t('jobs.activity_hint')}
-                            </span>
-                        </span>
-                        <ChevronDown className="size-5 shrink-0 transition-transform group-open:rotate-180" />
-                    </summary>
-                    <div className="space-y-5 border-t p-4">
-                        <JobMessagingSection
+                        <PhotoSection
                             jobId={job.id}
-                            messaging={messaging}
-                            canWork={can.work}
+                            visitId={myVisitId}
+                            photos={job.photos}
+                            kinds={photoKinds}
+                            canAdd={can.work}
                         />
-
-                        {!can.update && schedule}
-
-                        <Section title={t('jobs.sections.history')}>
-                            <ol className="space-y-2 border-l pl-4">
-                                {job.history.map((h) => (
-                                    <li key={h.id} className="text-sm">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            {h.from_label === null ? (
-                                                <span className="font-medium">
-                                                    {t(
-                                                        'jobs.history_entry.created',
-                                                    )}
-                                                </span>
-                                            ) : null}
-                                            <StatusBadge
-                                                status={h.to}
-                                                label={h.to_label}
-                                            />
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                            {[
-                                                h.created_at &&
-                                                    time.dateTime(h.created_at),
-                                                h.user,
-                                            ]
-                                                .filter(Boolean)
-                                                .join(' · ')}
-                                        </div>
-                                        {h.note && (
-                                            <p className="text-xs whitespace-pre-line">
-                                                {h.note}
-                                            </p>
-                                        )}
-                                    </li>
-                                ))}
-                            </ol>
-                        </Section>
-
-                        <Section title={t('jobs.sections.details')}>
-                            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                                {(
-                                    [
-                                        [
-                                            'jobs.fields.job_type',
-                                            job.job_type_label,
-                                        ],
-                                        [
-                                            'jobs.fields.visit_type',
-                                            job.visit_type_label,
-                                        ],
-                                        ['jobs.fields.brand', job.brand],
-                                        [
-                                            'jobs.fields.lead_source',
-                                            job.lead_source_label,
-                                        ],
-                                        [
-                                            'jobs.details.created',
-                                            job.created_at &&
-                                                time.dateTime(job.created_at),
-                                        ],
-                                        [
-                                            'jobs.details.time_on_job',
-                                            job.minutes_on_job > 0 &&
-                                                formatMinutes(
-                                                    job.minutes_on_job,
-                                                    t,
-                                                ),
-                                        ],
-                                    ] as [string, string | null | false][]
-                                )
-                                    .filter(([, value]) => value)
-                                    .map(([label, value]) => (
-                                        <Fragment key={label}>
-                                            <dt className="text-muted-foreground">
-                                                {t(label)}
-                                            </dt>
-                                            <dd>{value}</dd>
-                                        </Fragment>
-                                    ))}
-                            </dl>
-                        </Section>
-
-                        {auth.can?.viewChangeLog && (
-                            <RecordHistory type="job" id={job.id} />
+                    </div>
+                    <div className="order-10">
+                        {can.work ? (
+                            <WorkDone jobId={job.id} notes={job.tech_notes} />
+                        ) : (
+                            <Section title={t('jobs.sections.tech_notes')}>
+                                <p className="text-sm whitespace-pre-line text-muted-foreground">
+                                    {job.tech_notes ?? '—'}
+                                </p>
+                            </Section>
                         )}
                     </div>
-                </details>
+                    <div className="order-12 empty:hidden">
+                        {/* The signature is taken on the invoice; the job only shows it once signed. */}
+                        {job.signature && (
+                            <SignatureSection
+                                jobId={job.id}
+                                signature={job.signature}
+                                customerName={job.customer.display_name}
+                                canSign={false}
+                            />
+                        )}
+                    </div>
+                </div>
+                <aside
+                    className="contents lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1 lg:block lg:max-h-[calc(100dvh-2rem)] lg:space-y-5 lg:overflow-y-auto"
+                    data-test="job-aside"
+                >
+                    <div className="order-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge
+                                status={job.status}
+                                label={job.status_label}
+                                className="h-7 px-3 text-sm"
+                            />
+                            <span className="da-badge rounded-full px-2.5 py-0.5 text-xs font-medium">
+                                {job.visit_type_label}
+                            </span>
+                        </div>
+                    </div>
+                    {/* With an invoice out, money comes first. */}
+                    <div
+                        className={
+                            moneyFirst
+                                ? 'order-6 empty:hidden'
+                                : 'order-11 empty:hidden'
+                        }
+                    >
+                        {documents}
+                    </div>
+                    <div className="order-13 empty:hidden">
+                        {/* The office plans the schedule here; for the field it is part of Activity. */}
+                        {can.update && schedule}
+                    </div>
+                    <div className="order-14">
+                        {/* Activity, folded: texts, the schedule, the status history and the details. */}
+                        <details
+                            id="activity"
+                            className="da-card group scroll-mt-28"
+                            data-test="job-activity"
+                        >
+                            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 [&::-webkit-details-marker]:hidden">
+                                <History className="size-5 shrink-0 text-muted-foreground" />
+                                <span className="min-w-0 flex-1">
+                                    <span className="block font-semibold">
+                                        {t('jobs.sections.activity')}
+                                    </span>
+                                    <span className="block truncate text-sm text-muted-foreground">
+                                        {t('jobs.activity_hint')}
+                                    </span>
+                                </span>
+                                <ChevronDown className="size-5 shrink-0 transition-transform group-open:rotate-180" />
+                            </summary>
+                            <div className="space-y-5 border-t p-4">
+                                <JobMessagingSection
+                                    jobId={job.id}
+                                    messaging={messaging}
+                                    canWork={can.work}
+                                />
+
+                                {!can.update && schedule}
+
+                                <Section title={t('jobs.sections.history')}>
+                                    <ol className="space-y-2 border-l pl-4">
+                                        {job.history.map((h) => (
+                                            <li key={h.id} className="text-sm">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    {h.from_label === null ? (
+                                                        <span className="font-medium">
+                                                            {t(
+                                                                'jobs.history_entry.created',
+                                                            )}
+                                                        </span>
+                                                    ) : null}
+                                                    <StatusBadge
+                                                        status={h.to}
+                                                        label={h.to_label}
+                                                    />
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {[
+                                                        h.created_at &&
+                                                            time.dateTime(
+                                                                h.created_at,
+                                                            ),
+                                                        h.user,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </div>
+                                                {h.note && (
+                                                    <p className="text-xs whitespace-pre-line">
+                                                        {h.note}
+                                                    </p>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ol>
+                                </Section>
+
+                                <Section title={t('jobs.sections.details')}>
+                                    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                                        {(
+                                            [
+                                                [
+                                                    'jobs.fields.job_type',
+                                                    job.job_type_label,
+                                                ],
+                                                [
+                                                    'jobs.fields.visit_type',
+                                                    job.visit_type_label,
+                                                ],
+                                                [
+                                                    'jobs.fields.brand',
+                                                    job.brand,
+                                                ],
+                                                [
+                                                    'jobs.fields.lead_source',
+                                                    job.lead_source_label,
+                                                ],
+                                                [
+                                                    'jobs.details.created',
+                                                    job.created_at &&
+                                                        time.dateTime(
+                                                            job.created_at,
+                                                        ),
+                                                ],
+                                                [
+                                                    'jobs.details.time_on_job',
+                                                    job.minutes_on_job > 0 &&
+                                                        formatMinutes(
+                                                            job.minutes_on_job,
+                                                            t,
+                                                        ),
+                                                ],
+                                            ] as [
+                                                string,
+                                                string | null | false,
+                                            ][]
+                                        )
+                                            .filter(([, value]) => value)
+                                            .map(([label, value]) => (
+                                                <Fragment key={label}>
+                                                    <dt className="text-muted-foreground">
+                                                        {t(label)}
+                                                    </dt>
+                                                    <dd>{value}</dd>
+                                                </Fragment>
+                                            ))}
+                                    </dl>
+                                </Section>
+
+                                {auth.can?.viewChangeLog && (
+                                    <RecordHistory type="job" id={job.id} />
+                                )}
+                            </div>
+                        </details>
+                    </div>
+                </aside>
             </div>
 
             {bar.length > 0 && (
