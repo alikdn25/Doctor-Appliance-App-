@@ -1,3 +1,17 @@
+# October 18 — Desktop fixes after the live check of phase 12
+
+1. **Jobs table sorts by every useful column** on the All tab: #, Status (in workflow order), Date / window,
+   Customer and Total (invoiced, void invoices left out; only for people who see invoices); a second click turns
+   the order around (?sort=&dir=). Address, appliance and technician stay unsorted.
+2. **Kept-in-view parts sit below the app header**: the job page's right column, the invoice / estimate side column
+   and table headers used to stick 16 px from the top of the window, under the sticky header (about 60–120 px of
+   them hidden). The header now reports its height (`--app-header-h`) and they stick just below it; a side column
+   taller than the window scrolls on its own. Table headers stick again (the table no longer scrolls sideways).
+
+- No migrations.
+- Tests: JobTest (sorting both ways, totals without void invoices); browser desktop.spec (column below the header,
+  Status and Customer sorting).
+
 # October 18 — UX redesign, phase 13: final pass on texts, accessibility, speed
 
 UX-REDESIGN.md §14–15. This closes the redesign plan (§16.1, phases 1–13).

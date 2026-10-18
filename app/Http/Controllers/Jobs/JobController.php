@@ -65,6 +65,9 @@ class JobController extends Controller
      * Jobs (UX-REDESIGN §7.4): one screen with Open (the unfinished queue, by urgency), All (by visit date, newest
      * first) and Deleted (restorable for 30 days). People without the office list see only Open.
      */
+    /** Columns the desktop table of the All tab sorts by (UX-REDESIGN §13). */
+    private const TABLE_SORTS = ['visit', 'number', 'status', 'customer', 'total'];
+
     public function index(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
@@ -88,10 +91,12 @@ class JobController extends Controller
             Gate::authorize('viewTrash', ServiceJob::class);
         }
 
-        $sort = in_array($request->query('sort'), ['urgency', 'newest', 'visit', 'number'], true) ? $request->query('sort') : '';
+        $sort = in_array($request->query('sort'), ['urgency', 'newest', ...self::TABLE_SORTS], true) ? $request->query('sort') : '';
+        $dir = $request->query('dir') === 'asc' ? 'asc' : 'desc';
         $shared = [
             'tab' => $tab,
             'sort' => $sort,
+            'dir' => $dir,
             'canViewAll' => $canAll,
             'canViewTrash' => Gate::allows('viewTrash', ServiceJob::class),
             'canCreate' => Gate::allows('create', ServiceJob::class),
@@ -168,12 +173,13 @@ class JobController extends Controller
             }))
             ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
             ->when(Gate::allows('viewAny', Invoice::class), fn ($q) => $q->with('invoices'))
-            ->when(
-                $sort === 'number',
-                fn ($q) => $q->orderByDesc('number'),
-                // By visit date, newest first; jobs without a visit after them (by when they were booked).
-                fn ($q) => $q->orderByRaw("{$lastVisit} desc nulls last")->orderByDesc('id'),
-            )
+            // The invoiced total is a sort key only for people who see invoices.
+            ->tap(fn (Builder $q) => $this->sortTable(
+                $q,
+                $sort === 'total' && ! Gate::allows('viewAny', Invoice::class) ? 'visit' : ($sort ?: 'visit'),
+                $dir,
+                $lastVisit,
+            ))
             ->paginate(25)
             ->withQueryString()
             ->through(fn (ServiceJob $job) => JobPresenter::row($job));
@@ -940,5 +946,33 @@ class JobController extends Controller
         $value = (string) $value;
 
         return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 ? $value : '';
+    }
+
+    /**
+     * Orders the All tab: by visit date (default: newest first, jobs without a visit after them), job number,
+     * status in workflow order, customer name or the invoiced total. Ties fall back to the newest job.
+     *
+     * @param  Builder<ServiceJob>  $query
+     */
+    private function sortTable(Builder $query, string $sort, string $dir, string $lastVisit): void
+    {
+        $nulls = $dir === 'asc' ? 'nulls first' : 'nulls last';
+
+        match ($sort) {
+            'number' => $query->orderBy('number', $dir),
+            'status' => $query->orderByRaw(
+                'case status '.collect(JobStatus::cases())->map(fn (JobStatus $status, int $i) => "when '{$status->value}' then {$i}")->implode(' ')." end {$dir}",
+            ),
+            'customer' => $query->orderBy(
+                Customer::query()->select('display_name')->whereColumn('customers.id', 'service_jobs.customer_id'),
+                $dir,
+            ),
+            'total' => $query->orderByRaw(
+                "(select sum(i.total) from invoices i where i.service_job_id = service_jobs.id and i.status != 'void' and i.deleted_at is null) {$dir} {$nulls}",
+            ),
+            default => $query->orderByRaw("{$lastVisit} {$dir} {$nulls}"),
+        };
+
+        $query->orderByDesc('id');
     }
 }

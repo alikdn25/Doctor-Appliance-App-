@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/react';
+import { useEffect, useRef } from 'react';
 import { BackButton, useBackTarget } from '@/components/back-button';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { useTrans } from '@/lib/i18n';
@@ -19,6 +20,30 @@ export function AppSidebarHeader({
     const t = useTrans();
     const backTo = useBackTarget();
     const { component } = usePage();
+    const header = useRef<HTMLElement>(null);
+
+    // Things kept in view while scrolling (a job's side column, table headers) sit just below this header.
+    useEffect(() => {
+        const element = header.current;
+
+        if (!element) {
+            return;
+        }
+
+        const root = document.documentElement;
+        const observer = new ResizeObserver(() =>
+            root.style.setProperty(
+                '--app-header-h',
+                `${element.offsetHeight}px`,
+            ),
+        );
+        observer.observe(element);
+
+        return () => {
+            observer.disconnect();
+            root.style.removeProperty('--app-header-h');
+        };
+    }, []);
     const title =
         breadcrumbs.length > 0
             ? t(breadcrumbs[breadcrumbs.length - 1].title)
@@ -26,6 +51,7 @@ export function AppSidebarHeader({
 
     return (
         <header
+            ref={header}
             className="da-header sticky top-0 z-20 flex min-h-14 shrink-0 items-center justify-between gap-2 px-3 pt-2 pb-6 md:min-h-16 md:px-4"
             data-component={component}
         >

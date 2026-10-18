@@ -1240,7 +1240,7 @@ export default function JobShow({
                     </div>
                 </div>
                 <aside
-                    className="contents lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1 lg:block lg:max-h-[calc(100dvh-2rem)] lg:space-y-5 lg:overflow-y-auto"
+                    className="contents lg:sticky lg:top-[calc(var(--app-header-h,4rem)+1rem)] lg:col-start-2 lg:row-start-1 lg:block lg:max-h-[calc(100dvh-var(--app-header-h,4rem)-2rem)] lg:space-y-5 lg:overflow-y-auto"
                     data-test="job-aside"
                 >
                     <div className="order-2">
