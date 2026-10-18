@@ -3,6 +3,7 @@ import { ExternalLink, Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import { ScreenHeader } from '@/components/screen-header';
+import { Checkbox } from '@/components/ui/checkbox';
 import { InfoHint } from '@/components/ui/info-hint';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ type Row = {
     label: string;
     review_url: string;
     brand_id: string;
+    is_default: boolean;
 };
 
 let rowKey = 0;
@@ -34,6 +36,7 @@ export default function GoogleProfiles({
         label: string;
         review_url: string;
         brand_id: number | null;
+        is_default: boolean;
     }[];
     brands: Option[];
 }) {
@@ -45,15 +48,37 @@ export default function GoogleProfiles({
             label: p.label,
             review_url: p.review_url,
             brand_id: p.brand_id ? String(p.brand_id) : '',
+            is_default: p.is_default,
         })),
     });
     const errors = form.errors as Record<string, string | undefined>;
     const rows = form.data.profiles;
 
+    // The brand a location can be the default for: its own, or the only brand the company has.
+    const brandOf = (row: Row) =>
+        row.brand_id || (brands.length === 1 ? brands[0].value : '');
+
     const setRow = (i: number, patch: Partial<Row>) =>
         form.setData(
             'profiles',
-            rows.map((r, j) => (j === i ? { ...r, ...patch } : r)),
+            rows.map((r, j) => {
+                if (j === i) {
+                    const next = { ...r, ...patch };
+
+                    // A location moved to another brand is no longer this brand's default.
+                    return 'brand_id' in patch &&
+                        !next.brand_id &&
+                        brands.length > 1
+                        ? { ...next, is_default: false }
+                        : next;
+                }
+
+                // One default per brand.
+                return patch.is_default &&
+                    brandOf(r) === brandOf({ ...rows[i], ...patch })
+                    ? { ...r, is_default: false }
+                    : r;
+            }),
         );
 
     const submit = (e: FormEvent) => {
@@ -64,6 +89,7 @@ export default function GoogleProfiles({
                 label: r.label,
                 review_url: r.review_url,
                 brand_id: r.brand_id || null,
+                is_default: r.is_default && brandOf(r) !== '',
             })),
         }));
         form.put(update().url, { preserveScroll: true });
@@ -193,6 +219,25 @@ export default function GoogleProfiles({
                                     </NativeSelect>
                                 </div>
                             )}
+                            {brandOf(row) !== '' && (
+                                <label className="flex min-h-10 items-center gap-2 text-sm">
+                                    <Checkbox
+                                        checked={row.is_default}
+                                        onCheckedChange={(c) =>
+                                            setRow(i, {
+                                                is_default: c === true,
+                                            })
+                                        }
+                                        data-test="profile-default"
+                                    />
+                                    {t('reviews.default_for', {
+                                        brand:
+                                            brands.find(
+                                                (b) => b.value === brandOf(row),
+                                            )?.label ?? '',
+                                    })}
+                                </label>
+                            )}
                         </li>
                     ))}
                 </ul>
@@ -213,6 +258,7 @@ export default function GoogleProfiles({
                                 label: '',
                                 review_url: '',
                                 brand_id: '',
+                                is_default: false,
                             },
                         ])
                     }

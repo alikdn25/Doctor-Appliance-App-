@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\Companies\CreateCompany;
 use App\Enums\CompanyStatus;
+use App\Enums\SubscriptionPlan;
 use App\Enums\SubscriptionStatus;
 use App\Enums\Vertical;
 use App\Http\Controllers\Controller;
@@ -84,6 +85,7 @@ class CompanyController extends Controller
             'locales' => Countries::localeOptions(),
             'verticals' => Vertical::options(),
             'subscriptionStatuses' => $this->subscriptionOptions(),
+            'plans' => SubscriptionPlan::options(),
             'defaults' => [
                 'timezone' => '',
                 'country' => $country = (string) config('fieldservice.default_country'),
@@ -176,6 +178,7 @@ class CompanyController extends Controller
                 CompanyStatus::cases(),
             ),
             'subscriptionStatuses' => $this->subscriptionOptions(),
+            'plans' => SubscriptionPlan::options(),
             'sms' => app(CurrentCompany::class)->runAs($company, function () use ($company) {
                 $registration = SmsRegistration::query()->first();
 

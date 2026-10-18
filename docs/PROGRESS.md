@@ -1,3 +1,20 @@
+# October 18 — Leftovers of phase 11: Google review default, platform admin, profile
+
+1. **"Default for <brand>" on Google review locations** (UX-REDESIGN §12.7, SPEC §8): a tick on each location with a
+   brand (or on every location when the company has one brand) makes it that brand's preselected location in review
+   requests; one per brand, unticking clears it. Stored in the existing `brands.google_profile_id` (no migration);
+   the brand form keeps its own picker.
+2. **Platform admin** (§12.11): the plan is chosen from Solo / Team / Pro (SPEC §11.2; names only, prices stay with
+   the billing module) — a plan name saved before the list exists stays until it is changed; Support access is in
+   the member row's "⋯"; Save is pinned; dates in one format (date and short time, the company's time zone).
+3. **My profile and Security** (§12.9): already in the common shell; Confirm password reads "Confirm your password
+   to continue" with Confirm and Cancel (no dead end) — checked, nothing to change.
+
+- No migrations.
+- Tests: ReviewRequestTest (default per brand, one-brand company, unticking), SuperAdminPanelTest (plan list, older
+  plan name kept).
+- The UX redesign plan (§16.1) is complete.
+
 # October 18 — Desktop fixes, round 2 (live check of PR #44)
 
 1. **The header no longer slides under the unfinished-jobs strip**: both were sticky at the top of the window, so

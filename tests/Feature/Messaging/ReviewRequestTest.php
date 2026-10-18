@@ -169,6 +169,46 @@ test('Google profiles are edited by the office; the brand picks its default', fu
     $this->get(route('brands.edit', $this->brand))->assertInertia(fn (Assert $page) => $page->has('googleProfiles', 2));
 });
 
+test('a location is marked "Default for <brand>" on the Google reviews page', function () {
+    $other = Brand::factory()->create(['company_id' => $this->company->id, 'name' => 'Handy Pros']);
+    $burnaby = inCompany($this->company, fn () => GoogleProfile::create(['label' => 'Burnaby', 'review_url' => 'https://g.page/r/burnaby/review', 'brand_id' => $other->id]));
+    $row = fn (GoogleProfile $p, int $brand, bool $default) => ['id' => $p->id, 'label' => $p->label, 'review_url' => $p->review_url, 'brand_id' => $brand, 'is_default' => $default];
+
+    $this->get(route('company.google-profiles.edit'))->assertInertia(fn (Assert $page) => $page
+        ->where('profiles.0.is_default', false) // Surrey has no brand of its own and the company has two brands.
+        ->where('profiles.1.is_default', false));
+
+    $this->put(route('company.google-profiles.update'), ['profiles' => [
+        $row($this->profile, $this->brand->id, true),
+        $row($burnaby, $other->id, true),
+    ]])->assertSessionHasNoErrors();
+
+    expect($this->brand->fresh()->google_profile_id)->toBe($this->profile->id)
+        ->and($other->fresh()->google_profile_id)->toBe($burnaby->id);
+    $this->get(route('company.google-profiles.edit'))->assertInertia(fn (Assert $page) => $page
+        ->where('profiles.0.is_default', true)
+        ->where('profiles.1.is_default', true));
+
+    // Unticked: the brand has no default location any more.
+    $this->put(route('company.google-profiles.update'), ['profiles' => [
+        $row($this->profile, $this->brand->id, true),
+        $row($burnaby, $other->id, false),
+    ]])->assertSessionHasNoErrors();
+    expect($other->fresh()->google_profile_id)->toBeNull()
+        ->and($this->brand->fresh()->google_profile_id)->toBe($this->profile->id);
+});
+
+test('with one brand, a location without a brand can be its default', function () {
+    $this->brand->update(['google_profile_id' => null]);
+
+    $this->put(route('company.google-profiles.update'), ['profiles' => [
+        ['id' => $this->profile->id, 'label' => 'Surrey', 'review_url' => 'https://g.page/r/surrey/review', 'brand_id' => null, 'is_default' => true],
+    ]])->assertSessionHasNoErrors();
+
+    expect($this->brand->fresh()->google_profile_id)->toBe($this->profile->id);
+    $this->get(route('company.google-profiles.edit'))->assertInertia(fn (Assert $page) => $page->where('profiles.0.is_default', true));
+});
+
 test('the review text can be changed for this customer; the link goes back at the end and the template stays', function () {
     automaticSms();
     $invoice = invoiceForJob();

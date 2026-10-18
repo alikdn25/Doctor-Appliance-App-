@@ -19,6 +19,7 @@ type Props = {
     locales: Option[];
     verticals: Option[];
     subscriptionStatuses: Option[];
+    plans: Option[];
     defaults: {
         timezone: string;
         country: string;
@@ -37,6 +38,7 @@ export default function AdminCompanyCreate({
     locales,
     verticals,
     subscriptionStatuses,
+    plans,
     defaults,
 }: Props) {
     const t = useTrans();
@@ -194,13 +196,22 @@ export default function AdminCompanyCreate({
                         label={t('admin.fields.plan')}
                         error={form.errors.plan}
                     >
-                        <Input
+                        <NativeSelect
                             id="plan"
                             value={form.data.plan}
                             onChange={(e) =>
                                 form.setData('plan', e.target.value)
                             }
-                        />
+                        >
+                            <option value="">
+                                {t('admin.plan_unassigned')}
+                            </option>
+                            {plans.map((p) => (
+                                <option key={p.value} value={p.value}>
+                                    {p.label}
+                                </option>
+                            ))}
+                        </NativeSelect>
                     </FormField>
                     <FormField
                         id="subscription_status"

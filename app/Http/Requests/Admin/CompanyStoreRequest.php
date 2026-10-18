@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\SubscriptionPlan;
 use App\Enums\SubscriptionStatus;
 use App\Enums\Vertical;
 use App\Models\User;
@@ -33,7 +34,7 @@ class CompanyStoreRequest extends FormRequest
             'vertical' => ['nullable', Rule::enum(Vertical::class)],
             'currency' => ['required', Rule::in(Currencies::codes())],
             'locale' => ['nullable', Rule::in(array_column(Countries::localeOptions(), 'value'))],
-            'plan' => ['nullable', 'string', 'max:50'],
+            'plan' => ['nullable', Rule::enum(SubscriptionPlan::class)],
             'subscription_status' => ['nullable', Rule::enum(SubscriptionStatus::class)],
             'owner_name' => ['required', 'string', 'max:255'],
             'owner_email' => ['required', 'email', 'max:255'],

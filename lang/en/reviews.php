@@ -17,6 +17,7 @@ return [
         'default_profile' => 'Default Google review location',
     ],
     'any_brand' => 'Any brand',
+    'default_for' => 'Default for :brand (preselected in review requests)',
     'none' => 'None',
     'rules' => 'Google and the FTC do not allow rewards or discounts for reviews, or asking only happy customers to post. Every customer gets the same request.',
 
