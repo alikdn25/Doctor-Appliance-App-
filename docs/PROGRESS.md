@@ -5,6 +5,8 @@
   nothing extra is asked. The Google Review prompt still follows a text that really went out.
 - Platform → company: Save is outside the form, so it stays pinned at the bottom of the window over the whole page.
 - Test: `tests/browser/money-screens.spec.ts` (Don't send sends nothing).
+- Live check: the long document link now wraps inside the SMS dialog (no sideways scroll, Send fully visible);
+  the test checks the dialog never scrolls sideways.
 
 # October 18 — Leftovers of phase 11: Google review default, platform admin, profile
 

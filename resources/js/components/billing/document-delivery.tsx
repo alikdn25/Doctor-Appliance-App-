@@ -314,7 +314,10 @@ export function useDocumentDelivery({
                                 {t('messages.sms_confirm.description')}
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-3" data-test="sms-confirm">
+                        <div
+                            className="min-w-0 space-y-3"
+                            data-test="sms-confirm"
+                        >
                             <p className="text-sm">
                                 <span className="text-muted-foreground">
                                     {t('messages.sms_confirm.to')}
@@ -326,7 +329,7 @@ export function useDocumentDelivery({
                                     )}
                                 </span>
                             </p>
-                            <p className="rounded-xl border bg-muted/40 p-3 text-sm break-words whitespace-pre-wrap">
+                            <p className="rounded-xl border bg-muted/40 p-3 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap">
                                 {sms.text}
                             </p>
                             <div className="grid grid-cols-2 gap-2">
