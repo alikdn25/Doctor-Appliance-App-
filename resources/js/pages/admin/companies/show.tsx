@@ -119,7 +119,11 @@ export default function AdminCompanyShow({
                     description={`${company.slug} · ${company.timezone_label} · ${company.currency} · ${t('admin.companies.brands_count', { count: company.brands_count })}`}
                 />
 
-                <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+                <form
+                    id="company-form"
+                    onSubmit={submit}
+                    className="grid gap-4 sm:grid-cols-2"
+                >
                     <FormField
                         id="name"
                         label={t('company.fields.name')}
@@ -211,15 +215,6 @@ export default function AdminCompanyShow({
                             ))}
                         </NativeSelect>
                     </FormField>
-                    <StickyActionBar className="sm:col-span-2">
-                        <Button
-                            type="submit"
-                            className="h-11"
-                            disabled={form.processing}
-                        >
-                            {t('common.save')}
-                        </Button>
-                    </StickyActionBar>
                 </form>
 
                 <AdminSmsSection companyId={company.id} sms={sms} />
@@ -365,6 +360,18 @@ export default function AdminCompanyShow({
                         </ul>
                     )}
                 </section>
+
+                {/* Outside the form, so Save stays at the bottom of the window over the whole page. */}
+                <StickyActionBar>
+                    <Button
+                        type="submit"
+                        form="company-form"
+                        className="h-11"
+                        disabled={form.processing}
+                    >
+                        {t('common.save')}
+                    </Button>
+                </StickyActionBar>
             </div>
         </>
     );

@@ -1,3 +1,11 @@
+# October 18 — Live check of PR #46: SMS confirmation, pinned Save in platform admin
+
+- "Send by SMS" on an estimate or invoice (Automatic mode) now asks first: "Send Invoice INV-1 by SMS?" with the
+  number and the exact text; Send / Don't send. In technician's-phone mode the messages app is the confirmation, so
+  nothing extra is asked. The Google Review prompt still follows a text that really went out.
+- Platform → company: Save is outside the form, so it stays pinned at the bottom of the window over the whole page.
+- Test: `tests/browser/money-screens.spec.ts` (Don't send sends nothing).
+
 # October 18 — Leftovers of phase 11: Google review default, platform admin, profile
 
 1. **"Default for <brand>" on Google review locations** (UX-REDESIGN §12.7, SPEC §8): a tick on each location with a

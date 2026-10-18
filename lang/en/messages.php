@@ -144,6 +144,13 @@ return [
     'sms_sent' => 'Text sent.',
     'sms_queued' => 'Text scheduled for :time (quiet hours).',
     'sms_blocked' => 'Text not sent: :reason',
+    'sms_confirm' => [
+        'title' => 'Send :kind :number by SMS?',
+        'description' => 'The customer gets this text from the company number.',
+        'to' => 'To',
+        'cancel' => "Don't send",
+        'send' => 'Send',
+    ],
     'emailed_instead' => 'Sent by email instead.',
 
     'account' => [

@@ -1,4 +1,4 @@
-import { router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import {
     ChevronDown,
     Eye,
@@ -27,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { sendJson } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
+import { formatPhone } from '@/lib/phone';
 import { smsUrl } from '@/lib/sms';
 
 export type Delivery = {
@@ -67,6 +68,9 @@ export function useDocumentDelivery({
     const [emailOpen, setEmailOpen] = useState(false);
     const [receiptOpen, setReceiptOpen] = useState(false);
     const [reviewOpen, setReviewOpen] = useState(false);
+    const [smsOpen, setSmsOpen] = useState(false);
+    const [smsSending, setSmsSending] = useState(false);
+    const { auth } = usePage().props;
     // After "Send by SMS": asked only when the text really went out (a blocked SMS leaves "sent" unchanged).
     const askForReview = (page: { props: Record<string, unknown> }) => {
         const sent = (page.props.delivery as Delivery | undefined)?.sent_at;
@@ -95,18 +99,15 @@ export function useDocumentDelivery({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [receiptOpen]);
 
-    // "Send by SMS": sent by the app (Automatic) or opened in the phone's messages app (technician's phone).
+    // "Send by SMS": sent by the app (Automatic) after "Send SMS?" is confirmed, or opened in the phone's messages
+    // app (technician's phone), where the technician presses Send himself.
     const sendSms = () => {
         if (!sms || !sms.phone) {
             return;
         }
 
         if (sms.mode === 'automatic') {
-            router.post(
-                sms.url,
-                {},
-                { preserveScroll: true, onSuccess: askForReview },
-            );
+            setSmsOpen(true);
 
             return;
         }
@@ -121,6 +122,26 @@ export function useDocumentDelivery({
             setReviewOpen(true);
         }
         window.location.href = smsUrl(sms.phone, sms.text);
+    };
+
+    const confirmSms = () => {
+        if (!sms) {
+            return;
+        }
+
+        router.post(
+            sms.url,
+            {},
+            {
+                preserveScroll: true,
+                onStart: () => setSmsSending(true),
+                onFinish: () => setSmsSending(false),
+                onSuccess: (page) => {
+                    setSmsOpen(false);
+                    askForReview(page);
+                },
+            },
+        );
     };
 
     const copyLink = async () => {
@@ -272,6 +293,61 @@ export function useDocumentDelivery({
                                 <Send /> {t('documents.receipt.send')}
                             </Button>
                         </form>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {sms && sms.mode === 'automatic' && (
+                <Dialog open={smsOpen} onOpenChange={setSmsOpen}>
+                    <DialogContent
+                        className="top-4 translate-y-0 sm:top-[8vh]"
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
+                        <DialogHeader>
+                            <DialogTitle>
+                                {t('messages.sms_confirm.title', {
+                                    kind: kindLabel,
+                                    number,
+                                })}
+                            </DialogTitle>
+                            <DialogDescription>
+                                {t('messages.sms_confirm.description')}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-3" data-test="sms-confirm">
+                            <p className="text-sm">
+                                <span className="text-muted-foreground">
+                                    {t('messages.sms_confirm.to')}
+                                </span>{' '}
+                                <span className="font-medium">
+                                    {formatPhone(
+                                        sms.phone,
+                                        auth.company?.country ?? 'US',
+                                    )}
+                                </span>
+                            </p>
+                            <p className="rounded-xl border bg-muted/40 p-3 text-sm break-words whitespace-pre-wrap">
+                                {sms.text}
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-11"
+                                    onClick={() => setSmsOpen(false)}
+                                >
+                                    {t('messages.sms_confirm.cancel')}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    className="h-11"
+                                    disabled={smsSending}
+                                    onClick={confirmSms}
+                                >
+                                    <Send /> {t('messages.sms_confirm.send')}
+                                </Button>
+                            </div>
+                        </div>
                     </DialogContent>
                 </Dialog>
             )}
