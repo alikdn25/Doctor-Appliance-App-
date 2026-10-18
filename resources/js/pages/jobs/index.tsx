@@ -9,6 +9,7 @@ import { formatMoney } from '@/components/billing/money';
 import { InboxHeaderButton } from '@/components/inbox-header-button';
 import { JobList } from '@/components/jobs/job-list';
 import type { Assignable, JobRow } from '@/components/jobs/types';
+import { isFinishedJob } from '@/components/jobs/types';
 import { PaginationLinks } from '@/components/pagination-links';
 import type { Paginated } from '@/components/pagination-links';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
@@ -468,6 +469,10 @@ export default function JobsIndex({
                                     rows={jobs.data}
                                     rowKey={(job) => job.id}
                                     rowHref={(job) => show(job.id)}
+                                    rowClassName={(job) =>
+                                        isFinishedJob(job.status) &&
+                                        'opacity-60 grayscale'
+                                    }
                                     sort={
                                         tab === 'all'
                                             ? sort || 'visit'

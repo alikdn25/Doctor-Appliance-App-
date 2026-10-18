@@ -23,6 +23,7 @@ export function DataTable<T>({
     columns,
     rowKey,
     rowHref,
+    rowClassName,
     sort,
     dir,
     sortUrl,
@@ -34,6 +35,7 @@ export function DataTable<T>({
     columns: Column<T>[];
     rowKey: (row: T) => string | number;
     rowHref: (row: T) => NonNullable<InertiaLinkProps['href']>;
+    rowClassName?: (row: T) => string | false | undefined;
     sort?: string;
     dir?: 'asc' | 'desc';
     /** The list's URL; sorting keeps the other filters in `query`. */
@@ -122,7 +124,10 @@ export function DataTable<T>({
                     {rows.map((row) => (
                         <tr
                             key={rowKey(row)}
-                            className="cursor-pointer hover:bg-black/[0.03]"
+                            className={cn(
+                                'cursor-pointer hover:bg-black/[0.03]',
+                                rowClassName?.(row),
+                            )}
                             onClick={(e) => {
                                 // Links and buttons in a cell keep their own action.
                                 if ((e.target as HTMLElement).closest('a,button')) {
