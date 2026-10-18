@@ -4,7 +4,6 @@ namespace App\Actions\Companies;
 
 use App\Actions\Members\AddMember;
 use App\Enums\UserRole;
-use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Service;
 use App\Services\AuditLogger;
@@ -49,7 +48,6 @@ class CreateCompany
             $this->audit->record('company.created', $company, ['name' => $company->name], $company->id);
 
             $this->currentCompany->runAs($company, function () use ($company, $owner) {
-                ChecklistTemplate::createDefaults();
                 Service::createDefaults();
                 $this->addMember->handle($company, $owner['name'], $owner['email'], UserRole::Owner, initialPassword: $owner['password'] ?? null);
             });

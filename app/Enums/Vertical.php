@@ -6,7 +6,7 @@ use App\Enums\Concerns\HasOptions;
 
 /**
  * The trade of a company (SPEC §1.2). Picked when the company is created; it sets the job types,
- * the default checklists and the starting services.
+ * and the starting services.
  */
 enum Vertical: string
 {

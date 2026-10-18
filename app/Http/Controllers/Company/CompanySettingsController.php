@@ -7,7 +7,11 @@ use App\Enums\PaymentTerms;
 use App\Enums\WarrantyUnit;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\CompanySettingsRequest;
+use App\Models\Brand;
+use App\Models\GoogleProfile;
+use App\Models\Membership;
 use App\Models\Service;
+use App\Models\TaxRate;
 use App\Payments\PaymentProvider;
 use App\Payments\PaymentProviders;
 use App\Services\AuditLogger;
@@ -21,13 +25,30 @@ use Inertia\Response;
 
 class CompanySettingsController extends Controller
 {
-    public function edit(PaymentProviders $providers): Response
+    /** The short pages of Company settings (UX-REDESIGN §12.1). */
+    public const SECTIONS = ['region', 'invoices', 'scheduling', 'jobs', 'warranty', 'mileage', 'payments'];
+
+    /**
+     * The settings hub (no section) or one section's page.
+     */
+    public function edit(PaymentProviders $providers, ?string $section = null): Response
     {
         $company = currentCompany();
 
         Gate::authorize('update', $company);
+        abort_if($section !== null && ! in_array($section, self::SECTIONS, true), 404);
 
         return Inertia::render('company/settings', [
+            'section' => $section,
+            // The current state of the other settings pages, for the hub's list.
+            'hub' => $section === null ? [
+                'taxes' => TaxRate::query()->where('is_active', true)->count(),
+                'services' => Service::query()->where('is_active', true)->count(),
+                'brands' => Brand::query()->count(),
+                'team' => Membership::query()->where('is_active', true)->count(),
+                'google_profiles' => GoogleProfile::query()->count(),
+                'sms_mode' => __("messages.modes.{$company->sms_mode->value}"),
+            ] : null,
             'company' => $company->only([
                 'id', 'name', 'country', 'timezone', 'currency', 'locale', 'prices_include_tax',
                 'invoice_prefix', 'invoice_next_number', 'online_tips',
@@ -87,6 +108,11 @@ class CompanySettingsController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('company.saved')]);
 
-        return to_route('company.settings.edit');
+        // Back to the page the change was made on.
+        $section = $request->input('section');
+
+        return in_array($section, self::SECTIONS, true)
+            ? to_route('company.settings.section', $section)
+            : to_route('company.settings.edit');
     }
 }

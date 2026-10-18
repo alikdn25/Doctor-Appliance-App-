@@ -3,17 +3,14 @@
 use App\Enums\UserRole;
 use App\Models\Appliance;
 use App\Models\Brand;
-use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
-use App\Models\JobChecklistItem;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
 use App\Models\Property;
 use App\Models\ServiceJob;
-use App\Models\User;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -191,66 +188,6 @@ test('an appliance without a rating plate photo has no plate to show', function 
     $this->actingAs($this->owner)->get(route('appliances.rating-plate', $this->appliance))->assertNotFound();
 });
 
-test('a new job gets a copy of the checklist for its type', function () {
-    inCompany($this->company, fn () => ChecklistTemplate::create(['job_type' => 'repair', 'items' => ['Check error codes', 'Test run']]));
-
-    $this->actingAs($this->owner)->post(route('jobs.store'), [
-        'brand_id' => $this->brand->id, 'job_type' => 'repair',
-        'customer_id' => $this->property->customer_id, 'property_id' => $this->property->id,
-    ])->assertRedirect();
-
-    $job = ServiceJob::withoutCompanyScope()->latest('id')->first();
-
-    expect(JobChecklistItem::withoutCompanyScope()->where('service_job_id', $job->id)->orderBy('position')->pluck('label')->all())
-        ->toBe(['Check error codes', 'Test run']);
-
-    // Template changes do not touch existing jobs.
-    inCompany($this->company, fn () => ChecklistTemplate::where('job_type', 'repair')->update(['items' => json_encode(['Other'])]));
-
-    expect(JobChecklistItem::withoutCompanyScope()->where('service_job_id', $job->id)->count())->toBe(2);
-});
-
-test('changing the job type swaps the checklist until something is ticked', function () {
-    inCompany($this->company, function () {
-        ChecklistTemplate::create(['job_type' => 'repair', 'items' => ['Repair item']]);
-        ChecklistTemplate::create(['job_type' => 'installation', 'items' => ['Level it', 'Check leaks']]);
-        $this->job->applyChecklistTemplate();
-    });
-
-    $update = fn (string $type) => $this->actingAs($this->owner)->put(route('jobs.update', $this->job), [
-        'brand_id' => $this->brand->id, 'job_type' => $type, 'property_id' => $this->property->id,
-        'appliance_ids' => [$this->appliance->id],
-    ])->assertRedirect();
-    $labels = fn () => JobChecklistItem::withoutCompanyScope()->where('service_job_id', $this->job->id)->orderBy('position')->pluck('label')->all();
-
-    $update('installation');
-    expect($labels())->toBe(['Level it', 'Check leaks']);
-
-    JobChecklistItem::withoutCompanyScope()->where('service_job_id', $this->job->id)->first()->forceFill(['is_done' => true])->saveQuietly();
-
-    $update('repair');
-    expect($labels())->toBe(['Level it', 'Check leaks']);
-});
-
-test('a technician ticks checklist items on their job', function () {
-    $item = inCompany($this->company, fn () => $this->job->checklistItems()->create(['position' => 0, 'label' => 'Test run']));
-
-    $this->travelTo('2030-06-12 18:00:00');
-    $this->put(route('jobs.checklist.toggle', [$this->job, $item]), ['is_done' => true])->assertRedirect();
-
-    expect($item->fresh())
-        ->is_done->toBeTrue()
-        ->done_by->toBe($this->tech->id)
-        ->and($item->fresh()->done_at->toDateTimeString())->toBe('2030-06-12 18:00:00');
-
-    $this->put(route('jobs.checklist.toggle', [$this->job, $item]), ['is_done' => false]);
-    expect($item->fresh())->is_done->toBeFalse()->done_by->toBeNull()->done_at->toBeNull();
-
-    $this->actingAs($this->otherTech)
-        ->put(route('jobs.checklist.toggle', [$this->job, $item]), ['is_done' => true])
-        ->assertForbidden();
-});
-
 test('the customer signs on the technician\'s phone', function () {
     $this->post(route('jobs.signature.store', $this->job), [
         'signature' => UploadedFile::fake()->image('signature.png', 600, 200),
@@ -292,8 +229,10 @@ test('a signature must be a PNG with the signer\'s name', function () {
 });
 
 test('the job page lists photos and signature, never a checklist (removed, UX-REDESIGN §20)', function () {
+    // Checklists are gone with their routes.
+    expect(Route::has('jobs.checklist.toggle'))->toBeFalse()
+        ->and(Route::has('company.checklists.edit'))->toBeFalse();
     uploadPhoto();
-    inCompany($this->company, fn () => $this->job->checklistItems()->create(['position' => 0, 'label' => 'Test run']));
     $this->post(route('jobs.signature.store', $this->job), [
         'signature' => UploadedFile::fake()->image('s.png'), 'signer_name' => 'Jane',
     ], ['Accept' => 'application/json']);
@@ -307,46 +246,6 @@ test('the job page lists photos and signature, never a checklist (removed, UX-RE
             ->where('job.signature.name', 'Jane')
             ->where('job.signature.by', 'Tom Tech')
             ->has('photoKinds', 2));
-});
-
-test('the office edits checklists per job type', function () {
-    $this->actingAs($this->owner);
-
-    $this->get(route('company.checklists.edit'))->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('company/checklists')->has('jobTypes', 6));
-
-    $this->put(route('company.checklists.update'), ['templates' => [
-        'repair' => ['  Check error codes ', '', 'Test run'],
-        'installation' => [],
-    ]])->assertRedirect(route('company.checklists.edit'));
-
-    inCompany($this->company, function () {
-        expect(ChecklistTemplate::where('job_type', 'repair')->sole()->items)->toBe(['Check error codes', 'Test run'])
-            ->and(ChecklistTemplate::where('job_type', 'installation')->sole()->items)->toBe([]);
-    });
-
-    $this->put(route('company.checklists.update'), ['templates' => ['repair' => [str_repeat('x', 201)]]])
-        ->assertSessionHasErrors('templates.repair.0');
-    $this->put(route('company.checklists.update'), ['templates' => ['painting' => ['x']]])
-        ->assertSessionHasErrors('templates');
-});
-
-test('technicians cannot edit checklists', function () {
-    $this->get(route('company.checklists.edit'))->assertForbidden();
-    $this->put(route('company.checklists.update'), ['templates' => ['repair' => ['x']]])->assertForbidden();
-});
-
-test('a new company starts with the default checklists', function () {
-    Notification::fake();
-
-    $this->actingAs(User::factory()->superAdmin()->create())->post(route('admin.companies.store'), [
-        'name' => 'Fresh Co', 'country' => 'CA', 'timezone' => 'America/Vancouver', 'currency' => 'CAD',
-        'owner_name' => 'Fay', 'owner_email' => 'fay@example.com',
-    ])->assertRedirect();
-
-    $company = Company::where('name', 'Fresh Co')->sole();
-
-    expect(ChecklistTemplate::withoutCompanyScope()->where('company_id', $company->id)->count())->toBe(6);
 });
 
 test('the app can be installed on a phone', function () {

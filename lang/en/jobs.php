@@ -513,12 +513,6 @@ return [
         'saved' => 'Rating plate photo saved.',
     ],
 
-    'checklist' => [
-        'title' => 'Checklist',
-        'empty' => 'No checklist for this job type.',
-        'progress' => ':done of :total done',
-    ],
-
     'signature' => [
         'title' => 'Customer signature',
         'sign' => 'Get signature',

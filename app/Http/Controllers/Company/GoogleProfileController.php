@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
-use App\Models\ChecklistTemplate;
 use App\Models\GoogleProfile;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +22,7 @@ class GoogleProfileController extends Controller
 {
     public function edit(): Response
     {
-        Gate::authorize('manage', ChecklistTemplate::class);
+        Gate::authorize('manageCatalog');
 
         return Inertia::render('company/google-profiles', [
             'profiles' => GoogleProfile::query()->orderBy('id')->get(['id', 'label', 'review_url', 'brand_id']),
@@ -33,7 +32,7 @@ class GoogleProfileController extends Controller
 
     public function update(Request $request, AuditLogger $audit): RedirectResponse
     {
-        Gate::authorize('manage', ChecklistTemplate::class);
+        Gate::authorize('manageCatalog');
 
         $validated = $request->validate([
             'profiles' => ['present', 'array', 'max:100'],

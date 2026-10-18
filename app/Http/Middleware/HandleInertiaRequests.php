@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Messaging\SmsInbox;
 use App\Models\Brand;
 use App\Models\BusinessExpense;
-use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -115,7 +114,7 @@ class HandleInertiaRequests extends Middleware
                 'viewInvoices' => $user->can('viewAny', Invoice::class),
                 'viewMyJobs' => $user->can('viewMine', ServiceJob::class),
                 'viewCalendar' => $user->can('dispatch', ServiceJob::class),
-                'manageChecklists' => $user->can('manage', ChecklistTemplate::class),
+                'manageCatalog' => $user->can('manageCatalog'),
                 'manageCompany' => $user->can('update', $company),
                 'viewBrands' => $user->can('viewAny', Brand::class),
                 'manageTeam' => $user->can('viewAny', Membership::class),

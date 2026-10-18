@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Services\Impersonation;
 use App\Sms\RoutedSmsProvider;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -50,6 +52,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // The price book and Google review locations are kept by the office.
+        Gate::define('manageCatalog', fn (User $user) => $user->hasRole(UserRole::Owner, UserRole::Admin));
 
         Event::listen(Login::class, function (Login $event) {
             if ($event->user instanceof User && ! app(Impersonation::class)->isActive()) {

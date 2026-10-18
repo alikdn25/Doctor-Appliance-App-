@@ -26,7 +26,6 @@ return [
     'brands' => 'Brands',
     'team' => 'Team',
     'taxes' => 'Taxes',
-    'checklists' => 'Checklists',
     'services' => 'Services',
     'google_reviews' => 'Google reviews',
     'messaging' => 'Messaging',

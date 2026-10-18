@@ -7,7 +7,6 @@ use App\Enums\PhotoKind;
 use App\Http\Controllers\Controller;
 use App\Models\Appliance;
 use App\Models\JobBringItem;
-use App\Models\JobChecklistItem;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
@@ -23,7 +22,7 @@ use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Work on site from the technician's phone: photos, rating plate, checklist and customer signature.
+ * Work on site from the technician's phone: photos, rating plate and customer signature.
  * Uploads answer with JSON: the phone's upload queue sends them with fetch and retries on bad signal.
  */
 class JobFieldController extends Controller
@@ -123,22 +122,6 @@ class JobFieldController extends Controller
         $save->handle($appliance->property()->firstOrFail(), $appliance, [], $request->file('rating_plate'));
 
         return response()->json(['appliance' => ['id' => $appliance->id, 'rating_plate_url' => $appliance->fresh()->rating_plate_url]]);
-    }
-
-    public function toggleChecklistItem(Request $request, ServiceJob $job, JobChecklistItem $item): RedirectResponse
-    {
-        Gate::authorize('work', $job);
-        abort_unless($item->service_job_id === $job->id, 404);
-
-        $done = $request->validate(['is_done' => ['required', 'boolean']])['is_done'];
-
-        $item->update([
-            'is_done' => $done,
-            'done_by' => $done ? $request->user()->id : null,
-            'done_at' => $done ? now() : null,
-        ]);
-
-        return back();
     }
 
     /**

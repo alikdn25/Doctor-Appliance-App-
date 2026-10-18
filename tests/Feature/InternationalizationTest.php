@@ -3,7 +3,6 @@
 use App\Enums\PaymentTerms;
 use App\Enums\UserRole;
 use App\Models\Brand;
-use App\Models\ChecklistTemplate;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Estimate;
@@ -65,17 +64,16 @@ test('the super-admin picks country, currency, regional format and vertical when
         ->has('verticals', 2));
 });
 
-test('a handyman company gets its own job types, checklists and services', function () {
+test('a handyman company gets its own job types and services', function () {
     $company = newCompany(['country' => 'US', 'vertical' => 'handyman']);
     $owner = User::where('email', 'ann@example.com')->sole();
 
-    $types = ChecklistTemplate::withoutCompanyScope()->where('company_id', $company->id)->pluck('job_type')->map->value->sort()->values()->all();
-    expect($types)->toBe(['assembly', 'inspection', 'installation', 'maintenance', 'mounting', 'repair'])
-        ->and(Service::withoutCompanyScope()->where('company_id', $company->id)->pluck('name'))->toContain('TV mounting', 'Furniture assembly');
+    expect(Service::withoutCompanyScope()->where('company_id', $company->id)->pluck('name'))->toContain('TV mounting', 'Furniture assembly');
 
     $owner->forceFill(['email_verified_at' => now()])->save();
-    $this->actingAs($owner)->get(route('company.checklists.edit'))
-        ->assertInertia(fn (Assert $page) => $page->has('jobTypes', 6)->where('jobTypes.2.value', 'assembly'));
+    $this->actingAs($owner)->get(route('jobs.create'))
+        ->assertInertia(fn (Assert $page) => $page->where('jobTypes', fn ($types) => collect($types)->pluck('value')->sort()->values()->all()
+            === ['assembly', 'inspection', 'installation', 'maintenance', 'mounting', 'repair']));
 });
 
 test('an appliance repair company starts with appliance services', function () {

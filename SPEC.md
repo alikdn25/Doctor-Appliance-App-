@@ -33,7 +33,7 @@ assumes a particular country.
 
 ### 1.2 Verticals
 
-A company picks its **vertical** when it is created. The vertical sets its job types, default checklists and the
+A company picks its **vertical** when it is created. The vertical sets its job types and the
 starting set of services (price book items) created with the company.
 
 - **Appliance repair** — the main vertical (appliances, rating plates, manufacturer warranty, vent cleaning).
@@ -98,7 +98,7 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 - **Appliance** (appliance repair vertical): property, type (washer, dryer, fridge, range, dishwasher, etc.), brand, model number, serial number, photo of the rating plate, install/purchase date, warranty info, full repair history.
 - **Job:** brand, customer, property, appliance(s), job type (per vertical — appliance repair: repair / warranty /
   maintenance / inspection; handyman: repair / installation / assembly / mounting /
-  maintenance / inspection), source, assigned user(s), scheduled window, estimated duration, status, notes, photos, checklists, signatures. **A job is one booking**: the interface shows no separate visits. A second trip (diagnosis → parts → repair) is a new time for the same job; the times are stored as visits internally (calendar, On my way / Start / Finish, time on job) and earlier times stay in the job history.
+  maintenance / inspection), source, assigned user(s), scheduled window, estimated duration, status, notes, photos, signatures. **A job is one booking**: the interface shows no separate visits. A second trip (diagnosis → parts → repair) is a new time for the same job; the times are stored as visits internally (calendar, On my way / Start / Finish, time on job) and earlier times stay in the job history.
 - **Estimate**, **Invoice**, **Payment**, **Price book item**, **Parts order**, **Warranty claim**, **Service plan**, **Inspection report**, **Message**, **Attachment**, **Activity log**.
 
 ### Job statuses
@@ -143,7 +143,6 @@ return. Each job counts once; access follows company, brand and technician assig
 - Status buttons: On my way (sends SMS with ETA), Started, Waiting for parts, Completed. Time on job is tracked automatically.
 - Photos before/after with upload retry when signal is weak.
 - Scan/photograph rating plate → store model & serial (manual entry in v1; OCR later).
-- Checklists per job type.
 - Customer signature on screen.
 - Create estimate or invoice on site and take payment.
 
@@ -239,7 +238,7 @@ from the company number (provider voice).
 ### 7.9 Strata / property manager features (for Duct Works)
 
 - Property manager customer with many buildings; building with many units.
-- One job covering many units; per-unit checklist (cleaned / inspected / issue found), per-unit photos and notes.
+- One job covering many units; per-unit status (cleaned / inspected / issue found), per-unit photos and notes. No checklists (removed by the owner, UX-REDESIGN §20).
 - **Inspection report PDF** per building for the property manager, branded.
 - Recurring service (e.g. yearly vent cleaning) auto-creates future jobs.
 

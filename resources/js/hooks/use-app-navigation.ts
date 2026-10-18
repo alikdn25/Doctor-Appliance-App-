@@ -214,9 +214,9 @@ export function useAppNavigation(): AppNavigation {
         can.viewBrands && item('brands', 'nav.brands', brands(), Tags),
         can.manageTeam && item('team', 'nav.team', team(), Users),
         can.viewTaxes && item('taxes', 'nav.taxes', taxes(), Percent),
-        can.manageChecklists &&
+        can.manageCatalog &&
             item('services', 'nav.services', services(), BookOpen),
-        can.manageChecklists &&
+        can.manageCatalog &&
             item(
                 'google-reviews',
                 'nav.google_reviews',

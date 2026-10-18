@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'test_link' => 'Test link',
+    'label_example' => 'e.g. Surrey',
     'title' => 'Google reviews',
     'description' => 'Your locations and their Google review links. Name each location yourself (e.g. Surrey, Burnaby); you pick one when you send a review request after an invoice.',
     'add' => 'Add location',

@@ -1,8 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
-import { ChevronRight, Plus, Tags } from 'lucide-react';
-import { PageHeader } from '@/components/page-header';
+import { ChevronRight, Plus } from 'lucide-react';
+import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
 import { create, edit, index } from '@/routes/brands';
@@ -32,27 +31,33 @@ export default function BrandsIndex({
         <>
             <Head title={t('brands.title')} />
 
-            <div className="p-4">
-                <PageHeader
-                    title={t('brands.title')}
-                    description={t('brands.description')}
-                    actions={
-                        canCreate && (
-                            <Button asChild>
-                                <Link href={create()}>
-                                    <Plus /> {t('brands.add')}
-                                </Link>
-                            </Button>
-                        )
-                    }
-                />
+            <ScreenHeader
+                title={t('brands.title')}
+                actions={
+                    canCreate && (
+                        <Link
+                            href={create()}
+                            className={headerButtonClass}
+                            aria-label={t('brands.add')}
+                            title={t('brands.add')}
+                        >
+                            <Plus className="size-5" />
+                        </Link>
+                    )
+                }
+            />
+
+            <div className="mx-auto w-full max-w-3xl space-y-3 p-4 sm:p-6">
+                <p className="text-sm text-muted-foreground">
+                    {t('brands.description')}
+                </p>
 
                 {brands.length === 0 ? (
                     <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                         {t('brands.empty')}
                     </p>
                 ) : (
-                    <ul className="divide-y rounded-lg border">
+                    <ul className="da-card divide-y overflow-hidden">
                         {brands.map((brand) => (
                             <li key={brand.id}>
                                 <Link
@@ -63,23 +68,39 @@ export default function BrandsIndex({
                                         <img
                                             src={brand.logo_url}
                                             alt=""
-                                            className="size-10 rounded-md object-contain"
+                                            className="size-11 rounded-xl border bg-white object-contain p-0.5"
                                         />
                                     ) : (
                                         <div
-                                            className="flex size-10 items-center justify-center rounded-md text-white"
+                                            className="flex size-11 items-center justify-center rounded-xl text-base font-bold text-white"
                                             style={{
                                                 backgroundColor:
                                                     brand.primary_color ??
                                                     '#64748b',
                                             }}
+                                            aria-hidden="true"
                                         >
-                                            <Tags className="size-5" />
+                                            {brand.name
+                                                .split(' ')
+                                                .map((part) => part[0])
+                                                .slice(0, 2)
+                                                .join('')
+                                                .toUpperCase()}
                                         </div>
                                     )}
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="truncate font-medium">
+                                            {brand.primary_color && (
+                                                <span
+                                                    className="size-3 shrink-0 rounded-full border border-black/10"
+                                                    style={{
+                                                        backgroundColor:
+                                                            brand.primary_color,
+                                                    }}
+                                                    aria-hidden="true"
+                                                />
+                                            )}
+                                            <span className="truncate font-semibold">
                                                 {brand.name}
                                             </span>
                                             {!brand.is_active && (
