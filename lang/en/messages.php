@@ -49,7 +49,7 @@ return [
         'message' => 'Message',
         'more' => 'Conversation',
         'you' => 'You',
-        'show_all' => 'Show all :count messages',
+        'show_all' => 'Show :count message|Show all :count messages',
     ],
     'empty' => 'No messages yet.',
     'settings_title' => 'Messaging',

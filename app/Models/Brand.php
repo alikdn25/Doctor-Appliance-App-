@@ -112,4 +112,37 @@ class Brand extends Model
             ? Storage::disk(config('fieldservice.media_disk'))->url($this->logo_path)
             : null);
     }
+
+    /**
+     * The brand colour for customer documents and emails, darkened just enough to read as text on white and to carry
+     * white button text (4.5:1). A light colour such as a pale cyan keeps its hue instead of turning unreadable.
+     */
+    public static function readableColor(?string $color): string
+    {
+        if ($color === null || ! preg_match('/^#[0-9a-f]{6}$/i', $color)) {
+            return '#0f172a';
+        }
+
+        $rgb = array_map(fn (int $i) => hexdec(substr($color, $i, 2)), [1, 3, 5]);
+
+        for ($step = 0; $step < 40 && self::contrastOnWhite($rgb) < 4.5; $step++) {
+            $rgb = array_map(fn (int $c) => (int) floor($c * 0.92), $rgb);
+        }
+
+        return sprintf('#%02x%02x%02x', ...$rgb);
+    }
+
+    /**
+     * @param  array{int, int, int}|list<int>  $rgb
+     */
+    private static function contrastOnWhite(array $rgb): float
+    {
+        [$r, $g, $b] = array_map(function (int $c) {
+            $c /= 255;
+
+            return $c <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4;
+        }, $rgb);
+
+        return 1.05 / (0.2126 * $r + 0.7152 * $g + 0.0722 * $b + 0.05);
+    }
 }

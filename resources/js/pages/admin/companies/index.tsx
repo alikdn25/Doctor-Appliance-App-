@@ -1,12 +1,10 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ChevronRight, Clock, Plus } from 'lucide-react';
-import type { FormEvent } from 'react';
-import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchField } from '@/components/ui/search-field';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { create, index, show } from '@/routes/admin/companies';
@@ -46,16 +44,11 @@ export default function AdminCompaniesIndex({
 }) {
     const t = useTrans();
     const time = useCompanyTime();
-    const [search, setSearch] = useState(filters.search);
-
-    const submit = (e: FormEvent) => {
-        e.preventDefault();
-        router.get(
-            index().url,
-            { search },
-            { preserveState: true, replace: true },
-        );
-    };
+    const search = (value: string) =>
+        router.get(index().url, value === '' ? {} : { search: value }, {
+            preserveState: true,
+            replace: true,
+        });
 
     return (
         <>
@@ -64,14 +57,9 @@ export default function AdminCompaniesIndex({
             <div className="p-4">
                 <PageHeader
                     title={t('admin.companies.title')}
-                    description={t(
-                        companies.total === 1
-                            ? 'admin.companies.description_one'
-                            : 'admin.companies.description',
-                        {
-                            count: companies.total,
-                        },
-                    )}
+                    description={t('admin.companies.description', {
+                        count: companies.total,
+                    })}
                     actions={
                         <Button asChild>
                             <Link href={create()}>
@@ -98,17 +86,12 @@ export default function AdminCompaniesIndex({
                     </Alert>
                 )}
 
-                <form onSubmit={submit} className="mb-4 flex gap-2">
-                    <Input
-                        type="search"
-                        value={search}
-                        placeholder={t('admin.companies.search')}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                    <Button type="submit" variant="outline">
-                        {t('common.search')}
-                    </Button>
-                </form>
+                <SearchField
+                    className="mb-4"
+                    value={filters.search}
+                    placeholder={t('admin.companies.search')}
+                    onSearch={search}
+                />
 
                 <ul className="divide-y rounded-lg border">
                     {companies.data.map((company) => (
@@ -138,19 +121,13 @@ export default function AdminCompaniesIndex({
                                         )}
                                     </div>
                                     <div className="text-xs text-muted-foreground">
-                                        {t(
-                                            company.brands_count === 1
-                                                ? 'admin.companies.brand_count'
-                                                : 'admin.companies.brands_count',
-                                            { count: company.brands_count },
-                                        )}
+                                        {t('admin.companies.brands_count', {
+                                            count: company.brands_count,
+                                        })}
                                         {' · '}
-                                        {t(
-                                            company.members_count === 1
-                                                ? 'admin.companies.member_count'
-                                                : 'admin.companies.members_count',
-                                            { count: company.members_count },
-                                        )}
+                                        {t('admin.companies.members_count', {
+                                            count: company.members_count,
+                                        })}
                                         {company.subscription_status &&
                                             ` · ${company.subscription_status}`}
                                         {` · ${time.dateOnly(company.created_at)}`}

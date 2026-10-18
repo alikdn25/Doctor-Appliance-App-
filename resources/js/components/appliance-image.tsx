@@ -22,7 +22,7 @@ const PICTURED = new Set([
 ]);
 
 export const applianceImageUrl = (type: string) =>
-    `/images/appliances/${PICTURED.has(type) ? type : 'other'}.png`;
+    `/images/appliances/${PICTURED.has(type) ? type : 'other'}.webp`;
 
 /** Light stainless-steel picture of an appliance type (docs/DESIGN.md, Imagery). */
 export function ApplianceImage({

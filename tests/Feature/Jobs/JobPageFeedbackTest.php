@@ -122,7 +122,7 @@ test('appliance types follow the picker order and include a wine cooler', functi
     ]);
 
     foreach (ApplianceType::cases() as $type) {
-        expect(file_exists(public_path("images/appliances/{$type->value}.png")))->toBeTrue();
+        expect(file_exists(public_path("images/appliances/{$type->value}.webp")))->toBeTrue();
     }
 });
 

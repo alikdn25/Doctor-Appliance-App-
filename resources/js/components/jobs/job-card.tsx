@@ -100,6 +100,9 @@ export function JobCard({
         >
             <Link
                 href={href}
+                // Start loading the job on hover or press; a short cache keeps statuses fresh.
+                prefetch
+                cacheFor="5s"
                 className={cn(
                     'flex min-w-0 flex-1 items-start gap-3 p-3 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
                     !office && 'pb-2',

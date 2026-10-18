@@ -159,7 +159,7 @@ class DocumentPrint
 
         return [
             'name' => $brand?->name,
-            'color' => $brand?->primary_color ?: '#0f172a',
+            'color' => Brand::readableColor($brand?->primary_color),
             'logo' => $embedLogo ? self::logoDataUri($brand) : $brand?->logo_url,
             'address' => $address
                 ? AddressFormatter::oneLine(

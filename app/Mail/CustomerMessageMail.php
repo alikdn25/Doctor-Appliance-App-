@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Message;
 use App\Support\Tenancy\CurrentCompany;
@@ -46,7 +47,7 @@ class CustomerMessageMail extends Mailable implements ShouldQueue
             return new Content(view: 'mail.customer-message', with: [
                 'body' => $message->body,
                 'brandName' => $brand?->name ?? Company::query()->find($this->companyId)?->name,
-                'color' => $brand?->primary_color ?: '#0f172a',
+                'color' => Brand::readableColor($brand?->primary_color),
             ]);
         });
     }

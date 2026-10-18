@@ -6,7 +6,7 @@ return [
         'greeting' => 'Hello :name,',
         'line' => 'You have been added to :company. Set your password to get started.',
         'action' => 'Set password',
-        'expires' => 'This link expires in :count minutes.',
+        'expires' => 'This link expires in :count minute.|This link expires in :count minutes.',
     ],
 
     'added' => [
