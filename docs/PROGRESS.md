@@ -1,3 +1,15 @@
+# October 18 — Desktop fixes, round 2 (live check of PR #44)
+
+1. **The header no longer slides under the unfinished-jobs strip**: both were sticky at the top of the window, so
+   the strip covered most of the header while scrolling. The header now sticks just below the strip.
+2. **The job's right column keeps its top in view to the very end of the page**: the action bar (On my way / Start
+   job) sits after the columns on a computer and pushed the column up near the bottom. The strip, the header and
+   the action bar publish their heights (`--app-bar-h`, `--app-header-h`, `--app-action-bar-h`); side columns and
+   table headers stick at `--app-sticky-top` and the side columns fit between the header and the action bar.
+3. **The whole column-title cell sorts a table**, not only the title text.
+
+- No migrations. Tests: browser desktop.spec (short window scrolled to the bottom; a click beside the title sorts).
+
 # October 18 — Desktop fixes after the live check of phase 12
 
 1. **Jobs table sorts by every useful column** on the All tab: #, Status (in workflow order), Date / window,

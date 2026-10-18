@@ -82,23 +82,34 @@ test('the job side column and table headers stay in view below the app header', 
         info.project.name !== 'desktop',
         'two columns and tables are for wide screens',
     );
-    // How far the column's top sits below the sticky header once the page is scrolled.
-    const gap = async () =>
+    // A short window, scrolled to the very bottom: the header is not covered by the unfinished-jobs strip, and the
+    // top of the side column (status, Estimates & invoices) stays below the header.
+    const layout = async () =>
         page.evaluate(() => {
-            const header = document
-                .querySelector('header.da-header')!
-                .getBoundingClientRect();
-            const aside = document
-                .querySelector('[data-test="job-aside"]')!
-                .getBoundingClientRect();
+            const rect = (selector: string) =>
+                document.querySelector(selector)?.getBoundingClientRect();
+            const bar = rect('.da-unfinished-bar');
+            const header = rect('header.da-header')!;
+            const aside = rect('[data-test="job-aside"]')!;
+            const atBottom =
+                window.scrollY + window.innerHeight >=
+                document.documentElement.scrollHeight - 1;
 
-            return window.scrollY > 0 ? aside.top - header.bottom : -1;
+            return atBottom
+                ? Math.min(
+                      header.top - (bar?.bottom ?? 0),
+                      aside.top - header.bottom,
+                  )
+                : -1;
         });
 
+    await page.setViewportSize({ width: 1440, height: 520 });
     await page.goto(`/jobs/${fixture.job_id}`);
     await expect(page.locator('[data-test="job-aside"]')).toBeVisible();
-    await page.mouse.wheel(0, 1500);
-    await expect.poll(gap).toBeGreaterThanOrEqual(0);
+    await page.mouse.move(400, 300);
+    await page.mouse.wheel(0, 5000);
+    await expect.poll(layout).toBeGreaterThanOrEqual(0);
+    await page.setViewportSize({ width: 1440, height: 900 });
 
     await page.goto('/jobs?tab=all');
     const table = page.locator('[data-slot="data-table"]');
@@ -111,7 +122,10 @@ test('the job side column and table headers stay in view below the app header', 
     await table.getByRole('button', { name: 'Status' }).click();
     await expect(page).toHaveURL(/sort=status/);
     await expect(page).toHaveURL(/dir=desc/);
-    await table.getByRole('button', { name: 'Customer' }).click();
+    // The whole header cell sorts, not only its title.
+    const customer = table.getByRole('button', { name: 'Customer' });
+    const box = (await customer.boundingBox())!;
+    await customer.click({ position: { x: box.width - 4, y: box.height - 4 } });
     await expect(page).toHaveURL(/sort=customer/);
     await expect(page).toHaveURL(/dir=asc/);
 });

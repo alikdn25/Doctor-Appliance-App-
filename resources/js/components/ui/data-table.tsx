@@ -67,7 +67,7 @@ export function DataTable<T>({
             data-slot="data-table"
         >
             <table className="w-full border-collapse text-sm" aria-label={label}>
-                <thead className="sticky top-[var(--app-header-h,0px)] z-10 bg-card">
+                <thead className="sticky top-[var(--app-sticky-top)] z-10 bg-card">
                     <tr className="border-b text-xs text-muted-foreground">
                         {columns.map((column) => {
                             const active = column.sort !== undefined && sort === column.sort;
@@ -89,7 +89,8 @@ export function DataTable<T>({
                                             : undefined
                                     }
                                     className={cn(
-                                        'px-3 py-2 font-semibold whitespace-nowrap',
+                                        'font-semibold whitespace-nowrap',
+                                        !column.sort && 'px-3 py-2',
                                         column.align === 'right' ? 'text-right' : 'text-left',
                                         column.className,
                                     )}
@@ -97,8 +98,10 @@ export function DataTable<T>({
                                     {column.sort ? (
                                         <button
                                             type="button"
+                                            // The whole cell sorts, not only the title.
                                             className={cn(
-                                                'inline-flex min-h-8 items-center gap-1 rounded-md hover:text-foreground',
+                                                'inline-flex min-h-10 w-full items-center gap-1 px-3 py-2 hover:text-foreground',
+                                                column.align === 'right' && 'justify-end',
                                                 active && 'text-foreground',
                                             )}
                                             onClick={() => sortBy(column.sort!)}
