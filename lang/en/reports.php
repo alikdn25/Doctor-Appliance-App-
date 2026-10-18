@@ -64,7 +64,6 @@ return [
     'expenses_csv' => 'Expenses (CSV)',
     'receipts_zip' => 'Supplier receipts (ZIP)',
     'empty' => 'No jobs closed in this period.',
-    'group' => 'Group',
     'no_source' => 'No lead source',
     'by_job_type' => 'By job type',
     'by_source' => 'By lead source',

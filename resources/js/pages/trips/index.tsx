@@ -482,7 +482,6 @@ export default function Trips({
                                     type="button"
                                     role="radio"
                                     aria-checked={form.data.type === type.value}
-                                    aria-pressed={form.data.type === type.value}
                                     className="da-chip min-h-11 rounded-xl px-3 text-sm font-medium"
                                     onClick={() =>
                                         form.setData('type', type.value)

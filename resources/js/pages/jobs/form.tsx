@@ -1599,7 +1599,6 @@ export default function JobForm({
                                 type="button"
                                 role="radio"
                                 aria-checked={!data.add_visit}
-                                aria-pressed={!data.add_visit}
                                 className="da-chip da-press inline-flex h-11 shrink-0 items-center rounded-2xl px-4 text-sm font-semibold whitespace-nowrap"
                                 onClick={() => form.setData('add_visit', false)}
                             >

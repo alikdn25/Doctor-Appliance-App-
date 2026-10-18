@@ -52,7 +52,6 @@ export function TimeWindowChips({
                     type="button"
                     role="radio"
                     aria-checked={chip.start === value}
-                    aria-pressed={chip.start === value}
                     onClick={() => onChange(chip.start)}
                     className="da-chip da-press inline-flex h-11 items-center rounded-2xl px-4 text-sm font-semibold whitespace-nowrap"
                 >

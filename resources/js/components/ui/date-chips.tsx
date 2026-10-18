@@ -56,7 +56,6 @@ export function DateChips({
                     type="button"
                     role="radio"
                     aria-checked={chip.ymd === value}
-                    aria-pressed={chip.ymd === value}
                     onClick={() => onChange(chip.ymd)}
                     className="da-chip da-press inline-flex h-11 shrink-0 items-center rounded-2xl px-4 text-sm font-semibold whitespace-nowrap"
                 >

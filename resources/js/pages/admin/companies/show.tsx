@@ -112,7 +112,7 @@ export default function AdminCompanyShow({
                             {t('admin.open_workspace')}
                         </Button>
                     }
-                    description={`${company.slug} · ${company.timezone_label} · ${company.currency} · ${t(company.brands_count === 1 ? 'admin.companies.brand_count' : 'admin.companies.brands_count', { count: company.brands_count })}`}
+                    description={`${company.slug} · ${company.timezone_label} · ${company.currency} · ${t('admin.companies.brands_count', { count: company.brands_count })}`}
                 />
 
                 <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">

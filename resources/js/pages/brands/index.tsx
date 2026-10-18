@@ -67,6 +67,8 @@ export default function BrandsIndex({
                                     {brand.logo_url ? (
                                         <img
                                             src={brand.logo_url}
+                                            loading="lazy"
+                                            decoding="async"
                                             alt=""
                                             className="size-11 rounded-xl border bg-white object-contain p-0.5"
                                         />

@@ -116,6 +116,7 @@ export default function BookingBot({
                         <Input
                             id="bot-bookings"
                             type="number"
+                            inputMode="numeric"
                             min={1}
                             max={50}
                             className="sm:w-28"
@@ -136,6 +137,7 @@ export default function BookingBot({
                         <Input
                             id="bot-requests"
                             type="number"
+                            inputMode="numeric"
                             min={5}
                             max={120}
                             className="sm:w-28"

@@ -67,7 +67,7 @@ export function NavMain({
 
     return (
         <SidebarGroup className="px-3 py-1">
-            <SidebarGroupLabel className="px-3 text-[11px] font-semibold tracking-[0.14em] text-sidebar-foreground/45 uppercase">
+            <SidebarGroupLabel className="px-3 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                 {t(label)}
             </SidebarGroupLabel>
             <NavItems

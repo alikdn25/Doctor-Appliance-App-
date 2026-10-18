@@ -931,7 +931,6 @@ export default function QuickBook({
                                     type="button"
                                     role="radio"
                                     aria-checked={technicianId === choice.id}
-                                    aria-pressed={technicianId === choice.id}
                                     onClick={() =>
                                         setVisit({
                                             assignee_ids:

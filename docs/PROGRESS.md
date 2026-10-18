@@ -1,3 +1,26 @@
+# October 18 — UX redesign, phase 13: final pass on texts, accessibility, speed
+
+UX-REDESIGN.md §14–15. This closes the redesign plan (§16.1, phases 1–13).
+
+1. **Accessibility check in the test suite**: `tests/browser/accessibility.spec.ts` runs axe (WCAG 2.1 A/AA) on 20
+   screens on a phone and a computer: My Jobs, Jobs, Job page, Book customer, Calendar, Customers, Customer, Invoices,
+   Invoice, Reports, Settings, Messages, Expenses & taxes, Business expenses, Tax reserve, Cash, Mileage, Team,
+   Profile and the customer link page. All pass.
+2. **Contrast**: the link blue is darker (#055bd6, at least 4.5:1 on the light blue backgrounds); the menu section
+   titles and the profile initials pass 4.5:1.
+3. **Choice chips** (date, arrival window, technician, trip type, "no visit yet") are proper radios (no
+   `aria-pressed` on `role="radio"`); the selected style follows `aria-checked`.
+4. **Less motion**: people who ask the system for reduced motion get no animations or transitions.
+5. **Speed**: appliance pictures and avatars are WebP (about 940 KB → 100 KB; the PNGs stay for old links); avatars
+   and brand logos load lazily; a job card starts loading the job page on hover or press (5 s cache).
+6. **Texts**: counters in the platform admin use plural forms ("1 company", "1 brand", "1 active member"); the invite
+   email says "1 minute" / "60 minutes"; the platform company search is live (no Search button); numeric keyboard on
+   the booking-bot fields.
+
+- No migrations.
+- Next: what is left from earlier phases (profile and security §12.9, platform admin polish §12.11, "Default for brand" on
+  Google review locations) and the owner's walkthrough of the redesign.
+
 # October 18 — UX redesign, phase 12: desktop layouts
 
 UX-REDESIGN.md §13 (from 1024 px).

@@ -56,12 +56,16 @@ export function CustomerAvatar({
                 className={`da-avatar ${sizes[size]} relative inline-block shrink-0 overflow-hidden rounded-full bg-[linear-gradient(90deg,#F1F7FF,#B3D4FF)]`}
             >
                 <img
-                    src="/images/avatars/woman.png"
+                    src="/images/avatars/woman.webp"
+                    loading="lazy"
+                    decoding="async"
                     alt=""
                     className="absolute top-[12%] -left-[14%] size-[82%] rounded-full object-cover"
                 />
                 <img
-                    src="/images/avatars/man.png"
+                    src="/images/avatars/man.webp"
+                    loading="lazy"
+                    decoding="async"
                     alt=""
                     className="absolute top-[18%] -right-[14%] size-[82%] rounded-full object-cover ring-2 ring-white"
                 />
@@ -71,7 +75,9 @@ export function CustomerAvatar({
     if (icon === 'man' || icon === 'woman') {
         return (
             <img
-                src={`/images/avatars/${icon}.png`}
+                src={`/images/avatars/${icon}.webp`}
+                loading="lazy"
+                decoding="async"
                 alt={label}
                 className={`da-avatar ${sizes[size]} shrink-0 rounded-full object-cover`}
             />
