@@ -1,3 +1,34 @@
+# October 18 — UX redesign, phase 11: settings, sign-in; checklists removed
+
+UX-REDESIGN.md §12 and §20.
+
+1. **Checklists removed** (§20, the owner's decision): the job-page section (already gone in phase 6), Company →
+   Checklists, the hub item, the default checklists per business type, the code, routes and SPEC mentions.
+   Migration `2026_10_26_000100_drop_checklists` drops `checklist_templates` and `job_checklist_items` with their
+   data (approved by the owner on October 16; listed in database/approved-destructive-migrations.php). Back up first.
+   The price book and Google reviews keep their access (Owner and Admin) through a `manageCatalog` gate.
+2. **Company settings hub** (§12.1): a list of short pages — Company & region, Invoices & estimates, Business hours &
+   scheduling, Jobs, Warranty, Mileage, Payments — each row with what is set now ("Canada · Vancouver · CAD",
+   "Due on receipt · next INV-2", "Mon–Fri 8–5", "Diagnostic fee: none", "30 days / 90 days", "km · rate not set",
+   "Manual only"), then Taxes, Services, Messaging, Google reviews, Brands, Team with a short status. Each page shows
+   "Unsaved changes · Discard · Save" only after a change and asks before leaving with changes.
+3. **Taxes** (§12.3): what each tax applies to (Labour · Part · Material), Default as a chip, Edit / Delete under ⋯.
+4. **Price book** (§12.4): search, type chips with counts, "Price not set" in grey.
+5. **Messaging** (§12.6): the SMS mode as three cards with what happens; quiet hours only in Automatic; each
+   template folds open, with placeholder chips that insert at the cursor, a preview on sample details in the
+   company's format, and the character and SMS-part count.
+6. **Google reviews** (§12.7): labelled fields, "Test link", the rules behind (i).
+7. **Brands** (§12.8): the logo, or initials on the brand colour, and a colour dot.
+8. **Sign-in** (§12.10): email fields use autocomplete=username.
+9. **Fixes reported by Grok Bot**: `app:reset-password --generate` now makes a password the production rules accept
+   (mixed case, number, symbol); the visit length field takes any 5-minute value (60 was refused).
+
+- Not done in this phase: the platform admin polish (§12.11, low priority) and "Default for brand" on Google review
+  locations.
+- Tests: the settings hub and section saving (CompanySettingsTest), checklist routes gone (FieldWorkTest), tenant
+  isolation list, generated password rules (ResetPasswordCommandTest); browser specs updated.
+- Next: phase 12 — desktop layouts (§13).
+
 # October 16 — UX redesign, phase 10: reports, expenses, cash, mileage, tax reserve
 
 UX-REDESIGN.md §11, §17 and the content of §23. Migration approved by the owner on October 15.
