@@ -5,10 +5,12 @@ import type { AdminSms } from '@/components/admin/sms-registration';
 import { AdminSmsSection } from '@/components/admin/sms-registration';
 import { FormField } from '@/components/form-field';
 import { PageHeader } from '@/components/page-header';
+import { ActionSheet } from '@/components/ui/action-sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import { useTrans } from '@/lib/i18n';
 import {
     impersonate,
@@ -60,6 +62,7 @@ type Props = {
     }[];
     statuses: Option[];
     subscriptionStatuses: Option[];
+    plans: Option[];
     sms: AdminSms;
 };
 
@@ -70,12 +73,13 @@ export default function AdminCompanyShow({
     auditLogs,
     statuses,
     subscriptionStatuses,
+    plans,
     sms,
 }: Props) {
     const t = useTrans();
     const dates = new Intl.DateTimeFormat(company.locale.replace('_', '-'), {
         dateStyle: 'medium',
-        timeStyle: 'long',
+        timeStyle: 'short',
         timeZone: company.timezone,
     });
     const date = (value: string) => dates.format(new Date(value));
@@ -155,14 +159,31 @@ export default function AdminCompanyShow({
                         error={form.errors.plan}
                         hint={t('admin.plan_hint')}
                     >
-                        <Input
+                        <NativeSelect
                             id="plan"
-                            placeholder={t('admin.plan_unassigned')}
                             value={form.data.plan}
                             onChange={(e) =>
                                 form.setData('plan', e.target.value)
                             }
-                        />
+                        >
+                            <option value="">
+                                {t('admin.plan_unassigned')}
+                            </option>
+                            {/* A plan name from before the list keeps showing until it is changed. */}
+                            {company.plan &&
+                                !plans.some(
+                                    (p) => p.value === company.plan,
+                                ) && (
+                                    <option value={company.plan}>
+                                        {company.plan}
+                                    </option>
+                                )}
+                            {plans.map((p) => (
+                                <option key={p.value} value={p.value}>
+                                    {p.label}
+                                </option>
+                            ))}
+                        </NativeSelect>
                     </FormField>
                     <FormField
                         id="subscription_status"
@@ -190,13 +211,15 @@ export default function AdminCompanyShow({
                             ))}
                         </NativeSelect>
                     </FormField>
-                    <Button
-                        type="submit"
-                        disabled={form.processing}
-                        className="sm:w-fit"
-                    >
-                        {t('common.save')}
-                    </Button>
+                    <StickyActionBar className="sm:col-span-2">
+                        <Button
+                            type="submit"
+                            className="h-11"
+                            disabled={form.processing}
+                        >
+                            {t('common.save')}
+                        </Button>
+                    </StickyActionBar>
                 </form>
 
                 <AdminSmsSection companyId={company.id} sms={sms} />
@@ -242,16 +265,23 @@ export default function AdminCompanyShow({
                                     )}
                                 </div>
                                 {m.can_impersonate && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() =>
-                                            startImpersonation(m.user_id)
-                                        }
-                                    >
-                                        <UserCheck />{' '}
-                                        {t('admin.support_access')}
-                                    </Button>
+                                    <ActionSheet
+                                        title={m.name}
+                                        variant="plain"
+                                        items={[
+                                            {
+                                                key: 'support',
+                                                label: t(
+                                                    'admin.support_access',
+                                                ),
+                                                icon: <UserCheck />,
+                                                onSelect: () =>
+                                                    startImpersonation(
+                                                        m.user_id,
+                                                    ),
+                                            },
+                                        ]}
+                                    />
                                 )}
                             </li>
                         ))}

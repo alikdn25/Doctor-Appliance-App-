@@ -47,6 +47,12 @@ return [
         'suspended' => 'Suspended',
     ],
 
+    'plans' => [
+        'solo' => 'Solo',
+        'team' => 'Team',
+        'pro' => 'Pro',
+    ],
+
     'subscription_status' => [
         'trialing' => 'Trial',
         'active' => 'Active',
@@ -61,7 +67,7 @@ return [
     'never_logged_in' => 'No direct sign-in recorded',
     'last_support' => 'Last support access: :date',
     'access_hint' => 'Active allows work in this company. Suspended blocks ordinary access. This is separate from billing.',
-    'plan_hint' => 'Optional plan name. Leaving this blank means no plan has been assigned.',
+    'plan_hint' => 'Leave as "No plan assigned" until the company subscribes.',
     'plan_unassigned' => 'No plan assigned',
     'subscription_hint' => 'Tracks the subscription, independently of workspace access. Trial is a billing status.',
     'subscription_unassigned' => 'No billing status assigned',

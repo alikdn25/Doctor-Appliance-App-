@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\CompanyStatus;
+use App\Enums\SubscriptionPlan;
 use App\Enums\SubscriptionStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -23,7 +24,8 @@ class CompanyUpdateRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'status' => ['required', Rule::enum(CompanyStatus::class)],
-            'plan' => ['nullable', 'string', 'max:50'],
+            // A plan name set before the list existed stays valid until it is changed.
+            'plan' => ['nullable', 'string', Rule::in([...array_column(SubscriptionPlan::cases(), 'value'), $this->route('company')?->plan])],
             'subscription_status' => ['nullable', Rule::enum(SubscriptionStatus::class)],
         ];
     }

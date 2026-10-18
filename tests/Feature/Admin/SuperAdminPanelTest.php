@@ -59,7 +59,7 @@ test('super-admins can create a company with its owner', function () {
             'country' => 'CA',
             'timezone' => 'America/Vancouver',
             'currency' => 'CAD',
-            'plan' => 'starter',
+            'plan' => 'team',
             'subscription_status' => 'trialing',
             'owner_name' => 'Chris',
             'owner_email' => 'chris@example.com',
@@ -77,6 +77,23 @@ test('super-admins can create a company with its owner', function () {
         ->and(AuditLog::where('action', 'company.created')->where('company_id', $company->id)->exists())->toBeTrue();
 
     Notification::assertSentTo($owner, MemberInvited::class);
+});
+
+test('the plan is picked from the platform plans; an older plan name stays until it is changed', function () {
+    $company = Company::factory()->create(['plan' => 'founding-2026']);
+    $update = fn (string $plan) => $this->actingAs($this->admin)->put(route('admin.companies.update', $company), [
+        'name' => $company->name,
+        'status' => 'active',
+        'plan' => $plan,
+    ]);
+
+    $update('founding-2026')->assertSessionHasNoErrors();
+    $update('enterprise')->assertSessionHasErrors('plan');
+    $update('team')->assertSessionHasNoErrors();
+    expect($company->fresh()->plan)->toBe('team');
+
+    $this->get(route('admin.companies.show', $company))
+        ->assertInertia(fn (Assert $page) => $page->where('plans.0', ['value' => 'solo', 'label' => 'Solo']));
 });
 
 test('super-admins can suspend a company, which is audited', function () {
