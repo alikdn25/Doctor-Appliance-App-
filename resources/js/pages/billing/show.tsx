@@ -995,7 +995,7 @@ export default function BillingShow({
                     )}
                 </div>
                 <aside
-                    className="space-y-4 lg:sticky lg:top-[calc(var(--app-header-h,4rem)+1rem)] lg:max-h-[calc(100dvh-var(--app-header-h,4rem)-2rem)] lg:overflow-y-auto"
+                    className="space-y-4 lg:sticky lg:top-[calc(var(--app-sticky-top)+1rem)] lg:max-h-[calc(100dvh-var(--app-sticky-top)-var(--app-action-bar-h,0px)-3rem)] lg:overflow-y-auto"
                     data-test="document-aside"
                 >
                     {/* Payments */}

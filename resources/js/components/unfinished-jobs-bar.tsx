@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ListTodo } from 'lucide-react';
+import { usePublishedHeight } from '@/hooks/use-published-height';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as jobs } from '@/routes/jobs';
@@ -21,6 +22,8 @@ const REASONS = [
 export function UnfinishedJobsBar() {
     const { unfinishedJobs } = usePage().props;
     const t = useTrans();
+    // The header sticks just below this strip instead of sliding under it.
+    const bar = usePublishedHeight<HTMLElement>('--app-bar-h');
 
     if (!unfinishedJobs) return null;
 
@@ -28,6 +31,7 @@ export function UnfinishedJobsBar() {
 
     return (
         <nav
+            ref={bar}
             aria-label={t('jobs.backlog.title')}
             className="da-unfinished-bar sticky top-0 z-30 flex min-h-11 [scrollbar-width:none] items-center gap-2 overflow-x-auto border-b bg-muted px-3 text-sm whitespace-nowrap md:px-4 [&::-webkit-scrollbar]:hidden"
         >

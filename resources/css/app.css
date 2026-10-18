@@ -610,6 +610,11 @@ body:has(.da-pinned) .da-tabbar {
     display: none;
 }
 
+/* Where parts kept in view while scrolling start: below the unfinished-jobs strip and the header (both sticky). */
+:root {
+    --app-sticky-top: calc(var(--app-bar-h, 0px) + var(--app-header-h, 0px));
+}
+
 /* People who ask for less motion get none (UX-REDESIGN §15.5). */
 @media (prefers-reduced-motion: reduce) {
     *,
