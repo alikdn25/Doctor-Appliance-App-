@@ -35,10 +35,18 @@ test('completed work is hidden from the calendar until "Show completed", then sh
 
 test('completed jobs are greyed out in the jobs list', async ({ page }) => {
     await page.goto('/jobs?status=completed');
-    const card = page.locator(`a[href$="/jobs/${fixture.finished_job_id}"]`);
-    await expect(card.first()).toBeVisible();
+    // Phones show cards, wide screens a table: whichever is on screen greys the job out.
+    const card = page
+        .locator(`a[href$="/jobs/${fixture.finished_job_id}"]`)
+        .filter({ visible: true })
+        .first();
+    await expect(card).toBeVisible();
     await expect(
-        page.getByRole('listitem').filter({ has: card.first() }).first(),
+        page
+            .locator('li, tr')
+            .filter({ has: card })
+            .filter({ visible: true })
+            .first(),
     ).toHaveClass(/grayscale/);
 });
 

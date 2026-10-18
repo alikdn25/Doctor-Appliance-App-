@@ -1,6 +1,15 @@
 <?php
 
 return [
+    'columns' => [
+        'status' => 'Status',
+        'date' => 'Date / window',
+        'customer' => 'Customer',
+        'address' => 'Address',
+        'appliance' => 'Appliance',
+        'technician' => 'Technician',
+        'total' => 'Total',
+    ],
     'quick' => [
         'hint' => 'Phone, name and time are enough. Address and problem help the technician.',
         'address' => 'Address',

@@ -42,7 +42,13 @@ test('invoices: totals on top, filter chips, rows with where each invoice stands
 
     await page.getByRole('button', { name: 'All', exact: true }).click();
     await expect(page).toHaveURL(/status=all/);
-    await expect(page.locator('[data-test="invoice-list"]')).toBeVisible();
+    await expect(
+        page.locator(
+            info.project.name === 'mobile'
+                ? '[data-test="invoice-list"]'
+                : '[data-slot="data-table"]',
+        ),
+    ).toBeVisible();
 });
 
 test('invoice page: status in large type, Take payment, Send ▾ and the rare actions under ⋯', async ({

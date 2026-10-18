@@ -171,6 +171,14 @@ class Customer extends Model
     }
 
     /**
+     * @return HasMany<ServiceJob, $this>
+     */
+    public function jobs(): HasMany
+    {
+        return $this->hasMany(ServiceJob::class);
+    }
+
+    /**
      * @return HasMany<CustomerEmail, $this>
      */
     public function emails(): HasMany

@@ -27,6 +27,8 @@ export type JobRow = {
         strict_arrival: boolean;
         assignees: string[];
     } | null;
+    /** Invoiced so far, for people who see invoices. */
+    total?: { amount: number; currency: string } | null;
 };
 
 export type ApplianceItem = {

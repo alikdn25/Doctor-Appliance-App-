@@ -297,12 +297,25 @@ test('Jobs: Open · All · Deleted, one line of chips, compact office cards and 
     await page.getByRole('radio', { name: 'All', exact: true }).click();
     await expect(page).toHaveURL(/tab=all/);
     await expect(page.getByRole('combobox')).toHaveCount(0);
-    const card = page
-        .locator('[data-test="job-card"]', { hasText: 'Jane Browser' })
-        .first();
-    // The office card: no Navigate, Call as an icon.
-    await expect(card.getByRole('link', { name: /Navigate/ })).toHaveCount(0);
-    await expect(card.getByRole('link', { name: 'Call' })).toBeVisible();
+    if (info.project.name === 'mobile') {
+        const card = page
+            .locator('[data-test="job-card"]', { hasText: 'Jane Browser' })
+            .first();
+        // The office card: no Navigate, Call as an icon.
+        await expect(card.getByRole('link', { name: /Navigate/ })).toHaveCount(
+            0,
+        );
+        await expect(card.getByRole('link', { name: 'Call' })).toBeVisible();
+    } else {
+        // A computer gets the table (UX-REDESIGN §13).
+        await expect(
+            page
+                .locator('[data-slot="data-table"] tr', {
+                    hasText: 'Jane Browser',
+                })
+                .first(),
+        ).toBeVisible();
+    }
     await page.screenshot({
         path: info.outputPath('jobs-cards.png'),
         fullPage: true,

@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Messaging\MessagingPresenter;
 use App\Messaging\ReviewRequests;
+use App\Models\Customer;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\Service;
@@ -75,6 +76,8 @@ class InvoiceController extends Controller
             'status' => (string) $request->query('status', 'outstanding'),
         ];
         $status = InvoiceStatus::tryFrom($filters['status']);
+        [$sort, $dir] = self::sorting($request, ['number', 'customer', 'issued', 'due', 'total', 'balance', 'status'], 'issued', 'desc');
+        $filters += ['sort' => $sort, 'dir' => $dir];
         $visibleJobs = ServiceJob::query()->visibleTo($user)->select('id');
 
         $base = Invoice::query()->whereIn('service_job_id', $visibleJobs);
@@ -91,7 +94,16 @@ class InvoiceController extends Controller
                     ->orWhereHas('job', fn (Builder $j) => $j->search($filters['search'])));
             })
             ->with('customer')
-            ->orderByDesc('issued_on')
+            ->when($sort === 'number', fn ($q) => $q->orderBy('number', $dir))
+            ->when($sort === 'customer', fn ($q) => $q->orderBy(
+                Customer::query()->withTrashed()->select('display_name')->whereColumn('customers.id', 'invoices.customer_id')->limit(1),
+                $dir,
+            ))
+            ->when($sort === 'due', fn ($q) => $q->orderByRaw('due_on '.($dir === 'asc' ? 'asc nulls last' : 'desc nulls last')))
+            ->when($sort === 'total', fn ($q) => $q->orderBy('total', $dir))
+            ->when($sort === 'balance', fn ($q) => $q->orderBy('balance', $dir))
+            ->when($sort === 'status', fn ($q) => $q->orderBy('status', $dir))
+            ->orderBy('issued_on', $sort === 'issued' ? $dir : 'desc')
             ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString()

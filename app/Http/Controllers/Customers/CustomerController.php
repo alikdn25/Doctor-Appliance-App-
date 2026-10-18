@@ -26,6 +26,7 @@ use App\Support\Billing\BillingPresenter;
 use App\Support\Locale\Countries;
 use App\Support\NameAvatar;
 use App\Support\PhoneNumber;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,13 +43,20 @@ class CustomerController extends Controller
         $search = trim((string) $request->query('search', ''));
         $type = CustomerType::tryFrom((string) $request->query('type'));
         $tag = trim((string) $request->query('tag', ''));
+        [$sort, $dir] = self::sorting($request, ['name', 'type', 'jobs', 'last_job'], 'name');
 
         $customers = Customer::query()
             ->search($search)
             ->when($type, fn ($q) => $q->where('type', $type))
             ->when($tag !== '', fn ($q) => $q->whereJsonContains('tags', $tag))
             ->with(['primaryPhone', 'primaryProperty'])
-            ->orderBy('display_name')
+            // Jobs and the last one for the desktop table (UX-REDESIGN §13).
+            ->withCount(['jobs' => fn ($q) => $q->visibleTo($request->user())])
+            ->withMax(['jobs as last_job_at' => fn ($q) => $q->visibleTo($request->user())], 'created_at')
+            ->when($sort === 'jobs', fn ($q) => $q->orderBy('jobs_count', $dir))
+            ->when($sort === 'last_job', fn ($q) => $q->orderByRaw('last_job_at '.($dir === 'asc' ? 'asc nulls first' : 'desc nulls last')))
+            ->when($sort === 'type', fn ($q) => $q->orderBy('type', $dir))
+            ->orderBy('display_name', $sort === 'name' ? $dir : 'asc')
             ->orderBy('id')
             ->paginate(25)
             ->withQueryString();
@@ -70,6 +78,8 @@ class CustomerController extends Controller
             'phone' => $customer->primaryPhone?->number,
             'address' => $customer->primaryProperty?->fullAddress(),
             'tags' => $customer->tags,
+            'jobs_count' => (int) $customer->jobs_count,
+            'last_job_at' => $customer->last_job_at ? CarbonImmutable::parse($customer->last_job_at)->toIso8601String() : null,
             'owes' => ($owes[$customer->id] ?? collect())
                 ->map(fn ($row) => ['currency' => $row->currency, 'amount' => (int) $row->owed])
                 ->values(),
@@ -77,7 +87,7 @@ class CustomerController extends Controller
 
         return Inertia::render('customers/index', [
             'customers' => $customers,
-            'filters' => ['search' => $search, 'type' => $type?->value ?? '', 'tag' => $tag],
+            'filters' => ['search' => $search, 'type' => $type?->value ?? '', 'tag' => $tag, 'sort' => $sort, 'dir' => $dir],
             'types' => CustomerType::options(),
             'tags' => $this->tags(),
         ]);

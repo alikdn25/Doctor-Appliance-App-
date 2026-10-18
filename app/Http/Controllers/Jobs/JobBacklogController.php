@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Jobs;
 
 use App\Http\Controllers\Controller;
+use App\Models\Invoice;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
 use App\Models\User;
@@ -43,6 +44,7 @@ class JobBacklogController extends Controller
             ->search($filters['search'])
             ->when($filters['reason'] !== '', fn ($query) => $query->where('backlog_reason', $filters['reason']))
             ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
+            ->when(Gate::forUser($user)->allows('viewAny', Invoice::class), fn ($q) => $q->with('invoices'))
             ->when(
                 $filters['sort'] === 'newest',
                 fn ($query) => $query->orderByDesc('id'),

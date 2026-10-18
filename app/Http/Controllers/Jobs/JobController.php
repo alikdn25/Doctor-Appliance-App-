@@ -167,6 +167,7 @@ class JobController extends Controller
                 }
             }))
             ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
+            ->when(Gate::allows('viewAny', Invoice::class), fn ($q) => $q->with('invoices'))
             ->when(
                 $sort === 'number',
                 fn ($q) => $q->orderByDesc('number'),

@@ -100,7 +100,10 @@ test('an old unfinished repair remains in the backlog and map fallback keeps vis
     ).toBeVisible();
     await page.getByRole('link', { name: /Not completed jobs/ }).click();
     await expect(
-        page.locator(`a[href="/jobs/${fixture.waiting_job_id}"]`).first(),
+        page
+            .locator(`a[href="/jobs/${fixture.waiting_job_id}"]`)
+            .filter({ visible: true })
+            .first(),
     ).toBeVisible();
     await screenshot(page, info, 'unfinished-jobs');
     await page.goto(`/calendar?view=map&date=${fixture.today}`);
@@ -409,7 +412,10 @@ test('customers: live search, Owes, the card actions with New job, and the ratin
     await page.locator('[data-slot="search-field"] input').fill('Jane Browser');
     await expect(page).toHaveURL(/search=Jane/);
     await page
-        .locator('[data-test="customer-list"] a', { hasText: 'Jane Browser' })
+        .locator('[data-test="customer-list"] a, [data-slot="data-table"] a', {
+            hasText: 'Jane Browser',
+        })
+        .filter({ visible: true })
         .first()
         .click();
     const actions = page.locator('[data-test="customer-actions"]');

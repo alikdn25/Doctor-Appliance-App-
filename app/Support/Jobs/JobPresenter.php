@@ -52,7 +52,25 @@ class JobPresenter
                 'strict_arrival' => $visit->strict_arrival,
                 'assignees' => $visit->assignees->pluck('name')->values(),
             ] : null,
+            // Invoiced so far (not void), when the list loaded the invoices for someone who may see them.
+            'total' => $job->relationLoaded('invoices') ? self::invoiced($job) : null,
         ];
+    }
+
+    /**
+     * @return array{amount: int, currency: string}|null
+     */
+    private static function invoiced(ServiceJob $job): ?array
+    {
+        $invoices = $job->invoices->reject(fn ($invoice) => $invoice->isVoid());
+
+        if ($invoices->isEmpty()) {
+            return null;
+        }
+
+        $currency = $invoices->first()->currency;
+
+        return ['amount' => (int) $invoices->where('currency', $currency)->sum('total'), 'currency' => $currency];
     }
 
     /**

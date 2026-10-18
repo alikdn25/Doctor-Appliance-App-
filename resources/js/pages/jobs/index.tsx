@@ -5,24 +5,28 @@ import {
     SlidersHorizontal,
 } from 'lucide-react';
 import { useState } from 'react';
+import { formatMoney } from '@/components/billing/money';
 import { InboxHeaderButton } from '@/components/inbox-header-button';
 import { JobList } from '@/components/jobs/job-list';
 import type { Assignable, JobRow } from '@/components/jobs/types';
+import { isFinishedJob } from '@/components/jobs/types';
 import { PaginationLinks } from '@/components/pagination-links';
 import type { Paginated } from '@/components/pagination-links';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DataTable } from '@/components/ui/data-table';
 import { FilterChips } from '@/components/ui/filter-chips';
 import type { FilterChip } from '@/components/ui/filter-chips';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { SearchField } from '@/components/ui/search-field';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
-import { index, restore } from '@/routes/jobs';
+import { index, restore, show } from '@/routes/jobs';
 import type { BacklogReason } from '@/types/job-backlog';
 import type { Option } from '@/types';
 
@@ -104,7 +108,7 @@ export default function JobsIndex({
 }) {
     const t = useTrans();
     const time = useCompanyTime();
-    const { unfinishedJobs } = usePage().props;
+    const { unfinishedJobs, auth } = usePage().props;
     const [filtersOpen, setFiltersOpen] = useState(
         tab === 'all' &&
             Object.entries(filters).some(
@@ -250,7 +254,7 @@ export default function JobsIndex({
                 }
             />
 
-            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6">
+            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6 lg:max-w-[1440px]">
                 {canViewAll && (
                     <SegmentedControl
                         label={t('jobs.title')}
@@ -458,16 +462,132 @@ export default function JobsIndex({
                 ) : (
                     jobs && (
                         <>
-                            <JobList
-                                jobs={jobs.data}
-                                empty={
-                                    filters.search || selectedChip || filtered
-                                        ? t('jobs.no_results')
-                                        : tab === 'open'
-                                          ? t('jobs.backlog.empty')
-                                          : t('jobs.empty')
-                                }
-                            />
+                            {jobs.data.length > 0 && (
+                                <DataTable
+                                    className="hidden lg:block"
+                                    label={t('jobs.title')}
+                                    rows={jobs.data}
+                                    rowKey={(job) => job.id}
+                                    rowHref={(job) => show(job.id)}
+                                    rowClassName={(job) =>
+                                        isFinishedJob(job.status) &&
+                                        'opacity-60 grayscale'
+                                    }
+                                    sort={
+                                        tab === 'all'
+                                            ? sort || 'visit'
+                                            : undefined
+                                    }
+                                    dir="desc"
+                                    sortUrl={index().url}
+                                    query={{ tab, ...current }}
+                                    columns={[
+                                        {
+                                            key: 'number',
+                                            label: '#',
+                                            sort:
+                                                tab === 'all'
+                                                    ? 'number'
+                                                    : undefined,
+                                            render: (job) => `#${job.number}`,
+                                        },
+                                        {
+                                            key: 'status',
+                                            label: t('jobs.columns.status'),
+                                            render: (job) => (
+                                                <StatusBadge
+                                                    status={job.status}
+                                                    label={job.status_label}
+                                                />
+                                            ),
+                                        },
+                                        {
+                                            key: 'date',
+                                            label: t('jobs.columns.date'),
+                                            sort:
+                                                tab === 'all'
+                                                    ? 'visit'
+                                                    : undefined,
+                                            className: 'whitespace-nowrap',
+                                            render: (job) =>
+                                                job.visit
+                                                    ? `${time.day(job.visit.scheduled_start)} · ${time.shortRange(job.visit.scheduled_start, job.visit.scheduled_end)}`
+                                                    : t('jobs.not_scheduled'),
+                                        },
+                                        {
+                                            key: 'customer',
+                                            label: t('jobs.columns.customer'),
+                                            render: (job) =>
+                                                job.customer ?? '—',
+                                        },
+                                        {
+                                            key: 'address',
+                                            label: t('jobs.columns.address'),
+                                            className: 'max-w-64 truncate',
+                                            render: (job) => job.address ?? '—',
+                                        },
+                                        {
+                                            key: 'appliance',
+                                            label: t('jobs.columns.appliance'),
+                                            render: (job) =>
+                                                job.appliance_types.join(
+                                                    ', ',
+                                                ) || job.job_type_label,
+                                        },
+                                        {
+                                            key: 'technician',
+                                            label: t('jobs.columns.technician'),
+                                            render: (job) =>
+                                                job.visit?.assignees.join(
+                                                    ', ',
+                                                ) || '—',
+                                        },
+                                        {
+                                            key: 'total',
+                                            label: t('jobs.columns.total'),
+                                            align: 'right',
+                                            render: (job) =>
+                                                job.total
+                                                    ? formatMoney(
+                                                          job.total.amount,
+                                                          job.total.currency,
+                                                          auth.company?.locale,
+                                                      )
+                                                    : '—',
+                                        },
+                                    ]}
+                                />
+                            )}
+                            <div className="lg:hidden">
+                                <JobList
+                                    jobs={jobs.data}
+                                    empty={
+                                        filters.search ||
+                                        selectedChip ||
+                                        filtered
+                                            ? t('jobs.no_results')
+                                            : tab === 'open'
+                                              ? t('jobs.backlog.empty')
+                                              : t('jobs.empty')
+                                    }
+                                />
+                            </div>
+                            {jobs.data.length === 0 && (
+                                <div className="hidden lg:block">
+                                    <JobList
+                                        jobs={[]}
+                                        empty={
+                                            filters.search ||
+                                            selectedChip ||
+                                            filtered
+                                                ? t('jobs.no_results')
+                                                : tab === 'open'
+                                                  ? t('jobs.backlog.empty')
+                                                  : t('jobs.empty')
+                                        }
+                                    />
+                                </div>
+                            )}
                             <PaginationLinks links={jobs.links} />
                         </>
                     )

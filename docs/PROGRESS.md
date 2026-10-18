@@ -1,3 +1,23 @@
+# October 18 — UX redesign, phase 12: desktop layouts
+
+UX-REDESIGN.md §13 (from 1024 px).
+
+1. **Tables** for Jobs (# · Status · Date / window · Customer · Address · Appliance · Technician · Total), Customers
+   (Name · Type · Phone · Address · Jobs · Owes · Last job) and Invoices (# · Customer · Issued · Due · Total · Balance ·
+   Status): the header stays at the top, a tap on a column title sorts on the server (?sort=&dir=, whitelisted
+   columns), the whole row opens the record; lists use the full width up to 1440 px. Phones keep the card lists.
+   Jobs sort by # or date on the All tab (the Open tab keeps its urgency order).
+2. **Job page**: two columns — the customer, problem, appliances, photos and Work done on the left; status, money,
+   the schedule and Activity on the right, kept in view while scrolling. On a phone the order is unchanged.
+3. **Invoice / estimate**: the document as an 800 px sheet on the left, payments and history in a 320 px column.
+4. **Keys**: N — Book customer, / — the screen's search, T — today in the calendar (not while typing).
+
+- No migrations. New fields in lists: customers' jobs count and last job; a job row's invoiced total (only for people
+  who can see invoices).
+- Tests: invoice and customer sorting (MoneyScreensTest, CustomerDossierTest); browser desktop.spec (tables, two
+  columns, keys) and specs updated for the tables.
+- Next: phase 13 — final pass on texts, accessibility, speed (§14–15).
+
 # October 18 — UX redesign, phase 11: settings, sign-in; checklists removed
 
 UX-REDESIGN.md §12 and §20.

@@ -456,638 +456,680 @@ export default function BillingShow({
                 }
             />
 
-            <div className="mx-auto w-full max-w-3xl space-y-4 p-4 sm:p-6">
-                {/* Where it stands, in large type. */}
-                <section
-                    className="da-card space-y-2 p-4"
-                    data-test="document-status"
-                >
-                    <div className="flex flex-wrap items-center gap-2">
-                        {isInvoice ? (
-                            <DocumentStatusBadge
-                                status={doc.status}
-                                label={doc.status_label}
-                            />
-                        ) : (
-                            <StatusBadge
-                                status={stage}
-                                label={
-                                    stage === 'sent'
-                                        ? t('estimates.statuses.sent')
-                                        : doc.status_label
-                                }
-                            />
-                        )}
-                        {doc.overdue && <OverdueFlag />}
-                        {/* Saved but not sent yet: the customer has not seen it and it can still be edited. */}
-                        {isInvoice &&
-                            delivery &&
-                            !delivery.sent_at &&
-                            doc.status === 'unpaid' && (
-                                <span className="da-badge rounded-full px-2.5 text-xs leading-6 font-semibold">
-                                    {t('billing.not_sent')}
-                                </span>
-                            )}
-                    </div>
-                    <p
-                        className={`text-2xl font-bold tabular-nums ${headline.tone}`}
-                        data-test="document-headline"
+            {/* Desktop (UX-REDESIGN §13): the document as a sheet on the left; payments and history on the right. */}
+            <div className="mx-auto w-full max-w-3xl space-y-4 p-4 sm:p-6 lg:grid lg:max-w-[1160px] lg:grid-cols-[minmax(0,800px)_320px] lg:items-start lg:gap-6 lg:space-y-0">
+                <div className="min-w-0 space-y-4">
+                    {/* Where it stands, in large type. */}
+                    <section
+                        className="da-card space-y-2 p-4"
+                        data-test="document-status"
                     >
-                        {headline.text}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                        {[
-                            t('billing.issued', {
-                                date: time.dateOnly(doc.issued_on),
-                            }),
-                            doc.valid_until
-                                ? doc.expired
-                                    ? t('estimates.expired_on', {
-                                          date: time.dateOnly(doc.valid_until),
-                                      })
-                                    : t('estimates.valid_until_date', {
-                                          date: time.dateOnly(doc.valid_until),
-                                      })
-                                : null,
-                            doc.approved_at
-                                ? t('estimates.approved_at', {
-                                      date: time.date(doc.approved_at),
-                                  })
-                                : null,
-                            doc.declined_at
-                                ? t('estimates.declined_at', {
-                                      date: time.date(doc.declined_at),
-                                  })
-                                : null,
-                            doc.created_by
-                                ? t('billing.created_by', {
-                                      name: doc.created_by,
-                                  })
-                                : null,
-                        ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                    </p>
-                    {(doc.invoice || doc.estimate) && (
-                        <p className="text-sm">
-                            {doc.invoice && (
-                                <Link
-                                    href={showInvoice(doc.invoice.id)}
-                                    className="font-medium underline"
-                                >
-                                    {t('estimates.invoiced_as', {
-                                        number: doc.invoice.number,
-                                    })}
-                                </Link>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {isInvoice ? (
+                                <DocumentStatusBadge
+                                    status={doc.status}
+                                    label={doc.status_label}
+                                />
+                            ) : (
+                                <StatusBadge
+                                    status={stage}
+                                    label={
+                                        stage === 'sent'
+                                            ? t('estimates.statuses.sent')
+                                            : doc.status_label
+                                    }
+                                />
                             )}
-                            {doc.estimate && (
-                                <Link
-                                    href={showEstimate(doc.estimate.id)}
-                                    className="font-medium underline"
-                                >
-                                    {t('invoices.from_estimate', {
-                                        number: doc.estimate.number,
-                                    })}
-                                </Link>
-                            )}
-                        </p>
-                    )}
-                    {delivery && <DeliveryStatus delivery={delivery} />}
-                    {doc.voided_at && (
-                        <p className="text-sm text-muted-foreground">
-                            {t('invoices.voided_by', {
-                                date: time.date(doc.voided_at),
-                                name: doc.voided_by ?? '—',
-                            })}
-                            {doc.void_reason && ` — ${doc.void_reason}`}
-                        </p>
-                    )}
-                </section>
-
-                <InputError message={error} />
-
-                {/* Customer and job */}
-                <section className="da-card grid gap-1 p-4 text-sm">
-                    <Link
-                        href={showCustomer(doc.customer.id)}
-                        className="font-semibold hover:underline"
-                    >
-                        {doc.customer.display_name}
-                    </Link>
-                    {doc.address && (
-                        <span className="text-muted-foreground">
-                            {doc.address}
-                        </span>
-                    )}
-                    {(doc.customer.phone || doc.customer.email) && (
-                        <span className="text-muted-foreground">
-                            {[phoneText(doc.customer.phone), doc.customer.email]
-                                .filter(Boolean)
-                                .join(' · ')}
-                        </span>
-                    )}
-                    <Link
-                        href={showJob(doc.job.id)}
-                        className="w-fit text-muted-foreground underline"
-                    >
-                        {t('billing.job', { number: doc.job.number })}
-                    </Link>
-                </section>
-
-                {/* Lines and totals */}
-                <section className="space-y-3">
-                    {offered.length > 0 && (
-                        <div
-                            role="tablist"
-                            aria-label={t('estimates.options.title')}
-                            className="grid gap-2"
-                            style={{
-                                gridTemplateColumns: `repeat(${offered.length}, minmax(0, 1fr))`,
-                            }}
-                            data-test="estimate-options"
+                            {doc.overdue && <OverdueFlag />}
+                            {/* Saved but not sent yet: the customer has not seen it and it can still be edited. */}
+                            {isInvoice &&
+                                delivery &&
+                                !delivery.sent_at &&
+                                doc.status === 'unpaid' && (
+                                    <span className="da-badge rounded-full px-2.5 text-xs leading-6 font-semibold">
+                                        {t('billing.not_sent')}
+                                    </span>
+                                )}
+                        </div>
+                        <p
+                            className={`text-2xl font-bold tabular-nums ${headline.tone}`}
+                            data-test="document-headline"
                         >
-                            {offered.map((option) => (
-                                <button
-                                    key={option.name}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={activeOption === option.name}
-                                    onClick={() => setActiveOption(option.name)}
-                                    className={
-                                        activeOption === option.name
-                                            ? 'da-raised da-press rounded-2xl p-3 text-left ring-2 ring-primary'
-                                            : 'da-card da-press rounded-2xl p-3 text-left'
-                                    }
-                                >
-                                    <span className="block text-sm font-semibold">
-                                        {option.label}
-                                    </span>
-                                    <span className="block text-base font-bold tabular-nums">
-                                        {money(option.total)}
-                                    </span>
-                                    {option.chosen && (
-                                        <span className="block text-xs font-medium text-success">
-                                            {t('estimates.options.chosen')}
-                                        </span>
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                    <ul className="da-card divide-y overflow-hidden">
-                        {doc.items
-                            .filter(
-                                (item) =>
-                                    !item.option_name ||
-                                    item.option_name === activeOption,
-                            )
-                            .map((item) => (
-                                <li
-                                    key={item.id}
-                                    className={
-                                        item.optional && !item.selected
-                                            ? 'flex items-start gap-3 p-3 text-sm text-muted-foreground'
-                                            : 'flex items-start gap-3 p-3 text-sm'
-                                    }
-                                >
-                                    <div className="min-w-0 flex-1">
-                                        {item.optional && (
-                                            <p className="text-xs font-medium uppercase">
-                                                {item.selected
-                                                    ? t(
-                                                          'estimates.optional_included',
-                                                      )
-                                                    : t(
-                                                          'estimates.optional_not_included',
-                                                      )}
-                                            </p>
-                                        )}
-                                        {(item.kind !== 'service' ||
-                                            !item.bill_to_customer) && (
-                                            <p className="text-xs font-medium text-muted-foreground uppercase">
-                                                {[
-                                                    t(
-                                                        `billing.kinds.${item.kind}`,
-                                                    ),
-                                                    item.part_number,
-                                                    item.bill_to_customer
-                                                        ? null
-                                                        : t(
-                                                              'billing.line.internal',
-                                                          ),
-                                                ]
-                                                    .filter(Boolean)
-                                                    .join(' · ')}
-                                            </p>
-                                        )}
-                                        <p className="whitespace-pre-line">
-                                            {item.description}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {t('billing.qty_times_price', {
-                                                quantity: item.unit
-                                                    ? `${Number(item.quantity)} ${item.unit}`
-                                                    : Number(item.quantity),
-                                                price: money(item.unit_price),
-                                            })}
-                                            {(!item.taxable ||
-                                                item.tax_rate_ids?.length ===
-                                                    0) &&
-                                                ` · ${t('billing.not_taxable')}`}
-                                            {item.taxable &&
-                                                item.tax_names.length > 0 &&
-                                                ` · ${item.tax_names.join(', ')}`}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {item.warranty_ends_on
-                                                ? t('billing.warranty_until', {
-                                                      length: item.warranty_label,
-                                                      date: time.dateOnly(
-                                                          item.warranty_ends_on,
-                                                      ),
-                                                  })
-                                                : item.warranty_value
-                                                  ? t('billing.warranty_line', {
-                                                        length: item.warranty_label,
-                                                    })
-                                                  : item.warranty_label}
-                                            {item.private_difference !== null &&
-                                                item.private_difference !==
-                                                    undefined &&
-                                                ` · ${t('billing.line.difference', { amount: money(item.private_difference) })}`}
-                                            {item.total_cost !== null &&
-                                                item.total_cost > 0 &&
-                                                ` · ${t('billing.line.total_cost')} ${money(item.total_cost)}${item.supplier ? ` (${item.supplier})` : ''}`}
-                                        </p>
-                                    </div>
-                                    {item.optional && !item.selected ? (
-                                        <span className="text-right text-sm text-muted-foreground tabular-nums">
-                                            {t('billing.line.optional_extra', {
-                                                amount: money(item.total),
-                                            })}
-                                        </span>
-                                    ) : (
-                                        <span className="font-medium tabular-nums">
-                                            {money(item.total)}
-                                        </span>
-                                    )}
-                                </li>
-                            ))}
-                    </ul>
-
-                    <dl className="ml-auto max-w-xs space-y-1 text-sm">
-                        <div className="flex justify-between">
-                            <dt>{t('billing.subtotal')}</dt>
-                            <dd className="tabular-nums">
-                                {money(doc.subtotal)}
-                            </dd>
-                        </div>
-                        {doc.discount_total > 0 && (
-                            <div className="flex justify-between">
-                                <dt>
-                                    {doc.discount_type === 'percent'
-                                        ? t('billing.discount_percent', {
-                                              value: Number(doc.discount_value),
-                                          })
-                                        : t('billing.discount')}
-                                </dt>
-                                <dd className="tabular-nums">
-                                    −{money(doc.discount_total)}
-                                </dd>
-                            </div>
-                        )}
-                        {doc.taxes.map((tax) => (
-                            <div
-                                key={`${tax.tax_rate_id}-${tax.name}`}
-                                className="flex justify-between"
-                            >
-                                <dt>
-                                    {t(
-                                        doc.prices_include_tax
-                                            ? 'billing.includes_tax'
-                                            : 'billing.tax_line',
-                                        { name: tax.name, rate: tax.rate },
-                                    )}
-                                </dt>
-                                <dd className="tabular-nums">
-                                    {money(tax.amount)}
-                                </dd>
-                            </div>
-                        ))}
-                        <div className="flex justify-between border-t pt-1 text-base font-semibold">
-                            <dt>{t('billing.total')}</dt>
-                            <dd className="tabular-nums">{money(doc.total)}</dd>
-                        </div>
-                        {doc.cost_total !== null &&
-                            doc.cost_total !== undefined &&
-                            doc.cost_total > 0 && (
-                                <div className="flex justify-between text-muted-foreground">
-                                    <dt>{t('billing.cost_total')}</dt>
-                                    <dd className="tabular-nums">
-                                        {money(doc.cost_total)}
-                                    </dd>
-                                </div>
-                            )}
-                        {isInvoice && doc.status !== 'void' && (
-                            <>
-                                <div className="flex justify-between">
-                                    <dt>{t('invoices.paid')}</dt>
-                                    <dd className="tabular-nums">
-                                        {money(doc.amount_paid ?? 0)}
-                                    </dd>
-                                </div>
-                                <div className="flex justify-between text-base font-semibold">
-                                    <dt>{t('invoices.balance')}</dt>
-                                    <dd className="tabular-nums">
-                                        {money(balance)}
-                                    </dd>
-                                </div>
-                            </>
-                        )}
-                        {!isInvoice && (doc.deposit_amount ?? 0) > 0 && (
-                            <div className="flex justify-between">
-                                <dt>
-                                    {doc.deposit_type === 'percent'
-                                        ? t('estimates.deposit_percent', {
-                                              percent: Number(
-                                                  doc.deposit_value,
+                            {headline.text}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                            {[
+                                t('billing.issued', {
+                                    date: time.dateOnly(doc.issued_on),
+                                }),
+                                doc.valid_until
+                                    ? doc.expired
+                                        ? t('estimates.expired_on', {
+                                              date: time.dateOnly(
+                                                  doc.valid_until,
                                               ),
                                           })
-                                        : t('estimates.deposit')}
-                                </dt>
-                                <dd className="tabular-nums">
-                                    {money(doc.deposit_amount ?? 0)}
-                                </dd>
-                            </div>
-                        )}
-                        {!isInvoice && (doc.deposit_paid ?? 0) !== 0 && (
-                            <div className="flex justify-between">
-                                <dt>{t('estimates.deposit_paid')}</dt>
-                                <dd className="tabular-nums">
-                                    {money(doc.deposit_paid ?? 0)}
-                                </dd>
-                            </div>
-                        )}
-                    </dl>
-
-                    {doc.notes && (
-                        <p className="rounded-lg bg-muted/50 p-3 text-sm whitespace-pre-line">
-                            {doc.notes}
+                                        : t('estimates.valid_until_date', {
+                                              date: time.dateOnly(
+                                                  doc.valid_until,
+                                              ),
+                                          })
+                                    : null,
+                                doc.approved_at
+                                    ? t('estimates.approved_at', {
+                                          date: time.date(doc.approved_at),
+                                      })
+                                    : null,
+                                doc.declined_at
+                                    ? t('estimates.declined_at', {
+                                          date: time.date(doc.declined_at),
+                                      })
+                                    : null,
+                                doc.created_by
+                                    ? t('billing.created_by', {
+                                          name: doc.created_by,
+                                      })
+                                    : null,
+                            ]
+                                .filter(Boolean)
+                                .join(' · ')}
                         </p>
-                    )}
-                </section>
-
-                {doc.online_approval && (
-                    <section className="space-y-2 rounded-lg border border-green-600/40 bg-green-50 p-3 text-sm dark:bg-green-950">
-                        {doc.online_approval.signature ? (
-                            <img
-                                src={doc.online_approval.signature}
-                                alt={t('estimates.online.signature')}
-                                className="h-20 max-w-64 rounded border bg-white object-contain"
-                            />
-                        ) : (
-                            <p className="font-serif text-2xl italic">
-                                {doc.online_approval.signer_name}
+                        {(doc.invoice || doc.estimate) && (
+                            <p className="text-sm">
+                                {doc.invoice && (
+                                    <Link
+                                        href={showInvoice(doc.invoice.id)}
+                                        className="font-medium underline"
+                                    >
+                                        {t('estimates.invoiced_as', {
+                                            number: doc.invoice.number,
+                                        })}
+                                    </Link>
+                                )}
+                                {doc.estimate && (
+                                    <Link
+                                        href={showEstimate(doc.estimate.id)}
+                                        className="font-medium underline"
+                                    >
+                                        {t('invoices.from_estimate', {
+                                            number: doc.estimate.number,
+                                        })}
+                                    </Link>
+                                )}
                             </p>
                         )}
-                        <p>
-                            {t('estimates.online.signed_online', {
-                                name: doc.online_approval.signer_name,
-                                date: doc.approved_at
-                                    ? time.dateTime(doc.approved_at)
-                                    : '',
-                            })}
-                            {doc.online_approval.ip &&
-                                ` · ${t('estimates.online.ip', { ip: doc.online_approval.ip })}`}
-                        </p>
-                        {doc.status !== 'invoiced' &&
-                            doc.status !== 'revised' && (
-                                <p className="text-xs text-muted-foreground">
-                                    {t('estimates.locked_signed')}
-                                </p>
-                            )}
-                        {can.revise && (
-                            <Button
-                                variant="outline"
-                                className="h-11 w-full bg-background sm:w-auto"
-                                onClick={() => setConfirm('revise')}
-                            >
-                                <FilePen /> {t('estimates.revise')}
-                            </Button>
+                        {delivery && <DeliveryStatus delivery={delivery} />}
+                        {doc.voided_at && (
+                            <p className="text-sm text-muted-foreground">
+                                {t('invoices.voided_by', {
+                                    date: time.date(doc.voided_at),
+                                    name: doc.voided_by ?? '—',
+                                })}
+                                {doc.void_reason && ` — ${doc.void_reason}`}
+                            </p>
                         )}
                     </section>
-                )}
-                {doc.revised_from && !delivery?.sent_at && (
-                    <p className="rounded-lg border border-amber-500/40 bg-amber-50 p-3 text-sm dark:bg-amber-950">
-                        {t('estimates.send_revision', {
-                            number: doc.revised_from,
-                        })}
-                    </p>
-                )}
-                {(doc.versions ?? []).length > 1 && (
-                    <section className="space-y-2">
-                        <h2 className="text-base font-medium">
-                            {t('estimates.versions')}
-                        </h2>
-                        <ul className="da-card divide-y overflow-hidden text-sm">
-                            {(doc.versions ?? []).map((v) => (
-                                <li key={v.id}>
-                                    <Link
-                                        href={showEstimate(v.id)}
+
+                    <InputError message={error} />
+
+                    {/* Customer and job */}
+                    <section className="da-card grid gap-1 p-4 text-sm">
+                        <Link
+                            href={showCustomer(doc.customer.id)}
+                            className="font-semibold hover:underline"
+                        >
+                            {doc.customer.display_name}
+                        </Link>
+                        {doc.address && (
+                            <span className="text-muted-foreground">
+                                {doc.address}
+                            </span>
+                        )}
+                        {(doc.customer.phone || doc.customer.email) && (
+                            <span className="text-muted-foreground">
+                                {[
+                                    phoneText(doc.customer.phone),
+                                    doc.customer.email,
+                                ]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                            </span>
+                        )}
+                        <Link
+                            href={showJob(doc.job.id)}
+                            className="w-fit text-muted-foreground underline"
+                        >
+                            {t('billing.job', { number: doc.job.number })}
+                        </Link>
+                    </section>
+
+                    {/* Lines and totals */}
+                    <section className="space-y-3">
+                        {offered.length > 0 && (
+                            <div
+                                role="tablist"
+                                aria-label={t('estimates.options.title')}
+                                className="grid gap-2"
+                                style={{
+                                    gridTemplateColumns: `repeat(${offered.length}, minmax(0, 1fr))`,
+                                }}
+                                data-test="estimate-options"
+                            >
+                                {offered.map((option) => (
+                                    <button
+                                        key={option.name}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={
+                                            activeOption === option.name
+                                        }
+                                        onClick={() =>
+                                            setActiveOption(option.name)
+                                        }
                                         className={
-                                            v.id === doc.id
-                                                ? 'flex items-center gap-2 bg-muted/50 p-3'
-                                                : 'flex items-center gap-2 p-3 hover:bg-muted/50'
+                                            activeOption === option.name
+                                                ? 'da-raised da-press rounded-2xl p-3 text-left ring-2 ring-primary'
+                                                : 'da-card da-press rounded-2xl p-3 text-left'
                                         }
                                     >
-                                        <span className="font-medium">
-                                            {v.number}
+                                        <span className="block text-sm font-semibold">
+                                            {option.label}
                                         </span>
-                                        <DocumentStatusBadge
-                                            status={v.status}
-                                            label={v.status_label}
-                                        />
-                                        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                                            {[
-                                                v.signer_name && v.approved_at
-                                                    ? t(
-                                                          'estimates.online.signed_online',
-                                                          {
-                                                              name: v.signer_name,
-                                                              date: time.dateTime(
-                                                                  v.approved_at,
-                                                              ),
-                                                          },
-                                                      )
-                                                    : null,
-                                                v.revised_at
-                                                    ? t(
-                                                          'estimates.revised_on',
-                                                          {
-                                                              date: time.date(
-                                                                  v.revised_at,
-                                                              ),
-                                                          },
-                                                      )
-                                                    : null,
-                                            ]
-                                                .filter(Boolean)
-                                                .join(' · ')}
+                                        <span className="block text-base font-bold tabular-nums">
+                                            {money(option.total)}
                                         </span>
-                                        <span className="tabular-nums">
-                                            {money(v.total)}
-                                        </span>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                )}
-                {doc.status === 'declined' && doc.decline_reason && (
-                    <p className="rounded-lg bg-muted p-3 text-sm whitespace-pre-line">
-                        {t('estimates.online.decline_reason_label', {
-                            reason: doc.decline_reason,
-                        })}
-                    </p>
-                )}
-
-                {/* Customer signature: taken when the work is done and invoiced */}
-                {signature && (signature.data || signature.can_sign) && (
-                    <SignatureSection
-                        jobId={signature.job_id}
-                        signature={signature.data}
-                        customerName={signature.customer_name}
-                        canSign={signature.can_sign}
-                        reloadProps={['signature']}
-                    />
-                )}
-
-                {/* Payments */}
-                {isInvoice && (
-                    <section className="space-y-2">
-                        <h2 className="text-base font-medium">
-                            {t('payments.title')}
-                        </h2>
-                        {(doc.payments ?? []).length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                {t('payments.empty')}
-                            </p>
-                        ) : (
-                            <ul className="da-card divide-y overflow-hidden">
-                                {(doc.payments ?? []).map((p) => (
+                                        {option.chosen && (
+                                            <span className="block text-xs font-medium text-success">
+                                                {t('estimates.options.chosen')}
+                                            </span>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <ul className="da-card divide-y overflow-hidden">
+                            {doc.items
+                                .filter(
+                                    (item) =>
+                                        !item.option_name ||
+                                        item.option_name === activeOption,
+                                )
+                                .map((item) => (
                                     <li
-                                        key={p.id}
+                                        key={item.id}
                                         className={
-                                            p.voided_at
+                                            item.optional && !item.selected
                                                 ? 'flex items-start gap-3 p-3 text-sm text-muted-foreground'
                                                 : 'flex items-start gap-3 p-3 text-sm'
                                         }
                                     >
                                         <div className="min-w-0 flex-1">
-                                            <div className="flex flex-wrap items-center gap-2 font-medium">
-                                                <span
-                                                    className={
-                                                        p.voided_at
-                                                            ? 'line-through'
-                                                            : undefined
-                                                    }
-                                                >
-                                                    {p.is_refund
-                                                        ? t('payments.refund')
-                                                        : p.provider
-                                                          ? t(
-                                                                'payments.online',
-                                                                {
-                                                                    provider:
-                                                                        p.provider,
-                                                                },
-                                                            )
-                                                          : p.method_label}
-                                                </span>
-                                                {p.voided_at && (
-                                                    <span className="text-xs">
-                                                        {t(
-                                                            'payments.voided_label',
-                                                        )}
-                                                    </span>
+                                            {item.optional && (
+                                                <p className="text-xs font-medium uppercase">
+                                                    {item.selected
+                                                        ? t(
+                                                              'estimates.optional_included',
+                                                          )
+                                                        : t(
+                                                              'estimates.optional_not_included',
+                                                          )}
+                                                </p>
+                                            )}
+                                            {(item.kind !== 'service' ||
+                                                !item.bill_to_customer) && (
+                                                <p className="text-xs font-medium text-muted-foreground uppercase">
+                                                    {[
+                                                        t(
+                                                            `billing.kinds.${item.kind}`,
+                                                        ),
+                                                        item.part_number,
+                                                        item.bill_to_customer
+                                                            ? null
+                                                            : t(
+                                                                  'billing.line.internal',
+                                                              ),
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </p>
+                                            )}
+                                            <p className="whitespace-pre-line">
+                                                {item.description}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {t('billing.qty_times_price', {
+                                                    quantity: item.unit
+                                                        ? `${Number(item.quantity)} ${item.unit}`
+                                                        : Number(item.quantity),
+                                                    price: money(
+                                                        item.unit_price,
+                                                    ),
+                                                })}
+                                                {(!item.taxable ||
+                                                    item.tax_rate_ids
+                                                        ?.length === 0) &&
+                                                    ` · ${t('billing.not_taxable')}`}
+                                                {item.taxable &&
+                                                    item.tax_names.length > 0 &&
+                                                    ` · ${item.tax_names.join(', ')}`}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {item.warranty_ends_on
+                                                    ? t(
+                                                          'billing.warranty_until',
+                                                          {
+                                                              length: item.warranty_label,
+                                                              date: time.dateOnly(
+                                                                  item.warranty_ends_on,
+                                                              ),
+                                                          },
+                                                      )
+                                                    : item.warranty_value
+                                                      ? t(
+                                                            'billing.warranty_line',
+                                                            {
+                                                                length: item.warranty_label,
+                                                            },
+                                                        )
+                                                      : item.warranty_label}
+                                                {item.private_difference !==
+                                                    null &&
+                                                    item.private_difference !==
+                                                        undefined &&
+                                                    ` · ${t('billing.line.difference', { amount: money(item.private_difference) })}`}
+                                                {item.total_cost !== null &&
+                                                    item.total_cost > 0 &&
+                                                    ` · ${t('billing.line.total_cost')} ${money(item.total_cost)}${item.supplier ? ` (${item.supplier})` : ''}`}
+                                            </p>
+                                        </div>
+                                        {item.optional && !item.selected ? (
+                                            <span className="text-right text-sm text-muted-foreground tabular-nums">
+                                                {t(
+                                                    'billing.line.optional_extra',
+                                                    {
+                                                        amount: money(
+                                                            item.total,
+                                                        ),
+                                                    },
                                                 )}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
+                                            </span>
+                                        ) : (
+                                            <span className="font-medium tabular-nums">
+                                                {money(item.total)}
+                                            </span>
+                                        )}
+                                    </li>
+                                ))}
+                        </ul>
+
+                        <dl className="ml-auto max-w-xs space-y-1 text-sm">
+                            <div className="flex justify-between">
+                                <dt>{t('billing.subtotal')}</dt>
+                                <dd className="tabular-nums">
+                                    {money(doc.subtotal)}
+                                </dd>
+                            </div>
+                            {doc.discount_total > 0 && (
+                                <div className="flex justify-between">
+                                    <dt>
+                                        {doc.discount_type === 'percent'
+                                            ? t('billing.discount_percent', {
+                                                  value: Number(
+                                                      doc.discount_value,
+                                                  ),
+                                              })
+                                            : t('billing.discount')}
+                                    </dt>
+                                    <dd className="tabular-nums">
+                                        −{money(doc.discount_total)}
+                                    </dd>
+                                </div>
+                            )}
+                            {doc.taxes.map((tax) => (
+                                <div
+                                    key={`${tax.tax_rate_id}-${tax.name}`}
+                                    className="flex justify-between"
+                                >
+                                    <dt>
+                                        {t(
+                                            doc.prices_include_tax
+                                                ? 'billing.includes_tax'
+                                                : 'billing.tax_line',
+                                            { name: tax.name, rate: tax.rate },
+                                        )}
+                                    </dt>
+                                    <dd className="tabular-nums">
+                                        {money(tax.amount)}
+                                    </dd>
+                                </div>
+                            ))}
+                            <div className="flex justify-between border-t pt-1 text-base font-semibold">
+                                <dt>{t('billing.total')}</dt>
+                                <dd className="tabular-nums">
+                                    {money(doc.total)}
+                                </dd>
+                            </div>
+                            {doc.cost_total !== null &&
+                                doc.cost_total !== undefined &&
+                                doc.cost_total > 0 && (
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <dt>{t('billing.cost_total')}</dt>
+                                        <dd className="tabular-nums">
+                                            {money(doc.cost_total)}
+                                        </dd>
+                                    </div>
+                                )}
+                            {isInvoice && doc.status !== 'void' && (
+                                <>
+                                    <div className="flex justify-between">
+                                        <dt>{t('invoices.paid')}</dt>
+                                        <dd className="tabular-nums">
+                                            {money(doc.amount_paid ?? 0)}
+                                        </dd>
+                                    </div>
+                                    <div className="flex justify-between text-base font-semibold">
+                                        <dt>{t('invoices.balance')}</dt>
+                                        <dd className="tabular-nums">
+                                            {money(balance)}
+                                        </dd>
+                                    </div>
+                                </>
+                            )}
+                            {!isInvoice && (doc.deposit_amount ?? 0) > 0 && (
+                                <div className="flex justify-between">
+                                    <dt>
+                                        {doc.deposit_type === 'percent'
+                                            ? t('estimates.deposit_percent', {
+                                                  percent: Number(
+                                                      doc.deposit_value,
+                                                  ),
+                                              })
+                                            : t('estimates.deposit')}
+                                    </dt>
+                                    <dd className="tabular-nums">
+                                        {money(doc.deposit_amount ?? 0)}
+                                    </dd>
+                                </div>
+                            )}
+                            {!isInvoice && (doc.deposit_paid ?? 0) !== 0 && (
+                                <div className="flex justify-between">
+                                    <dt>{t('estimates.deposit_paid')}</dt>
+                                    <dd className="tabular-nums">
+                                        {money(doc.deposit_paid ?? 0)}
+                                    </dd>
+                                </div>
+                            )}
+                        </dl>
+
+                        {doc.notes && (
+                            <p className="rounded-lg bg-muted/50 p-3 text-sm whitespace-pre-line">
+                                {doc.notes}
+                            </p>
+                        )}
+                    </section>
+
+                    {doc.online_approval && (
+                        <section className="space-y-2 rounded-lg border border-green-600/40 bg-green-50 p-3 text-sm dark:bg-green-950">
+                            {doc.online_approval.signature ? (
+                                <img
+                                    src={doc.online_approval.signature}
+                                    alt={t('estimates.online.signature')}
+                                    className="h-20 max-w-64 rounded border bg-white object-contain"
+                                />
+                            ) : (
+                                <p className="font-serif text-2xl italic">
+                                    {doc.online_approval.signer_name}
+                                </p>
+                            )}
+                            <p>
+                                {t('estimates.online.signed_online', {
+                                    name: doc.online_approval.signer_name,
+                                    date: doc.approved_at
+                                        ? time.dateTime(doc.approved_at)
+                                        : '',
+                                })}
+                                {doc.online_approval.ip &&
+                                    ` · ${t('estimates.online.ip', { ip: doc.online_approval.ip })}`}
+                            </p>
+                            {doc.status !== 'invoiced' &&
+                                doc.status !== 'revised' && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {t('estimates.locked_signed')}
+                                    </p>
+                                )}
+                            {can.revise && (
+                                <Button
+                                    variant="outline"
+                                    className="h-11 w-full bg-background sm:w-auto"
+                                    onClick={() => setConfirm('revise')}
+                                >
+                                    <FilePen /> {t('estimates.revise')}
+                                </Button>
+                            )}
+                        </section>
+                    )}
+                    {doc.revised_from && !delivery?.sent_at && (
+                        <p className="rounded-lg border border-amber-500/40 bg-amber-50 p-3 text-sm dark:bg-amber-950">
+                            {t('estimates.send_revision', {
+                                number: doc.revised_from,
+                            })}
+                        </p>
+                    )}
+                    {(doc.versions ?? []).length > 1 && (
+                        <section className="space-y-2">
+                            <h2 className="text-base font-medium">
+                                {t('estimates.versions')}
+                            </h2>
+                            <ul className="da-card divide-y overflow-hidden text-sm">
+                                {(doc.versions ?? []).map((v) => (
+                                    <li key={v.id}>
+                                        <Link
+                                            href={showEstimate(v.id)}
+                                            className={
+                                                v.id === doc.id
+                                                    ? 'flex items-center gap-2 bg-muted/50 p-3'
+                                                    : 'flex items-center gap-2 p-3 hover:bg-muted/50'
+                                            }
+                                        >
+                                            <span className="font-medium">
+                                                {v.number}
+                                            </span>
+                                            <DocumentStatusBadge
+                                                status={v.status}
+                                                label={v.status_label}
+                                            />
+                                            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
                                                 {[
-                                                    p.received_at
-                                                        ? time.date(
-                                                              p.received_at,
+                                                    v.signer_name &&
+                                                    v.approved_at
+                                                        ? t(
+                                                              'estimates.online.signed_online',
+                                                              {
+                                                                  name: v.signer_name,
+                                                                  date: time.dateTime(
+                                                                      v.approved_at,
+                                                                  ),
+                                                              },
                                                           )
                                                         : null,
-                                                    p.reference,
-                                                    p.tip_amount !== 0
-                                                        ? t('payments.tip', {
-                                                              amount: money(
-                                                                  p.tip_amount,
-                                                              ),
-                                                          })
-                                                        : null,
-                                                    p.user
-                                                        ? t('payments.by', {
-                                                              name: p.user,
-                                                          })
+                                                    v.revised_at
+                                                        ? t(
+                                                              'estimates.revised_on',
+                                                              {
+                                                                  date: time.date(
+                                                                      v.revised_at,
+                                                                  ),
+                                                              },
+                                                          )
                                                         : null,
                                                 ]
                                                     .filter(Boolean)
                                                     .join(' · ')}
-                                            </div>
-                                            {p.note && (
-                                                <p className="text-xs whitespace-pre-line">
-                                                    {p.note}
-                                                </p>
-                                            )}
-                                            {p.void_reason && (
-                                                <p className="text-xs">
-                                                    {p.void_reason}
-                                                </p>
-                                            )}
-                                            {p.refund_reason && (
-                                                <p className="text-xs">
-                                                    {p.refund_reason}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <span
-                                            className={
-                                                p.voided_at
-                                                    ? 'tabular-nums line-through'
-                                                    : 'font-medium tabular-nums'
-                                            }
-                                        >
-                                            {money(p.amount)}
-                                        </span>
-                                        {can.voidPayments &&
-                                            !p.voided_at &&
-                                            !p.provider && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="size-9"
-                                                    aria-label={t(
-                                                        'payments.void',
-                                                    )}
-                                                    onClick={() =>
-                                                        removePayment(p)
-                                                    }
-                                                >
-                                                    <Ban />
-                                                </Button>
-                                            )}
+                                            </span>
+                                            <span className="tabular-nums">
+                                                {money(v.total)}
+                                            </span>
+                                        </Link>
                                     </li>
                                 ))}
                             </ul>
-                        )}
-                    </section>
-                )}
+                        </section>
+                    )}
+                    {doc.status === 'declined' && doc.decline_reason && (
+                        <p className="rounded-lg bg-muted p-3 text-sm whitespace-pre-line">
+                            {t('estimates.online.decline_reason_label', {
+                                reason: doc.decline_reason,
+                            })}
+                        </p>
+                    )}
 
-                {canViewHistory && (
-                    <RecordHistory type={doc.kind} id={doc.id} />
-                )}
+                    {/* Customer signature: taken when the work is done and invoiced */}
+                    {signature && (signature.data || signature.can_sign) && (
+                        <SignatureSection
+                            jobId={signature.job_id}
+                            signature={signature.data}
+                            customerName={signature.customer_name}
+                            canSign={signature.can_sign}
+                            reloadProps={['signature']}
+                        />
+                    )}
+                </div>
+                <aside
+                    className="space-y-4 lg:sticky lg:top-4"
+                    data-test="document-aside"
+                >
+                    {/* Payments */}
+                    {isInvoice && (
+                        <section className="space-y-2">
+                            <h2 className="text-base font-medium">
+                                {t('payments.title')}
+                            </h2>
+                            {(doc.payments ?? []).length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                    {t('payments.empty')}
+                                </p>
+                            ) : (
+                                <ul className="da-card divide-y overflow-hidden">
+                                    {(doc.payments ?? []).map((p) => (
+                                        <li
+                                            key={p.id}
+                                            className={
+                                                p.voided_at
+                                                    ? 'flex items-start gap-3 p-3 text-sm text-muted-foreground'
+                                                    : 'flex items-start gap-3 p-3 text-sm'
+                                            }
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-2 font-medium">
+                                                    <span
+                                                        className={
+                                                            p.voided_at
+                                                                ? 'line-through'
+                                                                : undefined
+                                                        }
+                                                    >
+                                                        {p.is_refund
+                                                            ? t(
+                                                                  'payments.refund',
+                                                              )
+                                                            : p.provider
+                                                              ? t(
+                                                                    'payments.online',
+                                                                    {
+                                                                        provider:
+                                                                            p.provider,
+                                                                    },
+                                                                )
+                                                              : p.method_label}
+                                                    </span>
+                                                    {p.voided_at && (
+                                                        <span className="text-xs">
+                                                            {t(
+                                                                'payments.voided_label',
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {[
+                                                        p.received_at
+                                                            ? time.date(
+                                                                  p.received_at,
+                                                              )
+                                                            : null,
+                                                        p.reference,
+                                                        p.tip_amount !== 0
+                                                            ? t(
+                                                                  'payments.tip',
+                                                                  {
+                                                                      amount: money(
+                                                                          p.tip_amount,
+                                                                      ),
+                                                                  },
+                                                              )
+                                                            : null,
+                                                        p.user
+                                                            ? t('payments.by', {
+                                                                  name: p.user,
+                                                              })
+                                                            : null,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </div>
+                                                {p.note && (
+                                                    <p className="text-xs whitespace-pre-line">
+                                                        {p.note}
+                                                    </p>
+                                                )}
+                                                {p.void_reason && (
+                                                    <p className="text-xs">
+                                                        {p.void_reason}
+                                                    </p>
+                                                )}
+                                                {p.refund_reason && (
+                                                    <p className="text-xs">
+                                                        {p.refund_reason}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <span
+                                                className={
+                                                    p.voided_at
+                                                        ? 'tabular-nums line-through'
+                                                        : 'font-medium tabular-nums'
+                                                }
+                                            >
+                                                {money(p.amount)}
+                                            </span>
+                                            {can.voidPayments &&
+                                                !p.voided_at &&
+                                                !p.provider && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-9"
+                                                        aria-label={t(
+                                                            'payments.void',
+                                                        )}
+                                                        onClick={() =>
+                                                            removePayment(p)
+                                                        }
+                                                    >
+                                                        <Ban />
+                                                    </Button>
+                                                )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </section>
+                    )}
+
+                    {canViewHistory && (
+                        <RecordHistory type={doc.kind} id={doc.id} />
+                    )}
+                </aside>
             </div>
 
             {bar && <StickyActionBar>{bar}</StickyActionBar>}
