@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\JobStatusChange;
 use App\Models\Property;
 use App\Models\ServiceJob;
@@ -321,6 +322,31 @@ test('the job list can be searched and filtered', function () {
         ->and($ids(['search' => 'WM3900']))->toBe([$scheduled->id])
         ->and($ids(['search' => '604 555 0101']))->toBe([$scheduled->id])
         ->and($ids(['search' => 'Zed']))->toBe([$new->id]);
+});
+
+test('the desktop table of the All tab sorts by status, customer, number and invoiced total both ways', function () {
+    $jane = ServiceJob::factory()->for($this->property)->create(['brand_id' => $this->brand->id, 'status' => JobStatus::Completed]);
+    $zed = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($this->company)->create(['first_name' => 'Zed', 'last_name' => 'Young'])))
+        ->create(['brand_id' => $this->brand->id, 'status' => JobStatus::New]);
+    $adam = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($this->company)->create(['first_name' => 'Adam', 'last_name' => 'Ames'])))
+        ->create(['brand_id' => $this->brand->id, 'status' => JobStatus::Scheduled]);
+    inCompany($this->company, function () use ($jane, $zed) {
+        Invoice::factory()->create(['service_job_id' => $jane->id, 'total' => 50000, 'currency' => 'CAD']);
+        Invoice::factory()->create(['service_job_id' => $zed->id, 'total' => 9000, 'currency' => 'CAD']);
+        Invoice::factory()->create(['service_job_id' => $zed->id, 'total' => 99999, 'currency' => 'CAD', 'status' => 'void']);
+    });
+
+    $ids = fn (array $query) => collect(
+        $this->get(route('jobs.index', ['tab' => 'all', ...$query]))->viewData('page')['props']['jobs']['data'],
+    )->pluck('id')->all();
+
+    expect($ids(['sort' => 'status', 'dir' => 'asc']))->toBe([$zed->id, $adam->id, $jane->id])
+        ->and($ids(['sort' => 'status', 'dir' => 'desc']))->toBe([$jane->id, $adam->id, $zed->id])
+        ->and($ids(['sort' => 'customer', 'dir' => 'asc']))->toBe([$adam->id, $jane->id, $zed->id])
+        ->and($ids(['sort' => 'number', 'dir' => 'asc']))->toBe([$jane->id, $zed->id, $adam->id])
+        // Void invoices do not count; a job without invoices goes last.
+        ->and($ids(['sort' => 'total', 'dir' => 'desc']))->toBe([$jane->id, $zed->id, $adam->id])
+        ->and($ids(['sort' => 'total', 'dir' => 'asc']))->toBe([$adam->id, $zed->id, $jane->id]);
 });
 
 test('the customer card lists the customer\'s jobs', function () {

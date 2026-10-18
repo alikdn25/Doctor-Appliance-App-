@@ -74,3 +74,44 @@ test('N opens Book customer and / jumps to the search', async ({ page }) => {
     await page.keyboard.press('n');
     await expect(page).toHaveURL(/\/jobs\/create\?book=1/);
 });
+
+test('the job side column and table headers stay in view below the app header', async ({
+    page,
+}, info) => {
+    test.skip(
+        info.project.name !== 'desktop',
+        'two columns and tables are for wide screens',
+    );
+    // How far the column's top sits below the sticky header once the page is scrolled.
+    const gap = async () =>
+        page.evaluate(() => {
+            const header = document
+                .querySelector('header.da-header')!
+                .getBoundingClientRect();
+            const aside = document
+                .querySelector('[data-test="job-aside"]')!
+                .getBoundingClientRect();
+
+            return window.scrollY > 0 ? aside.top - header.bottom : -1;
+        });
+
+    await page.goto(`/jobs/${fixture.job_id}`);
+    await expect(page.locator('[data-test="job-aside"]')).toBeVisible();
+    await page.mouse.wheel(0, 1500);
+    await expect.poll(gap).toBeGreaterThanOrEqual(0);
+
+    await page.goto('/jobs?tab=all');
+    const table = page.locator('[data-slot="data-table"]');
+    await table.getByRole('button', { name: 'Status' }).click();
+    await expect(page).toHaveURL(/sort=status/);
+    await expect(page).toHaveURL(/dir=asc/);
+    await expect(
+        table.getByRole('columnheader', { name: /Status/ }),
+    ).toHaveAttribute('aria-sort', 'ascending');
+    await table.getByRole('button', { name: 'Status' }).click();
+    await expect(page).toHaveURL(/sort=status/);
+    await expect(page).toHaveURL(/dir=desc/);
+    await table.getByRole('button', { name: 'Customer' }).click();
+    await expect(page).toHaveURL(/sort=customer/);
+    await expect(page).toHaveURL(/dir=asc/);
+});

@@ -73,6 +73,7 @@ const REASONS: BacklogReason[] = [
 export default function JobsIndex({
     tab,
     sort = '',
+    dir = 'desc',
     jobs,
     filters,
     statusCounts = {},
@@ -90,6 +91,7 @@ export default function JobsIndex({
 }: {
     tab: Tab;
     sort?: string;
+    dir?: 'asc' | 'desc';
     jobs?: Paginated<JobRow>;
     filters: Partial<AllFilters> & { search: string; reason?: string };
     statusCounts?: Record<string, number>;
@@ -135,7 +137,7 @@ export default function JobsIndex({
         ]),
     ) as Record<string, string>;
     const apply = (next: Record<string, string>) =>
-        go({ ...current, ...(sort ? { sort } : {}), ...next });
+        go({ ...current, ...(sort ? { sort, dir } : {}), ...next });
 
     const openCount = unfinishedJobs?.total ?? 0;
     const tabs = [
@@ -478,7 +480,7 @@ export default function JobsIndex({
                                             ? sort || 'visit'
                                             : undefined
                                     }
-                                    dir="desc"
+                                    dir={dir}
                                     sortUrl={index().url}
                                     query={{ tab, ...current }}
                                     columns={[
@@ -494,6 +496,10 @@ export default function JobsIndex({
                                         {
                                             key: 'status',
                                             label: t('jobs.columns.status'),
+                                            sort:
+                                                tab === 'all'
+                                                    ? 'status'
+                                                    : undefined,
                                             render: (job) => (
                                                 <StatusBadge
                                                     status={job.status}
@@ -517,6 +523,10 @@ export default function JobsIndex({
                                         {
                                             key: 'customer',
                                             label: t('jobs.columns.customer'),
+                                            sort:
+                                                tab === 'all'
+                                                    ? 'customer'
+                                                    : undefined,
                                             render: (job) =>
                                                 job.customer ?? '—',
                                         },
@@ -545,6 +555,10 @@ export default function JobsIndex({
                                         {
                                             key: 'total',
                                             label: t('jobs.columns.total'),
+                                            sort:
+                                                tab === 'all'
+                                                    ? 'total'
+                                                    : undefined,
                                             align: 'right',
                                             render: (job) =>
                                                 job.total

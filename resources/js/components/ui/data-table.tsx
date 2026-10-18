@@ -63,11 +63,11 @@ export function DataTable<T>({
 
     return (
         <div
-            className={cn('da-card overflow-x-auto', className)}
+            className={cn('da-card overflow-x-clip', className)}
             data-slot="data-table"
         >
             <table className="w-full border-collapse text-sm" aria-label={label}>
-                <thead className="sticky top-0 z-10 bg-card">
+                <thead className="sticky top-[var(--app-header-h,0px)] z-10 bg-card">
                     <tr className="border-b text-xs text-muted-foreground">
                         {columns.map((column) => {
                             const active = column.sort !== undefined && sort === column.sort;
