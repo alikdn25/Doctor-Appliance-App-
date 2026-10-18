@@ -36,7 +36,7 @@ class ResetUserPassword extends Command
             return self::FAILURE;
         }
 
-        $generated = $this->option('generate') ? Str::password(16, symbols: false) : null;
+        $generated = $this->option('generate') ? self::temporaryPassword() : null;
         $password = $generated ?? password('New password', required: true, hint: 'At least 8 characters');
 
         $validator = Validator::make(['password' => $password], ['password' => ['required', Password::defaults()]]);
@@ -105,5 +105,19 @@ class ResetUserPassword extends Command
         $this->line('If sign-in was tried many times, wait a minute before trying again.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * A random password that the production rules accept (12+ characters, upper and lower case, a number and a
+     * symbol). Str::password() gives one of each set but not both cases, so it is drawn again until it has them.
+     */
+    public static function temporaryPassword(): string
+    {
+        do {
+            $password = Str::password(16);
+        } while (! preg_match('/[a-z]/', $password) || ! preg_match('/[A-Z]/', $password)
+            || ! preg_match('/\d/', $password) || ! preg_match('/[^A-Za-z0-9]/', $password));
+
+        return $password;
     }
 }

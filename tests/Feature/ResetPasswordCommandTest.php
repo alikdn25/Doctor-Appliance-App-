@@ -1,10 +1,13 @@
 <?php
 
+use App\Console\Commands\ResetUserPassword;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 
 test('the command sets a new password and the person can sign in again', function () {
     $user = memberOf(Company::factory()->create(['name' => 'Doctor Appliance']));
@@ -76,4 +79,23 @@ test('an unknown email or a weak password changes nothing', function () {
         ->assertFailed();
 
     expect($user->fresh()->password)->toBe($hash);
+});
+
+test('a generated temporary password meets the production password rules', function () {
+    // Production: 12+ characters, mixed case, a number and a symbol (AppServiceProvider).
+    foreach (range(1, 50) as $ignored) {
+        $password = ResetUserPassword::temporaryPassword();
+
+        expect(strlen($password))->toBeGreaterThanOrEqual(12)
+            ->and($password)->toMatch('/[a-z]/')
+            ->and($password)->toMatch('/[A-Z]/')
+            ->and($password)->toMatch('/\d/')
+            ->and($password)->toMatch('/[^A-Za-z0-9]/');
+    }
+
+    $rules = Password::min(12)->mixedCase()->letters()->numbers()->symbols();
+    expect(Validator::make(
+        ['password' => ResetUserPassword::temporaryPassword()],
+        ['password' => [$rules]],
+    )->passes())->toBeTrue();
 });

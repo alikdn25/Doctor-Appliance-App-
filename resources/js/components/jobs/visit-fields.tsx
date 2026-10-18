@@ -100,7 +100,8 @@ export function VisitFields({
                     type="number"
                     inputMode="numeric"
                     min={5}
-                    step={15}
+                    // Any length in 5-minute steps (60, 90, 45…): step 15 from min 5 refused round hours.
+                    step={5}
                     value={value.estimated_duration_minutes}
                     onChange={(e) =>
                         onChange({
