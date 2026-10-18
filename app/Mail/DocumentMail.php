@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Estimate;
 use App\Models\Invoice;
@@ -77,7 +78,7 @@ class DocumentMail extends Mailable implements ShouldQueue
                 'url' => PublicDocument::url($document),
                 'kind' => $this->kind(),
                 'brandName' => $document->brand?->name ?? $this->company()->name,
-                'color' => $document->brand?->primary_color ?: '#0f172a',
+                'color' => Brand::readableColor($document->brand?->primary_color),
             ]);
         });
     }
