@@ -93,6 +93,11 @@ test("Send by SMS asks first and sends nothing on Don't send", async ({
     await expect(
         confirm.getByRole('button', { name: 'Send', exact: true }),
     ).toBeVisible();
+    // The long document link wraps; the dialog never scrolls sideways.
+    const dialog = page.getByRole('dialog');
+    expect(
+        await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+    ).toBe(true);
     await screenshot(page, info, 'sms-confirm');
 
     await confirm.getByRole('button', { name: "Don't send" }).click();
