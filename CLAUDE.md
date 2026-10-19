@@ -26,6 +26,9 @@ Read `SPEC.md` before any task. It is the source of truth for scope and stages.
 - This workspace has no server access. Grok Bot is the agent with server access (docs/SERVER_HANDOFF.md). When a
   change must reach the server (deploy, `.env`, migrations, workers), end the task with a ready-to-paste command block
   for Grok Bot: steps, checks to run on the live site, and what to report back.
+- The Grok Bot task is always ONE complete, self-contained text block at the very end of the reply, ready to paste
+  as is (exact commit SHA included). Never split it, never send corrections as "change line X" patches; if anything
+  changes, resend the whole block.
 - After a merge, say whether the branch needs deleting (normally not: deploys use `main` only).
 - Say plainly what still has to be done by the owner (e.g. settings to fill in the app), and nothing else.
 
