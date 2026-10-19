@@ -70,6 +70,11 @@ class AddMember
 
             $this->syncBrands->handle($membership, $brandIds);
 
+            // The first person added next to the Owner switches the company to "with a team".
+            if ($company->works_alone && Membership::withoutCompanyScope()->where('company_id', $company->id)->where('is_active', true)->count() > 1) {
+                $company->forceFill(['works_alone' => false])->save();
+            }
+
             $this->audit->record('member.added', $membership, [
                 'user_id' => $user->id,
                 'email' => $user->email,

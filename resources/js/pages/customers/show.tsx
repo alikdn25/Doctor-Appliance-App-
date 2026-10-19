@@ -238,7 +238,7 @@ export default function CustomerShow({
                     data-test="customer-actions"
                 >
                     {primaryPhone && (
-                        <Button asChild variant="outline" className="px-2">
+                        <Button asChild variant="success" className="px-2">
                             <a href={telUrl(primaryPhone)}>
                                 <Phone /> {t('customers.call')}
                             </a>
@@ -254,9 +254,23 @@ export default function CustomerShow({
                             >
                                 <MessageSquare /> {t('customers.text')}
                             </Button>
+                        ) : messaging.mode === 'automatic' &&
+                          messaging.chat_url ? (
+                            /* Automatic texts: the SMS chat with the customer. */
+                            <Button asChild variant="outline" className="px-2">
+                                <Link
+                                    href={messaging.chat_url}
+                                    data-test="customer-text"
+                                >
+                                    <MessageSquare /> {t('customers.text')}
+                                </Link>
+                            </Button>
                         ) : (
                             <Button asChild variant="outline" className="px-2">
-                                <a href={smsUrl(primaryPhone, '')}>
+                                <a
+                                    href={smsUrl(primaryPhone, '')}
+                                    data-test="customer-text"
+                                >
                                     <MessageSquare /> {t('customers.text')}
                                 </a>
                             </Button>
@@ -456,7 +470,7 @@ export default function CustomerShow({
                             </div>
 
                             <div className="flex flex-wrap gap-2">
-                                <Button variant="outline" size="sm" asChild>
+                                <Button variant="sky" size="sm" asChild>
                                     <a
                                         href={mapsUrl(property.full_address)}
                                         target="_blank"
@@ -467,7 +481,7 @@ export default function CustomerShow({
                                     </a>
                                 </Button>
                                 {property.site_contact_phone && (
-                                    <Button variant="outline" size="sm" asChild>
+                                    <Button variant="success" size="sm" asChild>
                                         <a
                                             href={telUrl(
                                                 property.site_contact_phone,

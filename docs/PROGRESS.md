@@ -1703,6 +1703,45 @@ and "Not sent yet" marks them — say if a real draft step is wanted.
 - "Service" is called "Labor" in the UI. "Taxes, cost & warranty" starts collapsed on parts too.
 - Test: `tests/browser/invoice-lines.spec.ts` (labor $100 + part $150 + material $20 = $270, desktop and phone).
 
+### Owner's fixes after review ✅ (October 19)
+
+- **Job page** is one list (no Overview / Work / Money / Activity tabs): customer → technician → (problem) →
+  appliances → photos → Work done → estimates and invoices → signature → Activity (folded, last). Under the customer
+  three equal buttons: Navigate (light blue), Call (green), Text (white; the SMS chat in Automatic mode, the phone's
+  messages app otherwise). Same colours on the customer card. Without an address Navigate becomes "Add address"
+  (saved on the job and the customer); "Change address" moves the job to another address of the customer
+  (`PUT jobs/{job}/address`, `JobAddressController`).
+- **Technician of a job in one tap**: "Technician: name" under the customer, the name in the header and "Not assigned"
+  on My Jobs open the same sheet (`TechnicianPicker`) with each person's jobs that day and "free" / "busy 11–1" for
+  the job's window (`GET technicians/load`, `PUT jobs/{job}/technician`, `AssignJob`).
+- **Work alone / with a team** (`companies.works_alone`): asked at registration, switch in Settings → Jobs, the first
+  added team member switches to "with a team". Working alone: no technician choice anywhere, no "Not assigned", no
+  Unassigned calendar lane, every visit goes to the Owner (switching to it gives open unassigned visits to the
+  Owner). A person in the Field menu books to themselves by default; the office picks.
+- **Transfer**: in the calendar day view (per-person lanes) and on a Team card; tick one or more jobs, "Move to…"
+  picks the person (with the load), what is left can be ticked again (`POST visits/transfer`,
+  `GET team/{membership}/open-visits`). Drag and drop to another person stays.
+- **Book customer**: "Pick date" is the last chip of the scrolling day row; First name and Last name; the address is
+  required right after the name (Google suggestions when the company has a Maps key). A customer from the book with
+  no address types one in place.
+- **Addresses**: the customer edit form has the main address; an address is never saved empty; the first one is
+  primary; a typed address fills the customer's empty one. Data migration (`EmptyAddresses::clean`): jobs, estimates,
+  invoices and appliances on an empty address move to the customer's only address; empty addresses without jobs go
+  to the trash (soft delete).
+- **Estimates and invoices**: Labour / Part / Material on top of "Add item"; a price book item with a price is added
+  as a row without a form; each line is one row (name, qty × price, amount) and opens a small sheet (name, quantity,
+  price, Done) with the note, taxes and the line's own warranty under More; one warranty for the whole document
+  (labour and parts, from settings). Good / Better / Best and "All options" are removed from the interface and logic;
+  lines saved with an option are ordinary lines (the `option_name` column is kept, nothing deleted). The price book
+  item "Labor (per hour)" is renamed "Labor" ("Labour" in Canada).
+- Tests: `tests/Feature/Jobs/AssignmentTest.php`, `tests/Feature/Company/WorkModeTest.php`,
+  `tests/Feature/Customers/NoEmptyAddressTest.php`, booking address in `QuickEntryTest.php`, options in
+  `OnlineEstimateApprovalTest.php`; browser `tests/browser/zx-owner-fixes.spec.ts` (every main screen at 380 px,
+  the job page, the technician sheet, Transfer in the calendar and Team, the estimate lines).
+- Migration `2026_10_27_000100_add_works_alone_and_clean_empty_addresses` (adds a column, moves jobs off empty
+  addresses, soft-deletes empty addresses, renames the price book item). Estimates saved with Good / Better / Best
+  keep their stored total until they are saved again or approved (then every line counts).
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started

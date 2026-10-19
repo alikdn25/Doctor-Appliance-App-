@@ -1,5 +1,5 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { CalendarDays, Plus } from 'lucide-react';
+import { CalendarDays, Plus, ShieldCheck } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useRef, useState } from 'react';
 import {
@@ -9,6 +9,7 @@ import {
     fromMinor,
     normalizeNumber,
     parseNumber,
+    toMinor,
     toNumber,
     useMoney,
 } from '@/components/billing/money';
@@ -16,13 +17,14 @@ import { NumberHint } from '@/components/billing/number-hint';
 import { depositFor } from '@/components/billing/estimate-approval';
 import { AddItemSheet } from '@/components/billing/add-item-sheet';
 import {
-    ESTIMATE_OPTIONS,
     LineEditor,
+    lineWarranty,
     newLine,
     servicePatch,
 } from '@/components/billing/line-editor';
 import type {
-    EstimateOption,
+    DocumentWarranty,
+    Length,
     Line,
     LineKind,
     LineSetup,
@@ -40,7 +42,6 @@ import type {
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import { ScreenHeader } from '@/components/screen-header';
-import { SegmentedControl } from '@/components/ui/segmented-control';
 import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -158,7 +159,6 @@ export default function BillingForm({
             tax_rate_ids: item.tax_rate_ids ?? null,
             optional: kind === 'estimate' && item.optional,
             selected: kind === 'estimate' ? item.selected : true,
-            option_name: kind === 'estimate' ? (item.option_name ?? '') : '',
             kind: item.kind,
             service_id: item.service_id,
             part_number: item.part_number ?? '',
@@ -178,13 +178,81 @@ export default function BillingForm({
             warranty_value:
                 item.warranty_value === null ? '' : String(item.warranty_value),
             warranty_unit: item.warranty_unit ?? 'days',
+            // A saved line follows the document's warranty when it has the same one.
+            warranty_own: ownWarranty(item),
             price_touched: true,
-            warranty_touched: true,
         });
     const fromEstimate = document
         ? undefined
         : estimates.find((estimate) => estimate.id === fromEstimateId);
 
+    // The warranty for the whole document (owner's fixes, October 19): labour and parts from the company's settings;
+    // a saved document shows the warranty of its first labour and part lines. A line has its own only under More.
+    const savedWarranty = (lineKind: LineKind, fallback: Length): Length => {
+        const line = (document?.items ?? fromEstimate?.items ?? []).find(
+            (item) => item.kind === lineKind && item.warranty_value !== null,
+        );
+
+        return line
+            ? {
+                  value: line.warranty_value ?? 0,
+                  unit: line.warranty_unit ?? 'days',
+              }
+            : fallback;
+    };
+    const [docWarranty, setDocWarranty] = useState<DocumentWarranty>(() => ({
+        labor: savedWarranty('service', lineSetup.warranty.labor),
+        parts: savedWarranty('part', lineSetup.warranty.parts),
+    }));
+    const sameLength = (a: Length, b: Length) =>
+        a.value === b.value && a.unit === b.unit;
+    const [warrantyTouched, setWarrantyTouched] = useState(
+        () =>
+            !sameLength(docWarranty.labor, lineSetup.warranty.labor) ||
+            !sameLength(docWarranty.parts, lineSetup.warranty.parts),
+    );
+    const [warrantyOpen, setWarrantyOpen] = useState(false);
+    const changeWarranty = (
+        part: keyof DocumentWarranty,
+        patch: Partial<Length>,
+    ) => {
+        setDocWarranty((w) => ({ ...w, [part]: { ...w[part], ...patch } }));
+        setWarrantyTouched(true);
+    };
+    const lengthText = (length: Length) =>
+        length.value === 0
+            ? t('billing.no_warranty')
+            : `${length.value} ${(
+                  lineSetup.warranty_units.find((u) => u.value === length.unit)
+                      ?.label ?? length.unit
+              ).toLowerCase()}`;
+    const effectiveWarranty = warrantyTouched ? docWarranty : null;
+    function ownWarranty(item: DocumentItem): boolean {
+        if (item.warranty_value === null || item.kind === 'material') {
+            return false;
+        }
+        const shared = lineWarranty(
+            newLine({ kind: item.kind }),
+            lineSetup,
+            effectiveWarranty,
+            item.unit_price,
+        );
+
+        return (
+            !shared ||
+            !sameLength(shared, {
+                value: item.warranty_value,
+                unit: item.warranty_unit ?? 'days',
+            })
+        );
+    }
+    const warrantyOf = (line: Line) =>
+        lineWarranty(
+            line,
+            lineSetup,
+            effectiveWarranty,
+            toMinor(line.unit_price, currency),
+        );
     const form = useForm<FormData>({
         issued_on: document?.issued_on ?? today,
         valid_until: document
@@ -227,7 +295,7 @@ export default function BillingForm({
                               ? {
                                     warranty_value: String(item.warranty_value),
                                     warranty_unit: item.warranty_unit ?? 'days',
-                                    warranty_touched: true,
+                                    warranty_own: true,
                                 }
                               : {}),
                       }),
@@ -264,23 +332,7 @@ export default function BillingForm({
                     compound: r.is_compound,
                 },
         );
-    // Good / Better / Best offered on this estimate; the totals show the chosen one.
-    const offered = ESTIMATE_OPTIONS.filter((option) =>
-        data.items.some((line) => line.option_name === option),
-    );
-    const [chosenOption, setChosenOption] = useState<EstimateOption | null>(
-        () =>
-            (document?.items.find((item) => item.option_name && item.selected)
-                ?.option_name as EstimateOption | undefined) ?? null,
-    );
-    const chosen =
-        chosenOption && offered.includes(chosenOption)
-            ? chosenOption
-            : (offered[0] ?? null);
-    const lineIncluded = (line: Line) =>
-        line.option_name
-            ? line.option_name === chosen
-            : !line.optional || line.selected;
+    const lineIncluded = (line: Line) => !line.optional || line.selected;
     const totals = computeTotals({
         items: data.items.map((line) => ({
             ...line,
@@ -294,7 +346,7 @@ export default function BillingForm({
         prices_include_tax: pricesIncludeTax,
     });
 
-    // Rows are collapsed; a new line opens so its name and price can be typed straight away.
+    // Rows are one line each; a tap opens the line's sheet. A new line without a price opens it straight away.
     const [openKeys, setOpenKeys] = useState<number[]>([]);
     const [adding, setAdding] = useState(false);
     const [datesOpen, setDatesOpen] = useState(false);
@@ -305,8 +357,8 @@ export default function BillingForm({
         name: r.name,
         rate: r.rate,
     }));
-    const addLine = (line: Line) => {
-        setOpenKeys([line.key]);
+    const addLine = (line: Line, edit = true) => {
+        setOpenKeys(edit ? [line.key] : []);
         form.setData((d) => ({ ...d, items: [...d.items, line] }));
     };
     const addCustom = (lineKind: LineKind) =>
@@ -327,7 +379,9 @@ export default function BillingForm({
             kind: service.kind,
             tax_rate_ids: defaultTaxIds(service.kind),
         });
-        addLine({ ...line, ...servicePatch(service, currency, line) });
+        const patch = servicePatch(service, currency, line);
+        // A price book item with a price is a finished line: no form.
+        addLine({ ...line, ...patch }, patch.unit_price === undefined);
     };
 
     // Updates always start from the latest lines: two quick changes (a typed price and the default
@@ -452,13 +506,9 @@ export default function BillingForm({
                 unit:
                     line.kind === 'material' ? line.unit.trim() || null : null,
                 bill_to_customer: line.bill_to_customer,
-                // Materials carry no warranty.
-                warranty_value:
-                    line.kind === 'material' || line.warranty_value === ''
-                        ? null
-                        : Number(line.warranty_value),
-                warranty_unit:
-                    line.kind === 'material' ? null : line.warranty_unit,
+                // Its own warranty or the document's; materials carry none.
+                warranty_value: warrantyOf(line)?.value ?? null,
+                warranty_unit: warrantyOf(line)?.unit ?? null,
                 // A service has no purchase price: values typed while the line was a part are not sent.
                 ...(lineSetup.costs_visible && line.costs_editable
                     ? line.kind === 'service'
@@ -482,13 +532,7 @@ export default function BillingForm({
                           }
                     : {}),
                 ...(kind === 'estimate'
-                    ? {
-                          optional: line.option_name ? false : line.optional,
-                          selected: line.option_name
-                              ? line.option_name === chosen
-                              : line.selected,
-                          option_name: line.option_name || null,
-                      }
+                    ? { optional: line.optional, selected: line.selected }
                     : {}),
             })),
             estimate_id: kind === 'invoice' && !document ? d.estimate_id : null,
@@ -707,6 +751,7 @@ export default function BillingForm({
                                 services={services}
                                 taxes={lineTaxOptions}
                                 activeTaxIds={lineTaxIds(line)}
+                                warranty={warrantyOf(line)}
                                 estimate={kind === 'estimate'}
                                 open={openKeys.includes(line.key)}
                                 errors={fieldErrors}
@@ -839,6 +884,117 @@ export default function BillingForm({
                             {t('billing.add_discount')}
                         </button>
                     )}
+                    {/* One warranty for the whole document; a line has its own only under More. */}
+                    {data.items.some((line) => line.kind !== 'material') && (
+                        <div
+                            className="space-y-2"
+                            data-test="document-warranty"
+                        >
+                            <button
+                                type="button"
+                                className="flex min-h-11 w-full items-center gap-2 text-left text-sm"
+                                aria-expanded={warrantyOpen}
+                                onClick={() => setWarrantyOpen((o) => !o)}
+                            >
+                                <ShieldCheck className="size-4 shrink-0 text-muted-foreground" />
+                                <span className="min-w-0 flex-1 truncate">
+                                    {t('billing.document_warranty.summary', {
+                                        kind: t('billing.kinds.service'),
+                                        labor: lengthText(
+                                            effectiveWarranty?.labor ??
+                                                lineSetup.warranty.labor,
+                                        ),
+                                        parts: lengthText(
+                                            effectiveWarranty?.parts ??
+                                                lineSetup.warranty.parts,
+                                        ),
+                                    })}
+                                </span>
+                                <span className="font-medium text-primary">
+                                    {t('common.edit')}
+                                </span>
+                            </button>
+                            {warrantyOpen && (
+                                <div className="grid gap-2">
+                                    {(['labor', 'parts'] as const).map(
+                                        (part) => (
+                                            <div
+                                                key={part}
+                                                className="grid grid-cols-[6rem_1fr_2fr] items-center gap-2"
+                                            >
+                                                <span className="text-sm">
+                                                    {part === 'labor'
+                                                        ? t(
+                                                              'billing.kinds.service',
+                                                          )
+                                                        : t(
+                                                              'billing.document_warranty.parts',
+                                                          )}
+                                                </span>
+                                                <Input
+                                                    aria-label={
+                                                        part === 'labor'
+                                                            ? t(
+                                                                  'billing.kinds.service',
+                                                              )
+                                                            : t(
+                                                                  'billing.document_warranty.parts',
+                                                              )
+                                                    }
+                                                    inputMode="numeric"
+                                                    value={String(
+                                                        docWarranty[part].value,
+                                                    )}
+                                                    onChange={(e) =>
+                                                        changeWarranty(part, {
+                                                            value: Number(
+                                                                e.target.value.replace(
+                                                                    /\D/g,
+                                                                    '',
+                                                                ) || 0,
+                                                            ),
+                                                        })
+                                                    }
+                                                />
+                                                <NativeSelect
+                                                    aria-label={t(
+                                                        'billing.warranty_unit',
+                                                    )}
+                                                    value={
+                                                        docWarranty[part].unit
+                                                    }
+                                                    onChange={(e) =>
+                                                        changeWarranty(part, {
+                                                            unit: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                >
+                                                    {lineSetup.warranty_units.map(
+                                                        (u) => (
+                                                            <option
+                                                                key={u.value}
+                                                                value={u.value}
+                                                            >
+                                                                {u.label}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </NativeSelect>
+                                            </div>
+                                        ),
+                                    )}
+                                    <p className="text-xs text-muted-foreground">
+                                        {t('billing.document_warranty.hint', {
+                                            kind: t(
+                                                'billing.kinds.service',
+                                            ).toLowerCase(),
+                                        })}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </section>
 
                 {notesOpen || data.notes !== '' || errors.notes ? (
@@ -920,27 +1076,6 @@ export default function BillingForm({
                             )}
                         </div>
                     </FormField>
-                )}
-
-                {kind === 'estimate' && chosen && offered.length > 0 && (
-                    <div className="space-y-1" data-test="option-totals">
-                        <p className="text-sm font-medium">
-                            {t('estimates.options.title')}
-                        </p>
-                        <SegmentedControl
-                            label={t('estimates.options.title')}
-                            className="w-full"
-                            value={chosen}
-                            onChange={setChosenOption}
-                            options={offered.map((option) => ({
-                                value: option,
-                                label: t(`estimates.options.${option}`),
-                            }))}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            {t('estimates.options.form_hint')}
-                        </p>
-                    </div>
                 )}
 
                 <dl

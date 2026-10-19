@@ -27,6 +27,8 @@ export type CurrentCompany = {
     vertical: 'appliance_repair' | 'handyman';
     tracks_appliances: boolean;
     prices_include_tax: boolean;
+    /** One person does every job: no technician choice anywhere. */
+    works_alone: boolean;
     address: { region_label: string; postal_label: string; order: string };
     /** Google Maps browser key for address suggestions; null = type addresses by hand. */
     google_maps_key: string | null;

@@ -5,7 +5,6 @@ namespace App\Http\Requests\Billing;
 use App\Enums\LineKind;
 use App\Enums\WarrantyUnit;
 use App\Models\Estimate;
-use App\Models\EstimateItem;
 use App\Models\Invoice;
 use App\Models\TaxRate;
 use App\Rules\MoneyAmount;
@@ -95,7 +94,6 @@ class DocumentRequest extends FormRequest
             ...($this->isEstimate() ? [
                 'items.*.optional' => ['boolean'],
                 'items.*.selected' => ['boolean'],
-                'items.*.option_name' => ['nullable', Rule::in(EstimateItem::OPTIONS)],
                 'deposit_type' => ['nullable', Rule::in(['amount', 'percent'])],
                 'deposit_value' => [
                     'nullable', 'required_with:deposit_type', 'numeric', 'min:0',
@@ -167,8 +165,7 @@ class DocumentRequest extends FormRequest
             ] : []),
             ...($this->isEstimate() ? [
                 'optional' => (bool) ($item['optional'] ?? false),
-                'selected' => isset($item['option_name']) ? (bool) ($item['selected'] ?? false) : (! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false)),
-                'option_name' => $item['option_name'] ?? null,
+                'selected' => ! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false),
             ] : []),
         ], $data['items']);
         $data['tax_rate_ids'] ??= [];

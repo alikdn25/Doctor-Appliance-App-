@@ -50,6 +50,7 @@ class CompanySettingsRequest extends FormRequest
             'estimate_valid_days' => ['nullable', 'integer', 'min:1', 'max:365'],
             'estimate_followup_days' => ['nullable', 'integer', 'min:1', 'max:90'],
             'technicians_can_delete_jobs' => ['boolean'],
+            'works_alone' => ['sometimes', 'boolean'],
             'strict_arrival_reminder_minutes' => ['sometimes', 'integer', 'min:5', 'max:480'],
             'diagnostic_service_id' => ['nullable', 'integer', Rule::exists('services', 'id')->where('company_id', currentCompany()->id)],
             'warranty_labor_value' => ['sometimes', 'integer', 'min:0', 'max:999'],

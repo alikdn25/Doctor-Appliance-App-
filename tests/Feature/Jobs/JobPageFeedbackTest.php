@@ -132,7 +132,7 @@ test('booking with an appliance tile adds it at the new address', function () {
         'brand_id' => $this->brand->id,
         'job_type' => 'repair',
         'new_customer_mode' => true,
-        'new_customer' => ['first_name' => 'Anna', 'phone' => '+16045550177', 'property' => ['country' => 'CA']],
+        'new_customer' => ['first_name' => 'Anna', 'phone' => '+16045550177', 'property' => ['line1' => '1 Test Street', 'city' => 'Vancouver', 'country' => 'CA']],
         'new_appliances' => [['type' => 'wine_cooler']],
     ])->assertSessionHasNoErrors();
 
@@ -222,7 +222,7 @@ test('a full name typed in the quick booking is split and gets a face', function
         'brand_id' => $this->brand->id,
         'job_type' => 'repair',
         'new_customer_mode' => true,
-        'new_customer' => ['first_name' => 'Olena  Shevchenko', 'phone' => '+16045550178', 'property' => ['country' => 'CA']],
+        'new_customer' => ['first_name' => 'Olena  Shevchenko', 'phone' => '+16045550178', 'property' => ['line1' => '1 Test Street', 'city' => 'Vancouver', 'country' => 'CA']],
     ])->assertSessionHasNoErrors();
 
     $customer = inCompany($this->company, fn () => Customer::latest('id')->first());

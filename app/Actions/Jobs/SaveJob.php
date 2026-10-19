@@ -3,6 +3,7 @@
 namespace App\Actions\Jobs;
 
 use App\Actions\Customers\SaveCustomer;
+use App\Actions\Customers\SaveProperty;
 use App\Enums\JobStatus;
 use App\Models\Appliance;
 use App\Models\Company;
@@ -21,6 +22,7 @@ class SaveJob
 {
     public function __construct(
         private readonly SaveCustomer $saveCustomer,
+        private readonly SaveProperty $saveProperty,
         private readonly SaveVisit $saveVisit,
         private readonly ChangeJobStatus $changeStatus,
     ) {}
@@ -32,6 +34,7 @@ class SaveJob
      * @param  array{customer: array<string, mixed>, phones: list<array<string, mixed>>, emails: list<array<string, mixed>>, property: array<string, mixed>}|null  $newCustomer
      * @param  array{attributes: array<string, mixed>, assignee_ids: list<int>}|null  $visit
      * @param  list<array{description: string, quantity: string}>|null  $bringItems
+     * @param  array<string, mixed>|null  $newProperty  Address typed for an existing customer.
      */
     public function create(
         ?Customer $customer,
@@ -42,8 +45,9 @@ class SaveJob
         ?array $visit,
         User $user,
         ?array $bringItems = null,
+        ?array $newProperty = null,
     ): ServiceJob {
-        return DB::transaction(function () use ($customer, $attributes, $applianceIds, $newAppliances, $newCustomer, $visit, $user, $bringItems) {
+        return DB::transaction(function () use ($customer, $attributes, $applianceIds, $newAppliances, $newCustomer, $visit, $user, $bringItems, $newProperty) {
             if ($newCustomer !== null) {
                 $customer = $this->saveCustomer->handle(
                     null,
@@ -53,6 +57,9 @@ class SaveJob
                     $newCustomer['property'],
                 );
                 $attributes['property_id'] = $customer->primaryProperty()->value('id');
+            } elseif ($newProperty !== null && $customer !== null) {
+                // An existing customer's new (or first) address, typed while booking.
+                $attributes['property_id'] = $this->saveProperty->handle($customer, null, $newProperty)->id;
             }
 
             /** @var Customer $customer */

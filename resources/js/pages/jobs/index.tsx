@@ -358,22 +358,24 @@ export default function JobsIndex({
                                 ))}
                             </NativeSelect>
                         )}
-                        <NativeSelect
-                            aria-label={t('jobs.visit_fields.assignee_ids')}
-                            value={current.technician ?? ''}
-                            onChange={(e) =>
-                                apply({ technician: e.target.value })
-                            }
-                        >
-                            <option value="">
-                                {t('jobs.all_technicians')}
-                            </option>
-                            {technicians.map((u) => (
-                                <option key={u.id} value={String(u.id)}>
-                                    {u.name}
+                        {!auth.company?.works_alone && (
+                            <NativeSelect
+                                aria-label={t('jobs.visit_fields.assignee_ids')}
+                                value={current.technician ?? ''}
+                                onChange={(e) =>
+                                    apply({ technician: e.target.value })
+                                }
+                            >
+                                <option value="">
+                                    {t('jobs.all_technicians')}
                                 </option>
-                            ))}
-                        </NativeSelect>
+                                {technicians.map((u) => (
+                                    <option key={u.id} value={String(u.id)}>
+                                        {u.name}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        )}
                         <label className="grid gap-1 text-xs font-semibold text-muted-foreground">
                             {t('jobs.from')}
                             <Input

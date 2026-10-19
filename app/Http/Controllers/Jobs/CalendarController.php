@@ -144,6 +144,11 @@ class CalendarController extends Controller
             ->map(fn (array $lane) => ['id' => $lane['id'], 'name' => $lane['name'], 'inactive' => $lane['inactive']])
             ->values();
 
+        // Working alone there is nobody to leave a job to: no "Unassigned" lane unless a visit is in it.
+        if (currentCompany()->works_alone && $visits->every(fn (JobVisit $v) => $v->assignees->isNotEmpty())) {
+            return $lanes->all();
+        }
+
         return $lanes->push(['id' => null, 'name' => null, 'inactive' => false])->all();
     }
 

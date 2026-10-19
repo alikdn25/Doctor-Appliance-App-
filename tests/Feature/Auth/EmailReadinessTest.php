@@ -39,7 +39,7 @@ test('registration without mail leads to a usable own company rather than confir
     $this->get(route('onboarding.company.create'))->assertInertia(fn (Assert $page) => $page->where('confirmationRequired', false));
     $this->post(route('onboarding.company.store'), [
         'name' => 'Ready Company', 'country' => 'CA', 'vertical' => 'appliance_repair',
-        'timezone' => 'America/Vancouver', 'currency' => 'CAD', 'locale' => 'en-CA',
+        'timezone' => 'America/Vancouver', 'currency' => 'CAD', 'locale' => 'en-CA', 'works_alone' => true,
     ])->assertSessionHasNoErrors()->assertRedirect(route('dashboard'));
     $this->get(route('dashboard'))->assertOk();
     $company = $user->fresh()->accessibleCompanies()->sole();

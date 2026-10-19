@@ -44,6 +44,7 @@ type CompanySettings = {
     estimate_valid_days: number | null;
     estimate_followup_days: number | null;
     technicians_can_delete_jobs: boolean;
+    works_alone: boolean;
     diagnostic_service_id: number | null;
     strict_arrival_reminder_minutes: number;
     closure_reasons: Record<string, string[]>;
@@ -155,6 +156,7 @@ export default function CompanySettingsPage({
         estimate_valid_days: company.estimate_valid_days,
         estimate_followup_days: company.estimate_followup_days,
         technicians_can_delete_jobs: company.technicians_can_delete_jobs,
+        works_alone: company.works_alone,
         diagnostic_service_id: company.diagnostic_service_id,
         strict_arrival_reminder_minutes:
             company.strict_arrival_reminder_minutes,
@@ -821,6 +823,46 @@ export default function CompanySettingsPage({
                         <h2 className="text-base font-medium">
                             {t('company.jobs_section')}
                         </h2>
+                        <div className="space-y-2" data-test="works-alone">
+                            <div
+                                role="radiogroup"
+                                aria-label={t('company.fields.works_alone')}
+                                className="grid grid-cols-2 gap-2"
+                            >
+                                {([true, false] as const).map((alone) => (
+                                    <button
+                                        key={String(alone)}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={
+                                            form.data.works_alone === alone
+                                        }
+                                        onClick={() =>
+                                            form.setData('works_alone', alone)
+                                        }
+                                        className="da-chip da-press flex min-h-14 flex-col items-start justify-center rounded-2xl px-4 py-2 text-left"
+                                    >
+                                        <span className="text-sm font-semibold">
+                                            {t(
+                                                alone
+                                                    ? 'onboarding.alone'
+                                                    : 'onboarding.with_team',
+                                            )}
+                                        </span>
+                                        <span className="text-xs opacity-80">
+                                            {t(
+                                                alone
+                                                    ? 'onboarding.alone_hint'
+                                                    : 'onboarding.with_team_hint',
+                                            )}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {t('company.works_alone_hint')}
+                            </p>
+                        </div>
                         <label className="flex min-h-10 items-center gap-2 text-sm">
                             <Checkbox
                                 checked={form.data.technicians_can_delete_jobs}

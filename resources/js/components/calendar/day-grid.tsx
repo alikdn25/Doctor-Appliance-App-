@@ -1,4 +1,4 @@
-import { AlarmClock, AlertTriangle } from 'lucide-react';
+import { AlarmClock, AlertTriangle, ArrowRightLeft, Check } from 'lucide-react';
 import type { DragEvent, TouchEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { statusLook } from '@/lib/status';
@@ -39,6 +39,14 @@ type Props = {
     onEmptySlot?: (lane: Lane, minutes: number) => void;
     /** Minutes since midnight now, when the day shown is today (the red "now" line). */
     nowMinutes?: number | null;
+    /**
+     * "Transfer": the lane whose jobs are being ticked (undefined = off), the ticked visits, and the handlers.
+     * Without onTransfer the lanes have no Transfer button.
+     */
+    transferLane?: number | null;
+    selected?: number[];
+    onTransfer?: (lane: Lane) => void;
+    onToggle?: (visit: CalendarVisit) => void;
 };
 
 /** Lanes are at least 160 px wide (UX-REDESIGN §9.2). */
@@ -82,7 +90,12 @@ export function DayGrid({
     onOpen,
     onEmptySlot,
     nowMinutes = null,
+    transferLane,
+    selected = [],
+    onTransfer,
+    onToggle,
 }: Props) {
+    const transferring = transferLane !== undefined;
     const t = useTrans();
     // "+2 →": how many lanes are still off to the right.
     const scroller = useRef<HTMLDivElement>(null);
@@ -210,10 +223,23 @@ export function DayGrid({
                                             : undefined
                                     }
                                 >
-                                    <span className="truncate">
+                                    <span className="min-w-0 flex-1 truncate">
                                         {lane.name ?? t('calendar.unassigned')}
                                         {lane.inactive && ' *'}
                                     </span>
+                                    {onTransfer &&
+                                        !transferring &&
+                                        laneVisits.some((v) => v.movable) && (
+                                            <button
+                                                type="button"
+                                                className="da-chip da-press inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-semibold not-italic"
+                                                onClick={() => onTransfer(lane)}
+                                                data-test="lane-transfer"
+                                            >
+                                                <ArrowRightLeft className="size-3.5" />
+                                                {t('jobs.transfer.action')}
+                                            </button>
+                                        )}
                                 </div>
                                 <div
                                     className={cn(
@@ -275,6 +301,13 @@ export function DayGrid({
                                         const bufferPx =
                                             (travelBuffer / 60) * HOUR_PX;
                                         const width = 100 / count;
+                                        const ticking =
+                                            transferring &&
+                                            transferLane === lane.id &&
+                                            visit.movable;
+                                        const ticked =
+                                            ticking &&
+                                            selected.includes(visit.id);
                                         // Late: still scheduled after its window ended.
                                         const overdue =
                                             visit.status === 'scheduled' &&
@@ -293,7 +326,20 @@ export function DayGrid({
                                             >
                                                 <button
                                                     type="button"
-                                                    draggable={visit.movable}
+                                                    draggable={
+                                                        visit.movable &&
+                                                        !transferring
+                                                    }
+                                                    role={
+                                                        ticking
+                                                            ? 'checkbox'
+                                                            : undefined
+                                                    }
+                                                    aria-checked={
+                                                        ticking
+                                                            ? ticked
+                                                            : undefined
+                                                    }
                                                     onDragStart={(e) => {
                                                         const rect =
                                                             e.currentTarget.getBoundingClientRect();
@@ -309,6 +355,8 @@ export function DayGrid({
                                                     }}
                                                     onDragEnd={onDragEnd}
                                                     onTouchStart={(e) => {
+                                                        if (transferring)
+                                                            return;
                                                         const rect =
                                                             e.currentTarget.getBoundingClientRect();
                                                         onVisitTouchStart(
@@ -326,7 +374,9 @@ export function DayGrid({
                                                         e.preventDefault()
                                                     }
                                                     onClick={() =>
-                                                        onOpen(visit)
+                                                        ticking
+                                                            ? onToggle?.(visit)
+                                                            : onOpen(visit)
                                                     }
                                                     data-status={
                                                         visit.job.status
@@ -342,6 +392,8 @@ export function DayGrid({
                                                         (visit.conflict ||
                                                             overdue) &&
                                                             'border-danger ring-1 ring-danger',
+                                                        ticked &&
+                                                            'ring-2 ring-link',
                                                         isFinishedJob(
                                                             visit.job.status,
                                                         ) &&
@@ -354,6 +406,20 @@ export function DayGrid({
                                                     }}
                                                 >
                                                     <span className="flex items-center gap-1 font-medium">
+                                                        {ticking && (
+                                                            <span
+                                                                className={cn(
+                                                                    'flex size-4 shrink-0 items-center justify-center rounded border',
+                                                                    ticked &&
+                                                                        'border-link bg-link text-white',
+                                                                )}
+                                                                data-test="transfer-tick"
+                                                            >
+                                                                {ticked && (
+                                                                    <Check className="size-3" />
+                                                                )}
+                                                            </span>
+                                                        )}
                                                         {visit.conflict && (
                                                             <AlertTriangle
                                                                 className="size-3 shrink-0 text-destructive"

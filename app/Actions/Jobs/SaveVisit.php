@@ -29,6 +29,12 @@ class SaveVisit
             throw ValidationException::withMessages(['date' => __('jobs.errors.job_cancelled')]);
         }
 
+        // Working alone: every visit is the Owner's.
+        $solo = currentCompany()->soloWorkerId();
+        if ($solo !== null && $assigneeIds === []) {
+            $assigneeIds = [$solo];
+        }
+
         return DB::transaction(function () use ($job, $visit, $attributes, $assigneeIds, $user) {
             $creating = $visit === null;
 

@@ -57,8 +57,6 @@ type PrintedDocument = {
         tax_names: string[];
         optional: boolean;
         included: boolean;
-        option: string | null;
-        option_name: string | null;
         unit: string | null;
         part_number: string | null;
         warranty: string | null;
@@ -124,15 +122,8 @@ export default function PublicDocument({
                 .map((item) => item.id) ?? [],
     );
     const choosing = estimate?.can_approve ?? false;
-    // Good / Better / Best: the customer picks one; the lines and the total follow.
-    const offered = estimate?.calc.options ?? [];
-    const [option, setOption] = useState<string | null>(
-        () => offered.find((o) => o.chosen)?.name ?? offered[0]?.name ?? null,
-    );
     const live =
-        estimate && choosing
-            ? estimateTotals(estimate.calc, selected, option)
-            : null;
+        estimate && choosing ? estimateTotals(estimate.calc, selected) : null;
     const money = (minor: number) =>
         estimate
             ? formatMoney(minor, estimate.calc.currency, estimate.calc.locale)
@@ -263,146 +254,74 @@ export default function PublicDocument({
                             {t('estimates.online.choose_hint')}
                         </p>
                     )}
-                    {offered.length > 0 && (
-                        <div className="space-y-2">
-                            <p className="text-sm text-muted-foreground">
-                                {choosing
-                                    ? t('estimates.options.choose_hint')
-                                    : t('estimates.options.title')}
-                            </p>
-                            <div
-                                role="radiogroup"
-                                aria-label={t('estimates.options.pick')}
-                                className="grid gap-2"
-                                style={{
-                                    gridTemplateColumns: `repeat(${offered.length}, minmax(0, 1fr))`,
-                                }}
-                                data-test="public-options"
-                            >
-                                {offered.map((o) => (
-                                    <button
-                                        key={o.name}
-                                        type="button"
-                                        role="radio"
-                                        aria-checked={option === o.name}
-                                        onClick={() => setOption(o.name)}
-                                        className="rounded-xl border-2 p-3 text-left"
-                                        style={
-                                            option === o.name
-                                                ? {
-                                                      borderColor:
-                                                          doc.brand.color,
-                                                  }
-                                                : undefined
-                                        }
-                                    >
-                                        <span className="block text-sm font-semibold">
-                                            {o.label}
-                                        </span>
-                                        <span className="block font-bold tabular-nums">
-                                            {estimate &&
-                                                formatMoney(
-                                                    choosing
-                                                        ? estimateTotals(
-                                                              estimate.calc,
-                                                              selected,
-                                                              o.name,
-                                                          ).total
-                                                        : o.total,
-                                                    estimate.calc.currency,
-                                                    estimate.calc.locale,
-                                                )}
-                                        </span>
-                                        {!choosing && o.chosen && (
-                                            <span className="block text-xs font-medium text-green-700">
-                                                {t('estimates.options.chosen')}
-                                            </span>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
                     <ul className="divide-y rounded-lg border text-sm">
-                        {doc.items
-                            .filter(
-                                (item) =>
-                                    !item.option_name ||
-                                    item.option_name === option,
-                            )
-                            .map((item, i) => (
-                                <li
-                                    key={i}
-                                    className={
-                                        item.optional &&
-                                        !(choosing
-                                            ? selected.includes(item.id)
-                                            : item.included)
-                                            ? 'flex gap-3 p-3 text-muted-foreground'
-                                            : 'flex gap-3 p-3'
-                                    }
-                                >
-                                    {item.optional && choosing && (
-                                        <Checkbox
-                                            className="mt-0.5 size-6"
-                                            aria-label={item.description}
-                                            checked={selected.includes(item.id)}
-                                            onCheckedChange={(c) =>
-                                                toggle(item.id, c === true)
-                                            }
-                                        />
+                        {doc.items.map((item, i) => (
+                            <li
+                                key={i}
+                                className={
+                                    item.optional &&
+                                    !(choosing
+                                        ? selected.includes(item.id)
+                                        : item.included)
+                                        ? 'flex gap-3 p-3 text-muted-foreground'
+                                        : 'flex gap-3 p-3'
+                                }
+                            >
+                                {item.optional && choosing && (
+                                    <Checkbox
+                                        className="mt-0.5 size-6"
+                                        aria-label={item.description}
+                                        checked={selected.includes(item.id)}
+                                        onCheckedChange={(c) =>
+                                            toggle(item.id, c === true)
+                                        }
+                                    />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                    {item.optional && (
+                                        <p className="text-xs font-medium text-muted-foreground uppercase">
+                                            {choosing
+                                                ? t('estimates.optional')
+                                                : item.included
+                                                  ? t(
+                                                        'estimates.optional_included',
+                                                    )
+                                                  : t(
+                                                        'estimates.optional_not_included',
+                                                    )}
+                                        </p>
                                     )}
-                                    <div className="min-w-0 flex-1">
-                                        {item.optional && (
-                                            <p className="text-xs font-medium text-muted-foreground uppercase">
-                                                {choosing
-                                                    ? t('estimates.optional')
-                                                    : item.included
-                                                      ? t(
-                                                            'estimates.optional_included',
-                                                        )
-                                                      : t(
-                                                            'estimates.optional_not_included',
-                                                        )}
-                                            </p>
-                                        )}
-                                        <p className="whitespace-pre-line">
-                                            {item.description}
-                                        </p>
+                                    <p className="whitespace-pre-line">
+                                        {item.description}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {t('billing.qty_times_price', {
+                                            quantity: item.unit
+                                                ? `${item.quantity} ${item.unit}`
+                                                : item.quantity,
+                                            price: item.unit_price,
+                                        })}
+                                        {item.tax_names.length > 0 &&
+                                            ` · ${item.tax_names.join(', ')}`}
+                                    </p>
+                                    {item.warranty && (
                                         <p className="text-xs text-muted-foreground">
-                                            {t('billing.qty_times_price', {
-                                                quantity: item.unit
-                                                    ? `${item.quantity} ${item.unit}`
-                                                    : item.quantity,
-                                                price: item.unit_price,
-                                            })}
-                                            {item.tax_names.length > 0 &&
-                                                ` · ${item.tax_names.join(', ')}`}
+                                            {item.warranty_until
+                                                ? t('billing.warranty_until', {
+                                                      length: item.warranty,
+                                                      date: item.warranty_until,
+                                                  })
+                                                : t('billing.warranty_line', {
+                                                      length: item.warranty,
+                                                  })}
                                         </p>
-                                        {item.warranty && (
-                                            <p className="text-xs text-muted-foreground">
-                                                {item.warranty_until
-                                                    ? t(
-                                                          'billing.warranty_until',
-                                                          {
-                                                              length: item.warranty,
-                                                              date: item.warranty_until,
-                                                          },
-                                                      )
-                                                    : t(
-                                                          'billing.warranty_line',
-                                                          {
-                                                              length: item.warranty,
-                                                          },
-                                                      )}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <span className="tabular-nums">
-                                        {item.total}
-                                    </span>
-                                </li>
-                            ))}
+                                    )}
+                                </div>
+                                <span className="tabular-nums">
+                                    {item.total}
+                                </span>
+                            </li>
+                        ))}
                     </ul>
 
                     <dl className="ml-auto max-w-xs space-y-1 text-sm">
@@ -596,7 +515,6 @@ export default function PublicDocument({
                     token={token}
                     actions={estimate}
                     selected={selected}
-                    option={option}
                     total={total}
                     deposit={deposit}
                     color={doc.brand.color}

@@ -175,21 +175,8 @@ export default function BillingShow({
             setError(Object.values(errors)[0]),
     };
 
-    // Good / Better / Best: one tab per option with its total; "Mark approved" approves the tab shown.
-    const offered = doc.options ?? [];
-    const [activeOption, setActiveOption] = useState(
-        () => offered.find((o) => o.chosen)?.name ?? offered[0]?.name ?? '',
-    );
-
     const setDecision = (approved: boolean) =>
-        router.put(
-            decide(doc.id).url,
-            {
-                approved,
-                ...(approved && activeOption ? { option: activeOption } : {}),
-            },
-            options,
-        );
+        router.put(decide(doc.id).url, { approved }, options);
 
     const toInvoice = () => router.post(convert(doc.id).url, {}, options);
 
@@ -605,161 +592,99 @@ export default function BillingShow({
 
                     {/* Lines and totals */}
                     <section className="space-y-3">
-                        {offered.length > 0 && (
-                            <div
-                                role="tablist"
-                                aria-label={t('estimates.options.title')}
-                                className="grid gap-2"
-                                style={{
-                                    gridTemplateColumns: `repeat(${offered.length}, minmax(0, 1fr))`,
-                                }}
-                                data-test="estimate-options"
-                            >
-                                {offered.map((option) => (
-                                    <button
-                                        key={option.name}
-                                        type="button"
-                                        role="tab"
-                                        aria-selected={
-                                            activeOption === option.name
-                                        }
-                                        onClick={() =>
-                                            setActiveOption(option.name)
-                                        }
-                                        className={
-                                            activeOption === option.name
-                                                ? 'da-raised da-press rounded-2xl p-3 text-left ring-2 ring-primary'
-                                                : 'da-card da-press rounded-2xl p-3 text-left'
-                                        }
-                                    >
-                                        <span className="block text-sm font-semibold">
-                                            {option.label}
-                                        </span>
-                                        <span className="block text-base font-bold tabular-nums">
-                                            {money(option.total)}
-                                        </span>
-                                        {option.chosen && (
-                                            <span className="block text-xs font-medium text-success">
-                                                {t('estimates.options.chosen')}
-                                            </span>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
                         <ul className="da-card divide-y overflow-hidden">
-                            {doc.items
-                                .filter(
-                                    (item) =>
-                                        !item.option_name ||
-                                        item.option_name === activeOption,
-                                )
-                                .map((item) => (
-                                    <li
-                                        key={item.id}
-                                        className={
-                                            item.optional && !item.selected
-                                                ? 'flex items-start gap-3 p-3 text-sm text-muted-foreground'
-                                                : 'flex items-start gap-3 p-3 text-sm'
-                                        }
-                                    >
-                                        <div className="min-w-0 flex-1">
-                                            {item.optional && (
-                                                <p className="text-xs font-medium uppercase">
-                                                    {item.selected
-                                                        ? t(
-                                                              'estimates.optional_included',
-                                                          )
-                                                        : t(
-                                                              'estimates.optional_not_included',
-                                                          )}
-                                                </p>
-                                            )}
-                                            {(item.kind !== 'service' ||
-                                                !item.bill_to_customer) && (
-                                                <p className="text-xs font-medium text-muted-foreground uppercase">
-                                                    {[
-                                                        t(
-                                                            `billing.kinds.${item.kind}`,
-                                                        ),
-                                                        item.part_number,
-                                                        item.bill_to_customer
-                                                            ? null
-                                                            : t(
-                                                                  'billing.line.internal',
-                                                              ),
-                                                    ]
-                                                        .filter(Boolean)
-                                                        .join(' · ')}
-                                                </p>
-                                            )}
-                                            <p className="whitespace-pre-line">
-                                                {item.description}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {t('billing.qty_times_price', {
-                                                    quantity: item.unit
-                                                        ? `${Number(item.quantity)} ${item.unit}`
-                                                        : Number(item.quantity),
-                                                    price: money(
-                                                        item.unit_price,
-                                                    ),
-                                                })}
-                                                {(!item.taxable ||
-                                                    item.tax_rate_ids
-                                                        ?.length === 0) &&
-                                                    ` · ${t('billing.not_taxable')}`}
-                                                {item.taxable &&
-                                                    item.tax_names.length > 0 &&
-                                                    ` · ${item.tax_names.join(', ')}`}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {item.warranty_ends_on
+                            {doc.items.map((item) => (
+                                <li
+                                    key={item.id}
+                                    className={
+                                        item.optional && !item.selected
+                                            ? 'flex items-start gap-3 p-3 text-sm text-muted-foreground'
+                                            : 'flex items-start gap-3 p-3 text-sm'
+                                    }
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        {item.optional && (
+                                            <p className="text-xs font-medium uppercase">
+                                                {item.selected
                                                     ? t(
-                                                          'billing.warranty_until',
-                                                          {
-                                                              length: item.warranty_label,
-                                                              date: time.dateOnly(
-                                                                  item.warranty_ends_on,
-                                                              ),
-                                                          },
+                                                          'estimates.optional_included',
                                                       )
-                                                    : item.warranty_value
-                                                      ? t(
-                                                            'billing.warranty_line',
-                                                            {
-                                                                length: item.warranty_label,
-                                                            },
-                                                        )
-                                                      : item.warranty_label}
-                                                {item.private_difference !==
-                                                    null &&
-                                                    item.private_difference !==
-                                                        undefined &&
-                                                    ` · ${t('billing.line.difference', { amount: money(item.private_difference) })}`}
-                                                {item.total_cost !== null &&
-                                                    item.total_cost > 0 &&
-                                                    ` · ${t('billing.line.total_cost')} ${money(item.total_cost)}${item.supplier ? ` (${item.supplier})` : ''}`}
+                                                    : t(
+                                                          'estimates.optional_not_included',
+                                                      )}
                                             </p>
-                                        </div>
-                                        {item.optional && !item.selected ? (
-                                            <span className="text-right text-sm text-muted-foreground tabular-nums">
-                                                {t(
-                                                    'billing.line.optional_extra',
-                                                    {
-                                                        amount: money(
-                                                            item.total,
-                                                        ),
-                                                    },
-                                                )}
-                                            </span>
-                                        ) : (
-                                            <span className="font-medium tabular-nums">
-                                                {money(item.total)}
-                                            </span>
                                         )}
-                                    </li>
-                                ))}
+                                        {(item.kind !== 'service' ||
+                                            !item.bill_to_customer) && (
+                                            <p className="text-xs font-medium text-muted-foreground uppercase">
+                                                {[
+                                                    t(
+                                                        `billing.kinds.${item.kind}`,
+                                                    ),
+                                                    item.part_number,
+                                                    item.bill_to_customer
+                                                        ? null
+                                                        : t(
+                                                              'billing.line.internal',
+                                                          ),
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                            </p>
+                                        )}
+                                        <p className="whitespace-pre-line">
+                                            {item.description}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('billing.qty_times_price', {
+                                                quantity: item.unit
+                                                    ? `${Number(item.quantity)} ${item.unit}`
+                                                    : Number(item.quantity),
+                                                price: money(item.unit_price),
+                                            })}
+                                            {(!item.taxable ||
+                                                item.tax_rate_ids?.length ===
+                                                    0) &&
+                                                ` · ${t('billing.not_taxable')}`}
+                                            {item.taxable &&
+                                                item.tax_names.length > 0 &&
+                                                ` · ${item.tax_names.join(', ')}`}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {item.warranty_ends_on
+                                                ? t('billing.warranty_until', {
+                                                      length: item.warranty_label,
+                                                      date: time.dateOnly(
+                                                          item.warranty_ends_on,
+                                                      ),
+                                                  })
+                                                : item.warranty_value
+                                                  ? t('billing.warranty_line', {
+                                                        length: item.warranty_label,
+                                                    })
+                                                  : item.warranty_label}
+                                            {item.private_difference !== null &&
+                                                item.private_difference !==
+                                                    undefined &&
+                                                ` · ${t('billing.line.difference', { amount: money(item.private_difference) })}`}
+                                            {item.total_cost !== null &&
+                                                item.total_cost > 0 &&
+                                                ` · ${t('billing.line.total_cost')} ${money(item.total_cost)}${item.supplier ? ` (${item.supplier})` : ''}`}
+                                        </p>
+                                    </div>
+                                    {item.optional && !item.selected ? (
+                                        <span className="text-right text-sm text-muted-foreground tabular-nums">
+                                            {t('billing.line.optional_extra', {
+                                                amount: money(item.total),
+                                            })}
+                                        </span>
+                                    ) : (
+                                        <span className="font-medium tabular-nums">
+                                            {money(item.total)}
+                                        </span>
+                                    )}
+                                </li>
+                            ))}
                         </ul>
 
                         <dl className="ml-auto max-w-xs space-y-1 text-sm">

@@ -262,10 +262,15 @@ class CustomerController extends Controller
     {
         Gate::authorize('update', $customer);
 
-        $customer->load(['phones', 'emails']);
+        $customer->load(['phones', 'emails', 'primaryProperty']);
+        $main = $customer->primaryProperty;
 
         return Inertia::render('customers/form', [
-            'customer' => $this->customerData($customer),
+            'customer' => [
+                ...$this->customerData($customer),
+                // The main address, edited right on the form; an empty one is shown empty and filled in.
+                'property' => $main ? self::propertyData($main) : null,
+            ],
             ...$this->formOptions(),
         ]);
     }
@@ -277,6 +282,9 @@ class CustomerController extends Controller
             $request->customerAttributes(),
             $request->validated('phones', []),
             $request->validated('emails', []),
+            $request->propertyAttributes(),
+            // The form edits the main address in place.
+            $request->propertyId() ?? $customer->primaryProperty()->value('id'),
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('customers.updated')]);

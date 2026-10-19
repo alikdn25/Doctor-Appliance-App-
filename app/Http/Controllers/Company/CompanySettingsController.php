@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Company;
 
+use App\Actions\Jobs\AssignJob;
 use App\Enums\JobOutcome;
 use App\Enums\PaymentTerms;
 use App\Enums\WarrantyUnit;
@@ -53,7 +54,7 @@ class CompanySettingsController extends Controller
                 'id', 'name', 'country', 'timezone', 'currency', 'locale', 'prices_include_tax',
                 'invoice_prefix', 'invoice_next_number', 'online_tips',
                 'estimate_prefix', 'estimate_next_number', 'travel_buffer_minutes', 'payment_provider',
-                'estimate_valid_days', 'estimate_followup_days', 'technicians_can_delete_jobs', 'diagnostic_service_id', 'strict_arrival_reminder_minutes',
+                'estimate_valid_days', 'estimate_followup_days', 'technicians_can_delete_jobs', 'works_alone', 'diagnostic_service_id', 'strict_arrival_reminder_minutes',
                 'warranty_labor_value', 'warranty_labor_unit', 'warranty_parts_value', 'warranty_parts_unit',
                 'warranty_parts_above_value', 'warranty_parts_above_unit', 'warranty_terms', 'technicians_see_costs', 'accepts_cash',
             ]) + [
@@ -95,12 +96,17 @@ class CompanySettingsController extends Controller
         ]);
     }
 
-    public function update(CompanySettingsRequest $request, AuditLogger $audit): RedirectResponse
+    public function update(CompanySettingsRequest $request, AuditLogger $audit, AssignJob $assign): RedirectResponse
     {
         $company = currentCompany();
         $company->fill($request->settings());
         $changes = $company->getDirty();
         $company->save();
+
+        // Switched to working alone: open visits nobody has go to the Owner.
+        if (array_key_exists('works_alone', $changes) && $company->works_alone) {
+            $assign->giveUnassignedToSoloWorker($request->user());
+        }
 
         if ($changes !== []) {
             $audit->record('company.settings_updated', $company, ['fields' => array_keys($changes)]);

@@ -11,44 +11,58 @@ test('one "Add item" sheet adds labor, part and material rows whose prices add u
     await page.goto(`/jobs/${fixture.job_id}/invoices/create`);
 
     // The old type switch and the three "+ Labour / Part / Material" buttons are gone (Canadian spelling).
-    await expect(page.getByRole('button', { name: 'Labour' })).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Labour', exact: true }),
+    ).toHaveCount(0);
 
     const addItem = async (kind: string, name: string, price: string) => {
         await page.getByRole('button', { name: 'Add item' }).click();
         const sheet = page.getByRole('dialog');
-        await expect(sheet.getByText('Or custom item')).toBeVisible();
+        // Labour · Part · Material sit on top, above the price book search.
+        await expect(sheet.getByText('Your own item')).toBeVisible();
         await sheet.getByRole('button', { name: kind, exact: true }).click();
-        await expect(sheet).toHaveCount(0);
 
-        // The new line opens with the cursor in its name; the others stay folded.
-        await expect(
-            page.getByLabel('Description', { exact: true }),
-        ).toHaveCount(1);
-        await page.getByLabel('Description', { exact: true }).fill(name);
-        await page.getByLabel('Price', { exact: true }).fill(price);
-        // Materials carry no warranty.
-        await expect(page.getByLabel('Warranty', { exact: true })).toHaveCount(
+        // Your own item opens a small sheet: name, quantity, price, Done.
+        const line = page.locator('[data-test="line-sheet"]');
+        await expect(line).toBeVisible();
+        await line.getByLabel('Description', { exact: true }).fill(name);
+        await line.getByLabel('Price', { exact: true }).fill(price);
+        // Taxes and warranty wait under More; materials carry no warranty.
+        await expect(line.getByLabel('Warranty', { exact: true })).toHaveCount(
+            0,
+        );
+        await line.getByRole('button', { name: 'More', exact: true }).click();
+        await expect(line.getByLabel('Warranty', { exact: true })).toHaveCount(
             kind === 'Material' ? 0 : 1,
         );
-        await page.getByRole('button', { name: 'Done' }).click();
+        await line.getByRole('button', { name: 'Done' }).click();
+        await expect(line).toHaveCount(0);
     };
 
     await addItem('Labour', 'Diagnosis and repair', '100');
     await addItem('Part', 'Drain pump', '150');
     await addItem('Material', 'Hose clamp', '10');
 
-    // Folded rows: type letter, name, "qty × price" and the amount.
+    // One row per line: type letter, name, "qty × price" and the amount.
     await expect(page.getByLabel('Description', { exact: true })).toHaveCount(
         0,
     );
     const pump = page.getByRole('button', { name: /Drain pump/ });
     await expect(pump).toContainText('1 × $150.00');
+    await expect(page.locator('[data-test="line-row"]')).toHaveCount(3);
+    const rowHeight = await pump.evaluate((el) => el.clientHeight);
+    expect(rowHeight).toBeLessThan(60);
 
     // A tap opens the row; the stepper doubles the quantity.
     await pump.click();
-    await page.getByRole('button', { name: 'More', exact: true }).click();
+    await page.getByRole('button', { name: 'One more', exact: true }).click();
     await expect(page.getByLabel('Qty', { exact: true })).toHaveValue('2');
     await page.getByRole('button', { name: 'Done' }).click();
+
+    // One warranty for the whole invoice, from the company's settings.
+    await expect(page.locator('[data-test="document-warranty"]')).toContainText(
+        'Warranty:',
+    );
 
     const totals = page.getByLabel('Totals');
     await expect(
@@ -110,19 +124,25 @@ test('a tax set for parts and materials skips labor until ticked on the line', a
             .getByRole('dialog')
             .getByRole('button', { name: kind, exact: true })
             .click();
-        await page.getByLabel('Description', { exact: true }).fill(label);
-        await page.getByLabel('Price', { exact: true }).fill('100');
-        await page.getByRole('button', { name: 'Done' }).click();
+        const line = page.locator('[data-test="line-sheet"]');
+        await line.getByLabel('Description', { exact: true }).fill(label);
+        await line.getByLabel('Price', { exact: true }).fill('100');
+        await line.getByRole('button', { name: 'Done' }).click();
     }
 
     const totals = page.getByLabel('Totals');
     const taxRow = totals.getByText(`${name} 10%`).locator('..');
     await expect(taxRow).toContainText('$10.00');
 
-    // Ticked on the labor line, the tax covers it too.
+    // Tax ticks are not on the line until More; ticked on the labor line, the tax covers it too.
     await page.getByRole('button', { name: /Repair labor/ }).click();
+    await expect(
+        page.getByRole('checkbox', { name: `${name} 10%` }),
+    ).toHaveCount(0);
+    await page.getByRole('button', { name: 'More', exact: true }).click();
     await page.getByRole('checkbox', { name: `${name} 10%` }).check();
     await expect(taxRow).toContainText('$20.00');
+    await page.getByRole('button', { name: 'Done' }).click();
 
     // Switched off again so the other scenarios keep their totals.
     await page.goto('/company/taxes');

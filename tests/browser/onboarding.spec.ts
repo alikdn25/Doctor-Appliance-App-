@@ -49,6 +49,7 @@ test('new owner registers, confirms email and creates a usable company without m
         .locator('#company-name')
         .fill(`New Company ${info.project.name}`);
     await page.locator('#country').selectOption('GB');
+    await page.getByRole('radio', { name: /Just me/ }).click();
     await page.locator('#timezone').selectOption('Europe/London');
     await page.screenshot({
         path: info.outputPath('company-setup.png'),

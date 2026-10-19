@@ -14,9 +14,9 @@ import {
 import { useTrans } from '@/lib/i18n';
 
 /**
- * "Add item": "From estimate EST-1" (all lines of an estimate of the job in one tap), the price book with a search
- * that filters as you type (the item's type comes from the price book), and "Or custom item" with one button per
- * type for a line typed by hand.
+ * "Add item": Labour · Part · Material for a line typed by hand right under the title, "From estimate EST-1" (all
+ * lines of an estimate of the job in one tap), then the price book with a search that filters as you type (the
+ * item's type comes from the price book).
  */
 export function AddItemSheet({
     open,
@@ -78,6 +78,35 @@ export function AddItemSheet({
                         {t('billing.add_sheet.hint')}
                     </SheetDescription>
                 </SheetHeader>
+
+                {/* Labour · Part · Material on top: a line typed by hand in one tap (owner's fixes, October 19). */}
+                <div className="space-y-1" data-test="add-custom">
+                    <p className="text-xs text-muted-foreground">
+                        {t('billing.add_sheet.custom')}
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                        {(['service', 'part', 'material'] as const).map(
+                            (kind) => (
+                                <button
+                                    key={kind}
+                                    type="button"
+                                    className="da-raised da-press flex h-12 items-center justify-center gap-2 rounded-2xl px-2 text-sm font-semibold"
+                                    onClick={() => {
+                                        onCustom(kind);
+                                        close(false);
+                                    }}
+                                >
+                                    <KindBadge
+                                        kind={kind}
+                                        className="size-6 text-xs"
+                                        decorative
+                                    />
+                                    {t(`billing.kinds.${kind}`)}
+                                </button>
+                            ),
+                        )}
+                    </div>
+                </div>
 
                 {estimates.length > 0 && onEstimate && (
                     <div
@@ -169,34 +198,6 @@ export function AddItemSheet({
                         </ul>
                     </>
                 )}
-
-                <div className="space-y-2 border-t pt-3">
-                    <p className="text-sm font-medium">
-                        {t('billing.add_sheet.custom')}
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                        {(['service', 'part', 'material'] as const).map(
-                            (kind) => (
-                                <button
-                                    key={kind}
-                                    type="button"
-                                    className="da-raised da-press flex h-12 items-center justify-center gap-2 rounded-2xl px-2 text-sm font-semibold"
-                                    onClick={() => {
-                                        onCustom(kind);
-                                        close(false);
-                                    }}
-                                >
-                                    <KindBadge
-                                        kind={kind}
-                                        className="size-6 text-xs"
-                                        decorative
-                                    />
-                                    {t(`billing.kinds.${kind}`)}
-                                </button>
-                            ),
-                        )}
-                    </div>
-                </div>
             </SheetContent>
         </Sheet>
     );

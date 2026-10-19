@@ -29,6 +29,7 @@ import {
 import { WeekAgenda } from '@/components/calendar/week-agenda';
 import { WeekGrid } from '@/components/calendar/week-grid';
 import { StatusBadge } from '@/components/jobs/status-badge';
+import { TechnicianPicker } from '@/components/jobs/technician-picker';
 import type { Assignable } from '@/components/jobs/types';
 import { isFinishedJob } from '@/components/jobs/types';
 import { VisitDialog } from '@/components/jobs/visit-dialog';
@@ -43,6 +44,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import {
     Sheet,
     SheetContent,
@@ -56,7 +58,11 @@ import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
 import { calendar } from '@/routes';
 import { create as bookCustomer, show as showJob } from '@/routes/jobs';
-import { move, store as storeVisit } from '@/routes/visits';
+import {
+    move,
+    store as storeVisit,
+    transfer as transferVisits,
+} from '@/routes/visits';
 
 type Props = {
     view: 'day' | 'week' | 'map';
@@ -163,6 +169,38 @@ export default function CalendarPage({
     const [details, setDetails] = useState<CalendarVisit | null>(null);
     const [editing, setEditing] = useState<CalendarVisit | null>(null);
     const [scheduling, setScheduling] = useState<UnscheduledJob | null>(null);
+    // "Transfer" (owner's fixes, October 19): tick jobs of one person's lane, then "Move to…" another person.
+    const [transferLane, setTransferLane] = useState<number | null | undefined>(
+        undefined,
+    );
+    const [selected, setSelected] = useState<number[]>([]);
+    const [moveOpen, setMoveOpen] = useState(false);
+    const stopTransfer = () => {
+        setTransferLane(undefined);
+        setSelected([]);
+        setMoveOpen(false);
+    };
+    const moveSelected = (userId: number | null) => {
+        if (userId === null) return;
+        setMoveOpen(false);
+        router.post(
+            transferVisits().url,
+            {
+                visit_ids: selected,
+                from_user_id: transferLane ?? null,
+                to_user_id: userId,
+            },
+            {
+                ...options,
+                // What is left in the lane can be ticked and given to someone else.
+                onSuccess: () => setSelected([]),
+            },
+        );
+    };
+    const oneSelected =
+        selected.length === 1
+            ? visits.find((v) => v.id === selected[0])
+            : undefined;
 
     const go = (query: Record<string, string>) =>
         router.get(
@@ -544,6 +582,21 @@ export default function CalendarPage({
                                 onVisitTouchStart={touchVisit}
                                 onDrop={drop}
                                 onOpen={open}
+                                transferLane={transferLane}
+                                selected={selected}
+                                onTransfer={(lane) => {
+                                    setSelected([]);
+                                    setTransferLane(lane.id);
+                                }}
+                                onToggle={(visit) =>
+                                    setSelected((ids) =>
+                                        ids.includes(visit.id)
+                                            ? ids.filter(
+                                                  (id) => id !== visit.id,
+                                              )
+                                            : [...ids, visit.id],
+                                    )
+                                }
                             />
                         ) : (
                             <>
@@ -828,6 +881,51 @@ export default function CalendarPage({
                     )}
                 </DialogContent>
             </Dialog>
+
+            {transferLane !== undefined && view === 'day' && (
+                <StickyActionBar>
+                    <p
+                        className="flex min-h-12 items-center text-sm font-medium"
+                        role="status"
+                        data-test="transfer-status"
+                    >
+                        {selected.length > 0
+                            ? t('jobs.transfer.selected', {
+                                  count: selected.length,
+                              })
+                            : t('jobs.transfer.select_hint')}
+                    </p>
+                    <Button
+                        disabled={selected.length === 0}
+                        onClick={() => setMoveOpen(true)}
+                        data-test="transfer-move"
+                    >
+                        {t('jobs.transfer.move_to')}
+                    </Button>
+                    <Button variant="outline" onClick={stopTransfer}>
+                        {t('jobs.transfer.done')}
+                    </Button>
+                </StickyActionBar>
+            )}
+            <TechnicianPicker
+                open={moveOpen}
+                onOpenChange={setMoveOpen}
+                date={date}
+                window={
+                    oneSelected
+                        ? {
+                              start: oneSelected.start_time,
+                              end: oneSelected.end_time,
+                          }
+                        : null
+                }
+                excludeVisitIds={selected}
+                excludeUserId={transferLane ?? null}
+                title={t('jobs.transfer.move_title', {
+                    count: selected.length,
+                })}
+                onPick={moveSelected}
+            />
 
             <VisitDialog
                 open={editing !== null}

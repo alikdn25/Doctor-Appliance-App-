@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Creates or updates a customer with phones, emails and (on create) a first property.
+ * Creates or updates a customer with phones, emails and a service address (added, or the main one edited).
  * Must run in a tenant context.
  */
 class SaveCustomer
@@ -22,10 +22,11 @@ class SaveCustomer
      * @param  list<array<string, mixed>>  $phones
      * @param  list<array<string, mixed>>  $emails
      * @param  array<string, mixed>|null  $property
+     * @param  int|null  $propertyId  The customer's address being edited; null adds one (or fills an empty one).
      */
-    public function handle(?Customer $customer, array $attributes, array $phones, array $emails, ?array $property = null): Customer
+    public function handle(?Customer $customer, array $attributes, array $phones, array $emails, ?array $property = null, ?int $propertyId = null): Customer
     {
-        return DB::transaction(function () use ($customer, $attributes, $phones, $emails, $property) {
+        return DB::transaction(function () use ($customer, $attributes, $phones, $emails, $property, $propertyId) {
             $customer ??= new Customer;
             $customer->fill($attributes)->save();
 
@@ -36,7 +37,8 @@ class SaveCustomer
             $this->syncRows($customer->emails(), $emails, CustomerEmail::class);
 
             if ($property !== null) {
-                $this->saveProperty->handle($customer, null, $property);
+                $existing = $propertyId === null ? null : $customer->properties()->find($propertyId);
+                $this->saveProperty->handle($customer, $existing, $property);
             }
 
             return $customer;

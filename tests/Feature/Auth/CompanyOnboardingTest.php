@@ -12,7 +12,7 @@ function companySetupPayload(array $overrides = []): array
 {
     return array_replace([
         'name' => 'New Repair Company', 'country' => 'GB', 'vertical' => 'appliance_repair',
-        'currency' => 'GBP', 'locale' => 'en-GB', 'timezone' => 'Europe/London',
+        'currency' => 'GBP', 'locale' => 'en-GB', 'timezone' => 'Europe/London', 'works_alone' => false,
     ], $overrides);
 }
 

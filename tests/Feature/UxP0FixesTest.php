@@ -47,8 +47,8 @@ test('the default hourly service is spelled for the new company', function () {
 
     $names = fn (Company $company) => inCompany($company, fn () => Service::query()->pluck('name')->all());
 
-    expect($names($canada))->toContain('Labour (per hour)')->not->toContain('Labor (per hour)')
-        ->and($names($usa))->toContain('Labor (per hour)')->not->toContain('Labour (per hour)');
+    expect($names($canada))->toContain('Labour')->not->toContain('Labor')
+        ->and($names($usa))->toContain('Labor')->not->toContain('Labour');
 });
 
 test('credit and discount lines show no warranty', function () {
