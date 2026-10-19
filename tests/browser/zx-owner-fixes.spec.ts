@@ -88,8 +88,13 @@ test('the job page is one list with Navigate, Call and Text, and the technician 
     await row.getByRole('button').click();
     const picker = page.locator('[data-test="technician-picker"]');
     await expect(picker.getByText('Browser Owner')).toBeVisible();
-    await expect(picker).toContainText(/1 job/);
-    await expect(picker).toContainText(/free/);
+    // The person already on the job is said so; the others are free or busy at this time.
+    await expect(
+        picker.getByRole('button', { name: /Browser Technician/ }),
+    ).toContainText('1 job · has this job');
+    await expect(
+        picker.getByRole('button', { name: /Browser Owner/ }),
+    ).toContainText('0 jobs · free');
     await noSideScroll(page);
     await picker.getByRole('button', { name: /Browser Owner/ }).click();
     await expect(row).toContainText('Browser Owner');
@@ -127,6 +132,22 @@ test('Transfer in the calendar moves the ticked jobs to another person', async (
         );
         await page.getByRole('button', { name: 'Done', exact: true }).click();
     };
+
+    // "+1 →" (more people to the right) never covers a person's name.
+    const more = page.locator('[data-test="lanes-more"]');
+    if ((await more.count()) > 0) {
+        const chip = (await more.boundingBox())!;
+        const heads = await page
+            .locator('[data-drop-lane]')
+            .locator('..')
+            .locator(':scope > div:first-child')
+            .evaluateAll((els) =>
+                els.map((el) => el.getBoundingClientRect().toJSON()),
+            );
+        for (const head of heads) {
+            expect(chip.y + chip.height <= head.top + 1).toBe(true);
+        }
+    }
 
     await move('Browser Technician', 'Browser Owner');
     await move('Browser Owner', 'Browser Technician');
@@ -220,6 +241,14 @@ test('an estimate: Labour · Part · Material on top, priced items added as one 
 
     await expect(page.getByText(/Good|Better|Best|All options/)).toHaveCount(0);
     await expect(page.locator('[data-test="document-warranty"]')).toBeVisible();
+    // Cancel and Save sit side by side on a 380 px phone.
+    const cancel = (await page
+        .getByRole('link', { name: 'Cancel', exact: true })
+        .boundingBox())!;
+    const save = (await page
+        .locator('[data-test="document-save"]')
+        .boundingBox())!;
+    expect(Math.abs(cancel.y - save.y)).toBeLessThan(2);
     await page.getByRole('button', { name: /Save · / }).click();
     await expect(page).toHaveURL(/\/estimates\/\d+$/);
     await expect(page.getByText(name)).toBeVisible();

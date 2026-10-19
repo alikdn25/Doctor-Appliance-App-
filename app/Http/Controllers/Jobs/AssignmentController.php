@@ -110,7 +110,7 @@ class AssignmentController extends Controller
     }
 
     /**
-     * A person's open visits from today on, for "Transfer" on their Team card.
+     * A person's open visits (overdue ones too), for "Transfer" on their Team card.
      */
     public function openVisits(Request $request, Membership $membership): JsonResponse
     {
@@ -120,7 +120,6 @@ class AssignmentController extends Controller
 
         $visits = JobVisit::query()
             ->whereIn('status', VisitStatus::openValues())
-            ->where('scheduled_start', '>=', CarbonImmutable::now($timezone)->startOfDay()->utc())
             ->whereHas('assignees', fn (Builder $q) => $q->where('users.id', $membership->user_id))
             ->whereHas('job', fn (Builder $q) => $q->visibleTo($user))
             ->with(['job.customer', 'job.property'])
