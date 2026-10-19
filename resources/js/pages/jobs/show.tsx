@@ -434,7 +434,10 @@ export default function JobShow({
                 if (activity instanceof HTMLDetailsElement) {
                     activity.open = true;
                 }
-                activity?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                activity?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                });
             }}
         >
             <MessageSquare /> {t('jobs.text')}

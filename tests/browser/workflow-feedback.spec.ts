@@ -97,6 +97,11 @@ test('a technician types customer and private purchase prices independently and 
         .getByRole('textbox', { name: 'Price', exact: true })
         .first();
     await price.fill('90.00');
+    // The private purchase price is under More in the line's sheet.
+    await page
+        .locator('[data-test="line-sheet"]')
+        .getByRole('button', { name: 'More', exact: true })
+        .click();
     await page
         .getByRole('textbox', {
             name: 'Your purchase price — private',

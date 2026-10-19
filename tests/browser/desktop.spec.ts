@@ -39,7 +39,7 @@ test('lists are sortable tables on a computer and cards on a phone', async ({
     });
 });
 
-test('the job page puts status, money and history in a right column on a computer', async ({
+test('the job page is one list on every screen, Activity below the customer', async ({
     page,
 }, info) => {
     await page.goto(`/jobs/${fixture.job_id}`);
@@ -51,13 +51,9 @@ test('the job page puts status, money and history in a right column on a compute
     const left = (await customer.boundingBox())!;
     const right = (await activity.boundingBox())!;
 
-    if (info.project.name === 'desktop') {
-        await expect(aside).toBeVisible();
-        expect(right.x).toBeGreaterThan(left.x + left.width - 1);
-    } else {
-        // One column: Activity below the customer.
-        expect(right.y).toBeGreaterThan(left.y);
-    }
+    // One list on every screen (owner's fixes, October 19): Activity below the customer, no side column.
+    await expect(aside).toHaveCount(0);
+    expect(right.y).toBeGreaterThan(left.y);
     await page.screenshot({
         path: info.outputPath('job-two-columns.png'),
         fullPage: true,
@@ -75,42 +71,10 @@ test('N opens Book customer and / jumps to the search', async ({ page }) => {
     await expect(page).toHaveURL(/\/jobs\/create\?book=1/);
 });
 
-test('the job side column and table headers stay in view below the app header', async ({
+test('table headers stay in view below the app header', async ({
     page,
 }, info) => {
-    test.skip(
-        info.project.name !== 'desktop',
-        'two columns and tables are for wide screens',
-    );
-    // A short window, scrolled to the very bottom: the header is not covered by the unfinished-jobs strip, and the
-    // top of the side column (status, Estimates & invoices) stays below the header.
-    const layout = async () =>
-        page.evaluate(() => {
-            const rect = (selector: string) =>
-                document.querySelector(selector)?.getBoundingClientRect();
-            const bar = rect('.da-unfinished-bar');
-            const header = rect('header.da-header')!;
-            const aside = rect('[data-test="job-aside"]')!;
-            const atBottom =
-                window.scrollY + window.innerHeight >=
-                document.documentElement.scrollHeight - 1;
-
-            return atBottom
-                ? Math.min(
-                      header.top - (bar?.bottom ?? 0),
-                      aside.top - header.bottom,
-                  )
-                : -1;
-        });
-
-    await page.setViewportSize({ width: 1440, height: 520 });
-    await page.goto(`/jobs/${fixture.job_id}`);
-    await expect(page.locator('[data-test="job-aside"]')).toBeVisible();
-    await page.mouse.move(400, 300);
-    await page.mouse.wheel(0, 5000);
-    await expect.poll(layout).toBeGreaterThanOrEqual(0);
-    await page.setViewportSize({ width: 1440, height: 900 });
-
+    test.skip(info.project.name !== 'desktop', 'tables are for wide screens');
     await page.goto('/jobs?tab=all');
     const table = page.locator('[data-slot="data-table"]');
     await table.getByRole('button', { name: 'Status' }).click();
