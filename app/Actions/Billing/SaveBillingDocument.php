@@ -225,13 +225,7 @@ class SaveBillingDocument
             return $line;
         }, $data['items']));
 
-        if ($estimate) {
-            // The chosen option: the one whose lines were sent selected, else the first offered.
-            $picked = collect($items)->first(fn (array $item) => $item['option_name'] !== null && $item['selected']);
-            $items = self::chooseOption($items, $picked['option_name'] ?? null);
-        }
-
-        // Internal lines (not billed), optional lines not picked and other options are not in the total.
+        // Internal lines (not billed) and optional lines not picked are not in the total.
         $totals = DocumentTotals::calculate(
             array_map(fn (array $item) => [...$item, 'included' => ($item['selected'] ?? true) && $item['bill_to_customer']], $items),
             $data['discount_type'] ?? null,
@@ -281,47 +275,19 @@ class SaveBillingDocument
     }
 
     /**
-     * Optional / selected / option of an estimate line. An option line is never "optional": it is in the total
-     * when its option is the chosen one.
+     * Optional / selected of an estimate line. Good / Better / Best options are gone (owner's fixes, October 19):
+     * a line saved with an option is an ordinary line.
      *
      * @param  array<string, mixed>  $item
-     * @return array{optional: bool, selected: bool, option_name: string|null}
+     * @return array{optional: bool, selected: bool, option_name: null}
      */
     private static function estimateFlags(array $item): array
     {
-        $option = in_array($item['option_name'] ?? null, EstimateItem::OPTIONS, true) ? $item['option_name'] : null;
-
-        if ($option !== null) {
-            return ['optional' => false, 'selected' => (bool) ($item['selected'] ?? false), 'option_name' => $option];
-        }
-
         return [
             'optional' => (bool) ($item['optional'] ?? false),
             'selected' => ! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false),
             'option_name' => null,
         ];
-    }
-
-    /**
-     * One option is chosen: the lines of the given option (or, when it is not offered, of the first option) are
-     * selected, the other options' lines are not.
-     *
-     * @param  list<array<string, mixed>>  $items
-     * @return list<array<string, mixed>>
-     */
-    public static function chooseOption(array $items, ?string $chosen): array
-    {
-        $offered = array_values(array_intersect(EstimateItem::OPTIONS, array_column($items, 'option_name')));
-
-        if ($offered === []) {
-            return $items;
-        }
-
-        $chosen = in_array($chosen, $offered, true) ? $chosen : $offered[0];
-
-        return array_map(fn (array $item) => in_array($item['option_name'] ?? null, EstimateItem::OPTIONS, true)
-            ? [...$item, 'selected' => $item['option_name'] === $chosen, 'optional' => false]
-            : $item, $items);
     }
 
     /**
@@ -338,25 +304,6 @@ class SaveBillingDocument
         }
 
         return $rates->filter(fn (TaxRate $rate) => $rate->appliesTo($kind))->pluck('id')->values()->all();
-    }
-
-    /**
-     * Makes one Good / Better / Best option the chosen one and recalculates the estimate's totals and deposit.
-     */
-    public function choose(Estimate $estimate, string $option): void
-    {
-        $estimate->loadMissing('items');
-
-        if (! $estimate->items->contains('option_name', $option)) {
-            throw ValidationException::withMessages(['option' => __('estimates.errors.unknown_option')]);
-        }
-
-        $estimate->items->each(function (EstimateItem $item) use ($option) {
-            if ($item->option_name !== null) {
-                $item->update(['selected' => $item->option_name === $option]);
-            }
-        });
-        $this->recalculate($estimate);
     }
 
     /**

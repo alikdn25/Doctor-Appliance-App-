@@ -8,14 +8,12 @@ use App\Enums\InvoiceStatus;
 use App\Enums\LineKind;
 use App\Enums\WarrantyUnit;
 use App\Models\Estimate;
-use App\Models\EstimateItem;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Jobs\JobPresenter;
-use App\Support\Locale\Currencies;
 use Carbon\CarbonImmutable;
 
 /**
@@ -95,7 +93,6 @@ class BillingPresenter
                 'total' => $item->total,
                 'optional' => $invoice ? false : $item->optional,
                 'selected' => $invoice ? true : $item->selected,
-                'option_name' => $invoice ? null : $item->option_name,
                 'kind' => $item->kind->value,
                 'service_id' => $item->service_id,
                 'part_number' => $item->part_number,
@@ -168,7 +165,6 @@ class BillingPresenter
                 'ip' => $document->approved_ip,
             ] : null,
             'decline_reason' => $document->decline_reason,
-            'options' => self::options($document),
             'revision' => $document->revision,
             'revised_at' => JobPresenter::iso($document->revised_at),
             'revised_from' => $document->revised_from_id
@@ -188,42 +184,6 @@ class BillingPresenter
                 ])->values()->all()
                 : [],
         ];
-    }
-
-    /**
-     * Good / Better / Best offered on an estimate, each with its own total; the chosen one is in the estimate's
-     * totals.
-     *
-     * @return list<array{name: string, label: string, total: int, chosen: bool}>
-     */
-    public static function options(Estimate $estimate): array
-    {
-        $estimate->loadMissing('items');
-        $offered = array_values(array_intersect(EstimateItem::OPTIONS, $estimate->items->pluck('option_name')->filter()->all()));
-
-        return array_map(function (string $name) use ($estimate) {
-            $totals = DocumentTotals::calculate(
-                $estimate->items->map(fn (EstimateItem $item) => [
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'taxable' => $item->taxable,
-                    'tax_rate_ids' => $item->tax_rate_ids,
-                    'included' => $item->bill_to_customer && ($item->option_name !== null ? $item->option_name === $name : $item->isIncluded()),
-                ])->values()->all(),
-                $estimate->discount_type,
-                $estimate->discount_value,
-                $estimate->taxes,
-                $estimate->prices_include_tax,
-                Currencies::factor($estimate->currency),
-            );
-
-            return [
-                'name' => $name,
-                'label' => __("estimates.options.{$name}"),
-                'total' => $totals['total'],
-                'chosen' => $estimate->items->contains(fn (EstimateItem $item) => $item->option_name === $name && $item->selected),
-            ];
-        }, $offered);
     }
 
     /**

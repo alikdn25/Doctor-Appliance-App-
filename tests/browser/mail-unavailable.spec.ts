@@ -23,6 +23,7 @@ test('signup and technician access work while mail is unavailable without promis
     await page.locator('[data-test="register-button"]').click();
     await expect(page).toHaveURL(/\/onboarding\/company$/);
     await page.locator('#company-name').fill(`Mail Off ${suffix}`);
+    await page.getByRole('radio', { name: /Just me/ }).click();
     await page.locator('[data-test="create-company-button"]').click();
     await expect(page).toHaveURL(/\/dashboard$/);
     await page.goto('/company/team');

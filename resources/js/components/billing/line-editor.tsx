@@ -1,4 +1,11 @@
-import { BookPlus, History, Minus, Plus, Trash2 } from 'lucide-react';
+import {
+    BookPlus,
+    ChevronDown,
+    History,
+    Minus,
+    Plus,
+    Trash2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
     currencyDecimals,
@@ -14,6 +21,13 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
@@ -26,10 +40,6 @@ import type { Option } from '@/types';
 
 export type LineKind = 'service' | 'part' | 'material';
 
-export type EstimateOption = 'good' | 'better' | 'best';
-
-export const ESTIMATE_OPTIONS: EstimateOption[] = ['good', 'better', 'best'];
-
 export type Line = {
     key: number;
     id: number | null;
@@ -40,8 +50,6 @@ export type Line = {
     tax_rate_ids: number[] | null;
     optional: boolean;
     selected: boolean;
-    /** Good / Better / Best (estimates); '' = in every option. */
-    option_name: EstimateOption | '';
     kind: LineKind;
     service_id: number | null;
     part_number: string;
@@ -52,14 +60,15 @@ export type Line = {
     /** Supplier tax paid, by tax rate id (major units as typed). */
     supplier_taxes: Record<string, string>;
     bill_to_customer: boolean;
+    /** The line's own warranty (More); otherwise it follows the document's warranty. */
     warranty_value: string;
     warranty_unit: string;
-    /** The price / warranty were typed by hand: stop filling them in automatically. */
+    warranty_own: boolean;
+    /** The price was typed by hand or came from the price book. */
     price_touched: boolean;
-    warranty_touched: boolean;
 };
 
-type Length = { value: number; unit: string };
+export type Length = { value: number; unit: string };
 
 export type LineSetup = {
     costs_visible: boolean;
@@ -95,7 +104,6 @@ export const newLine = (patch: Partial<Line> = {}): Line => ({
     tax_rate_ids: null,
     optional: false,
     selected: false,
-    option_name: '',
     kind: 'service',
     service_id: null,
     part_number: '',
@@ -107,8 +115,8 @@ export const newLine = (patch: Partial<Line> = {}): Line => ({
     bill_to_customer: true,
     warranty_value: '',
     warranty_unit: 'days',
+    warranty_own: false,
     price_touched: false,
-    warranty_touched: false,
     ...patch,
 });
 
@@ -164,8 +172,47 @@ export function servicePatch(
                   price_touched: true,
               }
             : {}),
-        warranty_touched: false,
+        // A price book item with its own warranty keeps it; otherwise the document's warranty applies.
+        ...(service.warranty_value !== null
+            ? {
+                  warranty_value: String(service.warranty_value),
+                  warranty_unit: service.warranty_unit ?? 'days',
+                  warranty_own: true,
+              }
+            : { warranty_own: false }),
     };
+}
+
+/** The warranty for the whole document: labour and parts, from the company's settings until changed. */
+export type DocumentWarranty = { labor: Length; parts: Length };
+
+/**
+ * The warranty a line gets: its own (set under More), else the document's, else the company default for its kind
+ * and price (a part above the price threshold may get a longer one). Materials carry none.
+ */
+export function lineWarranty(
+    line: Line,
+    setup: LineSetup,
+    /** Null while the document's warranty is the company's default. */
+    document: DocumentWarranty | null,
+    priceMinor: number,
+): Length | null {
+    if (line.kind === 'material') {
+        return null;
+    }
+
+    if (line.warranty_own) {
+        return {
+            value: Number(line.warranty_value || 0),
+            unit: line.warranty_unit,
+        };
+    }
+
+    if (document) {
+        return line.kind === 'part' ? document.parts : document.labor;
+    }
+
+    return defaultWarranty(setup, line.kind, priceMinor);
 }
 
 /** L / P / M: a small raised tile in the colour of the line type (dark blue, orange, grey). */
@@ -210,8 +257,9 @@ const joinDescription = (name: string, note: string | null) =>
     note === null ? name : `${name}\n${note}`;
 
 /**
- * One line of an estimate or invoice. Collapsed it is a compact row (type letter, name, "qty × price", amount);
- * a tap opens it to edit quantity, price, taxes, warranty and a note, with Remove and Done at the bottom.
+ * One line of an estimate or invoice (owner's fixes, October 19). In the list it is one row: name, "qty × price",
+ * amount. A tap opens a small sheet at the bottom with name, quantity, price and Done; the note, taxes, warranty and
+ * the rest are under "More".
  */
 export function LineEditor({
     line,
@@ -223,6 +271,7 @@ export function LineEditor({
     services,
     taxes,
     activeTaxIds,
+    warranty,
     estimate,
     open,
     errors,
@@ -242,6 +291,8 @@ export function LineEditor({
     taxes: LineTax[];
     /** The taxes the line is charged now. */
     activeTaxIds: number[];
+    /** The warranty the line gets now (its own or the document's); null for materials. */
+    warranty: Length | null;
     estimate: boolean;
     open: boolean;
     errors: Record<string, string | undefined>;
@@ -279,39 +330,12 @@ export function LineEditor({
     const fmt = (value: number) =>
         money(Math.round(value * 10 ** currencyDecimals(currency)));
     const { name, note } = splitDescription(line.description);
-    // A line with a problem stays open so the message can be seen.
-    const expanded = open || lineErrors;
-
-    // Default warranty follows kind / price / price book item until set by hand.
-    useEffect(() => {
-        if (line.warranty_touched || line.kind === 'material') {
-            return;
-        }
-
-        const w = defaultWarranty(
-            setup,
-            line.kind,
-            priceMinor,
-            services.find((s) => s.id === line.service_id),
-        );
-
-        if (
-            String(w.value) !== line.warranty_value ||
-            w.unit !== line.warranty_unit
-        ) {
-            onChange({
-                warranty_value: String(w.value),
-                warranty_unit: w.unit,
-            });
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [line.kind, priceMinor, line.service_id, line.warranty_touched]);
 
     // Earlier costs of this part / material (as the part number or name is typed).
     useEffect(() => {
         const term = (line.part_number || name).trim();
 
-        if (!expanded || !goods || !privateCosts || term.length < 2) {
+        if (!open || !more || !goods || !privateCosts || term.length < 2) {
             setHistory([]);
 
             return;
@@ -332,7 +356,7 @@ export function LineEditor({
             clearTimeout(timer);
             controller.abort();
         };
-    }, [line.part_number, name, goods, privateCosts, expanded]);
+    }, [line.part_number, name, goods, privateCosts, open, more]);
 
     const setCost = (value: string) => onChange({ unit_cost: value });
 
@@ -367,8 +391,8 @@ export function LineEditor({
                 unit_cost: normalizeNumber(line.unit_cost) || null,
                 unit_price: normalizeNumber(line.unit_price) || null,
                 taxable: line.taxable,
-                warranty_value: line.warranty_value || null,
-                warranty_unit: line.warranty_unit,
+                warranty_value: warranty?.value ?? null,
+                warranty_unit: warranty?.unit ?? 'days',
             }),
         }).then((r) => {
             if (r.ok) {
@@ -380,621 +404,684 @@ export function LineEditor({
 
     const amount =
         line.optional && !line.selected ? (
-            <span className="text-sm text-muted-foreground tabular-nums">
+            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                 {t('billing.line.optional_extra', { amount: money(total) })}
             </span>
         ) : (
             <span
-                className={
-                    !line.bill_to_customer
-                        ? 'text-muted-foreground tabular-nums line-through'
-                        : 'font-semibold tabular-nums'
-                }
+                className={cn(
+                    'shrink-0 tabular-nums',
+                    line.bill_to_customer
+                        ? 'font-semibold'
+                        : 'text-muted-foreground line-through',
+                )}
             >
                 {money(total)}
             </span>
         );
 
-    if (!expanded) {
-        return (
-            <li>
-                <button
-                    type="button"
-                    className={cn(
-                        'da-card da-press flex min-h-14 w-full items-center gap-3 px-3 py-2 text-left',
-                        !line.bill_to_customer && 'opacity-70',
-                    )}
-                    aria-expanded={false}
-                    onClick={() => onOpen(true)}
-                >
-                    <KindBadge kind={line.kind} />
-                    <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">
-                            {line.option_name && (
-                                <span className="da-badge mr-1.5 rounded-full px-2 text-xs leading-5 font-semibold">
-                                    {t(`estimates.options.${line.option_name}`)}
-                                </span>
-                            )}
-                            {name.trim() || t('billing.line.untitled')}
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground tabular-nums">
-                            {t('billing.qty_times_price', {
-                                quantity: line.quantity || '0',
-                                price: fmt(toNumber(line.unit_price)),
-                            })}
-                            {!line.bill_to_customer &&
-                                ` · ${t('billing.line.internal')}`}
-                        </span>
-                    </span>
-                    {amount}
-                </button>
-            </li>
-        );
-    }
-
     return (
-        <li
-            className={cn(
-                'da-card space-y-3 p-3',
-                !line.bill_to_customer && 'border border-dashed',
-            )}
-        >
-            <div className="flex items-center gap-3">
-                <KindBadge kind={line.kind} decorative />
-                <span className="flex-1 text-sm font-semibold">
-                    {t(`billing.kinds.${line.kind}`)}
-                </span>
-                {amount}
-            </div>
-
-            <div>
-                <Input
-                    aria-label={t('billing.fields.description')}
-                    placeholder={t('billing.fields.description')}
-                    maxLength={500}
-                    value={name}
-                    autoFocus={name === ''}
-                    onChange={(e) =>
-                        onChange({
-                            description: joinDescription(
-                                e.target.value.replace(/\n/g, ' '),
-                                note,
-                            ),
-                        })
-                    }
-                />
-                <InputError message={err('description')} />
-            </div>
-
-            {note === null ? (
-                <button
-                    type="button"
-                    className="min-h-11 text-sm font-medium text-primary"
-                    onClick={() =>
-                        onChange({ description: joinDescription(name, '') })
-                    }
-                >
-                    {t('billing.line.add_note')}
-                </button>
-            ) : (
-                <Textarea
-                    aria-label={t('billing.line.note')}
-                    placeholder={t('billing.line.note')}
-                    rows={2}
-                    maxLength={Math.max(0, 499 - name.length)}
-                    value={note}
-                    onChange={(e) =>
-                        onChange({
-                            description: joinDescription(name, e.target.value),
-                        })
-                    }
-                />
-            )}
-
-            {goods && (
-                <div className="grid grid-cols-2 gap-2">
-                    <Input
-                        aria-label={t('billing.line.part_number')}
-                        placeholder={t('billing.line.part_number')}
-                        value={line.part_number}
-                        maxLength={100}
-                        onChange={(e) =>
-                            onChange({
-                                part_number: e.target.value.toUpperCase(),
-                            })
-                        }
-                    />
-                    {privateCosts && (
-                        <Input
-                            aria-label={t('billing.line.supplier')}
-                            placeholder={t('billing.line.supplier')}
-                            value={line.supplier}
-                            maxLength={150}
-                            onChange={(e) =>
-                                onChange({ supplier: e.target.value })
-                            }
-                        />
-                    )}
-                </div>
-            )}
-
-            {goods && privateCosts && history.length > 0 && (
-                <div className="rounded-md bg-muted/50 p-2 text-xs">
-                    <p className="mb-1 flex items-center gap-1 font-medium">
-                        <History className="size-3" />
-                        {t('billing.line.cost_history')}
-                    </p>
-                    <ul className="space-y-0.5">
-                        {history.slice(0, 5).map((h, i) => (
-                            <li key={i}>
-                                <button
-                                    type="button"
-                                    className="min-h-8 w-full text-left hover:underline"
-                                    onClick={() => {
-                                        onChange({
-                                            supplier:
-                                                h.supplier ?? line.supplier,
-                                            part_number:
-                                                line.part_number ||
-                                                (h.part_number ?? ''),
-                                        });
-
-                                        if (h.unit_cost !== null) {
-                                            setCost(
-                                                fromMinor(
-                                                    h.unit_cost,
-                                                    currency,
-                                                ),
-                                            );
-                                        }
-                                    }}
-                                >
-                                    {[
-                                        h.date ? time.date(h.date) : null,
-                                        h.unit_cost !== null
-                                            ? `${money(h.unit_cost)}${h.unit ? ` / ${h.unit}` : ''}`
-                                            : null,
-                                        h.supplier,
-                                        h.part_number,
-                                    ]
-                                        .filter(Boolean)
-                                        .join(' · ')}
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-
-            <div className="grid grid-cols-[auto_1fr] gap-2">
-                <div>
-                    <label className="text-xs text-muted-foreground">
-                        {t('billing.fields.quantity')}
-                    </label>
-                    <div className="flex items-center gap-1">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            aria-label={t('billing.line.less')}
-                            onClick={() => step(-1)}
-                        >
-                            <Minus />
-                        </Button>
-                        <Input
-                            aria-label={t('billing.fields.quantity')}
-                            inputMode="decimal"
-                            className="w-14 text-center"
-                            value={line.quantity}
-                            onChange={(e) =>
-                                onChange({ quantity: e.target.value })
-                            }
-                        />
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            aria-label={t('billing.line.more_quantity')}
-                            onClick={() => step(1)}
-                        >
-                            <Plus />
-                        </Button>
-                    </div>
-                    <NumberHint text={line.quantity} format={String} />
-                    <InputError message={err('quantity')} />
-                </div>
-                <div className="min-w-0">
-                    <label className="text-xs text-muted-foreground">
-                        {t('billing.fields.unit_price')}
-                    </label>
-                    <MoneyInput
-                        symbol={symbol}
-                        currency={currency}
-                        value={line.unit_price}
-                        label={t('billing.fields.unit_price')}
-                        onChange={(value) =>
-                            onChange({ unit_price: value, price_touched: true })
-                        }
-                    />
-                    <NumberHint text={line.unit_price} format={fmt} />
-                    <InputError message={err('unit_price')} />
-                </div>
-            </div>
-            {line.kind === 'material' && (
-                <NativeSelect
-                    aria-label={t('billing.line.unit')}
-                    value={
-                        setup.units.some((u) => u.value === line.unit) ||
-                        line.unit === ''
-                            ? line.unit
-                            : '__custom'
-                    }
-                    onChange={(e) =>
-                        onChange({
-                            unit:
-                                e.target.value === '__custom'
-                                    ? ' '
-                                    : e.target.value,
-                        })
-                    }
-                >
-                    <option value="">{t('billing.line.unit')}</option>
-                    {setup.units.map((u) => (
-                        <option key={u.value} value={u.value}>
-                            {u.label}
-                        </option>
-                    ))}
-                    <option value="__custom">
-                        {t('billing.line.custom_unit')}
-                    </option>
-                </NativeSelect>
-            )}
-            {line.kind === 'material' &&
-                line.unit !== '' &&
-                !setup.units.some((u) => u.value === line.unit) && (
-                    <Input
-                        aria-label={t('billing.line.custom_unit')}
-                        placeholder={t('billing.line.custom_unit')}
-                        value={line.unit.trim()}
-                        maxLength={20}
-                        onChange={(e) =>
-                            onChange({ unit: e.target.value || ' ' })
-                        }
-                    />
-                )}
-
-            {goods && privateCosts && (
-                <div className="rounded-xl border border-dashed bg-muted/40 p-3">
-                    <label className="text-xs font-medium">
-                        {t('billing.line.private_purchase_price')}
-                    </label>
-                    <p className="mb-2 text-xs text-muted-foreground">
-                        {t('billing.line.private_cost_hint')}
-                    </p>
-                    <MoneyInput
-                        symbol={symbol}
-                        currency={currency}
-                        value={line.unit_cost}
-                        label={t('billing.line.private_purchase_price')}
-                        onChange={setCost}
-                    />
-                    <NumberHint text={line.unit_cost} format={fmt} />
-                    <InputError message={err('unit_cost')} />
-                    {difference !== null && (
-                        <p className="mt-2 text-sm font-medium" role="status">
-                            {t('billing.line.difference', {
-                                amount: money(difference),
-                            })}
-                        </p>
-                    )}
-                </div>
-            )}
-
-            {taxes.length > 0 && (
-                <fieldset className="space-y-1">
-                    <legend className="text-xs text-muted-foreground">
-                        {t('billing.line.taxes')}
-                    </legend>
-                    <div className="flex flex-wrap gap-x-4">
-                        {taxes.map((tax) => (
-                            <label
-                                key={tax.id}
-                                className="flex min-h-11 items-center gap-2 text-sm"
-                            >
-                                <Checkbox
-                                    checked={activeTaxIds.includes(tax.id)}
-                                    onCheckedChange={(c) =>
-                                        toggleTax(tax.id, c === true)
-                                    }
-                                />
-                                {t('billing.tax_line', {
-                                    name: tax.name,
-                                    rate: tax.rate,
-                                })}
-                            </label>
-                        ))}
-                    </div>
-                    <InputError message={err('tax_rate_ids')} />
-                </fieldset>
-            )}
-
-            {/* Materials carry no warranty. */}
-            {line.kind !== 'material' && (
-                <div className="grid grid-cols-[1fr_2fr] gap-2">
-                    <div>
-                        <label className="text-xs text-muted-foreground">
-                            {t('billing.warranty')}
-                        </label>
-                        <Input
-                            aria-label={t('billing.warranty')}
-                            inputMode="numeric"
-                            value={line.warranty_value}
-                            onChange={(e) =>
-                                onChange({
-                                    warranty_value: e.target.value.replace(
-                                        /\D/g,
-                                        '',
-                                    ),
-                                    warranty_touched: true,
-                                })
-                            }
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs text-muted-foreground">
-                            {Number(line.warranty_value) === 0
-                                ? t('billing.no_warranty')
-                                : ' '}
-                        </label>
-                        <NativeSelect
-                            aria-label={t('billing.warranty_unit')}
-                            value={line.warranty_unit}
-                            onChange={(e) =>
-                                onChange({
-                                    warranty_unit: e.target.value,
-                                    warranty_touched: true,
-                                })
-                            }
-                        >
-                            {setup.warranty_units.map((u) => (
-                                <option key={u.value} value={u.value}>
-                                    {u.label}
-                                </option>
-                            ))}
-                        </NativeSelect>
-                    </div>
-                </div>
-            )}
-
-            {estimate && (
-                <div className="space-y-1" data-test="line-option">
-                    <p className="text-sm font-medium">
-                        {t('estimates.options.title')}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                        {(['', ...ESTIMATE_OPTIONS] as const).map((option) => (
-                            <button
-                                key={option || 'all'}
-                                type="button"
-                                aria-pressed={line.option_name === option}
-                                className="da-chip da-press inline-flex h-10 items-center rounded-full px-3.5 text-sm font-medium"
-                                onClick={() =>
-                                    onChange({
-                                        option_name: option,
-                                        optional: false,
-                                        selected: false,
-                                    })
-                                }
-                            >
-                                {option
-                                    ? t(`estimates.options.${option}`)
-                                    : t('estimates.options.none')}
-                            </button>
-                        ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                        {t('estimates.options.line_hint')}
-                    </p>
-                </div>
-            )}
-
-            {estimate && line.option_name === '' && (
-                <div className="flex flex-wrap gap-x-4">
-                    <label className="flex min-h-11 items-center gap-2 text-sm">
-                        <Checkbox
-                            checked={line.optional}
-                            onCheckedChange={(c) =>
-                                onChange({
-                                    optional: c === true,
-                                    selected: false,
-                                })
-                            }
-                        />
-                        {t('estimates.optional')}
-                        <span className="text-xs text-muted-foreground">
-                            {t('estimates.optional_hint')}
-                        </span>
-                    </label>
-                    {line.optional && (
-                        <label className="flex min-h-11 items-center gap-2 text-sm">
-                            <Checkbox
-                                checked={line.selected}
-                                onCheckedChange={(c) =>
-                                    onChange({ selected: c === true })
-                                }
-                            />
-                            {t('estimates.included')}
-                        </label>
-                    )}
-                </div>
-            )}
-
+        <li>
             <button
                 type="button"
-                className="min-h-11 text-sm text-muted-foreground underline"
-                aria-expanded={more}
-                onClick={() => setMore((m) => !m)}
+                className={cn(
+                    'da-card da-press flex min-h-12 w-full items-center gap-2 px-3 py-2 text-left text-sm',
+                    !line.bill_to_customer && 'opacity-70',
+                    lineErrors && 'ring-2 ring-danger',
+                )}
+                aria-haspopup="dialog"
+                onClick={() => onOpen(true)}
+                data-test="line-row"
             >
-                {t('billing.line.more_options')}
+                <KindBadge kind={line.kind} className="size-6 text-xs" />
+                <span className="min-w-0 flex-1 truncate font-medium">
+                    {name.trim() || t('billing.line.untitled')}
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                    {t('billing.qty_times_price', {
+                        quantity: line.quantity || '0',
+                        price: fmt(toNumber(line.unit_price)),
+                    })}
+                </span>
+                {amount}
             </button>
 
-            {more && (
-                <div className="space-y-3">
-                    <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">
-                            {t('billing.change_kind')}
-                        </p>
-                        <div className="grid grid-cols-3 gap-1">
-                            {(['service', 'part', 'material'] as const).map(
-                                (kind) => (
-                                    <Button
-                                        key={kind}
-                                        type="button"
-                                        size="sm"
-                                        className="h-11"
-                                        variant={
-                                            line.kind === kind
-                                                ? 'default'
-                                                : 'outline'
-                                        }
-                                        aria-pressed={line.kind === kind}
-                                        onClick={() => {
-                                            const picked = services.find(
-                                                (s) => s.id === line.service_id,
-                                            );
-                                            onChange({
-                                                kind,
-                                                ...(picked &&
-                                                picked.kind !== kind
-                                                    ? { service_id: null }
-                                                    : {}),
-                                            });
-                                        }}
-                                    >
-                                        {t(`billing.kinds.${kind}`)}
-                                    </Button>
-                                ),
-                            )}
+            <Sheet open={open} onOpenChange={onOpen}>
+                <SheetContent
+                    side="bottom"
+                    className="mx-auto flex max-h-[90dvh] max-w-xl flex-col gap-3 overflow-y-auto rounded-t-3xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+                    data-test="line-sheet"
+                >
+                    <SheetHeader className="flex-row items-center gap-3 p-0 pr-8">
+                        <KindBadge kind={line.kind} decorative />
+                        <SheetTitle className="flex-1">
+                            {t(`billing.kinds.${line.kind}`)}
+                        </SheetTitle>
+                        <SheetDescription className="sr-only">
+                            {t('billing.line.sheet_hint')}
+                        </SheetDescription>
+                        {amount}
+                    </SheetHeader>
+
+                    <div>
+                        <Input
+                            aria-label={t('billing.fields.description')}
+                            placeholder={t('billing.fields.description')}
+                            maxLength={500}
+                            value={name}
+                            autoFocus={name === ''}
+                            onChange={(e) =>
+                                onChange({
+                                    description: joinDescription(
+                                        e.target.value.replace(/\n/g, ' '),
+                                        note,
+                                    ),
+                                })
+                            }
+                        />
+                        <InputError message={err('description')} />
+                    </div>
+
+                    <div className="grid grid-cols-[auto_1fr] gap-2">
+                        <div>
+                            <label className="text-xs text-muted-foreground">
+                                {t('billing.fields.quantity')}
+                            </label>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    aria-label={t('billing.line.less')}
+                                    onClick={() => step(-1)}
+                                >
+                                    <Minus />
+                                </Button>
+                                <Input
+                                    aria-label={t('billing.fields.quantity')}
+                                    inputMode="decimal"
+                                    className="w-14 text-center"
+                                    value={line.quantity}
+                                    onChange={(e) =>
+                                        onChange({ quantity: e.target.value })
+                                    }
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    aria-label={t('billing.line.more_quantity')}
+                                    onClick={() => step(1)}
+                                >
+                                    <Plus />
+                                </Button>
+                            </div>
+                            <NumberHint text={line.quantity} format={String} />
+                            <InputError message={err('quantity')} />
+                        </div>
+                        <div className="min-w-0">
+                            <label className="text-xs text-muted-foreground">
+                                {t('billing.fields.unit_price')}
+                            </label>
+                            <MoneyInput
+                                symbol={symbol}
+                                currency={currency}
+                                value={line.unit_price}
+                                label={t('billing.fields.unit_price')}
+                                onChange={(value) =>
+                                    onChange({
+                                        unit_price: value,
+                                        price_touched: true,
+                                    })
+                                }
+                            />
+                            <NumberHint text={line.unit_price} format={fmt} />
+                            <InputError message={err('unit_price')} />
                         </div>
                     </div>
 
-                    {goods &&
-                        privateCosts &&
-                        setup.supplier_taxes.length > 0 && (
-                            <div className="space-y-1">
-                                <p className="text-xs text-muted-foreground">
-                                    {t('billing.line.supplier_tax')}
-                                </p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {setup.supplier_taxes.map((tax) => (
-                                        <div key={tax.id}>
-                                            <label className="text-xs">
-                                                {tax.name} {tax.rate}% ·{' '}
-                                                {tax.recoverable
-                                                    ? t(
-                                                          'billing.line.recoverable',
-                                                      )
-                                                    : t(
-                                                          'billing.line.not_recoverable',
-                                                      )}
+                    <button
+                        type="button"
+                        className="flex min-h-11 items-center gap-1 self-start text-sm font-medium text-primary"
+                        aria-expanded={more}
+                        onClick={() => setMore((m) => !m)}
+                        data-test="line-more"
+                    >
+                        <ChevronDown
+                            className={cn(
+                                'size-4 transition-transform',
+                                more && 'rotate-180',
+                            )}
+                        />
+                        {t('billing.line.more')}
+                    </button>
+
+                    {more && (
+                        <div
+                            className="space-y-3"
+                            data-test="line-more-section"
+                        >
+                            <Textarea
+                                aria-label={t('billing.line.note')}
+                                placeholder={t('billing.line.note')}
+                                rows={2}
+                                maxLength={Math.max(0, 499 - name.length)}
+                                value={note ?? ''}
+                                onChange={(e) =>
+                                    onChange({
+                                        description: joinDescription(
+                                            name,
+                                            e.target.value === ''
+                                                ? null
+                                                : e.target.value,
+                                        ),
+                                    })
+                                }
+                            />
+
+                            {taxes.length > 0 && (
+                                <fieldset className="space-y-1">
+                                    <legend className="text-xs text-muted-foreground">
+                                        {t('billing.line.taxes')}
+                                    </legend>
+                                    <div className="flex flex-wrap gap-x-4">
+                                        {taxes.map((tax) => (
+                                            <label
+                                                key={tax.id}
+                                                className="flex min-h-11 items-center gap-2 text-sm"
+                                            >
+                                                <Checkbox
+                                                    checked={activeTaxIds.includes(
+                                                        tax.id,
+                                                    )}
+                                                    onCheckedChange={(c) =>
+                                                        toggleTax(
+                                                            tax.id,
+                                                            c === true,
+                                                        )
+                                                    }
+                                                />
+                                                {t('billing.tax_line', {
+                                                    name: tax.name,
+                                                    rate: tax.rate,
+                                                })}
                                             </label>
-                                            <MoneyInput
-                                                symbol={symbol}
-                                                currency={currency}
-                                                label={tax.name}
-                                                value={
-                                                    line.supplier_taxes[
-                                                        tax.id
-                                                    ] ?? ''
-                                                }
-                                                placeholder={
-                                                    line.unit_cost !== ''
-                                                        ? fromMinor(
-                                                              Math.round(
-                                                                  (costMinor *
-                                                                      toNumber(
-                                                                          line.quantity,
-                                                                      ) *
-                                                                      Number(
-                                                                          tax.rate,
-                                                                      )) /
-                                                                      100,
-                                                              ),
-                                                              currency,
-                                                          )
-                                                        : undefined
-                                                }
-                                                onChange={(value) =>
+                                        ))}
+                                    </div>
+                                    <InputError message={err('tax_rate_ids')} />
+                                </fieldset>
+                            )}
+
+                            {/* Materials carry no warranty; a line follows the document's warranty until changed here. */}
+                            {warranty && (
+                                <div className="space-y-1">
+                                    <div className="grid grid-cols-[1fr_2fr] gap-2">
+                                        <div>
+                                            <label className="text-xs text-muted-foreground">
+                                                {t('billing.line.own_warranty')}
+                                            </label>
+                                            <Input
+                                                aria-label={t(
+                                                    'billing.warranty',
+                                                )}
+                                                inputMode="numeric"
+                                                value={String(warranty.value)}
+                                                onChange={(e) =>
                                                     onChange({
-                                                        supplier_taxes: {
-                                                            ...line.supplier_taxes,
-                                                            [tax.id]: value,
-                                                        },
+                                                        warranty_value:
+                                                            e.target.value.replace(
+                                                                /\D/g,
+                                                                '',
+                                                            ),
+                                                        warranty_unit:
+                                                            warranty.unit,
+                                                        warranty_own: true,
                                                     })
                                                 }
                                             />
                                         </div>
+                                        <div>
+                                            <label className="text-xs text-muted-foreground">
+                                                {warranty.value === 0
+                                                    ? t('billing.no_warranty')
+                                                    : ' '}
+                                            </label>
+                                            <NativeSelect
+                                                aria-label={t(
+                                                    'billing.warranty_unit',
+                                                )}
+                                                value={warranty.unit}
+                                                onChange={(e) =>
+                                                    onChange({
+                                                        warranty_value: String(
+                                                            warranty.value,
+                                                        ),
+                                                        warranty_unit:
+                                                            e.target.value,
+                                                        warranty_own: true,
+                                                    })
+                                                }
+                                            >
+                                                {setup.warranty_units.map(
+                                                    (u) => (
+                                                        <option
+                                                            key={u.value}
+                                                            value={u.value}
+                                                        >
+                                                            {u.label}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </NativeSelect>
+                                        </div>
+                                    </div>
+                                    {line.warranty_own && (
+                                        <button
+                                            type="button"
+                                            className="min-h-10 text-sm font-medium text-primary"
+                                            onClick={() =>
+                                                onChange({
+                                                    warranty_own: false,
+                                                })
+                                            }
+                                        >
+                                            {t(
+                                                'billing.line.use_document_warranty',
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {goods && (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Input
+                                        aria-label={t(
+                                            'billing.line.part_number',
+                                        )}
+                                        placeholder={t(
+                                            'billing.line.part_number',
+                                        )}
+                                        value={line.part_number}
+                                        maxLength={100}
+                                        onChange={(e) =>
+                                            onChange({
+                                                part_number:
+                                                    e.target.value.toUpperCase(),
+                                            })
+                                        }
+                                    />
+                                    {privateCosts && (
+                                        <Input
+                                            aria-label={t(
+                                                'billing.line.supplier',
+                                            )}
+                                            placeholder={t(
+                                                'billing.line.supplier',
+                                            )}
+                                            value={line.supplier}
+                                            maxLength={150}
+                                            onChange={(e) =>
+                                                onChange({
+                                                    supplier: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    )}
+                                </div>
+                            )}
+
+                            {goods && privateCosts && history.length > 0 && (
+                                <div className="rounded-md bg-muted/50 p-2 text-xs">
+                                    <p className="mb-1 flex items-center gap-1 font-medium">
+                                        <History className="size-3" />
+                                        {t('billing.line.cost_history')}
+                                    </p>
+                                    <ul className="space-y-0.5">
+                                        {history.slice(0, 5).map((h, i) => (
+                                            <li key={i}>
+                                                <button
+                                                    type="button"
+                                                    className="min-h-8 w-full text-left hover:underline"
+                                                    onClick={() => {
+                                                        onChange({
+                                                            supplier:
+                                                                h.supplier ??
+                                                                line.supplier,
+                                                            part_number:
+                                                                line.part_number ||
+                                                                (h.part_number ??
+                                                                    ''),
+                                                        });
+
+                                                        if (
+                                                            h.unit_cost !== null
+                                                        ) {
+                                                            setCost(
+                                                                fromMinor(
+                                                                    h.unit_cost,
+                                                                    currency,
+                                                                ),
+                                                            );
+                                                        }
+                                                    }}
+                                                >
+                                                    {[
+                                                        h.date
+                                                            ? time.date(h.date)
+                                                            : null,
+                                                        h.unit_cost !== null
+                                                            ? `${money(h.unit_cost)}${h.unit ? ` / ${h.unit}` : ''}`
+                                                            : null,
+                                                        h.supplier,
+                                                        h.part_number,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {line.kind === 'material' && (
+                                <NativeSelect
+                                    aria-label={t('billing.line.unit')}
+                                    value={
+                                        setup.units.some(
+                                            (u) => u.value === line.unit,
+                                        ) || line.unit === ''
+                                            ? line.unit
+                                            : '__custom'
+                                    }
+                                    onChange={(e) =>
+                                        onChange({
+                                            unit:
+                                                e.target.value === '__custom'
+                                                    ? ' '
+                                                    : e.target.value,
+                                        })
+                                    }
+                                >
+                                    <option value="">
+                                        {t('billing.line.unit')}
+                                    </option>
+                                    {setup.units.map((u) => (
+                                        <option key={u.value} value={u.value}>
+                                            {u.label}
+                                        </option>
+                                    ))}
+                                    <option value="__custom">
+                                        {t('billing.line.custom_unit')}
+                                    </option>
+                                </NativeSelect>
+                            )}
+                            {line.kind === 'material' &&
+                                line.unit !== '' &&
+                                !setup.units.some(
+                                    (u) => u.value === line.unit,
+                                ) && (
+                                    <Input
+                                        aria-label={t(
+                                            'billing.line.custom_unit',
+                                        )}
+                                        placeholder={t(
+                                            'billing.line.custom_unit',
+                                        )}
+                                        value={line.unit.trim()}
+                                        maxLength={20}
+                                        onChange={(e) =>
+                                            onChange({
+                                                unit: e.target.value || ' ',
+                                            })
+                                        }
+                                    />
+                                )}
+
+                            {goods && privateCosts && (
+                                <div className="rounded-xl border border-dashed bg-muted/40 p-3">
+                                    <label className="text-xs font-medium">
+                                        {t(
+                                            'billing.line.private_purchase_price',
+                                        )}
+                                    </label>
+                                    <p className="mb-2 text-xs text-muted-foreground">
+                                        {t('billing.line.private_cost_hint')}
+                                    </p>
+                                    <MoneyInput
+                                        symbol={symbol}
+                                        currency={currency}
+                                        value={line.unit_cost}
+                                        label={t(
+                                            'billing.line.private_purchase_price',
+                                        )}
+                                        onChange={setCost}
+                                    />
+                                    <NumberHint
+                                        text={line.unit_cost}
+                                        format={fmt}
+                                    />
+                                    <InputError message={err('unit_cost')} />
+                                    {difference !== null && (
+                                        <p
+                                            className="mt-2 text-sm font-medium"
+                                            role="status"
+                                        >
+                                            {t('billing.line.difference', {
+                                                amount: money(difference),
+                                            })}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {estimate && (
+                                <div className="flex flex-wrap gap-x-4">
+                                    <label className="flex min-h-11 items-center gap-2 text-sm">
+                                        <Checkbox
+                                            checked={line.optional}
+                                            onCheckedChange={(c) =>
+                                                onChange({
+                                                    optional: c === true,
+                                                    selected: false,
+                                                })
+                                            }
+                                        />
+                                        {t('estimates.optional')}
+                                        <span className="text-xs text-muted-foreground">
+                                            {t('estimates.optional_hint')}
+                                        </span>
+                                    </label>
+                                    {line.optional && (
+                                        <label className="flex min-h-11 items-center gap-2 text-sm">
+                                            <Checkbox
+                                                checked={line.selected}
+                                                onCheckedChange={(c) =>
+                                                    onChange({
+                                                        selected: c === true,
+                                                    })
+                                                }
+                                            />
+                                            {t('estimates.included')}
+                                        </label>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground">
+                                    {t('billing.change_kind')}
+                                </p>
+                                <div className="grid grid-cols-3 gap-1">
+                                    {(
+                                        ['service', 'part', 'material'] as const
+                                    ).map((kind) => (
+                                        <Button
+                                            key={kind}
+                                            type="button"
+                                            size="sm"
+                                            className="h-11"
+                                            variant={
+                                                line.kind === kind
+                                                    ? 'default'
+                                                    : 'outline'
+                                            }
+                                            aria-pressed={line.kind === kind}
+                                            onClick={() => {
+                                                const picked = services.find(
+                                                    (s) =>
+                                                        s.id ===
+                                                        line.service_id,
+                                                );
+                                                onChange({
+                                                    kind,
+                                                    ...(picked &&
+                                                    picked.kind !== kind
+                                                        ? { service_id: null }
+                                                        : {}),
+                                                });
+                                            }}
+                                        >
+                                            {t(`billing.kinds.${kind}`)}
+                                        </Button>
                                     ))}
                                 </div>
                             </div>
-                        )}
 
-                    <label className="flex min-h-11 items-start gap-2 text-sm">
-                        <Checkbox
-                            className="mt-0.5"
-                            checked={line.bill_to_customer}
-                            onCheckedChange={(c) =>
-                                onChange({ bill_to_customer: c === true })
-                            }
-                        />
-                        <span>
-                            {t('billing.line.bill_to_customer')}
-                            <span className="block text-xs text-muted-foreground">
-                                {line.bill_to_customer
-                                    ? t('billing.line.bill_to_customer_hint')
-                                    : t('billing.line.internal_hint')}
-                            </span>
-                        </span>
-                    </label>
+                            {goods &&
+                                privateCosts &&
+                                setup.supplier_taxes.length > 0 && (
+                                    <div className="space-y-1">
+                                        <p className="text-xs text-muted-foreground">
+                                            {t('billing.line.supplier_tax')}
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {setup.supplier_taxes.map((tax) => (
+                                                <div key={tax.id}>
+                                                    <label className="text-xs">
+                                                        {tax.name} {tax.rate}% ·{' '}
+                                                        {tax.recoverable
+                                                            ? t(
+                                                                  'billing.line.recoverable',
+                                                              )
+                                                            : t(
+                                                                  'billing.line.not_recoverable',
+                                                              )}
+                                                    </label>
+                                                    <MoneyInput
+                                                        symbol={symbol}
+                                                        currency={currency}
+                                                        label={tax.name}
+                                                        value={
+                                                            line.supplier_taxes[
+                                                                tax.id
+                                                            ] ?? ''
+                                                        }
+                                                        placeholder={
+                                                            line.unit_cost !==
+                                                            ''
+                                                                ? fromMinor(
+                                                                      Math.round(
+                                                                          (costMinor *
+                                                                              toNumber(
+                                                                                  line.quantity,
+                                                                              ) *
+                                                                              Number(
+                                                                                  tax.rate,
+                                                                              )) /
+                                                                              100,
+                                                                      ),
+                                                                      currency,
+                                                                  )
+                                                                : undefined
+                                                        }
+                                                        onChange={(value) =>
+                                                            onChange({
+                                                                supplier_taxes:
+                                                                    {
+                                                                        ...line.supplier_taxes,
+                                                                        [tax.id]:
+                                                                            value,
+                                                                    },
+                                                            })
+                                                        }
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
-                    {goods &&
-                        privateCosts &&
-                        line.service_id === null &&
-                        name.trim() !== '' && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-11"
-                                disabled={saved}
-                                onClick={saveToPriceBook}
-                            >
-                                <BookPlus />
-                                {saved
-                                    ? t('billing.line.saved_to_pricebook')
-                                    : t('billing.line.save_to_pricebook')}
-                            </Button>
-                        )}
-                </div>
-            )}
+                            <label className="flex min-h-11 items-start gap-2 text-sm">
+                                <Checkbox
+                                    className="mt-0.5"
+                                    checked={line.bill_to_customer}
+                                    onCheckedChange={(c) =>
+                                        onChange({
+                                            bill_to_customer: c === true,
+                                        })
+                                    }
+                                />
+                                <span>
+                                    {t('billing.line.bill_to_customer')}
+                                    <span className="block text-xs text-muted-foreground">
+                                        {line.bill_to_customer
+                                            ? t(
+                                                  'billing.line.bill_to_customer_hint',
+                                              )
+                                            : t('billing.line.internal_hint')}
+                                    </span>
+                                </span>
+                            </label>
 
-            <div className="flex gap-2 pt-1">
-                <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 text-destructive"
-                    onClick={onRemove}
-                >
-                    <Trash2 /> {t('billing.line.remove')}
-                </Button>
-                <Button
-                    type="button"
-                    className="h-11 flex-1"
-                    onClick={() => onOpen(false)}
-                >
-                    {t('billing.line.done')}
-                </Button>
-            </div>
+                            {goods &&
+                                privateCosts &&
+                                line.service_id === null &&
+                                name.trim() !== '' && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-11"
+                                        disabled={saved}
+                                        onClick={saveToPriceBook}
+                                    >
+                                        <BookPlus />
+                                        {saved
+                                            ? t(
+                                                  'billing.line.saved_to_pricebook',
+                                              )
+                                            : t(
+                                                  'billing.line.save_to_pricebook',
+                                              )}
+                                    </Button>
+                                )}
+                        </div>
+                    )}
+
+                    <div className="flex gap-2 pt-1">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="size-12 shrink-0 text-destructive"
+                            aria-label={t('billing.line.remove')}
+                            onClick={onRemove}
+                        >
+                            <Trash2 />
+                        </Button>
+                        <Button
+                            type="button"
+                            className="h-12 flex-1"
+                            onClick={() => onOpen(false)}
+                            data-test="line-done"
+                        >
+                            {t('billing.line.done')}
+                        </Button>
+                    </div>
+                </SheetContent>
+            </Sheet>
         </li>
     );
 }

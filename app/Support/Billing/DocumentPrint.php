@@ -61,8 +61,6 @@ class DocumentPrint
                 'tax_rate_ids' => $item->tax_rate_ids,
                 'tax_names' => collect($document->taxes)->filter(fn ($tax) => $item->taxable && ($item->tax_rate_ids === null || in_array((int) $tax['tax_rate_id'], $item->tax_rate_ids, true)))->pluck('name')->values()->all(),
                 'optional' => $estimate && $item->optional,
-                'option' => $estimate && $item->option_name ? __("estimates.options.{$item->option_name}") : null,
-                'option_name' => $estimate ? $item->option_name : null,
                 'included' => ! $estimate || $item->isIncluded(),
                 'unit' => $item->unit,
                 'part_number' => $item->part_number,
@@ -86,7 +84,6 @@ class DocumentPrint
             'footer' => $brand?->invoice_footer,
             'approval' => $estimate ? self::approval($document, $money) : null,
             // Good / Better / Best with each one's total.
-            'options' => $estimate ? array_map(fn (array $option) => [...$option, 'total_formatted' => $money($option['total'])], BillingPresenter::options($document)) : [],
         ];
     }
 

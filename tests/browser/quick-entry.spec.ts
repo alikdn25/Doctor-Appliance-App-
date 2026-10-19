@@ -15,6 +15,13 @@ async function bookShownDay(page: Page, mobile: boolean) {
     }
 }
 
+/** The address is required right after the name (owner's fixes, October 19); typed by hand without a Maps key. */
+async function fillAddress(page: Page, street = '12 Quick Street') {
+    await page.locator('#booking-address').fill(street);
+    await page.getByRole('button', { name: 'Enter manually' }).click();
+    await page.locator('#booking-address-city').fill('Vancouver');
+}
+
 const fixture = JSON.parse(
     readFileSync('storage/framework/testing/browser-fixture.json', 'utf8'),
 );
@@ -60,6 +67,11 @@ test('an empty calendar day books a new caller using only name phone and time', 
             info.project.name === 'desktop' ? '+16045550291' : '+16045550292',
         );
     await page.locator('#booking-name').fill(name);
+    // Without the address Book says what is missing.
+    await expect(page.locator('[data-test="booking-status"]')).toContainText(
+        'address',
+    );
+    await fillAddress(page);
     await expect(page.locator('[data-test="booking-status"]')).toHaveText(
         'Ready',
     );
@@ -77,12 +89,17 @@ test('an empty calendar day books a new caller using only name phone and time', 
         .click();
     await expect(page).toHaveURL(/\/jobs\/\d+$/);
     await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
-    await expect(
-        page.getByText('Address not added yet', { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText(/12 Quick Street/).first()).toBeVisible();
+    // Navigate (blue) · Call (green) · Text (white) in one row of equal buttons.
+    const actions = page.locator('[data-test="job-contact-actions"] > *');
+    await expect(actions).toHaveCount(3);
+    const widths = await actions.evaluateAll((els) =>
+        els.map((el) => Math.round(el.getBoundingClientRect().width)),
+    );
+    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
     await expect(
         page.getByRole('link', { name: 'Navigate', exact: true }),
-    ).toHaveCount(0);
+    ).toBeVisible();
     await page.goto(`/calendar?date=${date}`);
     await expect(
         page.getByRole('button', {
@@ -138,6 +155,7 @@ test('New invoice opens from the list and a new caller proceeds directly to invo
         .fill(
             info.project.name === 'desktop' ? '+16045550293' : '+16045550294',
         );
+    await fillAddress(page, '14 Invoice Road');
     await expect(page.locator('#booking-date')).toHaveCount(0);
     await page
         .getByRole('button', { name: 'Continue to invoice', exact: true })
@@ -163,6 +181,7 @@ test('"Now" books a caller right away for today, before the technician\'s next j
     // The number is formatted as it is typed, in the company's country style.
     await expect(page.locator('#booking-phone')).toHaveValue(/\(604\) 555-02/);
     await page.locator('#booking-name').fill(`Now Caller ${info.project.name}`);
+    await fillAddress(page, '16 Now Avenue');
     await page
         .locator('[data-slot="date-chips"]')
         .getByRole('radio', { name: 'Today' })
@@ -190,4 +209,33 @@ test('a tap on an empty calendar slot books there with the time and the person',
         /book=1.*date=2030-01-20.*start=\d\d(%3A|:)\d\d.*technician=\d+/,
     );
     await expect(page.locator('[data-test="booking-form"]')).toBeVisible();
+});
+
+test('the day chips scroll with "Pick date" as the last one, nothing overlaps', async ({
+    page,
+}) => {
+    await page.goto('/jobs/create?book=1');
+    const row = page.locator('[data-slot="date-chips"]');
+    const last = row.locator(':scope > *').last();
+    await expect(last).toContainText('Pick date');
+    // First and last name are two fields; the address follows them.
+    await expect(page.locator('#booking-name')).toBeVisible();
+    await expect(page.locator('#booking-last-name')).toBeVisible();
+    await expect(page.locator('#booking-address')).toBeVisible();
+    const boxes = await row
+        .locator(':scope > *')
+        .evaluateAll((els) =>
+            els.map((el) => el.getBoundingClientRect().toJSON()),
+        );
+    for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+            const [a, b] = [boxes[i], boxes[j]];
+            const overlap =
+                a.left < b.right - 1 &&
+                b.left < a.right - 1 &&
+                a.top < b.bottom - 1 &&
+                b.top < a.bottom - 1;
+            expect(overlap).toBe(false);
+        }
+    }
 });

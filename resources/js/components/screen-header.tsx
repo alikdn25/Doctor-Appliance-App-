@@ -23,7 +23,7 @@ export function ScreenHeader({
     actions,
 }: {
     title: string;
-    subtitle?: string;
+    subtitle?: ReactNode;
     back?: NonNullable<InertiaLinkProps['href']>;
     /** Replaces ← on the left, e.g. ✕ that closes a form (UX-REDESIGN §7.1). */
     leading?: ReactNode;

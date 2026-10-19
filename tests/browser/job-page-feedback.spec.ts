@@ -236,16 +236,8 @@ test('job page: ⋯ holds the rare actions, Work done saves by itself, Activity 
     );
 
     const activity = page.locator('[data-test="job-activity"]');
-    if (info.project.name === 'mobile') {
-        // Phone: Overview · Work · Money · Activity jump to their part; Activity opens.
-        const anchors = page.locator('[data-test="job-anchors"]');
-        await expect(anchors).toBeVisible();
-        await anchors.getByRole('button', { name: 'Activity' }).click();
-        await expect(
-            activity.getByRole('heading', { name: 'Status history' }),
-        ).toBeVisible();
-        await activity.locator('summary').click();
-    }
+    // One list, no Overview · Work · Money · Activity tabs; Activity is folded at the end.
+    await expect(page.locator('[data-test="job-anchors"]')).toHaveCount(0);
     await expect(
         activity.getByRole('heading', { name: 'Status history' }),
     ).toBeHidden();

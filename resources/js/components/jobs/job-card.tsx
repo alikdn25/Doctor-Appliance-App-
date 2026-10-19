@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import type { InertiaLinkProps } from '@inertiajs/react';
 import { ChevronRight, Navigation, Phone } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -42,6 +42,7 @@ export function JobCard({
     href,
     time,
     extra,
+    below,
     action,
     accent = false,
     overdue = false,
@@ -52,6 +53,8 @@ export function JobCard({
     href: NonNullable<InertiaLinkProps['href']>;
     time: string | null;
     extra?: ReactNode;
+    /** A row under the card's link, e.g. "Not assigned" that opens the technician choice. */
+    below?: ReactNode;
     /** The third button (On my way, Start job, Finish visit); without it Navigate and Call share the row. */
     action?: ReactNode;
     /** The next job by time: an accent border. */
@@ -62,6 +65,7 @@ export function JobCard({
     assignees?: string[];
 }) {
     const t = useTrans();
+    const worksAlone = usePage().props.auth.company?.works_alone ?? false;
     const types = job.appliance_types.join(', ');
     const several = job.appliance_types.length > 1;
     const installation = job.picture === 'installation';
@@ -157,9 +161,11 @@ export function JobCard({
                                 ))}
                             </span>
                         ) : (
-                            <span className="text-xs font-medium text-amber-700">
-                                {t('jobs.unassigned')}
-                            </span>
+                            !worksAlone && (
+                                <span className="text-xs font-medium text-amber-700">
+                                    {t('jobs.unassigned')}
+                                </span>
+                            )
                         )}
                     </div>
                 )}
@@ -172,6 +178,7 @@ export function JobCard({
                     />
                 )}
             </Link>
+            {below}
             {office && job.phone && (
                 <IconButton label={t('jobs.call')} asChild>
                     <a href={telUrl(job.phone)}>

@@ -91,10 +91,10 @@ class CustomerRequest extends FormRequest
             'emails.*.is_primary' => ['boolean'],
         ];
 
-        if ($this->route('customer') === null) {
-            $rules['add_property'] = ['boolean'];
-            $rules += PropertyRequest::addressRules('property.', 'required_if_accepted:add_property');
-        }
+        // The service address, on create and on edit (the main address is edited in place).
+        $rules['add_property'] = ['boolean'];
+        $rules['property.id'] = ['nullable', 'integer'];
+        $rules += PropertyRequest::addressRules('property.', 'required_if_accepted:add_property');
 
         return $rules;
     }
@@ -146,10 +146,22 @@ class CustomerRequest extends FormRequest
      */
     public function propertyAttributes(): ?array
     {
-        if ($this->route('customer') !== null || ! $this->boolean('add_property')) {
+        if (! $this->boolean('add_property')) {
             return null;
         }
 
-        return [...$this->validated('property', []), 'is_primary' => true];
+        $attributes = collect($this->validated('property', []))->except('id')->all();
+
+        return $this->route('customer') === null ? [...$attributes, 'is_primary' => true] : $attributes;
+    }
+
+    /**
+     * The address being edited on the customer form (null = a new one).
+     */
+    public function propertyId(): ?int
+    {
+        $id = $this->boolean('add_property') ? $this->validated('property.id') : null;
+
+        return $id === null ? null : (int) $id;
     }
 }

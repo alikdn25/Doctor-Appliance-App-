@@ -15,10 +15,12 @@ test('cash on site: Mark as paid from the job, then the review question and Comp
         .getByRole('dialog')
         .getByRole('button', { name: 'Labour', exact: true })
         .click();
-    await page
+    const line = page.locator('[data-test="line-sheet"]');
+    await line
         .getByLabel('Description', { exact: true })
         .fill(`Cash repair ${info.project.name}`);
-    await page.getByLabel('Price', { exact: true }).fill('100');
+    await line.getByLabel('Price', { exact: true }).fill('100');
+    await line.getByRole('button', { name: 'Done' }).click();
     await page.getByRole('button', { name: /Save · / }).click();
     await expect(page).toHaveURL(/\/invoices\/\d+$/);
     const number = (

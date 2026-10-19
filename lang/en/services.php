@@ -31,6 +31,6 @@ return [
         'is_active' => 'Active',
     ],
     'defaults' => [
-        'labor_per_hour' => 'Labor (per hour)',
+        'labor_per_hour' => 'Labor',
     ],
 ];

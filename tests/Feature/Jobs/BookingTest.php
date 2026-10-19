@@ -123,7 +123,7 @@ test('after booking the office lands on the day with "Booked #… · Tomorrow 9�
         'brand_id' => $this->brand->id,
         'job_type' => 'repair',
         'new_customer_mode' => true,
-        'new_customer' => ['first_name' => 'Jane Quick', 'phone' => '+16045550101', 'property' => ['country' => 'CA']],
+        'new_customer' => ['first_name' => 'Jane Quick', 'phone' => '+16045550101', 'property' => ['line1' => '1 Test Street', 'city' => 'Vancouver', 'country' => 'CA']],
         'add_visit' => true,
         'visit' => ['date' => '2030-01-16', 'start_time' => '09:00', 'end_time' => '11:00', 'assignee_ids' => [$this->tech->id]],
     ]);

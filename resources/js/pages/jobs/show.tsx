@@ -12,6 +12,8 @@ import {
     Flag,
     History,
     KeyRound,
+    MapPin,
+    MapPinPlus,
     ListChecks,
     MessageSquare,
     Navigation,
@@ -50,6 +52,7 @@ import type {
     CallbackInfo,
     ClosureReasons,
 } from '@/components/jobs/finish-dialog';
+import { JobAddressSheet } from '@/components/jobs/job-address-sheet';
 import { JobApplianceDialog } from '@/components/jobs/job-appliance-dialog';
 import { JobCostsSection } from '@/components/jobs/job-costs';
 import type { JobCosts } from '@/components/jobs/job-costs';
@@ -67,6 +70,7 @@ import { SignatureSection } from '@/components/jobs/signature-section';
 import type { SignatureData } from '@/components/jobs/signature-section';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import { StatusDialog } from '@/components/jobs/status-dialog';
+import { TechnicianPicker } from '@/components/jobs/technician-picker';
 import type { ApplianceItem, Assignable, Visit } from '@/components/jobs/types';
 import { applianceTitle } from '@/components/jobs/types';
 import { VisitDialog } from '@/components/jobs/visit-dialog';
@@ -100,7 +104,13 @@ import {
     create as createInvoice,
     show as showInvoice,
 } from '@/routes/invoices';
-import { destroy, edit, index, techNotes } from '@/routes/jobs';
+import {
+    destroy,
+    edit,
+    index,
+    techNotes,
+    technician as technicianRoute,
+} from '@/routes/jobs';
 import {
     destroy as destroyVisit,
     finishScreen,
@@ -157,6 +167,8 @@ type Job = {
     visits: Visit[];
     photos: JobPhotoData[];
     signature: SignatureData;
+    /** The job's person when it has no open visit. */
+    assignees: { id: number; name: string }[];
     estimates: DocumentRow[];
     invoices: DocumentRow[];
     minutes_on_job: number;
@@ -181,7 +193,9 @@ type Props = {
         close: boolean;
         viewCustomer: boolean;
         updateCustomer: boolean;
+        assign: boolean;
     };
+    otherAddresses: { id: number; full_address: string }[];
     statusOptions: Option[];
     closureReasons: ClosureReasons;
     callback: CallbackInfo;
@@ -332,6 +346,7 @@ export default function JobShow({
     warrantyUnits,
     openWarranty,
     costs,
+    otherAddresses,
 }: Props) {
     const t = useTrans();
     const phoneText = usePhone();
@@ -372,11 +387,84 @@ export default function JobShow({
     );
     const phone = job.customer.phones[0]?.number;
     const property = job.property;
-    const moneyFirst = ['invoiced', 'paid'].includes(job.status);
+    const hasAddress = Boolean(property.line1 && property.city);
+    const worksAlone = auth.company?.works_alone ?? false;
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const [addressOpen, setAddressOpen] = useState(false);
     const textFromPhone =
         messaging.mode === 'technician_phone' &&
         messaging.phone &&
         !messaging.opted_out;
+
+    // The job's technician: on its booked time, or the job's own person when nothing is booked.
+    const technicians = current ? current.assignees : job.assignees;
+    const technicianNames =
+        technicians.length > 0
+            ? technicians.map((a) => a.name).join(', ')
+            : t('jobs.technician.not_assigned');
+    const assign = (userId: number | null) => {
+        setPickerOpen(false);
+        router.put(
+            technicianRoute(job.id).url,
+            { user_id: userId },
+            { preserveScroll: true },
+        );
+    };
+
+    // Text: the SMS chat with the customer (Automatic), the phone's messages app with the text ready (From
+    // technician's phone) or the plain messages app.
+    const textButton = !phone ? (
+        <Button variant="outline" className="px-2" disabled>
+            <MessageSquare /> {t('jobs.text')}
+        </Button>
+    ) : messaging.mode === 'automatic' && messaging.chat_url ? (
+        <Button asChild variant="outline" className="px-2">
+            <Link href={messaging.chat_url} data-test="job-text">
+                <MessageSquare /> {t('jobs.text')}
+            </Link>
+        </Button>
+    ) : messaging.mode === 'automatic' ? (
+        // Automatic texts go from the company number: the job's conversation in Activity.
+        <Button
+            variant="outline"
+            className="px-2"
+            data-test="job-text"
+            onClick={() => {
+                const activity = document.getElementById('activity');
+                if (activity instanceof HTMLDetailsElement) {
+                    activity.open = true;
+                }
+                activity?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                });
+            }}
+        >
+            <MessageSquare /> {t('jobs.text')}
+        </Button>
+    ) : textFromPhone ? (
+        <Button
+            variant="outline"
+            className="px-2"
+            data-test="job-text"
+            onClick={() =>
+                openOnPhone(
+                    job.id,
+                    'general',
+                    messaging.phone!,
+                    messaging.texts.general,
+                )
+            }
+        >
+            <MessageSquare /> {t('jobs.text')}
+        </Button>
+    ) : (
+        <Button asChild variant="outline" className="px-2">
+            <a href={smsUrl(phone, '')} data-test="job-text">
+                <MessageSquare /> {t('jobs.text')}
+            </a>
+        </Button>
+    );
 
     const act = (url: string, data: Record<string, unknown> = {}) => {
         setBusy(true);
@@ -539,12 +627,38 @@ export default function JobShow({
             });
         }
         if (current) {
-            return [
+            const when = [
                 time.isToday(current.scheduled_start)
                     ? t('jobs.tabs.today')
                     : time.day(current.scheduled_start),
                 time.shortRange(current.scheduled_start, current.scheduled_end),
-                current.assignees.map((a) => a.name).join(', '),
+            ].join(' · ');
+
+            // The technician's name in the header opens the same choice as the Technician row.
+            if (can.assign) {
+                return (
+                    <>
+                        {when} ·{' '}
+                        <button
+                            type="button"
+                            className="underline underline-offset-2"
+                            onClick={() => setPickerOpen(true)}
+                            data-test="header-technician"
+                        >
+                            {technicianNames}
+                        </button>
+                    </>
+                );
+            }
+
+            return [
+                when,
+                worksAlone
+                    ? ''
+                    : technicianNames.replace(
+                          t('jobs.technician.not_assigned'),
+                          '',
+                      ),
             ]
                 .filter(Boolean)
                 .join(' · ');
@@ -758,642 +872,529 @@ export default function JobShow({
                 }
             />
 
-            {/* Desktop (UX-REDESIGN §13): the job on the left; status, money, schedule and history on the right, kept
-                in view while the page scrolls. On a phone both columns are one list in the usual order. */}
-            <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6 lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-6">
-                <div className="contents lg:col-start-1 lg:row-start-1 lg:block lg:min-w-0 lg:space-y-5">
-                    <div className="order-1 empty:hidden">
-                        {/* Phone: jump to a part of the page (UX-REDESIGN §7.5). */}
-                        <nav
-                            aria-label={t('jobs.job_number', {
-                                number: job.number,
-                            })}
-                            className="sticky top-0 z-20 -mx-4 -mt-4 flex [scrollbar-width:none] gap-2 overflow-x-auto bg-background/90 px-4 py-2 backdrop-blur md:hidden"
-                            data-test="job-anchors"
-                        >
-                            {(
-                                [
-                                    ['overview', 'overview'],
-                                    ['work', 'work'],
-                                    ['documents', 'money'],
-                                    ['activity', 'activity'],
-                                ] as const
-                            ).map(([target, label]) => (
-                                <button
-                                    key={target}
-                                    type="button"
-                                    className="da-chip da-press inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-sm font-medium"
-                                    onClick={() => {
-                                        const element =
-                                            document.getElementById(target);
-                                        if (
-                                            element instanceof
-                                            HTMLDetailsElement
-                                        ) {
-                                            element.open = true;
-                                        }
-                                        element?.scrollIntoView({
-                                            behavior: 'smooth',
-                                            block: 'start',
-                                        });
-                                    }}
-                                >
-                                    {t(`jobs.anchors.${label}`)}
-                                </button>
-                            ))}
-                        </nav>
-                    </div>
-                    <div className="order-3 empty:hidden">
-                        {job.outcome && job.outcome_label && (
-                            <OutcomeCard
-                                outcome={job.outcome}
-                                label={job.outcome_label}
-                                reason={job.outcome_reason}
-                                note={job.outcome_note}
-                                closedAt={job.closed_at}
-                                closedBy={job.closed_by}
-                            />
-                        )}
-                    </div>
-                    <div className="order-4 empty:hidden">
-                        <FollowUpLinks
-                            visitTypeLabel={job.visit_type_label}
-                            previous={job.previous_job}
-                            followUps={job.follow_ups}
-                        />
-                    </div>
-                    <div className="order-5 empty:hidden">
-                        {myVisit?.strict_arrival &&
-                            myVisit.status === 'scheduled' && (
-                                <p className="flex items-center gap-2 rounded-lg bg-red-600 p-3 text-sm font-semibold text-white">
-                                    <AlarmClock className="size-5 shrink-0" />
-                                    {t('jobs.strict.banner', {
-                                        window: time.window(
-                                            myVisit.scheduled_start,
-                                            myVisit.scheduled_end,
-                                        ),
-                                    })}
-                                </p>
-                            )}
-                    </div>
-                    <div className="order-7">
-                        {/* Customer: name, address, the gate code large (needed at the door), notes, Navigate · Call · Text. */}
-                        <section
-                            id="overview"
-                            className="da-card scroll-mt-28 space-y-3 p-4"
-                            data-test="job-customer"
-                        >
-                            <div className="flex items-start gap-3">
-                                {can.updateCustomer ? (
-                                    <CustomerAvatarPicker
-                                        customerId={job.customer.id}
-                                        icon={job.customer.avatar_icon}
-                                        style={job.customer.avatar_style}
-                                        name={job.customer.display_name}
-                                        size="lg"
-                                    />
-                                ) : (
-                                    <CustomerAvatar
-                                        icon={job.customer.avatar_icon}
-                                        name={job.customer.display_name}
-                                        size="lg"
-                                    />
-                                )}
-                                <div className="min-w-0 flex-1">
-                                    {can.viewCustomer ? (
-                                        <Link
-                                            href={showCustomer(job.customer.id)}
-                                            className="text-lg font-semibold underline-offset-4 hover:underline"
-                                        >
-                                            {job.customer.display_name}
-                                        </Link>
-                                    ) : (
-                                        <span className="text-lg font-semibold">
-                                            {job.customer.display_name}
-                                        </span>
-                                    )}
-                                    <p className="text-sm leading-relaxed text-muted-foreground">
-                                        {property.full_address ||
-                                            t('jobs.quick.address_pending')}
-                                    </p>
-                                    {property.full_address &&
-                                        (!property.line1 || !property.city) && (
-                                            <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
-                                                {t(
-                                                    'jobs.quick.address_pending',
-                                                )}
-                                            </p>
-                                        )}
-                                </div>
-                            </div>
-
-                            {property.gate_code && (
-                                <div
-                                    className="da-soft flex items-center gap-3 rounded-2xl px-3 py-2"
-                                    data-test="gate-code"
-                                >
-                                    <KeyRound className="size-5 shrink-0" />
-                                    <span>
-                                        <span className="block text-xs font-medium tracking-wide uppercase opacity-80">
-                                            {t('jobs.gate_label')}
-                                        </span>
-                                        <span className="text-xl font-bold tabular-nums select-all">
-                                            {property.gate_code}
-                                        </span>
-                                    </span>
-                                </div>
-                            )}
-                            {(property.access_notes ||
-                                property.site_contact_name) && (
-                                <div className="space-y-1 text-sm">
-                                    {property.site_contact_name && (
-                                        <div className="flex items-center gap-2">
-                                            <User className="size-4" />
-                                            {t('properties.site_contact')}:{' '}
-                                            {property.site_contact_name}
-                                        </div>
-                                    )}
-                                    {property.access_notes && (
-                                        <p className="whitespace-pre-line">
-                                            {property.access_notes}
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-
-                            <CustomerNotes notes={job.customer.notes} />
-
-                            <div className="grid auto-cols-fr grid-flow-col gap-2">
-                                {property.line1 && property.city && (
-                                    <Button
-                                        asChild
-                                        variant="outline"
-                                        className="px-2"
-                                    >
-                                        <a
-                                            href={mapsUrl(
-                                                property.full_address,
-                                            )}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                        >
-                                            <Navigation /> {t('jobs.navigate')}
-                                        </a>
-                                    </Button>
-                                )}
-                                {phone && (
-                                    <Button
-                                        asChild
-                                        variant="outline"
-                                        className="px-2"
-                                    >
-                                        <a href={telUrl(phone)}>
-                                            <Phone /> {t('jobs.call')}
-                                        </a>
-                                    </Button>
-                                )}
-                                {phone &&
-                                    (textFromPhone ? (
-                                        <Button
-                                            variant="outline"
-                                            className="px-2"
-                                            onClick={() =>
-                                                openOnPhone(
-                                                    job.id,
-                                                    'general',
-                                                    messaging.phone!,
-                                                    messaging.texts.general,
-                                                )
-                                            }
-                                        >
-                                            <MessageSquare /> {t('jobs.text')}
-                                        </Button>
-                                    ) : (
-                                        messaging.mode !== 'automatic' && (
-                                            <Button
-                                                asChild
-                                                variant="outline"
-                                                className="px-2"
-                                            >
-                                                <a
-                                                    href={`sms:${phone.replace(/[^\d+]/g, '')}`}
-                                                >
-                                                    <MessageSquare />{' '}
-                                                    {t('jobs.text')}
-                                                </a>
-                                            </Button>
-                                        )
-                                    ))}
-                            </div>
-                            {property.site_contact_phone && (
-                                <Button
-                                    asChild
-                                    variant="outline"
-                                    className="w-full"
-                                >
-                                    <a
-                                        href={telUrl(
-                                            property.site_contact_phone,
-                                        )}
-                                    >
-                                        <Phone />{' '}
-                                        {t('jobs.call_on_site', {
-                                            name:
-                                                property.site_contact_name ??
-                                                phoneText(
-                                                    property.site_contact_phone,
-                                                ),
-                                        })}
-                                    </a>
-                                </Button>
-                            )}
-
-                            {/* Other numbers, e.g. the second person of a couple: Call and SMS for each. */}
-                            {job.customer.phones.length > 1 && (
-                                <ul className="space-y-2 text-sm">
-                                    {job.customer.phones.slice(1).map((p) => (
-                                        <li
-                                            key={p.id}
-                                            className="flex flex-wrap items-center gap-2"
-                                        >
-                                            <span className="min-w-0 flex-1">
-                                                <span className="block font-semibold">
-                                                    {p.contact_name ??
-                                                        phoneText(p.number)}
-                                                </span>
-                                                <span className="block text-xs text-muted-foreground">
-                                                    {[
-                                                        p.contact_name &&
-                                                            phoneText(p.number),
-                                                        p.label_text,
-                                                    ]
-                                                        .filter(Boolean)
-                                                        .join(' · ')}
-                                                </span>
-                                            </span>
-                                            <IconButton
-                                                label={t('jobs.call')}
-                                                asChild
-                                            >
-                                                <a href={telUrl(p.number)}>
-                                                    <Phone />
-                                                </a>
-                                            </IconButton>
-                                            <IconButton
-                                                label={t('jobs.sms')}
-                                                asChild
-                                            >
-                                                <a href={smsUrl(p.number, '')}>
-                                                    <MessageSquare />
-                                                </a>
-                                            </IconButton>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </section>
-                    </div>
-                    <div className="order-8 space-y-5 empty:hidden">
-                        {/* Problem and notes for the team */}
-                        {(job.description || job.notes) && (
-                            <Section title={t('jobs.sections.problem')}>
-                                <div className="da-card space-y-2 p-4">
-                                    {job.description && (
-                                        <p className="whitespace-pre-line">
-                                            {job.description}
-                                        </p>
-                                    )}
-                                    {job.notes && (
-                                        <div
-                                            className={cn(
-                                                job.description &&
-                                                    'border-t pt-2',
-                                            )}
-                                        >
-                                            <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                                {t('jobs.fields.notes')}
-                                            </h3>
-                                            <p className="text-sm whitespace-pre-line">
-                                                {job.notes}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </Section>
-                        )}
-                        <BringList
-                            jobId={job.id}
-                            items={job.bring_items}
-                            canTick={can.work}
-                        />
-                    </div>
-                    <div className="order-9 space-y-5">
-                        {/* Appliances */}
-                        <div
-                            id="work"
-                            className="scroll-mt-28"
-                            aria-hidden="true"
-                        />
-                        {showAppliances && (
-                            <Section
-                                title={t('jobs.sections.appliances')}
-                                action={
-                                    can.work && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                                setApplianceDialog({
-                                                    open: true,
-                                                    appliance: null,
-                                                })
-                                            }
-                                        >
-                                            <Plus /> {t('jobs.appliance.add')}
-                                        </Button>
-                                    )
-                                }
-                            >
-                                {job.appliances.length === 0 ? (
-                                    <p className="da-card p-4 text-sm text-muted-foreground">
-                                        {t('appliances.empty')}
-                                    </p>
-                                ) : (
-                                    <ul className="da-card divide-y overflow-hidden">
-                                        {job.appliances.map((a) => (
-                                            <li
-                                                key={a.id}
-                                                className="flex min-h-14 items-center gap-3 px-3 py-2"
-                                            >
-                                                <ApplianceImage
-                                                    type={a.type}
-                                                    className="size-14"
-                                                />
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-                                                        {a.removed ? (
-                                                            <span className="text-muted-foreground line-through">
-                                                                {applianceTitle(
-                                                                    a,
-                                                                )}
-                                                            </span>
-                                                        ) : (
-                                                            <Link
-                                                                href={showAppliance(
-                                                                    a.id,
-                                                                )}
-                                                                className="underline-offset-4 hover:underline"
-                                                            >
-                                                                {applianceTitle(
-                                                                    a,
-                                                                )}
-                                                            </Link>
-                                                        )}
-                                                        {a.under_warranty && (
-                                                            <ShieldCheck
-                                                                className="size-4 text-emerald-600"
-                                                                aria-label={t(
-                                                                    'appliances.under_warranty',
-                                                                )}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                    <div className="text-xs break-all text-muted-foreground select-all">
-                                                        {[
-                                                            a.model_number &&
-                                                                t(
-                                                                    'appliances.model',
-                                                                    {
-                                                                        model: a.model_number,
-                                                                    },
-                                                                ),
-                                                            a.serial_number &&
-                                                                t(
-                                                                    'appliances.serial',
-                                                                    {
-                                                                        serial: a.serial_number,
-                                                                    },
-                                                                ),
-                                                        ]
-                                                            .filter(Boolean)
-                                                            .join(' · ')}
-                                                    </div>
-                                                </div>
-                                                {can.work && !a.removed && (
-                                                    <RatingPlateButton
-                                                        jobId={job.id}
-                                                        applianceId={a.id}
-                                                        url={a.rating_plate_url}
-                                                    />
-                                                )}
-                                                {can.work && !a.removed && (
-                                                    <IconButton
-                                                        variant="plain"
-                                                        label={t(
-                                                            'jobs.appliance.edit',
-                                                        )}
-                                                        onClick={() =>
-                                                            setApplianceDialog({
-                                                                open: true,
-                                                                appliance: a,
-                                                            })
-                                                        }
-                                                    >
-                                                        <Pencil />
-                                                    </IconButton>
-                                                )}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </Section>
-                        )}
-                        <PhotoSection
-                            jobId={job.id}
-                            visitId={myVisitId}
-                            photos={job.photos}
-                            kinds={photoKinds}
-                            canAdd={can.work}
-                        />
-                    </div>
-                    <div className="order-10">
-                        {can.work ? (
-                            <WorkDone jobId={job.id} notes={job.tech_notes} />
-                        ) : (
-                            <Section title={t('jobs.sections.tech_notes')}>
-                                <p className="text-sm whitespace-pre-line text-muted-foreground">
-                                    {job.tech_notes ?? '—'}
-                                </p>
-                            </Section>
-                        )}
-                    </div>
-                    <div className="order-12 empty:hidden">
-                        {/* The signature is taken on the invoice; the job only shows it once signed. */}
-                        {job.signature && (
-                            <SignatureSection
-                                jobId={job.id}
-                                signature={job.signature}
-                                customerName={job.customer.display_name}
-                                canSign={false}
-                            />
-                        )}
-                    </div>
+            {/* One list in the order of the work (owner's fixes, October 19): customer, technician, appliances, photos,
+                Work done, estimates and invoices, the signature and Activity folded at the end. */}
+            <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
+                <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge
+                        status={job.status}
+                        label={job.status_label}
+                        className="h-7 px-3 text-sm"
+                    />
+                    <span className="da-badge rounded-full px-2.5 py-0.5 text-xs font-medium">
+                        {job.visit_type_label}
+                    </span>
                 </div>
-                <aside
-                    className="contents lg:sticky lg:top-[calc(var(--app-sticky-top)+1rem)] lg:col-start-2 lg:row-start-1 lg:block lg:max-h-[calc(100dvh-var(--app-sticky-top)-var(--app-action-bar-h,0px)-3rem)] lg:space-y-5 lg:overflow-y-auto"
-                    data-test="job-aside"
+                {job.outcome && job.outcome_label && (
+                    <OutcomeCard
+                        outcome={job.outcome}
+                        label={job.outcome_label}
+                        reason={job.outcome_reason}
+                        note={job.outcome_note}
+                        closedAt={job.closed_at}
+                        closedBy={job.closed_by}
+                    />
+                )}
+                <FollowUpLinks
+                    visitTypeLabel={job.visit_type_label}
+                    previous={job.previous_job}
+                    followUps={job.follow_ups}
+                />
+                {myVisit?.strict_arrival && myVisit.status === 'scheduled' && (
+                    <p className="flex items-center gap-2 rounded-lg bg-red-600 p-3 text-sm font-semibold text-white">
+                        <AlarmClock className="size-5 shrink-0" />
+                        {t('jobs.strict.banner', {
+                            window: time.window(
+                                myVisit.scheduled_start,
+                                myVisit.scheduled_end,
+                            ),
+                        })}
+                    </p>
+                )}
+                {/* Customer: name, address, the gate code large (needed at the door), notes, Navigate · Call · Text. */}
+                <section
+                    className="da-card space-y-3 p-4"
+                    data-test="job-customer"
                 >
-                    <div className="order-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <StatusBadge
-                                status={job.status}
-                                label={job.status_label}
-                                className="h-7 px-3 text-sm"
+                    <div className="flex items-start gap-3">
+                        {can.updateCustomer ? (
+                            <CustomerAvatarPicker
+                                customerId={job.customer.id}
+                                icon={job.customer.avatar_icon}
+                                style={job.customer.avatar_style}
+                                name={job.customer.display_name}
+                                size="lg"
                             />
-                            <span className="da-badge rounded-full px-2.5 py-0.5 text-xs font-medium">
-                                {job.visit_type_label}
-                            </span>
+                        ) : (
+                            <CustomerAvatar
+                                icon={job.customer.avatar_icon}
+                                name={job.customer.display_name}
+                                size="lg"
+                            />
+                        )}
+                        <div className="min-w-0 flex-1">
+                            {can.viewCustomer ? (
+                                <Link
+                                    href={showCustomer(job.customer.id)}
+                                    className="text-lg font-semibold underline-offset-4 hover:underline"
+                                >
+                                    {job.customer.display_name}
+                                </Link>
+                            ) : (
+                                <span className="text-lg font-semibold">
+                                    {job.customer.display_name}
+                                </span>
+                            )}
+                            <p className="text-sm leading-relaxed text-muted-foreground">
+                                {property.full_address ||
+                                    t('jobs.quick.address_pending')}
+                            </p>
+                            {property.full_address &&
+                                (!property.line1 || !property.city) && (
+                                    <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                                        {t('jobs.quick.address_pending')}
+                                    </p>
+                                )}
                         </div>
                     </div>
-                    {/* With an invoice out, money comes first. */}
+                    {property.gate_code && (
+                        <div
+                            className="da-soft flex items-center gap-3 rounded-2xl px-3 py-2"
+                            data-test="gate-code"
+                        >
+                            <KeyRound className="size-5 shrink-0" />
+                            <span>
+                                <span className="block text-xs font-medium tracking-wide uppercase opacity-80">
+                                    {t('jobs.gate_label')}
+                                </span>
+                                <span className="text-xl font-bold tabular-nums select-all">
+                                    {property.gate_code}
+                                </span>
+                            </span>
+                        </div>
+                    )}
+                    {(property.access_notes || property.site_contact_name) && (
+                        <div className="space-y-1 text-sm">
+                            {property.site_contact_name && (
+                                <div className="flex items-center gap-2">
+                                    <User className="size-4" />
+                                    {t('properties.site_contact')}:{' '}
+                                    {property.site_contact_name}
+                                </div>
+                            )}
+                            {property.access_notes && (
+                                <p className="whitespace-pre-line">
+                                    {property.access_notes}
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    <CustomerNotes notes={job.customer.notes} />
+
                     <div
-                        className={
-                            moneyFirst
-                                ? 'order-6 empty:hidden'
-                                : 'order-11 empty:hidden'
+                        className="grid grid-cols-3 gap-2"
+                        data-test="job-contact-actions"
+                    >
+                        {hasAddress ? (
+                            <Button asChild variant="sky" className="px-2">
+                                <a
+                                    href={mapsUrl(property.full_address)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <Navigation /> {t('jobs.navigate')}
+                                </a>
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="sky"
+                                className="px-2"
+                                disabled={!can.work}
+                                onClick={() => setAddressOpen(true)}
+                                data-test="job-add-address"
+                            >
+                                <MapPinPlus /> {t('jobs.address.add')}
+                            </Button>
+                        )}
+                        {phone ? (
+                            <Button asChild variant="success" className="px-2">
+                                <a href={telUrl(phone)}>
+                                    <Phone /> {t('jobs.call')}
+                                </a>
+                            </Button>
+                        ) : (
+                            <Button variant="success" className="px-2" disabled>
+                                <Phone /> {t('jobs.call')}
+                            </Button>
+                        )}
+                        {textButton}
+                    </div>
+                    {hasAddress && can.update && (
+                        <button
+                            type="button"
+                            className="flex min-h-10 items-center gap-1.5 text-sm font-medium text-link"
+                            onClick={() => setAddressOpen(true)}
+                            data-test="job-change-address"
+                        >
+                            <MapPin className="size-4" />
+                            {t('jobs.address.change')}
+                        </button>
+                    )}
+                    {property.site_contact_phone && (
+                        <Button asChild variant="outline" className="w-full">
+                            <a href={telUrl(property.site_contact_phone)}>
+                                <Phone />{' '}
+                                {t('jobs.call_on_site', {
+                                    name:
+                                        property.site_contact_name ??
+                                        phoneText(property.site_contact_phone),
+                                })}
+                            </a>
+                        </Button>
+                    )}
+
+                    {/* Other numbers, e.g. the second person of a couple: Call and SMS for each. */}
+                    {job.customer.phones.length > 1 && (
+                        <ul className="space-y-2 text-sm">
+                            {job.customer.phones.slice(1).map((p) => (
+                                <li
+                                    key={p.id}
+                                    className="flex flex-wrap items-center gap-2"
+                                >
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block font-semibold">
+                                            {p.contact_name ??
+                                                phoneText(p.number)}
+                                        </span>
+                                        <span className="block text-xs text-muted-foreground">
+                                            {[
+                                                p.contact_name &&
+                                                    phoneText(p.number),
+                                                p.label_text,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                        </span>
+                                    </span>
+                                    <IconButton label={t('jobs.call')} asChild>
+                                        <a href={telUrl(p.number)}>
+                                            <Phone />
+                                        </a>
+                                    </IconButton>
+                                    <IconButton label={t('jobs.sms')} asChild>
+                                        <a href={smsUrl(p.number, '')}>
+                                            <MessageSquare />
+                                        </a>
+                                    </IconButton>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
+
+                {/* Technician: one tap opens the choice (office, team mode). */}
+                {!worksAlone && (
+                    <div
+                        className="da-card flex min-h-14 items-center gap-3 px-4 py-2"
+                        data-test="job-technician"
+                    >
+                        <User className="size-5 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1 text-sm">
+                            <span className="text-muted-foreground">
+                                {t('jobs.technician.label')}:{' '}
+                            </span>
+                            {can.assign ? (
+                                <button
+                                    type="button"
+                                    className={cn(
+                                        'font-semibold text-link underline-offset-4 hover:underline',
+                                        technicians.length === 0 &&
+                                            'text-amber-700 dark:text-amber-400',
+                                    )}
+                                    onClick={() => setPickerOpen(true)}
+                                    data-test="job-technician-button"
+                                >
+                                    {technicianNames}
+                                </button>
+                            ) : (
+                                <span className="font-semibold">
+                                    {technicianNames}
+                                </span>
+                            )}
+                        </span>
+                    </div>
+                )}
+                {can.update && schedule}
+                {(job.description || job.notes) && (
+                    <Section title={t('jobs.sections.problem')}>
+                        <div className="da-card space-y-2 p-4">
+                            {job.description && (
+                                <p className="whitespace-pre-line">
+                                    {job.description}
+                                </p>
+                            )}
+                            {job.notes && (
+                                <div
+                                    className={cn(
+                                        job.description && 'border-t pt-2',
+                                    )}
+                                >
+                                    <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                        {t('jobs.fields.notes')}
+                                    </h3>
+                                    <p className="text-sm whitespace-pre-line">
+                                        {job.notes}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </Section>
+                )}
+                <BringList
+                    jobId={job.id}
+                    items={job.bring_items}
+                    canTick={can.work}
+                />
+                {showAppliances && (
+                    <Section
+                        title={t('jobs.sections.appliances')}
+                        action={
+                            can.work && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                        setApplianceDialog({
+                                            open: true,
+                                            appliance: null,
+                                        })
+                                    }
+                                >
+                                    <Plus /> {t('jobs.appliance.add')}
+                                </Button>
+                            )
                         }
                     >
-                        {documents}
-                    </div>
-                    <div className="order-13 empty:hidden">
-                        {/* The office plans the schedule here; for the field it is part of Activity. */}
-                        {can.update && schedule}
-                    </div>
-                    <div className="order-14">
-                        {/* Activity, folded: texts, the schedule, the status history and the details. */}
-                        <details
-                            id="activity"
-                            className="da-card group scroll-mt-28"
-                            data-test="job-activity"
-                        >
-                            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 [&::-webkit-details-marker]:hidden">
-                                <History className="size-5 shrink-0 text-muted-foreground" />
-                                <span className="min-w-0 flex-1">
-                                    <span className="block font-semibold">
-                                        {t('jobs.sections.activity')}
-                                    </span>
-                                    <span className="block truncate text-sm text-muted-foreground">
-                                        {t('jobs.activity_hint')}
-                                    </span>
-                                </span>
-                                <ChevronDown className="size-5 shrink-0 transition-transform group-open:rotate-180" />
-                            </summary>
-                            <div className="space-y-5 border-t p-4">
-                                <JobMessagingSection
-                                    jobId={job.id}
-                                    messaging={messaging}
-                                    canWork={can.work}
-                                />
-
-                                {!can.update && schedule}
-
-                                <Section title={t('jobs.sections.history')}>
-                                    <ol className="space-y-2 border-l pl-4">
-                                        {job.history.map((h) => (
-                                            <li key={h.id} className="text-sm">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    {h.from_label === null ? (
-                                                        <span className="font-medium">
-                                                            {t(
-                                                                'jobs.history_entry.created',
-                                                            )}
-                                                        </span>
-                                                    ) : null}
-                                                    <StatusBadge
-                                                        status={h.to}
-                                                        label={h.to_label}
-                                                    />
-                                                </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {[
-                                                        h.created_at &&
-                                                            time.dateTime(
-                                                                h.created_at,
-                                                            ),
-                                                        h.user,
-                                                    ]
-                                                        .filter(Boolean)
-                                                        .join(' · ')}
-                                                </div>
-                                                {h.note && (
-                                                    <p className="text-xs whitespace-pre-line">
-                                                        {h.note}
-                                                    </p>
+                        {job.appliances.length === 0 ? (
+                            <p className="da-card p-4 text-sm text-muted-foreground">
+                                {t('appliances.empty')}
+                            </p>
+                        ) : (
+                            <ul className="da-card divide-y overflow-hidden">
+                                {job.appliances.map((a) => (
+                                    <li
+                                        key={a.id}
+                                        className="flex min-h-14 items-center gap-3 px-3 py-2"
+                                    >
+                                        <ApplianceImage
+                                            type={a.type}
+                                            className="size-14"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                                                {a.removed ? (
+                                                    <span className="text-muted-foreground line-through">
+                                                        {applianceTitle(a)}
+                                                    </span>
+                                                ) : (
+                                                    <Link
+                                                        href={showAppliance(
+                                                            a.id,
+                                                        )}
+                                                        className="underline-offset-4 hover:underline"
+                                                    >
+                                                        {applianceTitle(a)}
+                                                    </Link>
                                                 )}
-                                            </li>
-                                        ))}
-                                    </ol>
-                                </Section>
+                                                {a.under_warranty && (
+                                                    <ShieldCheck
+                                                        className="size-4 text-emerald-600"
+                                                        aria-label={t(
+                                                            'appliances.under_warranty',
+                                                        )}
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className="text-xs break-all text-muted-foreground select-all">
+                                                {[
+                                                    a.model_number &&
+                                                        t('appliances.model', {
+                                                            model: a.model_number,
+                                                        }),
+                                                    a.serial_number &&
+                                                        t('appliances.serial', {
+                                                            serial: a.serial_number,
+                                                        }),
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                            </div>
+                                        </div>
+                                        {can.work && !a.removed && (
+                                            <RatingPlateButton
+                                                jobId={job.id}
+                                                applianceId={a.id}
+                                                url={a.rating_plate_url}
+                                            />
+                                        )}
+                                        {can.work && !a.removed && (
+                                            <IconButton
+                                                variant="plain"
+                                                label={t('jobs.appliance.edit')}
+                                                onClick={() =>
+                                                    setApplianceDialog({
+                                                        open: true,
+                                                        appliance: a,
+                                                    })
+                                                }
+                                            >
+                                                <Pencil />
+                                            </IconButton>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Section>
+                )}
+                <PhotoSection
+                    jobId={job.id}
+                    visitId={myVisitId}
+                    photos={job.photos}
+                    kinds={photoKinds}
+                    canAdd={can.work}
+                />
+                {can.work ? (
+                    <WorkDone jobId={job.id} notes={job.tech_notes} />
+                ) : (
+                    <Section title={t('jobs.sections.tech_notes')}>
+                        <p className="text-sm whitespace-pre-line text-muted-foreground">
+                            {job.tech_notes ?? '—'}
+                        </p>
+                    </Section>
+                )}
+                {documents}
+                {job.signature && (
+                    <SignatureSection
+                        jobId={job.id}
+                        signature={job.signature}
+                        customerName={job.customer.display_name}
+                        canSign={false}
+                    />
+                )}
+                {/* Activity, folded: texts, the schedule, the status history and the details. */}
+                <details
+                    id="activity"
+                    className="da-card group scroll-mt-28"
+                    data-test="job-activity"
+                >
+                    <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 [&::-webkit-details-marker]:hidden">
+                        <History className="size-5 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1">
+                            <span className="block font-semibold">
+                                {t('jobs.sections.activity')}
+                            </span>
+                            <span className="block truncate text-sm text-muted-foreground">
+                                {t('jobs.activity_hint')}
+                            </span>
+                        </span>
+                        <ChevronDown className="size-5 shrink-0 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="space-y-5 border-t p-4">
+                        <JobMessagingSection
+                            jobId={job.id}
+                            messaging={messaging}
+                            canWork={can.work}
+                        />
 
-                                <Section title={t('jobs.sections.details')}>
-                                    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                                        {(
-                                            [
-                                                [
-                                                    'jobs.fields.job_type',
-                                                    job.job_type_label,
-                                                ],
-                                                [
-                                                    'jobs.fields.visit_type',
-                                                    job.visit_type_label,
-                                                ],
-                                                [
-                                                    'jobs.fields.brand',
-                                                    job.brand,
-                                                ],
-                                                [
-                                                    'jobs.fields.lead_source',
-                                                    job.lead_source_label,
-                                                ],
-                                                [
-                                                    'jobs.details.created',
-                                                    job.created_at &&
-                                                        time.dateTime(
-                                                            job.created_at,
-                                                        ),
-                                                ],
-                                                [
-                                                    'jobs.details.time_on_job',
-                                                    job.minutes_on_job > 0 &&
-                                                        formatMinutes(
-                                                            job.minutes_on_job,
-                                                            t,
-                                                        ),
-                                                ],
-                                            ] as [
-                                                string,
-                                                string | null | false,
-                                            ][]
-                                        )
-                                            .filter(([, value]) => value)
-                                            .map(([label, value]) => (
-                                                <Fragment key={label}>
-                                                    <dt className="text-muted-foreground">
-                                                        {t(label)}
-                                                    </dt>
-                                                    <dd>{value}</dd>
-                                                </Fragment>
-                                            ))}
-                                    </dl>
-                                </Section>
+                        {!can.update && schedule}
 
-                                {auth.can?.viewChangeLog && (
-                                    <RecordHistory type="job" id={job.id} />
-                                )}
-                            </div>
-                        </details>
+                        <Section title={t('jobs.sections.history')}>
+                            <ol className="space-y-2 border-l pl-4">
+                                {job.history.map((h) => (
+                                    <li key={h.id} className="text-sm">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {h.from_label === null ? (
+                                                <span className="font-medium">
+                                                    {t(
+                                                        'jobs.history_entry.created',
+                                                    )}
+                                                </span>
+                                            ) : null}
+                                            <StatusBadge
+                                                status={h.to}
+                                                label={h.to_label}
+                                            />
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                            {[
+                                                h.created_at &&
+                                                    time.dateTime(h.created_at),
+                                                h.user,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                        </div>
+                                        {h.note && (
+                                            <p className="text-xs whitespace-pre-line">
+                                                {h.note}
+                                            </p>
+                                        )}
+                                    </li>
+                                ))}
+                            </ol>
+                        </Section>
+
+                        <Section title={t('jobs.sections.details')}>
+                            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                                {(
+                                    [
+                                        [
+                                            'jobs.fields.job_type',
+                                            job.job_type_label,
+                                        ],
+                                        [
+                                            'jobs.fields.visit_type',
+                                            job.visit_type_label,
+                                        ],
+                                        ['jobs.fields.brand', job.brand],
+                                        [
+                                            'jobs.fields.lead_source',
+                                            job.lead_source_label,
+                                        ],
+                                        [
+                                            'jobs.details.created',
+                                            job.created_at &&
+                                                time.dateTime(job.created_at),
+                                        ],
+                                        [
+                                            'jobs.details.time_on_job',
+                                            job.minutes_on_job > 0 &&
+                                                formatMinutes(
+                                                    job.minutes_on_job,
+                                                    t,
+                                                ),
+                                        ],
+                                    ] as [string, string | null | false][]
+                                )
+                                    .filter(([, value]) => value)
+                                    .map(([label, value]) => (
+                                        <Fragment key={label}>
+                                            <dt className="text-muted-foreground">
+                                                {t(label)}
+                                            </dt>
+                                            <dd>{value}</dd>
+                                        </Fragment>
+                                    ))}
+                            </dl>
+                        </Section>
+
+                        {auth.can?.viewChangeLog && (
+                            <RecordHistory type="job" id={job.id} />
+                        )}
                     </div>
-                </aside>
+                </details>
             </div>
 
             {bar.length > 0 && (
@@ -1513,6 +1514,35 @@ export default function JobShow({
                     visit={visitDialog.visit}
                     today={today}
                     assignableUsers={assignableUsers}
+                />
+            )}
+
+            {can.assign && (
+                <TechnicianPicker
+                    open={pickerOpen}
+                    onOpenChange={setPickerOpen}
+                    date={current?.date ?? today}
+                    window={
+                        current
+                            ? {
+                                  start: current.start_time,
+                                  end: current.end_time,
+                              }
+                            : null
+                    }
+                    excludeVisitIds={job.visits.map((v) => v.id)}
+                    currentId={technicians[0]?.id ?? null}
+                    allowNone
+                    onPick={assign}
+                />
+            )}
+            {can.work && (
+                <JobAddressSheet
+                    open={addressOpen}
+                    onOpenChange={setAddressOpen}
+                    jobId={job.id}
+                    current={hasAddress ? property.full_address : ''}
+                    others={otherAddresses}
                 />
             )}
 

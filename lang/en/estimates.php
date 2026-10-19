@@ -71,20 +71,6 @@ return [
 
     'errors' => [
         'already_invoiced' => 'This estimate has already been invoiced.',
-        'unknown_option' => 'This estimate has no such option.',
-    ],
-
-    'options' => [
-        'good' => 'Good',
-        'better' => 'Better',
-        'best' => 'Best',
-        'title' => 'Options',
-        'none' => 'All options',
-        'line_hint' => 'Offer Good / Better / Best: lines in an option count only when that option is chosen; lines in "All options" count in each.',
-        'chosen' => 'Chosen',
-        'form_hint' => 'The total below is for this option. The customer picks one when approving.',
-        'pick' => 'Choose an option',
-        'choose_hint' => 'Pick the option that suits you; the total follows.',
     ],
 
     // The customer's online page.
@@ -128,7 +114,6 @@ return [
             'signature' => 'Please sign in the box, or type your name instead.',
             'expired' => 'This estimate has expired and can no longer be approved.',
             'decided' => 'This estimate has already been answered.',
-            'choose_option' => 'Choose one of the options first.',
         ],
     ],
 ];

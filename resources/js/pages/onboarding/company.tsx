@@ -44,7 +44,11 @@ export default function CompanySetup({
     defaults,
 }: Props) {
     const t = useTrans();
-    const form = useForm({ name: '', ...defaults });
+    const form = useForm({
+        name: '',
+        ...defaults,
+        works_alone: null as boolean | null,
+    });
     const { setData } = form;
     const timezoneDetected = useRef(false);
     useEffect(() => {
@@ -89,6 +93,49 @@ export default function CompanySetup({
                         className="h-12 rounded-xl"
                     />
                 </FormField>
+                <fieldset className="space-y-2" data-test="works-alone">
+                    <legend className="text-sm font-medium">
+                        {t('onboarding.team_question')}
+                    </legend>
+                    <div
+                        role="radiogroup"
+                        aria-label={t('onboarding.team_question')}
+                        className="grid grid-cols-2 gap-2"
+                    >
+                        {([true, false] as const).map((alone) => (
+                            <button
+                                key={String(alone)}
+                                type="button"
+                                role="radio"
+                                aria-checked={form.data.works_alone === alone}
+                                onClick={() =>
+                                    form.setData('works_alone', alone)
+                                }
+                                className="da-chip da-press flex min-h-16 flex-col items-start justify-center rounded-2xl px-4 py-2 text-left"
+                            >
+                                <span className="font-semibold">
+                                    {t(
+                                        alone
+                                            ? 'onboarding.alone'
+                                            : 'onboarding.with_team',
+                                    )}
+                                </span>
+                                <span className="text-xs opacity-80">
+                                    {t(
+                                        alone
+                                            ? 'onboarding.alone_hint'
+                                            : 'onboarding.with_team_hint',
+                                    )}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                    {form.errors.works_alone && (
+                        <p className="text-sm text-danger">
+                            {t('onboarding.team_required')}
+                        </p>
+                    )}
+                </fieldset>
                 <FormField
                     id="country"
                     label={t('company.fields.country')}

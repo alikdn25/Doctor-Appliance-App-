@@ -16,8 +16,11 @@ import {
 } from '@/components/customers/customer-avatar';
 import type { AvatarStyle } from '@/components/customers/customer-avatar';
 import { PropertyFields } from '@/components/customers/property-fields';
-import { emptyProperty } from '@/components/customers/types';
-import type { PropertyFormData } from '@/components/customers/types';
+import { emptyProperty, propertyToForm } from '@/components/customers/types';
+import type {
+    PropertyData,
+    PropertyFormData,
+} from '@/components/customers/types';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import { ScreenHeader } from '@/components/screen-header';
@@ -64,6 +67,8 @@ type Customer = {
     notes: string | null;
     phones: (Omit<Phone, 'contact_name'> & { contact_name: string | null })[];
     emails: Email[];
+    /** The main address, edited in place (null when the customer has none). */
+    property?: PropertyData | null;
 };
 
 type FormData = {
@@ -79,7 +84,7 @@ type FormData = {
     phones: Phone[];
     emails: Email[];
     add_property: boolean;
-    property: PropertyFormData;
+    property: PropertyFormData & { id?: number };
 };
 
 type Duplicate = { id: number; display_name: string; matches: string[] };
@@ -184,11 +189,16 @@ export default function CustomerForm({
             email,
             is_primary,
         })) ?? [{ label: 'personal', email: '', is_primary: true }],
-        add_property: customer === null,
-        property: {
-            ...emptyProperty(auth.company?.country ?? 'US'),
-            is_primary: true,
-        },
+        add_property: true,
+        property: customer?.property
+            ? {
+                  ...propertyToForm(customer.property),
+                  id: customer.property.id,
+              }
+            : {
+                  ...emptyProperty(auth.company?.country ?? 'US'),
+                  is_primary: true,
+              },
     });
     const nameIcon = useNameAvatar(
         form.data.type === 'residential' ? form.data.first_name : '',
@@ -243,7 +253,8 @@ export default function CustomerForm({
             ...data,
             phones: data.phones.filter((p) => p.number.trim() !== ''),
             emails: data.emails.filter((m) => m.email.trim() !== ''),
-            // No address typed: the customer is saved without one (it can be added later).
+            // No address typed: the customer is saved without one (it can be added later); an address is never
+            // saved empty.
             add_property:
                 data.add_property && data.property.line1.trim() !== '',
         }));
@@ -531,31 +542,29 @@ export default function CustomerForm({
                     </div>
                 </section>
 
-                {/* 3. Service address (new customers): one field; the rest opens after a pick. */}
-                {!customer && (
-                    <section className="grid gap-3">
-                        <div className="flex items-baseline justify-between gap-2">
-                            <h2 className="text-base font-semibold">
-                                {t('customers.service_address')}
-                            </h2>
-                            <span className="text-xs text-muted-foreground">
-                                {t('customers.address_optional')}
-                            </span>
-                        </div>
-                        <PropertyFields
-                            data={form.data.property}
-                            onChange={(patch) =>
-                                form.setData('property', {
-                                    ...form.data.property,
-                                    ...patch,
-                                })
-                            }
-                            errors={errors}
-                            errorPrefix="property."
-                            countries={countries}
-                        />
-                    </section>
-                )}
+                {/* 3. Service address: one field; the rest opens after a pick. Editing changes the main address. */}
+                <section className="grid gap-3" data-test="customer-address">
+                    <div className="flex items-baseline justify-between gap-2">
+                        <h2 className="text-base font-semibold">
+                            {t('customers.service_address')}
+                        </h2>
+                        <span className="text-xs text-muted-foreground">
+                            {t('customers.address_optional')}
+                        </span>
+                    </div>
+                    <PropertyFields
+                        data={form.data.property}
+                        onChange={(patch) =>
+                            form.setData('property', {
+                                ...form.data.property,
+                                ...patch,
+                            })
+                        }
+                        errors={errors}
+                        errorPrefix="property."
+                        countries={countries}
+                    />
+                </section>
 
                 {/* 4. About the customer and tags. */}
                 <section className="grid gap-4">

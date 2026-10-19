@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
     ArrowRightLeft,
     Mail,
@@ -11,6 +11,7 @@ import {
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { FormField } from '@/components/form-field';
+import { TransferSheet } from '@/components/jobs/transfer-sheet';
 import { canReplace, MemberTransitions } from '@/components/member-transitions';
 import type { TransitionMode } from '@/components/member-transitions';
 import InputError from '@/components/input-error';
@@ -78,6 +79,8 @@ export default function TeamIndex({
     emailAvailable,
 }: Props) {
     const t = useTrans();
+    const worksAlone = usePage().props.auth.company?.works_alone ?? false;
+    const [transferring, setTransferring] = useState<Member | null>(null);
     const [editing, setEditing] = useState<Member | null>(null);
     const [open, setOpen] = useState(false);
     const [transition, setTransition] = useState<{
@@ -217,6 +220,25 @@ export default function TeamIndex({
                                         : member.email}{' '}
                                     · {brandNames(member.brand_ids)}
                                 </div>
+                                {/* Transfer: tick this person's jobs and give them to someone else. */}
+                                {member.is_active &&
+                                    !worksAlone &&
+                                    ['owner', 'admin', 'technician'].includes(
+                                        member.role,
+                                    ) && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="mt-2"
+                                            onClick={() =>
+                                                setTransferring(member)
+                                            }
+                                            data-test="member-transfer"
+                                        >
+                                            <ArrowRightLeft />{' '}
+                                            {t('jobs.transfer.action')}
+                                        </Button>
+                                    )}
                             </div>
                             {member.can_manage && (
                                 <DropdownMenu>
@@ -294,6 +316,15 @@ export default function TeamIndex({
                     ))}
                 </ul>
             </div>
+
+            {transferring && (
+                <TransferSheet
+                    membershipId={transferring.id}
+                    userId={transferring.user_id}
+                    name={transferring.name}
+                    onClose={() => setTransferring(null)}
+                />
+            )}
 
             {transition && (
                 <MemberTransitions

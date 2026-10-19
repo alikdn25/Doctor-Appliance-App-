@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +22,7 @@ export function DateChips({
     days = 7,
     label,
     className,
+    trailing,
 }: {
     /** Today in the company's time zone, YYYY-MM-DD. */
     today: string;
@@ -29,6 +31,8 @@ export function DateChips({
     days?: number;
     label: string;
     className?: string;
+    /** The last item of the row, e.g. "Pick date" (scrolls with the chips, never covers them). */
+    trailing?: ReactNode;
 }) {
     const t = useTrans();
     const locale = usePage().props.auth.company?.locale ?? 'en-US';
@@ -62,6 +66,7 @@ export function DateChips({
                     {chip.name}
                 </button>
             ))}
+            {trailing}
         </div>
     );
 }

@@ -25,6 +25,8 @@ class CompanyRequest extends FormRequest
             'timezone' => ['required', 'timezone:all'],
             'currency' => ['required', Rule::in(Currencies::codes())],
             'locale' => ['required', Rule::in(array_column(Countries::localeOptions(), 'value'))],
+            // "Do you work alone or with a team?"
+            'works_alone' => ['required', 'boolean'],
         ];
     }
 }

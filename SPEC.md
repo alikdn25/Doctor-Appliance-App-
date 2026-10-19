@@ -149,7 +149,11 @@ return. Each job counts once; access follows company, brand and technician assig
 ### 7.5 Estimates
 
 - Line items from price book or custom.
-- Multiple options (Good / Better / Best) for the customer to choose.
+- One set of lines per estimate (Good / Better / Best options were removed by the owner on October 19, 2026; lines
+  saved with an option count as ordinary lines). Optional lines the customer may add stay.
+- Each line is one row (name, qty × price, amount); a tap opens a small sheet (name, quantity, price, Done) with the
+  note, taxes and the line's own warranty under "More". Taxes come from the company's default rates; the warranty is
+  set for the whole document (labour and parts, from the company's settings).
 - Send by SMS/email as a link; customer approves and signs online; approved estimate converts to job/invoice.
 - Estimate expiry and follow-up reminders.
 
@@ -255,6 +259,12 @@ from the company number (provider voice).
 ### 7.12 Team
 
 - Roles as in §5.
+- Companies say when they register whether they work alone or with a team (changeable in settings; adding the first
+  team member switches to "with a team"). Working alone there is no technician to choose anywhere and every job is
+  the Owner's. With a team the technician of a job is chosen in one tap (job page, its header, "Not assigned" on My
+  Jobs), with each person's jobs that day and "free" / "busy 11–1" for the job's window; "Transfer" in the calendar
+  (per-person view) and on a Team card moves ticked jobs to another person. A person who goes on calls (Field menu)
+  books to themselves by default; the office picks.
 - Time on jobs per technician. Owners/Admins can transfer unfinished visits to active team members; completed history keeps its original identity. A company-only technician login can be reassigned with a new password and a new person identity while preserving the old history. Shared cross-company identities cannot be replaced by one company.
 - Subcontractor payout share per job (percentage or fixed), payout report.
 
@@ -323,7 +333,7 @@ from the company number (provider voice).
 ## 9. Non-functional requirements
 
 - Mobile-first UI; technician screens usable with one hand. Visible Menu and permanent Book customer actions lead directly to booking, including from Calendar. Login opens the working company for Owners/Admins and My jobs for technicians. Platform administration/support are separate; persistent sign-in is enabled by default.
-- Quick office booking: name, phone and arrival window create the customer, job and visit atomically; an existing customer can be found by name/phone. Address and details can be supplied later, with a visible pending-address state and no directions until an address exists. Empty calendar days offer booking. New invoice is available from the invoice list and leads to an existing job or short customer entry, then prices. Full job creation cannot save without a customer/property.
+- Quick office booking: phone, first and last name, the address (required, right after the name) and the arrival window create the customer, job and visit atomically; an existing customer can be found by name/phone. An address is never saved empty; a customer's first address is the primary one. Other details can be supplied later. Empty calendar days offer booking. New invoice is available from the invoice list and leads to an existing job or short customer entry, then prices. Full job creation cannot save without a customer/property.
 - English UI in v1; all text strings kept in translation files for future languages.
 - Localization per company as in §1.1 (currency, taxes, time zone, regional format, address format, E.164 phones).
 - Security: hashed passwords, optional 2FA for every user, role-based access, rate limiting, audit log of sensitive actions.

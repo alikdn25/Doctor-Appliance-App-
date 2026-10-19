@@ -51,14 +51,6 @@ export type EstimateActions = {
             tax_rate_ids: number[] | null;
             optional: boolean;
             selected: boolean;
-            option_name: 'good' | 'better' | 'best' | null;
-        }[];
-        /** Good / Better / Best with each one's total (as saved). */
-        options: {
-            name: 'good' | 'better' | 'best';
-            label: string;
-            total: number;
-            chosen: boolean;
         }[];
         deposit_type: 'percent' | 'amount' | null;
         deposit_value: string;
@@ -87,11 +79,10 @@ export function depositFor(
     return Math.min(amount, total);
 }
 
-/** Live totals for the optional lines the customer has ticked and the option they chose. */
+/** Live totals for the optional lines the customer has ticked. */
 export function estimateTotals(
     calc: EstimateActions['calc'],
     selected: number[],
-    option: string | null = null,
 ) {
     const totals = computeTotals({
         items: calc.items.map((item) => ({
@@ -99,9 +90,7 @@ export function estimateTotals(
             unit_price: fromMinor(item.unit_price, calc.currency),
             taxable: item.taxable,
             tax_rate_ids: item.tax_rate_ids,
-            included: item.option_name
-                ? item.option_name === option
-                : !item.optional || selected.includes(item.id),
+            included: !item.optional || selected.includes(item.id),
         })),
         discount_type: calc.discount_type ?? '',
         discount_value: calc.discount_value,
@@ -122,7 +111,6 @@ export function ApproveDialog({
     token,
     actions,
     selected,
-    option = null,
     total,
     deposit,
     color,
@@ -132,8 +120,6 @@ export function ApproveDialog({
     token: string;
     actions: EstimateActions;
     selected: number[];
-    /** The Good / Better / Best option picked. */
-    option?: string | null;
     total: string;
     deposit: string | null;
     color: string;
@@ -171,7 +157,6 @@ export function ApproveDialog({
                         ? canvas.current?.toDataURL('image/png')
                         : null,
                 selected_items: selected,
-                option,
             },
             {
                 preserveScroll: true,
@@ -264,7 +249,6 @@ export function ApproveDialog({
                     <InputError
                         message={
                             errors.estimate ??
-                            errors.option ??
                             errors.selected_items ??
                             errors.signature_type
                         }

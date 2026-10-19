@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import type { Assignable } from '@/components/jobs/types';
@@ -34,6 +35,8 @@ export function VisitFields({
     hideTimes?: boolean;
 }) {
     const t = useTrans();
+    // Working alone: every visit is the Owner's, there is nobody to choose.
+    const worksAlone = usePage().props.auth.company?.works_alone ?? false;
     const err = (field: string) =>
         errors[`${errorPrefix}${field}`] ??
         Object.entries(errors).find(([k]) =>
@@ -127,7 +130,10 @@ export function VisitFields({
                     </span>
                 </span>
             </label>
-            <fieldset className="col-span-2 space-y-2 sm:col-span-4">
+            <fieldset
+                className="col-span-2 space-y-2 sm:col-span-4"
+                hidden={worksAlone}
+            >
                 <legend className="mb-2 text-sm font-medium">
                     {t('jobs.visit_fields.assignee_ids')}
                 </legend>

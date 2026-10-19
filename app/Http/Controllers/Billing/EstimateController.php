@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Messaging\MessagingPresenter;
 use App\Models\Estimate;
-use App\Models\EstimateItem;
 use App\Models\ServiceJob;
 use App\Payments\PaymentProviders;
 use App\Support\Billing\BillingPresenter;
@@ -17,7 +16,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -124,13 +122,12 @@ class EstimateController extends Controller
 
         $data = $request->validate([
             'approved' => ['required', 'boolean'],
-            'option' => ['nullable', Rule::in(EstimateItem::OPTIONS)],
         ]);
         $approved = $data['approved'];
 
-        // Good / Better / Best: the option the customer agreed to is the one invoiced.
-        if ($approved && ($data['option'] ?? null) !== null) {
-            $save->choose($estimate, $data['option']);
+        // Lines saved with a Good / Better / Best option before are ordinary lines now: the total counts them all.
+        if ($approved && $estimate->items()->whereNotNull('option_name')->exists()) {
+            $save->recalculate($estimate);
         }
 
         $estimate->forceFill([

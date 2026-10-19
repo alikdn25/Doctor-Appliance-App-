@@ -49,6 +49,13 @@ class JobRequest extends FormRequest
             'new_appliances' => array_values(array_filter((array) $this->input('new_appliances', []), 'is_array')),
         ]);
 
+        if (is_array($this->input('new_property'))) {
+            $this->merge(['new_property' => [
+                ...$this->input('new_property'),
+                'country' => strtoupper((string) ($this->input('new_property.country') ?: currentCompany()->country)),
+            ]]);
+        }
+
         if ($this->boolean('new_customer_mode')) {
             $property = (array) $this->input('new_customer.property', []);
             $property['country'] = strtoupper((string) ($property['country'] ?? currentCompany()->country));
@@ -115,8 +122,9 @@ class JobRequest extends FormRequest
                     ...collect(PropertyRequest::addressRules('address_edit.', 'nullable'))
                         ->only(array_map(fn (string $f) => "address_edit.{$f}", self::ADDRESS_FIELDS))
                         ->all(),
-                    'address_edit.line1' => ['nullable', 'required_with:address_edit.city', 'string', 'max:255'],
-                    'address_edit.city' => ['nullable', 'required_with:address_edit.line1', 'string', 'max:100'],
+                    // An address is never emptied.
+                    'address_edit.line1' => ['required', 'string', 'max:255'],
+                    'address_edit.city' => ['required', 'string', 'max:100'],
                     'address_edit.country' => ['required', 'string', 'size:2'],
                 ] : []),
             ];
@@ -130,7 +138,7 @@ class JobRequest extends FormRequest
             'quick_booking' => ['boolean'],
             'open_invoice' => ['boolean'],
             'customer_id' => $newCustomer ? ['nullable'] : ['required', 'integer'],
-            'property_id' => $newCustomer ? ['nullable'] : ['required', 'integer'],
+            'property_id' => $newCustomer || is_array($this->input('new_property')) ? ['nullable'] : ['required', 'integer'],
             ...($newCustomer ? [
                 'new_customer.first_name' => ['nullable', 'required_without_all:new_customer.last_name,new_customer.company_name', 'string', 'max:100'],
                 'new_customer.last_name' => ['nullable', 'string', 'max:100'],
@@ -138,11 +146,13 @@ class JobRequest extends FormRequest
                 'new_customer.phone' => ['required', 'string', 'max:32'],
                 'new_customer.email' => ['nullable', 'email', 'max:255'],
                 'new_customer.notes' => ['nullable', 'string', 'max:10000'],
+                // Booking always takes the address (owner's fixes, October 19): no address without an address.
                 ...PropertyRequest::addressRules('new_customer.property.'),
-                ...($this->boolean('quick_booking') ? [
-                    'new_customer.property.line1' => ['nullable', 'required_with:new_customer.property.city', 'string', 'max:255'],
-                    'new_customer.property.city' => ['nullable', 'required_with:new_customer.property.line1', 'string', 'max:100'],
-                ] : []),
+            ] : []),
+            // An existing customer without an address gets one while booking.
+            ...(! $newCustomer && is_array($this->input('new_property')) ? [
+                'new_property' => ['array'],
+                ...PropertyRequest::addressRules('new_property.'),
             ] : []),
             'add_visit' => ['boolean'],
             ...VisitRequest::visitRules('visit.', 'required_if_accepted:add_visit'),
@@ -301,6 +311,23 @@ class JobRequest extends FormRequest
     }
 
     /**
+     * Address typed for an existing customer while booking; null when none was sent.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function newProperty(): ?array
+    {
+        if (! $this->creating() || $this->boolean('new_customer_mode') || ! is_array($this->validated('new_property'))) {
+            return null;
+        }
+
+        return collect($this->validated('new_property'))
+            ->only(self::ADDRESS_FIELDS)
+            ->map(fn ($value, $key) => in_array($key, ['line1', 'city', 'country'], true) ? trim((string) $value) : (filled($value) ? $value : null))
+            ->all();
+    }
+
+    /**
      * Corrected name and main phone of the job's customer; null when the form did not send them.
      *
      * @return array{first_name: ?string, last_name: ?string, company_name: ?string, phone: string}|null
@@ -438,6 +465,15 @@ class JobRequest extends FormRequest
 
         if ($this->resolvedCustomer === null) {
             $validator->errors()->add('customer_id', __('jobs.errors.invalid_customer'));
+
+            return;
+        }
+
+        // A new address typed for the customer: nothing at an address to check yet.
+        if ($job === null && is_array($this->input('new_property'))) {
+            if ($this->input('appliance_ids', []) !== []) {
+                $validator->errors()->add('appliance_ids', __('jobs.errors.invalid_appliance'));
+            }
 
             return;
         }

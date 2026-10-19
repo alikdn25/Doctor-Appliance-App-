@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * The customer approves (with a signature) or declines an estimate on its online page (SPEC §7.5).
- * On approval the optional lines they picked (and the Good / Better / Best option they chose) are included and the totals and deposit recalculated.
+ * On approval the optional lines they picked are included and the totals and deposit recalculated.
  * The office is told either way. Must run in the estimate's company.
  */
 class DecideEstimateOnline
@@ -39,13 +39,12 @@ class DecideEstimateOnline
         ?string $signaturePng,
         ?string $ip,
         ?string $userAgent,
-        ?string $option = null,
     ): Estimate {
         if ($signaturePng !== null && (strlen($signaturePng) > self::MAX_SIGNATURE_BYTES || ! str_starts_with($signaturePng, "\x89PNG\r\n\x1a\n"))) {
             throw ValidationException::withMessages(['signature' => __('estimates.online.errors.signature')]);
         }
 
-        $estimate = DB::transaction(function () use ($estimate, $selectedItemIds, $signerName, $signaturePng, $ip, $userAgent, $option) {
+        $estimate = DB::transaction(function () use ($estimate, $selectedItemIds, $signerName, $signaturePng, $ip, $userAgent) {
             $estimate = $this->lockOpen($estimate);
 
             if ($estimate->isExpired()) {
@@ -58,16 +57,7 @@ class DecideEstimateOnline
                     $item->update(['selected' => in_array($item->id, $selected, true)]);
                 }
             });
-            // Good / Better / Best: the customer picks one option.
-            if ($estimate->items->contains(fn (EstimateItem $item) => $item->option_name !== null)) {
-                if ($option === null) {
-                    throw ValidationException::withMessages(['option' => __('estimates.online.errors.choose_option')]);
-                }
-
-                $this->documents->choose($estimate, $option);
-            } else {
-                $this->documents->recalculate($estimate);
-            }
+            $this->documents->recalculate($estimate);
 
             $path = null;
             if ($signaturePng !== null) {

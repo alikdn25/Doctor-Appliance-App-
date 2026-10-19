@@ -331,7 +331,8 @@ class JobController extends Controller
             'bookingDate' => $request->input('date'),
             // A tap on an empty calendar slot: its time and person (UX-REDESIGN §9.1).
             'bookingStart' => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $request->query('start')) === 1 ? $request->query('start') : null,
-            'bookingTechnician' => $request->integer('technician') ?: null,
+            // Otherwise a person who goes on calls (Field menu) books to themselves; the office picks.
+            'bookingTechnician' => $request->integer('technician') ?: $this->selfBooking($request->user()),
             'customer' => $customer ? self::customerOption($customer) : null,
             'today' => CarbonImmutable::now(currentCompany()->timezone)->format('Y-m-d'),
             // Company clock, so the booking form never suggests a window that has already passed.
@@ -353,6 +354,7 @@ class JobController extends Controller
             $request->visit(),
             $request->user(),
             $request->bringItems(),
+            $request->newProperty(),
         );
 
         $visit = $request->boolean('quick_booking') && ! $request->boolean('open_invoice') ? $job->visits()->first() : null;
@@ -489,7 +491,19 @@ class JobController extends Controller
                 'estimates' => $job->estimates->map(fn (Estimate $e) => BillingPresenter::row($e))->values(),
                 'invoices' => $job->invoices->map(fn (Invoice $i) => BillingPresenter::row($i))->values(),
                 'signature' => JobPresenter::signature($job),
+                // The job's person when it has no open visit (the visits carry their own).
+                'assignees' => $job->assignment_is_explicit
+                    ? $job->assignees()->get()->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name])->values()
+                    : [],
             ],
+            // "Change address": the customer's other addresses.
+            'otherAddresses' => $canUpdate ? Property::query()
+                ->where('customer_id', $job->customer_id)
+                ->whereKeyNot($job->property_id)
+                ->where('line1', '!=', '')
+                ->get()
+                ->map(fn (Property $p) => ['id' => $p->id, 'full_address' => $p->fullAddress()])
+                ->values() : [],
             'myVisitId' => $myVisit?->id,
             'messaging' => app(MessagingPresenter::class)->forJob($job, $user, $myVisit),
             'can' => [
@@ -499,6 +513,8 @@ class JobController extends Controller
                 'close' => Gate::allows('work', $job) && $job->status !== JobStatus::Cancelled && ! $job->trashed(),
                 'viewCustomer' => Gate::allows('view', $job->customer),
                 'updateCustomer' => Gate::allows('update', $job->customer),
+                // One tap on "Technician" (office, team mode).
+                'assign' => $canUpdate && Gate::allows('dispatch', ServiceJob::class) && ! currentCompany()->works_alone,
             ],
             'statusOptions' => $canUpdate && ! $job->status->isLocked() ? JobStatus::manualOptions() : [],
             'closureReasons' => [
@@ -873,6 +889,13 @@ class JobController extends Controller
             'bookingTechnicians' => $members->map(fn (Membership $m) => ['id' => $m->user->id, 'name' => $m->user->name])->all(),
             'busy' => $busy,
         ];
+    }
+
+    private function selfBooking(User $user): ?int
+    {
+        return $user->menuMode() === 'field' && Membership::query()->assignable()->where('user_id', $user->id)->exists()
+            ? $user->id
+            : null;
     }
 
     private function assignableUsers(): array

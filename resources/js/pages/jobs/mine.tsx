@@ -19,6 +19,7 @@ import { InboxHeaderButton } from '@/components/inbox-header-button';
 import { cardButton, JobCard } from '@/components/jobs/job-card';
 import { StrictBadge } from '@/components/jobs/job-outcome';
 import { QuickTripSheet } from '@/components/jobs/quick-trip-sheet';
+import { TechnicianPicker } from '@/components/jobs/technician-picker';
 import type { Visit } from '@/components/jobs/types';
 import { openSmsApp } from '@/components/messaging/job-messaging';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
@@ -34,7 +35,7 @@ import { useTrans } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
-import { mine, show } from '@/routes/jobs';
+import { mine, show, technician } from '@/routes/jobs';
 import { finishScreen, onMyWay, start } from '@/routes/visits';
 
 type MyVisit = Visit & {
@@ -133,6 +134,10 @@ export default function MyJobs({
 
     const [status, setStatus] = useState('');
     const [tripOpen, setTripOpen] = useState(false);
+    // "Not assigned" (office, team mode): one tap opens the technician choice.
+    const canAssign =
+        (auth.can?.viewCalendar ?? false) && !auth.company?.works_alone;
+    const [assigning, setAssigning] = useState<MyVisit | null>(null);
     // A plain date: formatted as it is, without a time zone.
     const plainDay = (options: Intl.DateTimeFormatOptions) =>
         new Intl.DateTimeFormat(auth.company?.locale ?? 'en-US', {
@@ -439,6 +444,26 @@ export default function MyJobs({
                             accent={visit.id === next?.id}
                             overdue={tab === 'day' && overdue(visit)}
                             action={step(visit)}
+                            below={
+                                visit.assignees.length === 0 &&
+                                !auth.company?.works_alone &&
+                                (canAssign ? (
+                                    <button
+                                        type="button"
+                                        className="mx-3 mb-2 flex min-h-10 items-center gap-1.5 text-sm font-semibold text-amber-700 underline-offset-4 hover:underline"
+                                        onClick={() => setAssigning(visit)}
+                                        data-test="not-assigned"
+                                    >
+                                        <UserX className="size-4" />
+                                        {t('jobs.not_assigned')}
+                                    </button>
+                                ) : (
+                                    <span className="mx-3 mb-2 flex items-center gap-1.5 text-sm font-semibold text-amber-700">
+                                        <UserX className="size-4" />
+                                        {t('jobs.not_assigned')}
+                                    </span>
+                                ))
+                            }
                             time={
                                 // Visits of the shown day show only the window; one still open from an earlier day shows its date.
                                 tab === 'day' &&
@@ -453,16 +478,8 @@ export default function MyJobs({
                                       )
                             }
                             extra={
-                                (visit.assignees.length === 0 ||
-                                    visit.strict_arrival ||
-                                    visit.job.bring) && (
+                                (visit.strict_arrival || visit.job.bring) && (
                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5">
-                                        {visit.assignees.length === 0 && (
-                                            <span className="flex items-center gap-1 font-medium text-amber-700">
-                                                <UserX className="size-3.5" />
-                                                {t('jobs.not_assigned')}
-                                            </span>
-                                        )}
                                         {visit.strict_arrival && (
                                             <StrictBadge />
                                         )}
@@ -518,6 +535,28 @@ export default function MyJobs({
                 onClick={() => setTripOpen(true)}
                 data-test="trip-fab"
             />
+
+            {canAssign && assigning && (
+                <TechnicianPicker
+                    open
+                    onOpenChange={(open) => !open && setAssigning(null)}
+                    date={time.ymd(assigning.scheduled_start)}
+                    window={{
+                        start: assigning.start_time,
+                        end: assigning.end_time,
+                    }}
+                    excludeVisitIds={[assigning.id]}
+                    onPick={(userId) => {
+                        const jobId = assigning.job.id;
+                        setAssigning(null);
+                        router.put(
+                            technician(jobId).url,
+                            { user_id: userId },
+                            { preserveScroll: true },
+                        );
+                    }}
+                />
+            )}
 
             <QuickTripSheet
                 open={tripOpen}

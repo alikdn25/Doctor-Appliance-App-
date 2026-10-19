@@ -49,6 +49,7 @@ use Illuminate\Support\Carbon;
  * @property int $travel_buffer_minutes
  * @property int|null $estimate_valid_days Prefills "Valid until" on new estimates
  * @property bool $technicians_can_delete_jobs
+ * @property bool $works_alone One person does every job: no technician choice, every visit goes to the Owner
  * @property array<string, list<string>>|null $closure_reasons Reasons per job outcome; null/missing = defaults
  * @property int|null $diagnostic_service_id Price book service for "Invoice diagnosis only"
  * @property int $strict_arrival_reminder_minutes
@@ -107,6 +108,7 @@ class Company extends Model
         'estimate_valid_days',
         'estimate_followup_days',
         'technicians_can_delete_jobs',
+        'works_alone',
         'closure_reasons',
         'diagnostic_service_id',
         'strict_arrival_reminder_minutes',
@@ -146,6 +148,7 @@ class Company extends Model
         'warranty_parts_unit' => 'days',
         'technicians_see_costs' => false,
         'technicians_can_delete_jobs' => false,
+        'works_alone' => false,
         'accepts_cash' => true,
         'strict_arrival_reminder_minutes' => 60,
         'vertical' => 'appliance_repair',
@@ -194,6 +197,7 @@ class Company extends Model
             'estimate_valid_days' => 'integer',
             'estimate_followup_days' => 'integer',
             'technicians_can_delete_jobs' => 'boolean',
+            'works_alone' => 'boolean',
             'closure_reasons' => 'array',
             'strict_arrival_reminder_minutes' => 'integer',
             'warranty_labor_value' => 'integer',
@@ -237,6 +241,7 @@ class Company extends Model
             'tracks_appliances' => $this->vertical->tracksAppliances(),
             'prices_include_tax' => $this->prices_include_tax,
             'sms_mode' => $this->sms_mode->value,
+            'works_alone' => (bool) $this->works_alone,
             'address' => Countries::addressLabels($this->country),
         ];
     }
@@ -251,6 +256,25 @@ class Company extends Model
         $own = $this->closure_reasons[$outcome->value] ?? null;
 
         return is_array($own) && $own !== [] ? array_values($own) : $outcome->defaultReasons();
+    }
+
+    /**
+     * The person every visit goes to in "work alone" mode: the active Owner (the first one if there are several).
+     */
+    public function soloWorkerId(): ?int
+    {
+        if (! $this->works_alone) {
+            return null;
+        }
+
+        $id = Membership::withoutCompanyScope()
+            ->where('company_id', $this->id)
+            ->where('is_active', true)
+            ->orderByRaw("case when role = 'owner' then 0 else 1 end")
+            ->orderBy('id')
+            ->value('user_id');
+
+        return $id === null ? null : (int) $id;
     }
 
     public function isActive(): bool
