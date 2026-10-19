@@ -105,13 +105,18 @@ export function TechnicianPicker({
             ? visits.find((v) => v.start < window.end && v.end > window.start)
             : undefined;
 
-        // The count is the whole day's work; only "busy" leaves out this job's own time.
+        // The count is the whole day's work. The person already on this job is said so (not "free"); for
+        // everyone else "busy" means another job at this job's time.
+        const hasThisJob = visits.length < person.visits.length;
+
         return [
             t('jobs.technician.jobs_count', { count: person.visits.length }),
-            window &&
-                (clash
-                    ? t('jobs.quick.busy', { time: range(clash) })
-                    : t('jobs.quick.free')),
+            hasThisJob
+                ? t('jobs.technician.has_this_job')
+                : window &&
+                  (clash
+                      ? t('jobs.quick.busy', { time: range(clash) })
+                      : t('jobs.quick.free')),
         ]
             .filter(Boolean)
             .join(' · ');

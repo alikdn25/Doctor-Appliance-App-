@@ -113,9 +113,11 @@ test('Transfer moves only the ticked jobs, and what is left can go to someone el
     ])->assertSessionHasNoErrors();
     expect($people($third))->toBe([$this->owner->id]);
 
-    // The Team card lists a person's open jobs from today on.
-    Carbon\Carbon::setTestNow('2030-03-01 12:00');
+    // The Team card lists a person's open jobs, overdue ones too (a job from an earlier day can be moved).
     $sam = inCompany($this->company, fn () => Membership::query()->where('user_id', $this->sam->id)->sole());
+    Carbon\Carbon::setTestNow('2030-03-01 12:00');
+    expect($this->getJson(route('technicians.open-visits', $sam))->json('visits'))->toHaveCount(2);
+    Carbon\Carbon::setTestNow('2030-03-20 12:00');
     expect($this->getJson(route('technicians.open-visits', $sam))->json('visits'))->toHaveCount(2);
     Carbon\Carbon::setTestNow();
 });

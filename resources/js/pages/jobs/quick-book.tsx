@@ -760,7 +760,7 @@ export default function QuickBook({
                         title={t('jobs.quick.appliance')}
                         hint={t('jobs.quick.appliance_optional')}
                     >
-                        <div className="max-h-56 overflow-y-auto rounded-2xl p-0.5">
+                        <div className="rounded-2xl p-0.5">
                             <ApplianceTypePicker
                                 compact
                                 label={t('jobs.quick.appliance')}

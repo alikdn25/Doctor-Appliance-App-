@@ -1742,6 +1742,14 @@ and "Not sent yet" marks them — say if a real draft step is wanted.
   addresses, soft-deletes empty addresses, renames the price book item). Estimates saved with Good / Better / Best
   keep their stored total until they are saved again or approved (then every line counts).
 
+### Fixes after the October 19 deploy check ✅ (October 19)
+
+- Technician choice: the person already on the job reads "has this job" instead of "free".
+- "Move 1 job to" (singular). The calendar's "+1 →" chip sits above the lanes and no longer covers a name.
+- Team → Transfer lists all open jobs of the person, overdue ones included (it listed only today and later).
+- Book customer: the appliance tiles are all shown (no inner scroll hiding "Other").
+- Estimate / invoice form on a phone: Cancel and Save side by side.
+
 ## Stage 2 — ⏳ Not started
 
 ## Stage 3 — ⏳ Not started

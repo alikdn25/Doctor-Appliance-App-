@@ -161,11 +161,12 @@ export function DayGrid({
 
     return (
         <div className="relative">
+            {/* "+2 →" in its own row above the lanes, so it never covers a person's name. */}
             {hidden > 0 && (
                 <button
                     type="button"
                     data-test="lanes-more"
-                    className="da-chip absolute top-1.5 right-1.5 z-20 rounded-full px-2.5 text-xs leading-7 font-semibold"
+                    className="da-chip mb-1.5 ml-auto block w-fit rounded-full px-2.5 text-xs leading-7 font-semibold"
                     onClick={() =>
                         scroller.current?.scrollBy({
                             left: LANE_PX * 2,

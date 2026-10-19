@@ -1163,23 +1163,30 @@ export default function BillingForm({
                                 t('billing.fix_errors')}
                         </p>
                     )}
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="h-12 !flex-none md:h-11"
-                        asChild
-                    >
-                        <Link href={back}>{t('common.cancel')}</Link>
-                    </Button>
-                    <Button
-                        type="submit"
-                        className="h-12 md:h-11"
-                        disabled={
-                            form.processing || Object.keys(blocking).length > 0
-                        }
-                    >
-                        {t('common.save')} · {money(totals.total)}
-                    </Button>
+                    {/* Cancel and Save side by side, also on a narrow phone. */}
+                    <div className="flex w-full gap-2 md:w-auto">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-12 shrink-0 md:h-11"
+                            asChild
+                        >
+                            <Link href={back}>{t('common.cancel')}</Link>
+                        </Button>
+                        <Button
+                            type="submit"
+                            className="h-12 min-w-0 flex-1 md:h-11 md:flex-none"
+                            disabled={
+                                form.processing ||
+                                Object.keys(blocking).length > 0
+                            }
+                            data-test="document-save"
+                        >
+                            <span className="truncate">
+                                {t('common.save')} · {money(totals.total)}
+                            </span>
+                        </Button>
+                    </div>
                 </StickyActionBar>
             </form>
 
