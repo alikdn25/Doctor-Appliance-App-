@@ -160,12 +160,17 @@ export function useAppNavigation(): AppNavigation {
               ]
     ).filter(Boolean) as AppNavigation['bottom'];
 
+    // My menu (owner's update, October 24): Field is for going on calls — jobs of the day, customers, invoices,
+    // mileage and expenses; Office runs the business — the Jobs list, reports, team and company settings.
+    // People who cannot choose keep the menu of their role.
+    const field = !fieldWorker && !!auth.user?.can_choose_menu && !office;
+
     const main = [
         book,
         today && { ...today, title: 'nav.my_jobs' },
         calendarItem,
         map,
-        jobsItem,
+        !field && jobsItem,
         can.viewCustomers &&
             item('customers', 'nav.customers', customers(), Contact),
         invoicesItem,
@@ -173,58 +178,50 @@ export function useAppNavigation(): AppNavigation {
         messages,
     ].filter(Boolean) as AppNavItem[];
 
-    const money = (
-        isOwner
-            ? [
-                  can.viewInvoices &&
-                      item('reports', 'nav.reports', reports(), BarChart3),
-                  item(
-                      'expenses-hub',
-                      'nav.expenses_and_taxes',
-                      expensesHub(),
-                      Wallet,
-                  ),
-              ]
-            : [
-                  can.viewInvoices &&
-                      item('reports', 'nav.reports', reports(), BarChart3),
-                  can.viewInvoices &&
-                      item('cash', 'nav.cash', cash(), Banknote),
-                  fieldWorker
-                      ? myExpenses
-                      : can.viewBusinessExpenses &&
-                        item(
-                            'expenses',
-                            'nav.business_expenses',
-                            expenses(),
-                            Wallet,
-                        ),
-                  mileage,
-              ]
-    ).filter(Boolean) as AppNavItem[];
+    const fieldMoney = [
+        mileage,
+        fieldWorker
+            ? myExpenses
+            : can.viewBusinessExpenses &&
+              item('expenses', 'nav.business_expenses', expenses(), Wallet),
+        !isOwner &&
+            can.viewInvoices &&
+            item('cash', 'nav.cash', cash(), Banknote),
+    ].filter(Boolean) as AppNavItem[];
 
-    const company = [
-        auth.company &&
-            item(
-                'getting-started',
-                'nav.getting_started',
-                dashboard(),
-                LayoutGrid,
-            ),
-        can.viewBrands && item('brands', 'nav.brands', brands(), Tags),
-        can.manageTeam && item('team', 'nav.team', team(), Users),
-        can.viewTaxes && item('taxes', 'nav.taxes', taxes(), Percent),
-        can.manageCatalog &&
-            item('services', 'nav.services', services(), BookOpen),
-        can.manageCatalog &&
-            item(
-                'google-reviews',
-                'nav.google_reviews',
-                googleProfiles(),
-                Star,
-            ),
-        can.manageCompany &&
-            item('messaging', 'nav.messaging', messaging(), MessageSquare),
+    const money = field
+        ? fieldMoney
+        : ((isOwner
+              ? [
+                    can.viewInvoices &&
+                        item('reports', 'nav.reports', reports(), BarChart3),
+                    item(
+                        'expenses-hub',
+                        'nav.expenses_and_taxes',
+                        expensesHub(),
+                        Wallet,
+                    ),
+                ]
+              : [
+                    can.viewInvoices &&
+                        item('reports', 'nav.reports', reports(), BarChart3),
+                    can.viewInvoices &&
+                        item('cash', 'nav.cash', cash(), Banknote),
+                    fieldWorker
+                        ? myExpenses
+                        : can.viewBusinessExpenses &&
+                          item(
+                              'expenses',
+                              'nav.business_expenses',
+                              expenses(),
+                              Wallet,
+                          ),
+                    mileage,
+                ]
+          ).filter(Boolean) as AppNavItem[]);
+
+    // Field keeps only the company settings (Solo / Team, the company's details); the rest is in Office.
+    const fieldCompany = [
         can.manageCompany &&
             item(
                 'company-settings',
@@ -232,12 +229,61 @@ export function useAppNavigation(): AppNavigation {
                 companySettings(),
                 Building,
             ),
-        can.viewTrash && item('trash', 'nav.deleted_items', trash(), Trash2),
-        can.viewChangeLog &&
-            item('change-log', 'nav.change_log', changeLog(), History),
-        can.viewChangeLog &&
-            item('booking-bot', 'nav.booking_bot', bookingBot(), Bot),
     ].filter(Boolean) as AppNavItem[];
+
+    const company =
+        field && !fieldWorker
+            ? fieldCompany
+            : ([
+                  auth.company &&
+                      item(
+                          'getting-started',
+                          'nav.getting_started',
+                          dashboard(),
+                          LayoutGrid,
+                      ),
+                  can.viewBrands &&
+                      item('brands', 'nav.brands', brands(), Tags),
+                  // Solo has no Team section (Settings → Solo / Team).
+                  can.manageTeam &&
+                      !auth.company?.works_alone &&
+                      item('team', 'nav.team', team(), Users),
+                  can.viewTaxes && item('taxes', 'nav.taxes', taxes(), Percent),
+                  can.manageCatalog &&
+                      item('services', 'nav.services', services(), BookOpen),
+                  can.manageCatalog &&
+                      item(
+                          'google-reviews',
+                          'nav.google_reviews',
+                          googleProfiles(),
+                          Star,
+                      ),
+                  can.manageCompany &&
+                      item(
+                          'messaging',
+                          'nav.messaging',
+                          messaging(),
+                          MessageSquare,
+                      ),
+                  can.manageCompany &&
+                      item(
+                          'company-settings',
+                          'nav.company_settings',
+                          companySettings(),
+                          Building,
+                      ),
+                  can.viewTrash &&
+                      item('trash', 'nav.deleted_items', trash(), Trash2),
+                  can.viewChangeLog &&
+                      item(
+                          'change-log',
+                          'nav.change_log',
+                          changeLog(),
+                          History,
+                      ),
+                  can.viewChangeLog &&
+                      item('booking-bot', 'nav.booking_bot', bookingBot(), Bot),
+              ].filter(Boolean) as AppNavItem[]);
 
     const platform = auth.user?.is_super_admin
         ? [item('companies', 'nav.companies', adminCompanies(), Building2)]

@@ -823,46 +823,6 @@ export default function CompanySettingsPage({
                         <h2 className="text-base font-medium">
                             {t('company.jobs_section')}
                         </h2>
-                        <div className="space-y-2" data-test="works-alone">
-                            <div
-                                role="radiogroup"
-                                aria-label={t('company.fields.works_alone')}
-                                className="grid grid-cols-2 gap-2"
-                            >
-                                {([true, false] as const).map((alone) => (
-                                    <button
-                                        key={String(alone)}
-                                        type="button"
-                                        role="radio"
-                                        aria-checked={
-                                            form.data.works_alone === alone
-                                        }
-                                        onClick={() =>
-                                            form.setData('works_alone', alone)
-                                        }
-                                        className="da-chip da-press flex min-h-14 flex-col items-start justify-center rounded-2xl px-4 py-2 text-left"
-                                    >
-                                        <span className="text-sm font-semibold">
-                                            {t(
-                                                alone
-                                                    ? 'onboarding.alone'
-                                                    : 'onboarding.with_team',
-                                            )}
-                                        </span>
-                                        <span className="text-xs opacity-80">
-                                            {t(
-                                                alone
-                                                    ? 'onboarding.alone_hint'
-                                                    : 'onboarding.with_team_hint',
-                                            )}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                {t('company.works_alone_hint')}
-                            </p>
-                        </div>
                         <label className="flex min-h-10 items-center gap-2 text-sm">
                             <Checkbox
                                 checked={form.data.technicians_can_delete_jobs}

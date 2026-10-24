@@ -28,6 +28,7 @@ use App\Http\Controllers\Company\ServiceController;
 use App\Http\Controllers\Company\SwitchCompanyController;
 use App\Http\Controllers\Company\TaxRateController;
 use App\Http\Controllers\Company\TeamController;
+use App\Http\Controllers\Company\WorkModeController;
 use App\Http\Controllers\Customers\ApplianceController;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Customers\PropertyController;
@@ -142,6 +143,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('jobs/{job}/warranties', [JobWarrantyController::class, 'update'])->name('jobs.warranties.update');
         Route::get('jobs/{job}/warranties', [JobWarrantyController::class, 'onDate'])->name('jobs.warranties');
         Route::put('jobs/{job}/tech-notes', [JobWorkController::class, 'notes'])->name('jobs.tech-notes');
+        Route::put('jobs/{job}/instructions', [JobWorkController::class, 'instructions'])->name('jobs.instructions');
         Route::post('jobs/{job}/appliances', [JobWorkController::class, 'storeAppliance'])->name('jobs.appliances.store');
         Route::put('jobs/{job}/appliances/{appliance}', [JobWorkController::class, 'updateAppliance'])->name('jobs.appliances.update');
         Route::post('jobs/{job}/photos', [JobFieldController::class, 'storePhoto'])->name('jobs.photos.store');
@@ -257,6 +259,7 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::get('settings', [CompanySettingsController::class, 'edit'])->name('company.settings.edit');
             Route::get('settings/{section}', [CompanySettingsController::class, 'edit'])->name('company.settings.section');
             Route::put('settings', [CompanySettingsController::class, 'update'])->name('company.settings.update');
+            Route::put('work-mode', WorkModeController::class)->name('company.work-mode');
             Route::put('timezone', DetectTimezoneController::class)->name('company.timezone.detect');
             Route::get('messaging', [MessagingSettingsController::class, 'edit'])->name('company.messaging.edit');
             Route::put('messaging', [MessagingSettingsController::class, 'update'])->name('company.messaging.update');
