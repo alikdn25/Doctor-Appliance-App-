@@ -6,7 +6,10 @@ test('Mileage "…" → Trip → Enter by hand logs a parts store run and the mo
     await page.goto('/trips');
     await expect(page.getByRole('heading', { name: 'Mileage' })).toBeVisible();
 
-    await page.locator('button[aria-label="More actions"]:visible').first().click();
+    await page
+        .locator('button[aria-label="More actions"]:visible')
+        .first()
+        .click();
     await page.getByRole('button', { name: 'Trip', exact: true }).click();
     // Trip (in Mileage's "…") opens the navigation sheet; a past trip is entered by hand from it.
     await page.getByRole('button', { name: 'Enter by hand' }).click();
