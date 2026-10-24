@@ -1,3 +1,17 @@
+# October 24 — Fix after the 8cb60d8 deploy check: arrival window one hour early in texts
+
+The booking confirmation said "Arrival window: 12:00 p.m. - 2:00 p.m." for a 1:00–3:00 p.m. visit on Dec 22. PHP's
+time zone database knows that British Columbia keeps daylight time from November 2026; the server's ICU (intl) data
+is older and still moved Vancouver back to UTC−8. Texts, print-outs and strict-arrival reminders let ICU convert the
+time zone, so they were an hour early; the chips and the job page (Carbon) were right.
+
+- New `App\Support\Locale\LocalTime`: Carbon works out the wall-clock time, ICU only spells it in the regional
+  format. Used by message placeholders (`{visit_date}`, `{arrival_window}`), estimate/invoice print dates, strict
+  arrival reminders and the "Booked …" sheet.
+- No migrations.
+- Tests: LocalTimeTest (hour and date follow PHP in summer, winter, past midnight UTC and other zones).
+- Next: PR 3 — estimates, company locations and logo, the job report, who gets what.
+
 # October 24 — Owner's update, PR 2: job page, technician, Solo / Team, Transfer, Field / Office
 
 Sections 1, 2, 3, 4 and 17 of the owner's task of October 24.

@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
 use App\Models\User;
+use App\Support\Locale\LocalTime;
 use Carbon\CarbonInterface;
 use IntlDateFormatter;
 
@@ -42,9 +43,8 @@ class MessageContext
         }
 
         $company = currentCompany();
-        $formatter = new IntlDateFormatter(str_replace('-', '_', $company->locale), IntlDateFormatter::FULL, IntlDateFormatter::NONE, $company->timezone, null, 'EEEE, MMM d');
 
-        return self::plain((string) $formatter->format($at));
+        return self::plain(LocalTime::format($at, $company->timezone, $company->locale, IntlDateFormatter::FULL, IntlDateFormatter::NONE, 'EEEE, MMM d'));
     }
 
     public static function time(?CarbonInterface $at): ?string
@@ -54,9 +54,8 @@ class MessageContext
         }
 
         $company = currentCompany();
-        $formatter = new IntlDateFormatter(str_replace('-', '_', $company->locale), IntlDateFormatter::NONE, IntlDateFormatter::SHORT, $company->timezone);
 
-        return self::plain((string) $formatter->format($at));
+        return self::plain(LocalTime::format($at, $company->timezone, $company->locale));
     }
 
     public static function window(JobVisit $visit): string

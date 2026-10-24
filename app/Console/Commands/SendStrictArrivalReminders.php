@@ -13,12 +13,12 @@ use App\Models\SmsAccount;
 use App\Models\User;
 use App\Notifications\StrictArrivalReminder;
 use App\Sms\SmsProvider;
+use App\Support\Locale\LocalTime;
 use App\Support\PhoneNumber;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use IntlDateFormatter;
 
 /**
  * Every 5 minutes: the people assigned to a visit with a strict arrival time are reminded (email, plus a text in
@@ -72,8 +72,6 @@ class SendStrictArrivalReminders extends Command
 
     private function time(Company $company, \DateTimeInterface $at): string
     {
-        $formatter = new IntlDateFormatter(str_replace('-', '_', $company->locale), IntlDateFormatter::NONE, IntlDateFormatter::SHORT, $company->timezone);
-
-        return (string) $formatter->format($at);
+        return LocalTime::format($at, $company->timezone, $company->locale);
     }
 }

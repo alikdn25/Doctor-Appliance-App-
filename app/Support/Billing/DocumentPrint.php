@@ -6,6 +6,7 @@ use App\Models\Brand;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Support\Locale\AddressFormatter;
+use App\Support\Locale\LocalTime;
 use App\Support\PhoneNumber;
 use App\Support\PrivateMedia;
 use Carbon\CarbonInterface;
@@ -127,9 +128,8 @@ class DocumentPrint
         }
 
         $company = currentCompany();
-        $formatter = new IntlDateFormatter(str_replace('-', '_', $company->locale), IntlDateFormatter::MEDIUM, IntlDateFormatter::SHORT, $company->timezone);
 
-        return (string) $formatter->format($at);
+        return LocalTime::format($at, $company->timezone, $company->locale, IntlDateFormatter::MEDIUM, IntlDateFormatter::SHORT);
     }
 
     public static function signatureDataUri(Estimate $estimate): ?string

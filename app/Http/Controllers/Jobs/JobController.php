@@ -43,10 +43,9 @@ use App\Support\Billing\CostAccess;
 use App\Support\Billing\JobProfit;
 use App\Support\Jobs\JobBacklog;
 use App\Support\Jobs\JobPresenter;
+use App\Support\Locale\LocalTime;
 use App\Support\PhoneNumber;
 use Carbon\CarbonImmutable;
-use DateTimeImmutable;
-use DateTimeZone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -393,17 +392,13 @@ class JobController extends Controller
         $start = CarbonImmutable::parse($visit->scheduled_start)->setTimezone($company->timezone);
         $end = CarbonImmutable::parse($visit->scheduled_end)->setTimezone($company->timezone);
         $today = CarbonImmutable::now($company->timezone)->startOfDay();
-        // The wall-clock time is worked out by Carbon; ICU only spells it in the company's format (as UTC, so its
-        // own time-zone rules never shift the hour).
-        $wall = fn (CarbonImmutable $moment) => new DateTimeImmutable($moment->format('Y-m-d H:i:s'), new DateTimeZone('UTC'));
         $day = match ((int) $today->diffInDays($start->startOfDay())) {
             0 => __('jobs.quick.today'),
             1 => __('jobs.quick.tomorrow'),
-            default => (new IntlDateFormatter($company->locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, 'UTC', null, 'EEE, MMM d'))->format($wall($start)),
+            default => LocalTime::format($start, $company->timezone, $company->locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, 'EEE, MMM d'),
         };
-        $hours = new IntlDateFormatter($company->locale, IntlDateFormatter::NONE, IntlDateFormatter::SHORT, 'UTC');
 
-        return $day.' '.$hours->format($wall($start)).'–'.$hours->format($wall($end));
+        return $day.' '.LocalTime::format($start, $company->timezone, $company->locale).'–'.LocalTime::format($end, $company->timezone, $company->locale);
     }
 
     public function show(Request $request, ServiceJob $job): Response|RedirectResponse
