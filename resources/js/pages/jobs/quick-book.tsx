@@ -2,6 +2,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     CalendarDays,
     ChevronDown,
+    ClipboardPaste,
     ExternalLink,
     Search,
     X,
@@ -24,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { DateChips } from '@/components/ui/date-chips';
 import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
+import { MonthCalendar } from '@/components/ui/month-calendar';
 import { NativeSelect } from '@/components/ui/native-select';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { StickyActionBar } from '@/components/ui/sticky-action-bar';
@@ -33,13 +35,39 @@ import { useTrans } from '@/lib/i18n';
 import { isPossiblePhone, usePhone } from '@/lib/phone';
 import { cn } from '@/lib/utils';
 import { index as brandsPage } from '@/routes/brands';
-import { create, index, lookup, store } from '@/routes/jobs';
+import { create, index, lookup, parseMessage, store } from '@/routes/jobs';
+import { xsrfToken } from '@/lib/http';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
+import { toast } from 'sonner';
 import type { Option } from '@/types';
+
+type Occupant = {
+    name: string | null;
+    phone: string | null;
+    access_notes: string | null;
+};
+
+type BillingParts = {
+    line1: string | null;
+    unit: string | null;
+    city: string | null;
+    region: string | null;
+    postal_code: string | null;
+    country: string | null;
+};
 
 type CustomerChoice = {
     id: number;
     display_name: string;
     phone: string | null;
+    email?: string | null;
+    billing?: BillingParts | null;
     notes: string | null;
     jobs_count?: number;
     properties: {
@@ -47,9 +75,78 @@ type CustomerChoice = {
         full_address: string;
         is_primary: boolean;
         address?: { line1: string };
+        occupant?: Occupant;
         appliances?: { id: number; type: string }[];
     }[];
 };
+
+/** What "Paste from message" read from the text (server: BookingTextParser). */
+type ParsedAddress = {
+    line1: string;
+    unit: string | null;
+    city: string | null;
+    region: string | null;
+    postal_code: string | null;
+};
+type Parsed = {
+    source: 'ai' | 'basic';
+    customer: CustomerChoice | null;
+    fields: {
+        first_name: string | null;
+        last_name: string | null;
+        company_name: string | null;
+        phone: string | null;
+        email: string | null;
+        job_address: ParsedAddress | null;
+        billing_address: ParsedAddress | null;
+        occupant_name: string | null;
+        occupant_phone: string | null;
+        access_notes: string | null;
+        appliance_type: string | null;
+        appliance_brand: string | null;
+        problem: string | null;
+    };
+};
+
+/** An on/off switch as a whole raised row (one tap). */
+function SwitchRow({
+    label,
+    checked,
+    onChange,
+    testId,
+}: {
+    label: string;
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+    testId?: string;
+}) {
+    return (
+        <button
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            onClick={() => onChange(!checked)}
+            data-test={testId}
+            className="da-card da-press flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left text-sm font-semibold"
+        >
+            <span className="min-w-0 flex-1">{label}</span>
+            <span
+                aria-hidden="true"
+                className={cn(
+                    'relative h-7 w-12 shrink-0 rounded-full transition-colors',
+                    checked ? 'bg-[#1e8cfd]' : 'da-track',
+                )}
+            >
+                <span
+                    className={cn(
+                        'da-raised absolute top-0.5 size-6 rounded-full bg-white transition-all',
+                        checked ? 'left-[22px]' : 'left-0.5',
+                    )}
+                />
+            </span>
+        </button>
+    );
+}
 
 type Window = { start: string; end: string };
 type Busy = { date: string; start: string; end: string };
@@ -75,6 +172,39 @@ const addDays = (ymd: string, days: number) => {
 
     return date.toISOString().slice(0, 10);
 };
+
+type PropertyChoice = CustomerChoice['properties'][number];
+
+/** The customer's primary real address (or the first one). */
+const initialPrimary = (customer: CustomerChoice | null) => {
+    const usable = (customer?.properties ?? []).filter(
+        (p) => (p.address?.line1 ?? p.full_address) !== '',
+    );
+
+    return usable.find((p) => p.is_primary) ?? usable[0];
+};
+
+/** The occupant saved at an address: the switch is on when there is one. */
+const occupantOf = (property: PropertyChoice | undefined) => {
+    const o = property?.occupant;
+
+    return {
+        enabled: !!(o?.name || o?.phone),
+        name: o?.name ?? '',
+        phone: o?.phone ?? '',
+        access_notes: o?.access_notes ?? '',
+    };
+};
+
+/** The customer's own billing address, or empty (= the same as the primary address). */
+const billingOf = (customer: CustomerChoice | null, country: string) => ({
+    ...emptyAddress(customer?.billing?.country ?? country),
+    line1: customer?.billing?.line1 ?? '',
+    unit: customer?.billing?.unit ?? '',
+    city: customer?.billing?.city ?? '',
+    region: customer?.billing?.region ?? '',
+    postal_code: customer?.billing?.postal_code ?? '',
+});
 
 /** Customers found by phone or name, with [Use]. */
 function Matches({
@@ -248,9 +378,14 @@ export default function QuickBook({
             first_name: '',
             last_name: '',
             phone: '',
+            email: '',
             notes: '',
             property: emptyAddress(country),
         },
+        // Someone else lives at the job address (a tenant): saved with the address and offered next time.
+        occupant: occupantOf(initialPrimary(initialCustomer)),
+        // The payer's billing address (empty = the same as the job / primary address).
+        billing: billingOf(initialCustomer, country),
         // Address typed for a customer from the book who has none yet.
         new_property: emptyAddress(country),
         description: '',
@@ -277,7 +412,14 @@ export default function QuickBook({
     const addresses = (customer?.properties ?? []).filter(
         (p) => (p.address?.line1 ?? p.full_address) !== '',
     );
-    const needsAddress = existing && addresses.length === 0;
+    // "New address" for a customer from the book: typed in place and saved to the customer.
+    const [newAddress, setNewAddress] = useState(false);
+    const needsAddress = existing && (addresses.length === 0 || newAddress);
+    const occupantOn = data.occupant.enabled;
+    const [calendarOpen, setCalendarOpen] = useState(false);
+    const [pasteOpen, setPasteOpen] = useState(false);
+    const [pasteText, setPasteText] = useState('');
+    const [pasting, setPasting] = useState(false);
     const isToday = data.visit.date === today;
     const technicianId = data.visit.assignee_ids[0] ?? null;
 
@@ -349,21 +491,154 @@ export default function QuickBook({
             (p) => (p.address?.line1 ?? p.full_address) !== '',
         );
         const property = usable.find((p) => p.is_primary) ?? usable[0];
+        setNewAddress(false);
         form.setData((d) => ({
             ...d,
             new_customer_mode: false,
             customer_id: choice.id,
             property_id: property?.id ?? null,
+            occupant: occupantOf(property),
+            billing: billingOf(choice, country),
+        }));
+    };
+    const pickProperty = (id: number) => {
+        setNewAddress(false);
+        form.setData((d) => ({
+            ...d,
+            property_id: id,
+            occupant: occupantOf(customer?.properties.find((p) => p.id === id)),
         }));
     };
     const changeCustomer = () => {
         setCustomer(null);
+        setNewAddress(false);
         form.setData((d) => ({
             ...d,
             new_customer_mode: true,
             customer_id: null,
             property_id: null,
+            occupant: occupantOf(undefined),
+            billing: emptyAddress(country),
         }));
+    };
+    const setOccupant = (changes: Partial<typeof data.occupant>) =>
+        form.setData('occupant', { ...data.occupant, ...changes });
+    const setBilling = (changes: Partial<typeof data.billing>) =>
+        form.setData('billing', { ...data.billing, ...changes });
+
+    // "Paste from message": the server reads the text (the company's AI, or a basic reading) and the form is
+    // filled for the person to check. A phone already in the book brings that customer.
+    const applyParsed = (parsed: Parsed) => {
+        const f = parsed.fields;
+        const address = (a: ParsedAddress | null) =>
+            a
+                ? {
+                      ...emptyAddress(country),
+                      line1: a.line1,
+                      unit: a.unit ?? '',
+                      city: a.city ?? '',
+                      region: a.region ?? '',
+                      postal_code: a.postal_code ?? '',
+                  }
+                : null;
+        const jobAddress = address(f.job_address);
+        const billing = address(f.billing_address);
+        const occupant =
+            f.occupant_name || f.occupant_phone
+                ? {
+                      enabled: true,
+                      name: f.occupant_name ?? '',
+                      phone: f.occupant_phone ?? '',
+                      access_notes: f.access_notes ?? '',
+                  }
+                : null;
+        if (f.appliance_type) setApplianceType(f.appliance_type);
+
+        if (parsed.customer) {
+            const choice = parsed.customer;
+            setCustomer(choice);
+            setMatches([]);
+            const known = choice.properties.find(
+                (p) =>
+                    jobAddress !== null &&
+                    p.address?.line1.trim().toLowerCase() ===
+                        jobAddress.line1.trim().toLowerCase(),
+            );
+            const usable = choice.properties.filter(
+                (p) => (p.address?.line1 ?? p.full_address) !== '',
+            );
+            const property =
+                known ??
+                (jobAddress
+                    ? undefined
+                    : (usable.find((p) => p.is_primary) ?? usable[0]));
+            setNewAddress(!property && jobAddress !== null);
+            form.setData((d) => ({
+                ...d,
+                new_customer_mode: false,
+                customer_id: choice.id,
+                property_id: property?.id ?? null,
+                new_property:
+                    !property && jobAddress ? jobAddress : d.new_property,
+                description: f.problem ?? d.description,
+                occupant: occupant ?? occupantOf(property),
+                billing: billing ?? billingOf(choice, country),
+            }));
+
+            return;
+        }
+
+        form.setData((d) => ({
+            ...d,
+            new_customer: {
+                ...d.new_customer,
+                first_name:
+                    f.first_name ?? f.company_name ?? d.new_customer.first_name,
+                last_name: f.last_name ?? d.new_customer.last_name,
+                phone: f.phone ?? d.new_customer.phone,
+                email: f.email ?? d.new_customer.email,
+                property: jobAddress ?? d.new_customer.property,
+            },
+            description: f.problem ?? d.description,
+            occupant: occupant ?? d.occupant,
+            billing: billing ?? d.billing,
+        }));
+    };
+    const readMessage = () => {
+        if (pasteText.trim() === '' || pasting) return;
+        setPasting(true);
+        fetch(parseMessage().url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': xsrfToken(),
+            },
+            body: JSON.stringify({ text: pasteText }),
+        })
+            .then((response) =>
+                response.ok ? response.json() : Promise.reject(),
+            )
+            .then((parsed: Parsed) => {
+                applyParsed(parsed);
+                setPasteOpen(false);
+                setPasteText('');
+                toast.success(
+                    parsed.customer
+                        ? t('jobs.quick.paste_known', {
+                              name: parsed.customer.display_name,
+                          })
+                        : t(
+                              parsed.source === 'ai'
+                                  ? 'jobs.quick.paste_filled'
+                                  : 'jobs.quick.paste_basic',
+                          ),
+                );
+            })
+            .catch(() => toast.error(t('jobs.quick.paste_failed')))
+            .finally(() => setPasting(false));
     };
 
     const phoneValid =
@@ -411,9 +686,11 @@ export default function QuickBook({
         const known = customer?.properties
             .find((p) => p.id === data.property_id)
             ?.appliances?.find((a) => a.type === applianceType);
-        form.transform(({ new_property, ...d }) => ({
+        form.transform(({ new_property, billing, ...d }) => ({
             ...d,
             ...(needsAddress ? { new_property, property_id: null } : {}),
+            // The billing address goes with the switch: off = the job address is the customer's own.
+            ...(occupantOn ? { billing } : {}),
             visit: { ...d.visit, start_time: times.start, end_time: times.end },
             ...(applianceType === ''
                 ? {}
@@ -586,6 +863,16 @@ export default function QuickBook({
                     </div>
                 )}
 
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setPasteOpen(true)}
+                    data-test="booking-paste"
+                >
+                    <ClipboardPaste /> {t('jobs.quick.paste')}
+                </Button>
+
                 {existing ? (
                     /* The customer is chosen: one row with Change; their notes stay visible. */
                     <section className="space-y-2" data-test="booking-customer">
@@ -615,36 +902,67 @@ export default function QuickBook({
                             </Button>
                         </div>
                         <CustomerNotes notes={customer.notes} />
-                        {addresses.length > 1 && (
-                            <FormField
-                                id="booking-property"
-                                label={t('jobs.fields.property')}
-                                error={errors.property_id}
-                            >
-                                <NativeSelect
-                                    id="booking-property"
-                                    value={data.property_id ?? ''}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'property_id',
-                                            Number(event.target.value),
-                                        )
-                                    }
+                        {addresses.length > 0 && (
+                            <Step title={t('jobs.quick.job_address')}>
+                                <div
+                                    role="radiogroup"
+                                    aria-label={t('jobs.quick.job_address')}
+                                    className="space-y-2"
+                                    data-test="booking-properties"
                                 >
                                     {addresses.map((property) => (
-                                        <option
+                                        <button
                                             key={property.id}
-                                            value={property.id}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={
+                                                !newAddress &&
+                                                data.property_id === property.id
+                                            }
+                                            onClick={() =>
+                                                pickProperty(property.id)
+                                            }
+                                            className="da-chip da-press flex min-h-12 w-full flex-col items-start justify-center rounded-2xl px-4 py-2 text-left text-sm"
                                         >
-                                            {property.full_address}
-                                        </option>
+                                            <span className="font-semibold">
+                                                {property.full_address}
+                                            </span>
+                                            {property.occupant?.name && (
+                                                <span className="text-xs opacity-80">
+                                                    {t(
+                                                        'properties.site_contact',
+                                                    )}
+                                                    : {property.occupant.name}
+                                                </span>
+                                            )}
+                                        </button>
                                     ))}
-                                </NativeSelect>
-                            </FormField>
+                                    <button
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={newAddress}
+                                        onClick={() => {
+                                            setNewAddress(true);
+                                            setOccupant({
+                                                enabled: false,
+                                                name: '',
+                                                phone: '',
+                                                access_notes: '',
+                                            });
+                                        }}
+                                        className="da-chip da-press flex min-h-12 w-full items-center rounded-2xl px-4 text-left text-sm font-semibold"
+                                        data-test="booking-new-address"
+                                    >
+                                        + {t('jobs.quick.new_address')}
+                                    </button>
+                                </div>
+                                <InputError message={errors.property_id} />
+                            </Step>
                         )}
                         {needsAddress && (
                             <AddressEntry
                                 id="booking-address"
+                                label={t('jobs.quick.job_address')}
                                 value={data.new_property}
                                 errors={errors}
                                 errorPrefix="new_property."
@@ -744,9 +1062,29 @@ export default function QuickBook({
                         {nameSearch && (
                             <Matches matches={matches} onUse={useCustomer} />
                         )}
+                        <FormField
+                            id="booking-email"
+                            label={t('jobs.quick.email')}
+                            error={errors['new_customer.email']}
+                        >
+                            <Input
+                                id="booking-email"
+                                type="email"
+                                inputMode="email"
+                                autoComplete="email"
+                                maxLength={255}
+                                value={data.new_customer.email}
+                                onChange={(event) =>
+                                    setNewCustomer({
+                                        email: event.target.value,
+                                    })
+                                }
+                            />
+                        </FormField>
                         {/* The address comes right after the name: a booking always has one. */}
                         <AddressEntry
                             id="booking-address"
+                            label={t('jobs.quick.job_address')}
                             value={data.new_customer.property}
                             errors={errors}
                             errorPrefix="new_customer.property."
@@ -754,6 +1092,84 @@ export default function QuickBook({
                         />
                     </>
                 )}
+
+                {/* Not at the customer's address / someone else lives there: the occupant of this address and the
+                    payer's own billing address. */}
+                <section className="space-y-3" data-test="booking-occupant">
+                    <SwitchRow
+                        label={t('jobs.quick.occupant_toggle')}
+                        checked={occupantOn}
+                        onChange={(enabled) => setOccupant({ enabled })}
+                        testId="booking-occupant-toggle"
+                    />
+                    {occupantOn && (
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                                <FormField
+                                    id="booking-occupant-name"
+                                    label={t('jobs.quick.occupant_name')}
+                                    error={errors['occupant.name']}
+                                >
+                                    <Input
+                                        id="booking-occupant-name"
+                                        autoComplete="off"
+                                        maxLength={255}
+                                        value={data.occupant.name}
+                                        onChange={(event) =>
+                                            setOccupant({
+                                                name: event.target.value,
+                                            })
+                                        }
+                                    />
+                                </FormField>
+                                <FormField
+                                    id="booking-occupant-phone"
+                                    label={t('jobs.quick.occupant_phone')}
+                                    error={errors['occupant.phone']}
+                                >
+                                    <PhoneInput
+                                        id="booking-occupant-phone"
+                                        maxLength={32}
+                                        country={country}
+                                        value={data.occupant.phone}
+                                        onChange={(phone) =>
+                                            setOccupant({ phone })
+                                        }
+                                    />
+                                </FormField>
+                            </div>
+                            <FormField
+                                id="booking-access"
+                                label={t('jobs.quick.access_notes')}
+                                error={errors['occupant.access_notes']}
+                            >
+                                <Input
+                                    id="booking-access"
+                                    maxLength={2000}
+                                    placeholder={t('jobs.quick.access_hint')}
+                                    value={data.occupant.access_notes}
+                                    onChange={(event) =>
+                                        setOccupant({
+                                            access_notes: event.target.value,
+                                        })
+                                    }
+                                />
+                            </FormField>
+                            <AddressEntry
+                                id="booking-billing"
+                                label={t('jobs.quick.billing_address')}
+                                value={data.billing}
+                                errors={errors}
+                                errorPrefix="billing."
+                                optional
+                                onChange={setBilling}
+                            />
+                            <p className="-mt-1 text-xs text-muted-foreground">
+                                {t('jobs.quick.billing_hint')}
+                            </p>
+                        </div>
+                    )}
+                </section>
 
                 {tracksAppliances && (
                     <Step
@@ -809,40 +1225,40 @@ export default function QuickBook({
                                 value={data.visit.date}
                                 onChange={pickDay}
                                 trailing={
-                                    <label
-                                        className="da-chip da-press relative inline-flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-2xl px-3 text-sm font-semibold whitespace-nowrap"
+                                    <button
+                                        type="button"
+                                        aria-expanded={calendarOpen}
+                                        className="da-chip da-press inline-flex h-11 shrink-0 items-center gap-1.5 rounded-2xl px-3 text-sm font-semibold whitespace-nowrap"
                                         data-state={
-                                            pickedOutsideChips ? 'on' : 'off'
+                                            pickedOutsideChips || calendarOpen
+                                                ? 'on'
+                                                : 'off'
+                                        }
+                                        data-test="booking-pick-date"
+                                        onClick={() =>
+                                            setCalendarOpen(!calendarOpen)
                                         }
                                     >
                                         <CalendarDays className="size-4" />
                                         {pickedOutsideChips
                                             ? pickedLabel
                                             : t('jobs.quick.pick_date')}
-                                        <input
-                                            type="date"
-                                            min={today}
-                                            value={data.visit.date}
-                                            aria-label={t(
-                                                'jobs.quick.pick_date',
-                                            )}
-                                            className="absolute inset-0 cursor-pointer opacity-0"
-                                            onClick={(e) => {
-                                                try {
-                                                    e.currentTarget.showPicker();
-                                                } catch {
-                                                    // Older browsers open it by themselves.
-                                                }
-                                            }}
-                                            onChange={(e) =>
-                                                e.target.value &&
-                                                pickDay(e.target.value)
-                                            }
-                                        />
-                                    </label>
+                                    </button>
                                 }
                             />
                         </div>
+                        {/* In the page flow under the day row: it never covers the days. */}
+                        {calendarOpen && (
+                            <MonthCalendar
+                                label={t('jobs.quick.pick_date')}
+                                value={data.visit.date}
+                                min={today}
+                                onChange={(ymd) => {
+                                    pickDay(ymd);
+                                    setCalendarOpen(false);
+                                }}
+                            />
+                        )}
                         <TimeWindowChips
                             label={t('jobs.quick.arrival_window')}
                             windows={arrivalWindows}
@@ -1118,6 +1534,12 @@ export default function QuickBook({
                                 'new_customer.last_name',
                                 'new_customer.phone',
                                 'new_customer.notes',
+                                'new_customer.email',
+                                'occupant.name',
+                                'occupant.phone',
+                                'occupant.access_notes',
+                                'billing.line1',
+                                'billing.city',
                                 'new_customer.property.line1',
                                 'new_customer.property.city',
                                 'new_customer.property.unit',
@@ -1171,6 +1593,40 @@ export default function QuickBook({
                     </div>
                 </StickyActionBar>
             </form>
+
+            <Sheet open={pasteOpen} onOpenChange={setPasteOpen}>
+                <SheetContent
+                    side="bottom"
+                    className="mx-auto flex max-h-[85dvh] max-w-xl flex-col gap-3 rounded-t-3xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+                    data-test="booking-paste-sheet"
+                >
+                    <SheetHeader className="p-0 pr-8">
+                        <SheetTitle>{t('jobs.quick.paste_title')}</SheetTitle>
+                        <SheetDescription>
+                            {t('jobs.quick.paste_hint')}
+                        </SheetDescription>
+                    </SheetHeader>
+                    <Textarea
+                        id="booking-paste-text"
+                        aria-label={t('jobs.quick.paste_title')}
+                        rows={6}
+                        maxLength={5000}
+                        className="min-h-36"
+                        value={pasteText}
+                        onChange={(event) => setPasteText(event.target.value)}
+                    />
+                    <Button
+                        type="button"
+                        size="lg"
+                        disabled={pasteText.trim() === ''}
+                        loading={pasting}
+                        onClick={readMessage}
+                        data-test="booking-paste-fill"
+                    >
+                        {t('jobs.quick.paste_fill')}
+                    </Button>
+                </SheetContent>
+            </Sheet>
         </>
     );
 }

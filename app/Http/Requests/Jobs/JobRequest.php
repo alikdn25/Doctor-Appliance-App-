@@ -6,6 +6,7 @@ use App\Enums\ApplianceType;
 use App\Enums\JobType;
 use App\Enums\LeadSource;
 use App\Enums\VisitType;
+use App\Http\Requests\Customers\CustomerRequest;
 use App\Http\Requests\Customers\PropertyRequest;
 use App\Models\Appliance;
 use App\Models\Brand;
@@ -154,6 +155,14 @@ class JobRequest extends FormRequest
                 'new_property' => ['array'],
                 ...PropertyRequest::addressRules('new_property.'),
             ] : []),
+            // "Job is not at the customer's address / someone else lives there": the occupant of the job's address.
+            'occupant' => ['nullable', 'array'],
+            'occupant.enabled' => ['boolean'],
+            'occupant.name' => ['nullable', 'string', 'max:255'],
+            'occupant.phone' => ['nullable', 'string', 'max:32'],
+            'occupant.access_notes' => ['nullable', 'string', 'max:2000'],
+            // The payer's billing address (empty = the same as the primary address).
+            ...(is_array($this->input('billing')) ? CustomerRequest::billingRules('billing.') : []),
             'add_visit' => ['boolean'],
             ...VisitRequest::visitRules('visit.', 'required_if_accepted:add_visit'),
         ];
@@ -178,6 +187,11 @@ class JobRequest extends FormRequest
             if ($this->boolean('new_customer_mode')
                 && ! PhoneNumber::isPossible((string) $this->input('new_customer.phone'))) {
                 $validator->errors()->add('new_customer.phone', __('customers.invalid_phone'));
+            }
+
+            $occupantPhone = (string) $this->input('occupant.phone', '');
+            if ($this->boolean('occupant.enabled') && $occupantPhone !== '' && ! PhoneNumber::isPossible($occupantPhone)) {
+                $validator->errors()->add('occupant.phone', __('customers.invalid_phone'));
             }
 
             if ($this->boolean('add_visit')) {
@@ -206,6 +220,9 @@ class JobRequest extends FormRequest
             'new_customer.phone' => __('customers.fields.phone'),
             'new_customer.email' => __('customers.fields.email'),
             'new_appliances.*.type' => __('appliances.fields.type'),
+            'occupant.phone' => __('properties.fields.occupant_phone'),
+            'billing.line1' => __('customers.fields.billing_address'),
+            'billing.city' => __('properties.fields.city'),
             ...PropertyRequest::addressAttributes('new_customer.property.'),
             ...VisitRequest::visitAttributes('visit.'),
         ];
@@ -308,6 +325,46 @@ class JobRequest extends FormRequest
                 'is_primary' => true,
             ],
         ];
+    }
+
+    /**
+     * Occupant fields for the job's address: filled when the switch is on, cleared when it was turned off, null when
+     * the form did not send it.
+     *
+     * @return array{site_contact_name: ?string, site_contact_phone: ?string, access_notes?: ?string}|null
+     */
+    public function occupant(): ?array
+    {
+        if (! $this->creating() || ! is_array($this->validated('occupant'))) {
+            return null;
+        }
+
+        $data = $this->validated('occupant');
+        $clean = fn (?string $value) => filled($value) ? trim($value) : null;
+
+        if (! ($data['enabled'] ?? false)) {
+            return ['site_contact_name' => null, 'site_contact_phone' => null];
+        }
+
+        return [
+            'site_contact_name' => $clean($data['name'] ?? null),
+            'site_contact_phone' => $clean($data['phone'] ?? null),
+            'access_notes' => $clean($data['access_notes'] ?? null),
+        ];
+    }
+
+    /**
+     * Billing address columns of the customer; null when the form did not send one.
+     *
+     * @return array<string, string|null>|null
+     */
+    public function billing(): ?array
+    {
+        if (! $this->creating() || ! is_array($this->input('billing'))) {
+            return null;
+        }
+
+        return CustomerRequest::billingColumns($this->validated('billing'));
     }
 
     /**

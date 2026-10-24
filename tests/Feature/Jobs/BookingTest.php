@@ -130,8 +130,10 @@ test('after booking the office lands on the day with "Booked #… · Tomorrow 9�
     $job = inCompany($this->company, fn () => ServiceJob::query()->sole());
 
     $response->assertSessionHasNoErrors()->assertRedirect(route('calendar', ['view' => 'day', 'date' => '2030-01-16']));
-    $toast = session('inertia.flash_data.toast') ?? collect(session()->all())->dot()->filter(fn ($v, $k) => str_ends_with($k, 'toast.message'))->first();
-    $message = is_array($toast) ? $toast['message'] : $toast;
+    // One sheet after booking: "Booked #… · …", Open job and Send Booking Confirmation.
+    $booked = session('inertia.flash_data.booking_confirmation');
+    $message = $booked['message'];
 
-    expect($message)->toContain("Booked #{$job->number}")->toContain('Tomorrow')->toContain('9:00');
+    expect($booked['url'])->toBe(route('jobs.show', $job, false))
+        ->and($message)->toContain("Booked #{$job->number}")->toContain('Tomorrow')->toContain('9:00');
 });

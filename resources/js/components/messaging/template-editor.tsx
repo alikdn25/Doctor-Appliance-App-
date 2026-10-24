@@ -10,6 +10,7 @@ const PLACEHOLDERS = [
     'tech_name',
     'visit_date',
     'arrival_window',
+    'address',
     'number',
     'amount',
     'link',

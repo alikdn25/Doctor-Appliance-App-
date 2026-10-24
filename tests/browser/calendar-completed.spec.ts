@@ -54,6 +54,7 @@ test('the customer card shows totals and the job history with payment status', a
     page,
 }) => {
     await page.goto(`/customers/${fixture.customer_id}`);
+    await page.getByRole('tab', { name: /Work/ }).click();
     const totals = page.getByLabel('Customer totals');
     await expect(totals).toContainText('Jobs');
     await expect(totals).toContainText('Owes');

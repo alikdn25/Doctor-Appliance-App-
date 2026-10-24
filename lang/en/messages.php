@@ -75,6 +75,7 @@ return [
     ],
 
     'kinds' => [
+        'booking_confirmation' => 'Booking confirmation',
         'visit_reminder' => 'Reminder (day before)',
         'on_my_way' => 'On my way',
         'estimate_link' => 'Estimate link',
@@ -87,6 +88,7 @@ return [
 
     // Default texts (English). Companies edit their own in Messaging settings. Placeholders in {braces}.
     'templates' => [
+        'booking_confirmation' => "Hi {customer_first_name}, your {brand} appointment is booked for {visit_date}.\nArrival window: {arrival_window}\nAddress: {address}\nReply to this message if you need to change it.",
         'visit_reminder' => "Hi {customer_first_name}, this is a reminder of your {brand} appointment {visit_date}.\nArrival window: {arrival_window}\nReply to this message if you need to change it.",
         'on_my_way' => 'Hi {customer_first_name}, {tech_name} from {brand} is on the way. Expected arrival: {arrival_window}',
         'estimate_link' => 'Hi {customer_first_name}, here is your estimate {number} from {brand} for {amount}: {link}',
@@ -95,12 +97,13 @@ return [
         'review_request' => 'Hi {customer_first_name}, thank you for choosing {brand}! Would you take a moment to review us on Google? {review_link}',
         'general' => 'Hi {customer_first_name}, this is {tech_name} from {brand}. ',
     ],
-    'placeholders' => 'Placeholders: {customer_first_name}, {customer_name}, {brand}, {company}, {tech_name}, {visit_date}, {arrival_window}, {number}, {amount}, {link}, {review_link}. Leave a text empty to use the default.',
+    'placeholders' => 'Placeholders: {customer_first_name}, {customer_name}, {brand}, {company}, {tech_name}, {visit_date}, {arrival_window}, {address}, {number}, {amount}, {link}, {review_link}. Leave a text empty to use the default.',
     'templates_title' => 'Message templates',
     'templates_saved' => 'Messaging settings saved.',
     'review_template_hint' => 'Google and the FTC do not allow offering anything for a review, or asking only happy customers. The same request goes to every customer.',
 
     'email_subject' => [
+        'booking_confirmation' => 'Your appointment with :brand is booked',
         'visit_reminder' => 'Reminder: your appointment with :brand',
         'on_my_way' => ':brand is on the way',
         'estimate_link' => 'Estimate :number from :brand',

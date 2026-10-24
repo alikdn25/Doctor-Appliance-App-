@@ -69,6 +69,20 @@ return [
         'base_url' => env('TELNYX_BASE_URL', 'https://api.telnyx.com'),
     ],
 
+    // AI for "Paste from message" (parsing a pasted text into the booking form). Empty provider = the basic parser.
+    'ai' => [
+        'provider' => env('AI_PROVIDER'),
+        'anthropic' => [
+            'key' => env('ANTHROPIC_API_KEY'),
+            'model' => env('ANTHROPIC_MODEL', 'claude-opus-5-5'),
+        ],
+        'xai' => [
+            'key' => env('XAI_API_KEY'),
+            'model' => env('XAI_MODEL', 'grok-4'),
+            'url' => env('XAI_BASE_URL', 'https://api.x.ai/v1'),
+        ],
+    ],
+
     'twilio' => [
         'account_sid' => env('TWILIO_ACCOUNT_SID'),
         'auth_token' => env('TWILIO_AUTH_TOKEN'),

@@ -15,6 +15,11 @@ import {
     useNameAvatar,
 } from '@/components/customers/customer-avatar';
 import type { AvatarStyle } from '@/components/customers/customer-avatar';
+import {
+    AddressEntry,
+    emptyAddress,
+} from '@/components/customers/address-entry';
+import type { AddressData } from '@/components/customers/address-entry';
 import { PropertyFields } from '@/components/customers/property-fields';
 import { emptyProperty, propertyToForm } from '@/components/customers/types';
 import type {
@@ -69,6 +74,8 @@ type Customer = {
     emails: Email[];
     /** The main address, edited in place (null when the customer has none). */
     property?: PropertyData | null;
+    /** The payer's own billing address; null = the same as the primary address. */
+    billing?: Record<string, string | null> | null;
 };
 
 type FormData = {
@@ -85,6 +92,7 @@ type FormData = {
     emails: Email[];
     add_property: boolean;
     property: PropertyFormData & { id?: number };
+    billing: AddressData;
 };
 
 type Duplicate = { id: number; display_name: string; matches: string[] };
@@ -189,6 +197,16 @@ export default function CustomerForm({
             email,
             is_primary,
         })) ?? [{ label: 'personal', email: '', is_primary: true }],
+        billing: {
+            ...emptyAddress(
+                customer?.billing?.country ?? auth.company?.country ?? 'US',
+            ),
+            line1: customer?.billing?.line1 ?? '',
+            unit: customer?.billing?.unit ?? '',
+            city: customer?.billing?.city ?? '',
+            region: customer?.billing?.region ?? '',
+            postal_code: customer?.billing?.postal_code ?? '',
+        },
         add_property: true,
         property: customer?.property
             ? {
@@ -564,6 +582,29 @@ export default function CustomerForm({
                         errorPrefix="property."
                         countries={countries}
                     />
+                </section>
+
+                {/* Billing address of the payer: where invoices go; empty = the main address. */}
+                <section className="grid gap-2" data-test="customer-billing">
+                    <AddressEntry
+                        id="billing"
+                        label={t('customers.fields.billing_address')}
+                        value={form.data.billing}
+                        errors={errors}
+                        errorPrefix="billing."
+                        optional
+                        onChange={(patch) =>
+                            form.setData('billing', {
+                                ...form.data.billing,
+                                ...patch,
+                            })
+                        }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        {t('customers.billing_same')}
+                        {' · '}
+                        {t('jobs.quick.billing_hint')}
+                    </p>
                 </section>
 
                 {/* 4. About the customer and tags. */}

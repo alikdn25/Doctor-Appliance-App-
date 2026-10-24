@@ -47,6 +47,7 @@ import { CustomerNotes } from '@/components/customers/customer-notes';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
 import InputError from '@/components/input-error';
+import { BookingConfirmationSheet } from '@/components/jobs/booking-confirmation-sheet';
 import { FinishDialog } from '@/components/jobs/finish-dialog';
 import type {
     CallbackInfo,
@@ -357,6 +358,7 @@ export default function JobShow({
     const time = useCompanyTime();
     const [statusOpen, setStatusOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
+    const [confirmationOpen, setConfirmationOpen] = useState(false);
     const [paying, setPaying] = useState<Props['payable'][number] | null>(null);
     const money = useMoney();
     const [warrantyOpen, setWarrantyOpen] = useState(openWarranty);
@@ -822,6 +824,11 @@ export default function JobShow({
     return (
         <>
             <Head title={t('jobs.job_number', { number: job.number })} />
+            <BookingConfirmationSheet
+                jobId={job.id}
+                open={confirmationOpen}
+                onOpenChange={setConfirmationOpen}
+            />
 
             <ScreenHeader
                 title={`#${job.number} · ${job.job_type_label}`}
@@ -853,6 +860,12 @@ export default function JobShow({
                                     icon: <ShieldCheck />,
                                     onSelect: () => setWarrantyOpen(true),
                                 },
+                            can.work && {
+                                key: 'booking-confirmation',
+                                label: t('jobs.confirmation.send'),
+                                icon: <Send />,
+                                onSelect: () => setConfirmationOpen(true),
+                            },
                             can.update && {
                                 key: 'edit',
                                 label: t('jobs.edit_job'),

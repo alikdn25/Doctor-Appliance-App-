@@ -58,11 +58,11 @@ test('customer context and a manual icon persist and follow a newly booked job',
     await expect(page).toHaveURL(
         new RegExp(`/customers/${fixture.customer_id}$`),
     );
-    await expect(
-        page.getByText(`${notes} Updated from ${info.project.name}.`, {
-            exact: true,
-        }),
-    ).toBeVisible();
+    // "About the customer" is on the Notes tab of the card.
+    await page.getByRole('tab', { name: /Notes/ }).click();
+    await expect(page.locator('#customer-notes')).toHaveValue(
+        `${notes} Updated from ${info.project.name}.`,
+    );
     await screenshot(page, info, 'customer-context');
     await page.goto(`/customers/${fixture.customer_id}/edit`);
     await page.locator('[data-test="avatar-button"]').click();
@@ -421,12 +421,15 @@ test('customers: live search, Owes, the card actions with New job, and the ratin
     const actions = page.locator('[data-test="customer-actions"]');
     await expect(actions.getByRole('link', { name: 'Call' })).toBeVisible();
     await expect(actions.getByText('Text', { exact: true })).toBeVisible();
-    await expect(actions.getByRole('link', { name: 'New job' })).toBeVisible();
-    await expect(page.locator('[data-test="customer-summary"]')).toContainText(
+    await expect(page.locator('[data-test="customer-balance"]')).toContainText(
         'Owes',
     );
     await screenshot(page, info, 'customer-card');
-    await actions.getByRole('link', { name: 'New job' }).click();
+    await page.getByRole('tab', { name: /Work/ }).click();
+    await expect(page.locator('[data-test="customer-summary"]')).toContainText(
+        'Owes',
+    );
+    await page.locator('[data-test="customer-new-job"]').click();
     await expect(page).toHaveURL(/book=1.*customer_id=/);
     await expect(page.locator('[data-test="booking-customer"]')).toContainText(
         'Jane Browser',
@@ -436,7 +439,10 @@ test('customers: live search, Owes, the card actions with New job, and the ratin
     await expect(page.locator('#first_name')).toBeVisible();
     await expect(page.locator('#property-line1')).toBeVisible();
     await expect(page.locator('#property-city')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Enter manually' }).click();
+    await page
+        .locator('[data-test="customer-address"]')
+        .getByRole('button', { name: 'Enter manually' })
+        .click();
     await expect(page.locator('#property-city')).toBeVisible();
     await expect(page.locator('#property-country')).toHaveValue('CA');
     await screenshot(page, info, 'customer-new');

@@ -7,6 +7,7 @@ use App\Enums\LeadSource;
 use App\Enums\PaymentTerms;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Concerns\RecordsChanges;
+use App\Support\Locale\AddressFormatter;
 use App\Support\NameAvatar;
 use App\Support\PhoneNumber;
 use Database\Factories\CustomerFactory;
@@ -31,6 +32,12 @@ use Illuminate\Support\Carbon;
  * @property PaymentTerms|null $payment_terms Null = the company default
  * @property list<string> $tags
  * @property string|null $notes
+ * @property string|null $billing_line1 Billing address of the payer; empty = the primary service address
+ * @property string|null $billing_unit
+ * @property string|null $billing_city
+ * @property string|null $billing_region
+ * @property string|null $billing_postal_code
+ * @property string|null $billing_country
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -59,7 +66,16 @@ class Customer extends Model
         'payment_terms',
         'tags',
         'notes',
+        'billing_line1',
+        'billing_unit',
+        'billing_city',
+        'billing_region',
+        'billing_postal_code',
+        'billing_country',
     ];
+
+    /** Parts of the billing address, without the "billing_" prefix. */
+    public const BILLING_FIELDS = ['line1', 'unit', 'city', 'region', 'postal_code', 'country'];
 
     protected $attributes = [
         'type' => 'residential',
@@ -131,6 +147,43 @@ class Customer extends Model
         }
 
         return $this->avatar_style;
+    }
+
+    public function hasOwnBillingAddress(): bool
+    {
+        return filled($this->billing_line1);
+    }
+
+    /**
+     * Billing address parts (line1, unit, city, region, postal_code, country); null = same as the primary address.
+     *
+     * @return array<string, string|null>|null
+     */
+    public function billingAddressParts(): ?array
+    {
+        if (! $this->hasOwnBillingAddress()) {
+            return null;
+        }
+
+        return collect(self::BILLING_FIELDS)->mapWithKeys(fn (string $f) => [$f => $this->{"billing_{$f}"}])->all();
+    }
+
+    /**
+     * One-line billing address: the customer's own, or else the primary service address.
+     */
+    public function billingAddress(): ?string
+    {
+        if (! $this->hasOwnBillingAddress()) {
+            $primary = $this->relationLoaded('primaryProperty') ? $this->primaryProperty : $this->primaryProperty()->first();
+
+            return $primary !== null && filled($primary->line1) ? $primary->fullAddress() : null;
+        }
+
+        $street = collect([$this->billing_unit ? __('properties.unit_prefix', ['unit' => $this->billing_unit]) : null, $this->billing_line1])
+            ->filter()
+            ->implode(', ');
+
+        return AddressFormatter::oneLine($street, (string) $this->billing_city, $this->billing_region, $this->billing_postal_code, $this->billing_country ?: currentCompany()->country);
     }
 
     /** The customer's own payment terms, or the company default. */

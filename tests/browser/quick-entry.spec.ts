@@ -84,9 +84,7 @@ test('an empty calendar day books a new caller using only name phone and time', 
     await expect(page).toHaveURL(
         new RegExp(`/calendar\\?date=${date}&view=day`),
     );
-    await page
-        .locator('[data-sonner-toast] button', { hasText: 'Open job' })
-        .click();
+    await page.locator('[data-test="confirmation-open-job"]').click();
     await expect(page).toHaveURL(/\/jobs\/\d+$/);
     await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
     await expect(page.getByText(/12 Quick Street/).first()).toBeVisible();
@@ -194,9 +192,9 @@ test('"Now" books a caller right away for today, before the technician\'s next j
     });
     await page.getByRole('button', { name: 'Book', exact: true }).click();
     await expect(page).toHaveURL(/\/calendar\?date=.*&view=day/);
-    await expect(page.locator('[data-sonner-toast]')).toContainText(
-        /Booked #\d+ · Today/,
-    );
+    await expect(
+        page.locator('[data-test="booking-confirmation"]'),
+    ).toContainText(/Booked #\d+ · Today/);
 });
 
 test('a tap on an empty calendar slot books there with the time and the person', async ({

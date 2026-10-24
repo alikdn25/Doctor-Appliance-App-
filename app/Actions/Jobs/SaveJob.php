@@ -35,6 +35,8 @@ class SaveJob
      * @param  array{attributes: array<string, mixed>, assignee_ids: list<int>}|null  $visit
      * @param  list<array{description: string, quantity: string}>|null  $bringItems
      * @param  array<string, mixed>|null  $newProperty  Address typed for an existing customer.
+     * @param  array<string, string|null>|null  $occupant  Occupant of the job's address (saved on the address).
+     * @param  array<string, string|null>|null  $billing  Billing address columns of the customer.
      */
     public function create(
         ?Customer $customer,
@@ -46,8 +48,10 @@ class SaveJob
         User $user,
         ?array $bringItems = null,
         ?array $newProperty = null,
+        ?array $occupant = null,
+        ?array $billing = null,
     ): ServiceJob {
-        return DB::transaction(function () use ($customer, $attributes, $applianceIds, $newAppliances, $newCustomer, $visit, $user, $bringItems, $newProperty) {
+        return DB::transaction(function () use ($customer, $attributes, $applianceIds, $newAppliances, $newCustomer, $visit, $user, $bringItems, $newProperty, $occupant, $billing) {
             if ($newCustomer !== null) {
                 $customer = $this->saveCustomer->handle(
                     null,
@@ -63,6 +67,16 @@ class SaveJob
             }
 
             /** @var Customer $customer */
+            if ($billing !== null) {
+                $customer->fill($billing)->save();
+            }
+
+            // The occupant stays with the address and is filled in by itself next time.
+            if ($occupant !== null && isset($attributes['property_id'])) {
+                $property = Property::query()->where('customer_id', $customer->id)->find($attributes['property_id']);
+                $property?->fill($occupant)->save();
+            }
+
             $job = new ServiceJob;
             $job->fill($attributes);
             $job->customer()->associate($customer);

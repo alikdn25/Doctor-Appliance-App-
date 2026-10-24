@@ -7,6 +7,7 @@ namespace App\Enums;
  */
 enum MessageKind: string
 {
+    case BookingConfirmation = 'booking_confirmation';
     case VisitReminder = 'visit_reminder';
     case OnMyWay = 'on_my_way';
     case EstimateLink = 'estimate_link';
@@ -28,6 +29,6 @@ enum MessageKind: string
      */
     public static function templated(): array
     {
-        return [self::VisitReminder, self::OnMyWay, self::EstimateLink, self::EstimateFollowup, self::InvoiceLink, self::ReviewRequest, self::General];
+        return [self::BookingConfirmation, self::VisitReminder, self::OnMyWay, self::EstimateLink, self::EstimateFollowup, self::InvoiceLink, self::ReviewRequest, self::General];
     }
 }

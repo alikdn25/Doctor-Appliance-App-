@@ -1,3 +1,38 @@
+# October 24 — Owner's update, PR 1: booking, customer, addresses, occupant
+
+Sections 5 and 6 of the owner's task of October 24.
+
+1. **Book customer**: "Pick date" opens a month calendar in the page under the day chips (never a pop-up over
+   them). The customer is the one who pays: first and last name, phone, email. The job address is required, with
+   suggestions; a customer from the book picks one of their addresses or "+ New address" (saved to the customer).
+   The switch "Not at the customer's address / someone else lives there" opens the occupant's name and phone, an
+   access note and the payer's billing address. The occupant is saved with the address and filled in by itself the
+   next time that address is booked (switching it off clears it).
+2. **Paste from message**: any text (SMS, email, call notes) fills the form — customer, occupant, phones, email,
+   address, appliance, problem — for the person to check. A phone already in the book brings that customer. The AI
+   provider is set in `.env` for now (`AI_PROVIDER=anthropic|xai`, `ANTHROPIC_API_KEY` / `XAI_API_KEY`; Claude via
+   the official PHP SDK, `claude-opus-5-5`, structured outputs); without one, or if it fails, a basic parser reads
+   phones, email, a street address and the appliance. Settings → AI per company comes in PR 5.
+3. **Send Booking Confirmation** (Email or SMS): opens right after a booking is saved ("Booked #1005 · Tomorrow 9–11",
+   Open job, the text, Email / SMS — one sheet instead of the toast), and on the job page (⋯ menu). It goes to the
+   customer (the payer), never the occupant. New template "Booking confirmation" (Settings → Messaging) with the
+   new `{address}` placeholder. From technician's phone the SMS opens the phone's messages app.
+4. **Customer card**: a main block (name, balance, Call, Text) and tabs Client / Work / Notes / Files, switched by a
+   tap or a swipe left / right (`SwipeTabs`, also for the job page in PR 2). Client: phones, emails, billing address,
+   the properties with their occupant, add / edit / delete. Work: totals, New job, job history, estimates and
+   invoices, messages. Notes: "About the customer" edited in place, notes of the jobs. Files: photos of the jobs.
+5. **Customer form**: email (already there) and the billing address.
+6. **Addresses**: jobs, estimates, invoices and appliances on an empty address move to the customer's **primary**
+   address (before: only when the customer had exactly one); empty addresses left without jobs go to the trash.
+
+- Migration `2026_10_28_000100_add_billing_address_and_relink_empty_addresses`: adds `customers.billing_*` columns and
+  moves records off empty addresses (soft delete only, nothing removed). Back up before deploying.
+- Occupant uses the existing `properties.site_contact_name` / `site_contact_phone` / `access_notes` (no new table).
+- Tests: BookingOccupantTest, PasteFromMessageTest, BookingConfirmationTest, CustomerCardTest, NoEmptyAddressTest
+  (primary address); browser `zy-booking-customer.spec.ts` at 380 px (calendar under the days, paste, occupant,
+  confirmation, customer tabs and swipes); older specs updated for the tabs and the sheet.
+- Next: PR 2 — job page, technician, Solo / Team, Transfer, Field / Office.
+
 # October 18 — Live check of PR #46: SMS confirmation, pinned Save in platform admin
 
 - "Send by SMS" on an estimate or invoice (Automatic mode) now asks first: "Send Invoice INV-1 by SMS?" with the
