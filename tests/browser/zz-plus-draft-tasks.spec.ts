@@ -181,9 +181,11 @@ test('the job page has Job · Notes · Messages · Files · History; a team note
     // Delete note is never under the round "+" (Grok's check of a46f263).
     const remove = notes.locator('[data-test="job-note-delete"]').first();
     await remove.scrollIntoViewIfNeeded();
-    const fab = (await page.locator('[data-test="create-fab"]').boundingBox())!;
+    // A screen with pinned actions hides the "+" (nothing to cover then).
+    const fab = await page.locator('[data-test="create-fab"]').boundingBox();
     const del = (await remove.boundingBox())!;
     const overlap =
+        fab !== null &&
         del.x < fab.x + fab.width &&
         del.x + del.width > fab.x &&
         del.y < fab.y + fab.height &&
