@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('+ Trip on My Jobs: type the store, Navigate opens Google Maps and the trip is in the mileage log', async ({
+test('Trip in Mileage\'s "…": type the store, Navigate opens Google Maps and the trip is in the mileage log', async ({
     browser,
     page,
 }, info) => {
@@ -14,8 +14,10 @@ test('+ Trip on My Jobs: type the store, Navigate opens Google Maps and the trip
         route.fulfill({ body: 'maps' }),
     );
     const tech = await context.newPage();
-    await tech.goto('http://127.0.0.1:8000/my-jobs');
-    await tech.getByRole('button', { name: 'Add trip' }).click();
+    // The trip with directions lives in Mileage's "…" (the "+" opens the form by hand).
+    await tech.goto('http://127.0.0.1:8000/trips');
+    await tech.locator('button[aria-label="More actions"]:visible').first().click();
+    await tech.getByRole('button', { name: 'Trip', exact: true }).click();
     const sheet = tech.getByRole('dialog');
     // Enter by hand is on the sheet without scrolling.
     await expect(
