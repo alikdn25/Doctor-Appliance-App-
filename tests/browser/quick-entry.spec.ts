@@ -88,9 +88,9 @@ test('an empty calendar day books a new caller using only name phone and time', 
     await expect(page).toHaveURL(/\/jobs\/\d+$/);
     await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
     await expect(page.getByText(/12 Quick Street/).first()).toBeVisible();
-    // Navigate (blue) · Call (green) · Text (white) in one row of equal buttons.
+    // Navigate (blue) · Call (green) · Text (white) · On my way (white), equal buttons.
     const actions = page.locator('[data-test="job-contact-actions"] > *');
-    await expect(actions).toHaveCount(3);
+    await expect(actions).toHaveCount(4);
     const widths = await actions.evaluateAll((els) =>
         els.map((el) => Math.round(el.getBoundingClientRect().width)),
     );

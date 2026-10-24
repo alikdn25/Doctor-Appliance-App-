@@ -51,36 +51,37 @@ test('every main screen fits a 380 px phone', async ({ page }, info) => {
     }
 });
 
-test('the job page is one list with Navigate, Call and Text, and the technician in one tap', async ({
+test('the job page: main block with Navigate, Call, Text, On my way, and the technician in one tap', async ({
     page,
 }) => {
     await page.goto(`/jobs/${fixture.job_id}`);
     await expect(page.locator('[data-test="job-anchors"]')).toHaveCount(0);
 
-    // Customer → technician → appliances → photos → Work done → estimates and invoices → Activity.
+    // Main block (customer, technician) → Instructions → tabs; the Job tab holds appliances, Work done, documents.
     const top = async (selector: string) =>
         (await page.locator(selector).first().boundingBox())!.y;
     const order = [
         await top('[data-test="job-customer"]'),
         await top('[data-test="job-technician"]'),
+        await top('[data-test="job-instructions"]'),
+        await top('#job-tabs'),
         await top('h2:text-is("Appliances")'),
-        await top('h2:text-is("Photos")'),
         await top('h2:text-is("Work done")'),
         await top('#documents'),
-        await top('[data-test="job-activity"]'),
     ];
     expect([...order].sort((a, b) => a - b)).toEqual(order);
 
     const actions = page.locator('[data-test="job-contact-actions"] > *');
-    await expect(actions).toHaveCount(3);
+    await expect(actions).toHaveCount(4);
     await expect(actions.nth(0)).toHaveAttribute('data-variant', 'sky');
     await expect(actions.nth(1)).toHaveAttribute('data-variant', 'success');
     await expect(actions.nth(2)).toHaveAttribute('data-variant', 'outline');
+    await expect(actions.nth(3)).toHaveAttribute('data-variant', 'outline');
     const boxes = await actions.evaluateAll((els) =>
         els.map((el) => el.getBoundingClientRect().toJSON()),
     );
     expect(new Set(boxes.map((b) => Math.round(b.width))).size).toBe(1);
-    expect(new Set(boxes.map((b) => Math.round(b.top))).size).toBe(1);
+    expect(new Set(boxes.map((b) => Math.round(b.height))).size).toBe(1);
 
     // Technician: a tap lists everyone with their jobs that day and free / busy for this window.
     const row = page.locator('[data-test="job-technician"]');

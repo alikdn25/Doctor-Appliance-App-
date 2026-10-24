@@ -322,6 +322,8 @@ test('technician uploads a job photo; the customer signs on the invoice through 
     const tech = await context.newPage();
     tech.on('pageerror', (error) => pageErrors.push(error.message));
     await tech.goto(`http://127.0.0.1:8000/jobs/${fixture.job_id}`);
+    // Photos are on the Files tab of the job page.
+    await tech.getByRole('tab', { name: /^Files/ }).click();
     const [chooser] = await Promise.all([
         tech.waitForEvent('filechooser'),
         tech.getByRole('button', { name: 'Before photo', exact: true }).click(),
