@@ -28,6 +28,9 @@
    typed changes is open the banner waits.
 8. Everything works in the installed app (same pages, no new service worker rules).
 
+- Fix found by CI: `/app-version` and the route planning have their own rate limits (a plain `throttle:N,1` shares
+  one counter per person across routes, so frequent version checks used up "Paste from message").
+
 - **Migration** `2026_10_31_000100_add_route_position_to_job_visits` (nullable column, nothing changes for existing
   visits).
 - Tests: DayMapTest (technician sees only own jobs, office filter, Apply order, calendar/My Jobs follow, isolation,

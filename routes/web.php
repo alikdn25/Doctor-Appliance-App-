@@ -69,7 +69,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
 // The running version: the app compares it with the one it loaded to offer "Update" after a deploy.
-Route::get('app-version', AppVersionController::class)->middleware('throttle:60,1')->name('app-version');
+Route::get('app-version', AppVersionController::class)->middleware('throttle:app-version')->name('app-version');
 
 // Customer's online page of an estimate or invoice (link in the email; the token is the key).
 Route::middleware('throttle:60,1')->group(function () {
@@ -167,7 +167,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('calendar', CalendarController::class)->name('calendar');
         Route::get('map', [MapController::class, 'show'])->name('map');
         Route::post('map/order', [MapController::class, 'order'])->name('map.order');
-        Route::post('map/plan', [MapController::class, 'plan'])->middleware('throttle:60,1')->name('map.plan');
+        Route::post('map/plan', [MapController::class, 'plan'])->middleware('throttle:map-plan')->name('map.plan');
         Route::get('technicians/load', [AssignmentController::class, 'load'])->name('technicians.load');
         Route::get('team/{membership}/open-visits', [AssignmentController::class, 'openVisits'])->name('technicians.open-visits');
         Route::put('jobs/{job}/address', JobAddressController::class)->name('jobs.address');

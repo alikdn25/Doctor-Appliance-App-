@@ -32,3 +32,16 @@ test('every page carries the version it was built with', function () {
     $props = $this->actingAs($tech)->get(route('jobs.mine'))->viewData('page')['props'];
     expect($props['appVersion'])->toBe(AppVersion::current());
 });
+
+test('checking the version never uses up the limit of other actions', function () {
+    $company = Company::factory()->create();
+    $owner = memberOf($company, UserRole::Owner);
+    $this->actingAs($owner);
+
+    foreach (range(1, 40) as $ignored) {
+        $this->get(route('app-version'))->assertOk();
+    }
+
+    // "Paste from message" allows 30 a minute: still open after 40 version checks.
+    $this->postJson(route('jobs.parse-message'), ['text' => 'Jane 604 555 0142'])->assertOk();
+});
