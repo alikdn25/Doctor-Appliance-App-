@@ -304,3 +304,31 @@ test('expenses of former employees remain available to the company filter and ex
     $csv = $this->get(route('expenses.download', ['employee' => $this->tech->id]))->assertOk()->streamedContent();
     expect($csv)->toContain('Former employee tools');
 });
+
+test('My expenses: a technician enters only what was paid, without taxes', function () {
+    $this->actingAs($this->tech)->get(route('expenses.create'))->assertInertia(fn (Assert $page) => $page
+        ->where('withTaxes', false));
+    $this->actingAs($this->owner)->get(route('expenses.create'))->assertInertia(fn (Assert $page) => $page
+        ->where('withTaxes', true));
+
+    $this->actingAs($this->tech)->post(route('expenses.store'), overheadPayload([
+        'amount' => '45.50', 'tax_amount' => '9.99', 'use_named_taxes' => true, 'tax_rate_ids' => [], 'tax_amounts' => [],
+    ]))->assertSessionHasNoErrors();
+    $expense = inCompany($this->company, fn () => BusinessExpense::query()->latest('id')->first());
+    expect($expense->amount)->toBe(4550)->and($expense->tax_amount)->toBe(0)->and($expense->taxes)->toBeNull()
+        ->and($expense->created_by)->toBe($this->tech->id);
+
+    // Only their own entries, listed with the amount paid.
+    overheadRecord($this->company, $this->owner, $this->category, ['description' => 'Office rent']);
+    $this->get(route('expenses.index'))->assertInertia(fn (Assert $page) => $page
+        ->where('companyView', false)
+        ->where('expenses.total', 1)
+        ->where('expenses.data.0.total', 4550));
+
+    // A tax the office split off later stays out of what the technician edits.
+    inCompany($this->company, fn () => $expense->forceFill(['amount' => 4000, 'tax_amount' => 550])->save());
+    $this->put(route('expenses.update', $expense), overheadPayload(['amount' => '50.00', 'tax_amount' => null]))
+        ->assertSessionHasNoErrors();
+    $expense = inCompany($this->company, fn () => $expense->fresh());
+    expect($expense->amount)->toBe(4450)->and($expense->tax_amount)->toBe(550);
+});

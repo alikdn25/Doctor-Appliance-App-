@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Accounting;
 
+use App\Enums\UserRole;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Models\BusinessExpense;
 use App\Models\ServiceJob;
@@ -56,7 +57,8 @@ class BusinessExpenseRequest extends FormRequest
             'description' => ['required', 'string', 'max:255'],
             'merchant' => ['nullable', 'string', 'max:150'],
             'amount' => ['required', 'numeric', DocumentRequest::moneyRule($currency)],
-            'tax_amount' => ['required_unless:use_named_taxes,1', 'nullable', 'numeric', DocumentRequest::moneyRule($currency)],
+            // Technicians enter only what they paid (My expenses has no taxes).
+            'tax_amount' => [$this->user()->hasRole(UserRole::Owner, UserRole::Admin) ? 'required_unless:use_named_taxes,1' : 'nullable', 'nullable', 'numeric', DocumentRequest::moneyRule($currency)],
             'use_named_taxes' => ['boolean'],
             'tax_rate_ids' => ['array'],
             'tax_rate_ids.*' => ['integer', 'distinct', Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)
@@ -76,6 +78,17 @@ class BusinessExpenseRequest extends FormRequest
 
         $data['service_job_id'] = isset($data['service_job_id']) ? (int) $data['service_job_id'] : null;
         $data['amount'] = Currencies::toMinor($data['amount'], $currency);
+
+        // My expenses (technicians): only what was paid; taxes are the office's. Taxes the office split off an
+        // entry before are kept out of the total.
+        if (! $this->user()->hasRole(UserRole::Owner, UserRole::Admin)) {
+            $tax = $expense instanceof BusinessExpense && $expense->tax_amount <= $data['amount'] ? $expense->tax_amount : 0;
+            $data['taxes'] = $tax > 0 ? $expense->taxes : null;
+            $data['tax_amount'] = $tax;
+            $data['amount'] -= $tax;
+
+            return $data;
+        }
         if ($this->boolean('use_named_taxes')) {
             $kept = collect($expense?->taxes ?? [])->keyBy('tax_rate_id');
             $rates = TaxRate::query()->whereIn('id', $this->validated('tax_rate_ids', []))

@@ -125,8 +125,8 @@ class EstimateController extends Controller
         ]);
         $approved = $data['approved'];
 
-        // Lines saved with a Good / Better / Best option before are ordinary lines now: the total counts them all.
-        if ($approved && $estimate->items()->whereNotNull('option_name')->exists()) {
+        // The total always counts every line the customer agreed to (also lines saved before the current rules).
+        if ($approved) {
             $save->recalculate($estimate);
         }
 

@@ -22,6 +22,7 @@ import type {
 } from '@/components/calendar/types';
 import {
     dayLabel,
+    dayOrder,
     inLane,
     routeUrl,
     toTime,
@@ -669,17 +670,13 @@ export default function CalendarPage({
                                     </p>
                                 </div>
                                 {people.map((lane) => {
-                                    const stops = visits
-                                        .filter(
+                                    const stops = dayOrder(
+                                        visits.filter(
                                             (v) =>
                                                 v.date === date &&
                                                 inLane(v, lane),
-                                        )
-                                        .sort(
-                                            (a, b) =>
-                                                a.start_minutes -
-                                                b.start_minutes,
-                                        );
+                                        ),
+                                    );
 
                                     if (stops.length === 0) {
                                         return null;

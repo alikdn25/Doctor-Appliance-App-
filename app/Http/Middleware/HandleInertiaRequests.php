@@ -16,6 +16,7 @@ use App\Models\Task;
 use App\Models\TaxRate;
 use App\Models\User;
 use App\Services\Impersonation;
+use App\Support\AppVersion;
 use App\Support\Jobs\JobBacklog;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\Translations;
@@ -56,6 +57,8 @@ class HandleInertiaRequests extends Middleware
                     : null;
             }),
             'locale' => app()->getLocale(),
+            // The version this page was built with; the app compares it with /app-version (New version available).
+            'appVersion' => fn () => AppVersion::current(),
             'unreadMessages' => Inertia::always(function () use ($request) {
                 $user = $request->user();
 
@@ -116,6 +119,7 @@ class HandleInertiaRequests extends Middleware
                 'viewInvoices' => $user->can('viewAny', Invoice::class),
                 'viewMyJobs' => $user->can('viewMine', ServiceJob::class),
                 'viewCalendar' => $user->can('dispatch', ServiceJob::class),
+                'viewMap' => $user->can('viewMap', ServiceJob::class),
                 'manageCatalog' => $user->can('manageCatalog'),
                 'manageCompany' => $user->can('update', $company),
                 'viewBrands' => $user->can('viewAny', Brand::class),

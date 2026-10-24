@@ -6,7 +6,7 @@ import { isFinishedJob } from '@/components/jobs/types';
 import { cn } from '@/lib/utils';
 import { isDraftJob } from '@/lib/status';
 import { DraftChip } from '@/components/ui/status-badge';
-import { inLane, routeUrl } from '@/components/calendar/types';
+import { dayOrder, inLane, routeUrl } from '@/components/calendar/types';
 import { Button } from '@/components/ui/button';
 import { FilterChips } from '@/components/ui/filter-chips';
 import {
@@ -63,11 +63,16 @@ export function DayMap({
     useEffect(() => onGoogleMapsKeyRejected(() => setState('rejected')), []);
     const stops = useMemo(() => {
         const lane = lanes.find((item) => String(item.id) === person);
-        return visits
-            .filter(
-                (visit) => person === 'all' || (lane && inLane(visit, lane)),
-            )
-            .sort((a, b) => a.start_minutes - b.start_minutes || a.id - b.id);
+        const shown = visits.filter(
+            (visit) => person === 'all' || (lane && inLane(visit, lane)),
+        );
+
+        // One person's day follows the order saved on the Map tab.
+        return person === 'all'
+            ? shown.sort(
+                  (a, b) => a.start_minutes - b.start_minutes || a.id - b.id,
+              )
+            : dayOrder(shown);
     }, [visits, lanes, person]);
     const placed = stops.filter((visit) => visit.job.coordinates !== null);
     // Server configuration details are only for the platform admin who can fix them.

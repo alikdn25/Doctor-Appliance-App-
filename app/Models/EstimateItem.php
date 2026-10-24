@@ -20,14 +20,12 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $total
  * @property bool $optional The customer may choose to include it
  * @property bool $selected Whether an optional line is included
- * @property string|null $option_name Unused: Good / Better / Best were removed (owner's fixes, October 19); a line
- *                                    saved with an option is an ordinary line
  */
 class EstimateItem extends Model
 {
     use BelongsToCompany, IsBillingLine;
 
-    protected $fillable = ['position', 'description', 'quantity', 'unit_price', 'taxable', 'total', 'optional', 'selected', 'option_name'];
+    protected $fillable = ['position', 'description', 'quantity', 'unit_price', 'taxable', 'total', 'optional', 'selected'];
 
     /**
      * @return array<string, string>

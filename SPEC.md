@@ -137,7 +137,13 @@ return. Each job counts once; access follows company, brand and technician assig
 
 - Calendar (day / week), drag-and-drop, per-technician lanes.
 - Arrival windows, durations, travel buffer.
-- Map view of the day's jobs.
+- Map view of the day's jobs. A **Map** tab in the bottom bar for every role and menu: the chosen day's jobs (today by
+  default) as pins numbered in the day's order and coloured by status, a technician filter for the office (a
+  technician sees only their own jobs). A pin opens a card: customer, address, arrival window, technician, status,
+  Navigate, Call, Open job; the office moves the job to another technician from it. **Route** draws the day in its
+  order with the driving time and distance; **Optimize** offers a better order that keeps the arrival windows and says
+  how much time it saves; **Apply** saves that order (the calendar and My Jobs follow it); **Open in Google Maps** sends
+  the day's route to Google Maps.
 - Completed, invoiced and paid jobs are greyed out in every list and hidden from the calendar by default
   ("Show completed" brings them back, greyed out).
 - Assign to own technicians or pass to a subcontractor.
@@ -152,13 +158,16 @@ return. Each job counts once; access follows company, brand and technician assig
   other days), a Completed tab and the person's tasks of the day.
 - A round **"+"** above the bottom bar on every screen (hidden on screens with their own pinned actions) opens, from
   the bottom up: **Job** (book a customer), **Expense** (a new business expense; a technician's goes to My expenses),
-  **Trip** (the mileage form: from, to, distance) and **Task**. The bottom bar has no Book item. For office roles a day also lists the jobs nobody is assigned to yet
+  **Trip** (the mileage form: from, to, distance) and **Task**. The bottom bar has no Book item; it has Map (a
+  technician's My expenses is in More). For office roles a day also lists the jobs nobody is assigned to yet
   (marked "Not assigned") and says how many jobs other people have that day, with a link to the calendar.
 - One-tap navigation (opens Google Maps).
 - Status buttons: On my way (sends SMS with ETA), Started, Waiting for parts, Completed. Time on job is tracked automatically.
 - Photos before/after with upload retry when signal is weak.
 - Scan/photograph rating plate → store model & serial (manual entry in v1; OCR later).
 - Customer signature on screen.
+- After a deploy the app shows "New version available" with **Update** (checked when the app opens and every 30
+  minutes); it waits while a form with unsaved changes is open.
 - Create estimate or invoice on site and take payment.
 
 ### 7.5 Estimates

@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $finished_at
  * @property bool $strict_arrival The customer must be seen in the window
  * @property Carbon|null $strict_reminder_sent_at
+ * @property int|null $route_position Order in the person's day, set by "Apply" on the map (null = by the window)
  * @property-read ServiceJob $job
  */
 class JobVisit extends Model
@@ -63,7 +64,18 @@ class JobVisit extends Model
             'finished_at' => 'datetime',
             'strict_arrival' => 'boolean',
             'strict_reminder_sent_at' => 'datetime',
+            'route_position' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // A visit moved to another time leaves the day's saved order: it goes by its new window again.
+        static::saving(function (JobVisit $visit) {
+            if ($visit->exists && $visit->isDirty('scheduled_start')) {
+                $visit->route_position = null;
+            }
+        });
     }
 
     /**

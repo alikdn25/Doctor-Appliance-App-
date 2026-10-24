@@ -172,6 +172,8 @@ class BusinessExpenseController extends Controller
             'expense' => $data, 'categories' => $categories, 'jobs' => $jobs,
             'jobId' => $expense === null && $jobs->contains('id', (int) $request->query('job')) ? (int) $request->query('job') : null,
             'taxRates' => BillingPresenter::taxOptions($expense?->taxes ?? []),
+            // My expenses (technicians): the amount paid only, no taxes.
+            'withTaxes' => $request->user()->hasRole(UserRole::Owner, UserRole::Admin),
             'currency' => $expense?->currency ?? currentCompany()->currency,
             'today' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
             // The last three categories this person used, as chips (UX-REDESIGN §11.2).

@@ -60,8 +60,12 @@ export function MoreSheet({
         }))
         .filter((group) => group.items.length > 0);
 
+    // A technician's My expenses is one tap away: their money group starts open.
+    const fieldWorker = !auth.can?.viewJobs && !auth.can?.viewCalendar;
     const isOpen = (key: string) =>
-        needle !== '' || (openGroups[key] ?? (key === 'main' || isOwner));
+        needle !== '' ||
+        (openGroups[key] ??
+            (key === 'main' || isOwner || (fieldWorker && key === 'money')));
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>

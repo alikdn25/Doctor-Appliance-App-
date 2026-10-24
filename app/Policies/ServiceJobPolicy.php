@@ -28,6 +28,14 @@ class ServiceJobPolicy
     }
 
     /**
+     * The Map tab: everyone who goes on calls (a technician sees only their own visits there).
+     */
+    public function viewMap(User $user): bool
+    {
+        return $this->isFieldMember($user);
+    }
+
+    /**
      * The dispatch calendar (office).
      */
     public function dispatch(User $user): bool
