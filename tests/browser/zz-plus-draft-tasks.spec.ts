@@ -178,6 +178,19 @@ test('the job page has Job · Notes · Messages · Files · History; a team note
     await notes.locator('#job-note').fill(text);
     await notes.locator('[data-test="job-note-add"]').click();
     await expect(notes.locator('[data-test="job-notes"]')).toContainText(text);
+    // Delete note is never under the round "+" (Grok's check of a46f263).
+    const remove = notes.locator('[data-test="job-note-delete"]').first();
+    await remove.scrollIntoViewIfNeeded();
+    // A screen with pinned actions hides the "+" (nothing to cover then).
+    const fab = await page.locator('[data-test="create-fab"]').boundingBox();
+    const del = (await remove.boundingBox())!;
+    const overlap =
+        fab !== null &&
+        del.x < fab.x + fab.width &&
+        del.x + del.width > fab.x &&
+        del.y < fab.y + fab.height &&
+        del.y + del.height > fab.y;
+    expect(overlap).toBe(false);
 
     await page.getByRole('tab', { name: /^Messages/ }).click();
     await expect(page.locator('[data-test="job-tab-messages"]')).toContainText(

@@ -136,6 +136,7 @@ return [
         'no_account' => 'SMS is not set up for the company yet.',
         'registration' => 'US carriers require the A2P 10DLC registration before texting US numbers. It is not approved yet.',
         'provider' => 'The SMS provider refused the message: :error',
+        'deleted' => 'Not sent: the job or the customer was deleted.',
     ],
 
     'opted_out' => 'Unsubscribed from texts',

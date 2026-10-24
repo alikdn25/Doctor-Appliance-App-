@@ -216,6 +216,15 @@ class Messenger
             return;
         }
 
+        // A text waiting for the end of quiet hours whose job or customer was deleted meanwhile never goes out
+        // (restoring them does not send it either).
+        if (($message->service_job_id !== null && ServiceJob::withTrashed()->find($message->service_job_id)?->trashed())
+            || ($message->customer_id !== null && Customer::withTrashed()->find($message->customer_id)?->trashed())) {
+            $message->update(['status' => 'blocked', 'status_reason' => __('messages.blocked.deleted')]);
+
+            return;
+        }
+
         $account = SmsAccount::query()->first();
         $phone = CustomerPhone::query()->where('customer_id', $message->customer_id)->where('number_normalized', $message->to)->first();
 
