@@ -1,3 +1,10 @@
+# October 24 — Fix after the 7ecb0de deploy check: badges cut off on job cards
+
+- My Jobs (and every list with job cards): the top row (arrival window, status, Overdue) now wraps to a second line
+  on a narrow phone instead of running past the card's right edge. Found by Grok at 390 px.
+- No migrations.
+- Tests: browser zz-plus-draft-tasks (every badge stays inside its card at 390 px).
+
 # October 24 — Fixes after the a46f263 deploy check
 
 - A text waiting for the end of quiet hours no longer goes out when its job or customer was deleted meanwhile: it

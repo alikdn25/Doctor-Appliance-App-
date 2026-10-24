@@ -116,7 +116,11 @@ export function JobCard({
                 )}
             >
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
-                    <div className="flex min-w-0 items-center gap-1.5">
+                    {/* A long window, status and Overdue wrap to a second line instead of running past the card. */}
+                    <div
+                        data-test="job-card-status-row"
+                        className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1"
+                    >
                         {time && (
                             <span className="shrink-0 text-base font-bold whitespace-nowrap tabular-nums">
                                 {time}
