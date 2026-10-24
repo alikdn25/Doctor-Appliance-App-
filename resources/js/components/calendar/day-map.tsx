@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CalendarVisit, Lane } from '@/components/calendar/types';
 import { isFinishedJob } from '@/components/jobs/types';
 import { cn } from '@/lib/utils';
+import { isDraftJob } from '@/lib/status';
+import { DraftChip } from '@/components/ui/status-badge';
 import { inLane, routeUrl } from '@/components/calendar/types';
 import { Button } from '@/components/ui/button';
 import { FilterChips } from '@/components/ui/filter-chips';
@@ -243,6 +245,9 @@ export function DayMap({
                                                 visit.end_time,
                                             )}{' '}
                                             · {visit.job.customer}
+                                            {isDraftJob(visit.job.status) && (
+                                                <DraftChip className="ml-1.5 align-middle" />
+                                            )}
                                         </span>
                                         <span className="block text-sm text-muted-foreground">
                                             {visit.job.address}

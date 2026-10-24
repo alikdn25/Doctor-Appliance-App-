@@ -41,7 +41,8 @@ class SendVisitReminders extends Command
                     ->where('status', VisitStatus::Scheduled->value)
                     ->whereNull('reminder_sent_at')
                     ->whereBetween('scheduled_start', [$tomorrow->utc(), $tomorrow->endOfDay()->utc()])
-                    ->whereHas('job', fn ($q) => $q->whereNotIn('status', [JobStatus::Cancelled->value, JobStatus::OnHold->value]))
+                    // A draft booking was never confirmed to the customer: no reminder either.
+                    ->whereHas('job', fn ($q) => $q->whereNotIn('status', [JobStatus::Cancelled->value, JobStatus::OnHold->value, JobStatus::Draft->value]))
                     ->each(function (JobVisit $visit) use ($messenger) {
                         $job = $visit->job;
                         $body = MessageTemplates::render(currentCompany(), MessageKind::VisitReminder,

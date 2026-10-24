@@ -21,6 +21,9 @@ Schedule::command('sms:sync-registrations')->dailyAt('06:23');
 // Technicians are reminded before visits with a strict arrival time.
 Schedule::command('visits:strict-arrival-reminders')->everyFiveMinutes()->withoutOverlapping();
 
+// Task reminders ("+ → Task"): push and email to the one the task is for.
+Schedule::command('tasks:send-reminders')->everyMinute()->withoutOverlapping();
+
 // Data protection (docs/RESTORE.md): the database every hour, uploaded files every day, both encrypted in external
 // storage; a check after each run alerts the platform owner when the newest backup is missing or too old.
 // Nothing runs until the storage keys and the encryption key are in .env.

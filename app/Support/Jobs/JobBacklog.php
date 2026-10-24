@@ -15,9 +15,10 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class JobBacklog
 {
-    public const REASONS = ['overdue', 'needs_schedule', 'waiting_for_parts', 'waiting_for_customer', 'on_hold', 'scheduled'];
+    public const REASONS = ['draft', 'overdue', 'needs_schedule', 'waiting_for_parts', 'waiting_for_customer', 'on_hold', 'scheduled'];
 
     private const REASON_SQL = "CASE
+        WHEN status = 'booking_draft' THEN 'draft'
         WHEN status = 'waiting_for_parts' THEN 'waiting_for_parts'
         WHEN status = 'waiting_for_customer' THEN 'waiting_for_customer'
         WHEN status = 'on_hold' THEN 'on_hold'
@@ -30,6 +31,7 @@ class JobBacklog
      */
     public static function query(User $user): Builder
     {
+        // Overdue only after the arrival window ends (JobVisit::isOverdue); a visit inside its window is upcoming.
         $now = CarbonImmutable::now()->utc();
         $open = fn (Builder $visits) => $visits->whereIn('status', VisitStatus::openValues());
         $facts = ServiceJob::query()

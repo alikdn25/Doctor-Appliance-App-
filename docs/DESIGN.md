@@ -248,10 +248,20 @@ box-shadow:
 | Partially paid              | `#FFF8EE → #FFDCAC` | `#9A3412`                     | half-filled circle                    |
 | Refunded                    | `#F8F6FF → #CDC0FF` | `#5B21B6`                     | rotate-ccw                            |
 | Partially refunded          | `#FBFBFF → #CBCBFF` | `#5B21B6`, outlined `#C4B5FD` | rotate-ccw                            |
-| Draft                       | `#FAFBFC → #D1DCF0` | `#334155`                     | pencil                                |
+| Draft (estimate, invoice)   | `#FAFBFC → #D1DCF0` | `#334155`                     | pencil                                |
+| Draft booking (job)         | `#FFF3E3 → #FFB35C` | `#7C2D12`                     | pencil-line                           |
 | Revised                     | `#FAFBFC → #D1DCF0` | `#64748B`, struck through     | rotate-ccw                            |
 
 Visit statuses use the same look as the matching job status.
+
+A **draft booking** is orange on purpose (it still needs Finish booking): its card or calendar block gets an orange
+edge (`.da-draft`) and a "Draft" chip (`DraftChip`); the job page has an orange "Booking not finished" strip.
+**Tasks** have their own pink colour (`--task-from #FDF2F8`, `--task-to #EC4899`, `--task-text #9D174D`): a pink
+left stripe and a round tick, never a status badge.
+
+The round **"+"** (`CreateFab`) sits right above the bottom bar on every screen: 64 px circle, the primary volume plus
+a wider blue glow (`.da-fab-glow`). Its menu opens upward (Job nearest the thumb, then Expense, Trip, Task) as raised
+white pills over a dimmed backdrop; the "+" turns into "×". Screens with a pinned action bar hide it.
 
 ## Imagery
 
@@ -268,15 +278,16 @@ Visit statuses use the same look as the matching job status.
 
 ## Navigation and layout
 
-- Bottom bar by role (UX-REDESIGN §5.1, §22): Owner/Office **Today · Calendar · ＋ Book · Jobs** (Office menu) or
-  **Invoices** (Field menu) **· More**; technician **Today · Mileage · My expenses · More**. More opens the whole menu
+- Bottom bar by role (UX-REDESIGN §5.1, §22): Owner/Office **Today · Calendar · Jobs** (Office menu) or
+  **Invoices** (Field menu) **· More**; technician **Today · Mileage · My expenses · More**. Booking, expenses, trips
+  and tasks start from the round **"+"** above the bar (owner's task, Oct 24). More opens the whole menu
   as a bottom sheet; there is no menu button in the header on phones. Child screens show ← in the header.
 - Inner screens have no tab bar: a back button at the top and actions pinned to the bottom. In code a pinned bar has
-  the class `da-pinned`; while one is on screen the tab bar (`da-tabbar`) is hidden so nothing covers the actions.
+  the class `da-pinned`; while one is on screen the tab bar (`da-tabbar`) and the "+" are hidden so nothing covers the
+  actions.
 - Menu: the everyday sections first (Book customer, My jobs, Calendar, Jobs, Customers, Invoices, Messages); "Money and
   reports" and "Company settings" are collapsed groups.
 - The customer signs on the invoice (when the work is done), not on the job page.
-- **Book customer** button lives in the My Jobs header.
 - My Jobs cards (approved mockup): buttons **Navigate · Call · View job**; the whole card also opens the job. Visit
   steps (On my way / Start / Finish visit) are pinned at the bottom of the job page.
 - Touch targets at least 44 px; screens designed for one-handed use on a phone.

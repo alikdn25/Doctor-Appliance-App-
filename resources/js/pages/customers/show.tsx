@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ChevronRight,
     KeyRound,
@@ -13,12 +13,12 @@ import {
     Trash2,
     User,
 } from 'lucide-react';
-import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { DocumentList } from '@/components/billing/document-list';
 import { useMoney } from '@/components/billing/money';
 import type { DocumentRow } from '@/components/billing/types';
 import { ApplianceDialog } from '@/components/customers/appliance-dialog';
+import { CustomerNotesEditor as NotesEditor } from '@/components/customers/customer-notes-editor';
 import {
     CustomerAvatar,
     CustomerAvatarPicker,
@@ -47,13 +47,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { SwipeTabs } from '@/components/ui/swipe-tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
 import { smsUrl } from '@/lib/sms';
 import { show as showAppliance } from '@/routes/appliances';
-import { destroy, edit, index, notes as notesRoute } from '@/routes/customers';
+import { destroy, edit, index } from '@/routes/customers';
 import { create as createJob, show as showJob } from '@/routes/jobs';
 import { destroy as destroyProperty } from '@/routes/properties';
 import type { Option } from '@/types';
@@ -137,58 +136,6 @@ type Props = {
 };
 
 type Tab = 'client' | 'work' | 'notes' | 'files';
-
-/** "About the customer", edited in place. */
-function NotesEditor({
-    customerId,
-    notes,
-    canUpdate,
-}: {
-    customerId: number;
-    notes: string | null;
-    canUpdate: boolean;
-}) {
-    const t = useTrans();
-    const form = useForm({ notes: notes ?? '' });
-    const submit = (event: FormEvent) => {
-        event.preventDefault();
-        form.patch(notesRoute(customerId).url, { preserveScroll: true });
-    };
-
-    if (!canUpdate) {
-        return (
-            <p className="da-card p-4 text-sm whitespace-pre-wrap">
-                {notes?.trim() ? notes : t('customers.no_notes')}
-            </p>
-        );
-    }
-
-    return (
-        <form onSubmit={submit} className="da-card space-y-2 p-4">
-            <label htmlFor="customer-notes" className="text-sm font-semibold">
-                {t('customers.fields.notes')}
-            </label>
-            <Textarea
-                id="customer-notes"
-                rows={4}
-                maxLength={10000}
-                className="[field-sizing:content] min-h-24"
-                value={form.data.notes}
-                onChange={(event) => form.setData('notes', event.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-                {t('customers.notes_hint')}
-            </p>
-            {form.isDirty && (
-                <div className="flex justify-end">
-                    <Button type="submit" loading={form.processing}>
-                        {t('common.save')}
-                    </Button>
-                </div>
-            )}
-        </form>
-    );
-}
 
 /**
  * Customer card (owner's update, October 24): a main block that stays the same (name, balance, Call, Text), then

@@ -16,7 +16,6 @@ import { QuickTripSheet } from '@/components/jobs/quick-trip-sheet';
 import { ScreenHeader } from '@/components/screen-header';
 import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
-import { Fab } from '@/components/ui/fab';
 import { FilterChips } from '@/components/ui/filter-chips';
 import {
     Dialog,
@@ -218,6 +217,13 @@ export default function Trips({
                     <ActionSheet
                         title={t('trips.title')}
                         items={[
+                            // A trip with turn-by-turn directions (the "+" opens the form by hand).
+                            {
+                                key: 'quick-trip',
+                                label: t('trips.add_trip'),
+                                icon: <Car />,
+                                onSelect: () => setQuickOpen(true),
+                            },
                             {
                                 key: 'export-month',
                                 label: t('trips.export_month'),
@@ -442,14 +448,6 @@ export default function Trips({
                     </ul>
                 )}
             </div>
-
-            <Fab
-                label={t('trips.add_trip')}
-                showLabel
-                icon={<Car />}
-                onClick={() => setQuickOpen(true)}
-                data-test="trip-fab"
-            />
 
             <QuickTripSheet
                 open={quickOpen}

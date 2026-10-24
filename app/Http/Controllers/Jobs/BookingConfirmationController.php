@@ -2,85 +2,92 @@
 
 namespace App\Http\Controllers\Jobs;
 
-use App\Enums\MessageKind;
-use App\Enums\SmsMode;
+use App\Actions\Jobs\ChangeJobStatus;
+use App\Enums\JobStatus;
 use App\Enums\VisitStatus;
 use App\Http\Controllers\Controller;
-use App\Messaging\MessageContext;
-use App\Messaging\MessageTemplates;
-use App\Messaging\Messenger;
-use App\Models\JobVisit;
+use App\Messaging\BookingConfirmation;
 use App\Models\ServiceJob;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 /**
- * Send Booking Confirmation (after booking and on the job page): the day, arrival window and address to the
- * customer — the one who pays — by email or SMS.
+ * The booking confirmation (owner's task, Oct 24): "Finish booking" on a draft, "Resend confirmation" in the job's
+ * "…" menu and "Notify client?" after a finished booking moves. It goes by itself, as the company's SMS setting says.
  */
 class BookingConfirmationController extends Controller
 {
-    /** What would be sent and where: the text, the email address, the number and whether it can be texted. */
-    public function show(ServiceJob $job, Messenger $messenger): JsonResponse
+    /** What would be sent and how: the text and the plan (channel, where to, why not the usual way). */
+    public function show(ServiceJob $job, BookingConfirmation $confirmation): JsonResponse
     {
         Gate::authorize('work', $job);
-        $job->loadMissing(['customer.primaryEmail', 'brand', 'property']);
-        $mode = currentCompany()->sms_mode;
-        $phone = $messenger->mobile($job->customer);
+        $job->loadMissing(['customer', 'brand', 'property']);
 
-        return response()->json([
-            'body' => $this->body($job),
-            'email' => $job->customer->primaryEmail?->email,
-            'sms' => [
-                // From technician's phone: the page opens the phone's messages app; Off: no texts at all.
-                'mode' => $mode->value,
-                'to' => $phone?->number,
-                'blocked' => match ($mode) {
-                    SmsMode::Automatic => $messenger->smsBlockedReason($job->customer),
-                    SmsMode::TechnicianPhone => $phone === null ? __('messages.blocked.no_phone') : null,
-                    default => __('jobs.confirmation.sms_off'),
-                },
-            ],
-        ]);
+        return response()->json(['body' => $confirmation->body($job), ...$confirmation->plan($job)]);
     }
 
-    public function send(Request $request, ServiceJob $job, Messenger $messenger): RedirectResponse
+    /** Resend confirmation / Notify client: sent now by the plan (a text from the technician's phone is the page's). */
+    public function send(Request $request, ServiceJob $job, BookingConfirmation $confirmation): RedirectResponse
     {
         Gate::authorize('work', $job);
-        $channel = $request->validate(['channel' => ['required', Rule::in(['email', 'sms'])]])['channel'];
-        $job->loadMissing(['customer', 'brand', 'property']);
-        $body = $this->body($job);
 
-        if ($channel === 'sms') {
-            // From technician's phone the text goes from the phone's own app (recorded by messages/opened).
-            abort_unless(currentCompany()->sms_mode === SmsMode::Automatic, 404);
-            $message = $messenger->sms(MessageKind::BookingConfirmation, $job->customer, $job, $body, $request->user());
-
-            return JobMessageController::result($message->status, $message->status_reason, $message->send_after);
+        if ($job->status === JobStatus::Draft) {
+            throw ValidationException::withMessages(['job' => __('jobs.confirmation.not_finished')]);
         }
 
-        $message = $messenger->emailMessage(MessageKind::BookingConfirmation, $job->customer, $job, $body, $request->user(),
-            __('messages.email_subject.booking_confirmation', ['brand' => $job->brand?->name ?? currentCompany()->name]));
-
-        Inertia::flash('toast', $message->status === 'blocked'
-            ? ['type' => 'error', 'message' => __('messages.sms_blocked', ['reason' => $message->status_reason])]
-            : ['type' => 'success', 'message' => __('jobs.confirmation.emailed', ['email' => $message->to])]);
+        self::flashResult($confirmation->send($job, $request->user()));
 
         return back();
     }
 
-    private function body(ServiceJob $job): string
+    /** "Finish booking" on a draft: Scheduled, and the confirmation goes by itself. */
+    public function finish(Request $request, ServiceJob $job, ChangeJobStatus $changeStatus, BookingConfirmation $confirmation): RedirectResponse
     {
-        // The next visit that is still to come, else the latest one.
-        $visit = JobVisit::query()->where('service_job_id', $job->id)
-            ->whereIn('status', [VisitStatus::Scheduled->value, VisitStatus::OnTheWay->value])
-            ->orderBy('scheduled_start')->first()
-            ?? JobVisit::query()->where('service_job_id', $job->id)->orderByDesc('scheduled_start')->first();
+        Gate::authorize('update', $job);
 
-        return MessageTemplates::render(currentCompany(), MessageKind::BookingConfirmation, MessageContext::for($job->customer, $job, $visit));
+        if ($job->status !== JobStatus::Draft) {
+            return back();
+        }
+
+        DB::transaction(function () use ($job, $changeStatus, $request) {
+            $open = $job->visits()->whereIn('status', VisitStatus::openValues())->exists();
+            $changeStatus->handle($job, $open ? JobStatus::Scheduled : JobStatus::New, $request->user());
+        });
+
+        $visit = $job->visits()->orderBy('scheduled_start')->first();
+        $sent = $confirmation->send($job, $request->user());
+
+        if ($visit !== null) {
+            JobController::flashBooked($job, $visit, $sent);
+        } else {
+            self::flashResult($sent);
+        }
+
+        return back();
+    }
+
+    /**
+     * A toast saying how the confirmation went. A text from the technician's phone is sent by the page itself (it
+     * opens the messages app within the tap), so it needs no toast.
+     *
+     * @param  array<string, mixed>  $sent
+     */
+    public static function flashResult(array $sent): void
+    {
+        if ($sent['channel'] === BookingConfirmation::PHONE) {
+            return;
+        }
+
+        Inertia::flash('toast', match (true) {
+            $sent['channel'] === null || $sent['status'] === 'blocked' => ['type' => 'error', 'message' => __('jobs.confirmation.not_sent', ['reason' => $sent['reason']])],
+            $sent['channel'] === BookingConfirmation::EMAIL => ['type' => 'success', 'message' => __('jobs.confirmation.emailed', ['email' => $sent['to']])],
+            $sent['send_after'] !== null => ['type' => 'success', 'message' => __('messages.sms_queued', ['time' => $sent['send_after']])],
+            default => ['type' => 'success', 'message' => __('jobs.confirmation.texted')],
+        });
     }
 }

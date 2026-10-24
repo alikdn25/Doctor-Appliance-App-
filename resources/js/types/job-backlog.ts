@@ -1,4 +1,5 @@
 export type BacklogReason =
+    | 'draft'
     | 'overdue'
     | 'needs_schedule'
     | 'waiting_for_parts'

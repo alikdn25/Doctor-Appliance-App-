@@ -199,6 +199,16 @@ class ServiceJob extends Model
     }
 
     /**
+     * The team's notes on the job (the Notes tab), newest first.
+     *
+     * @return HasMany<JobNote, $this>
+     */
+    public function teamNotes(): HasMany
+    {
+        return $this->hasMany(JobNote::class)->latest()->orderByDesc('id');
+    }
+
+    /**
      * @return HasMany<Estimate, $this>
      */
     public function estimates(): HasMany

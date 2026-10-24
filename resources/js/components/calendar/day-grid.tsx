@@ -8,6 +8,8 @@ import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
 import { isFinishedJob } from '@/components/jobs/types';
 import { cn } from '@/lib/utils';
+import { isDraftJob } from '@/lib/status';
+import { DraftChip } from '@/components/ui/status-badge';
 
 /** Pixels per hour on the day grid (15 minutes = 14 px). */
 export const HOUR_PX = 56;
@@ -390,6 +392,9 @@ export function DayGrid({
                                                         visit.movable
                                                             ? 'cursor-grab active:cursor-grabbing'
                                                             : 'opacity-80',
+                                                        isDraftJob(
+                                                            visit.job.status,
+                                                        ) && 'da-draft',
                                                         (visit.conflict ||
                                                             overdue) &&
                                                             'border-danger ring-1 ring-danger',
@@ -441,6 +446,9 @@ export function DayGrid({
                                                                 )}
                                                             />
                                                         )}
+                                                        {isDraftJob(
+                                                            visit.job.status,
+                                                        ) && <DraftChip />}
                                                         <span className="truncate">
                                                             {shortRange(
                                                                 visit.start_time,

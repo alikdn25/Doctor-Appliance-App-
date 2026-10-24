@@ -58,6 +58,7 @@ type DeletedJob = {
 
 const REASONS: BacklogReason[] = [
     'overdue',
+    'draft',
     'needs_schedule',
     'waiting_for_parts',
     'waiting_for_customer',

@@ -98,6 +98,8 @@ export function SwipeTabs<T extends string>({
                             onClick={() => onChange(tab.value)}
                             className={cn(
                                 'da-press min-h-11 min-w-0 flex-1 truncate rounded-[11px] px-2 text-sm font-semibold',
+                                // Five tabs still fit a 360 px phone without cutting "Messages".
+                                tabs.length >= 5 && 'px-1 text-xs sm:px-2 sm:text-sm',
                                 on ? 'da-raised text-foreground' : 'text-[#3d4b60]',
                             )}
                         >

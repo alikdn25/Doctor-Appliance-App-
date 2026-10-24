@@ -43,7 +43,7 @@ test('the queue keeps old, unscheduled and waiting jobs without any date cutoff'
         ->component('jobs/index')
         ->where('unfinishedJobs.total', 6)
         ->where('unfinishedJobs.counts', [
-            'overdue' => 1, 'needs_schedule' => 1, 'waiting_for_parts' => 1,
+            'draft' => 0, 'overdue' => 1, 'needs_schedule' => 1, 'waiting_for_parts' => 1,
             'waiting_for_customer' => 1, 'on_hold' => 1, 'scheduled' => 1,
         ])
         ->where('jobs.total', 6)
@@ -253,4 +253,23 @@ test('the Open tab sorts by urgency: overdue, needs scheduling, waiting, then th
 
     expect($ids())->toBe([$overdue->id, $unscheduled->id, $parts->id, $sooner->id, $later->id])
         ->and($ids(['sort' => 'newest'])[0])->toBe($overdue->id);
+});
+
+test('a visit is overdue only after its arrival window ends (owner\'s task, Oct 24)', function () {
+    // Now is 16:00 UTC. The window 15:00–17:00 is still on: not overdue anywhere.
+    $job = $this->jobs->withVisit($this->tech, ['scheduled_start' => '2030-06-12 15:00:00', 'scheduled_end' => '2030-06-12 17:00:00'])->create();
+    $count = fn () => $this->actingAs($this->owner)->get(route('jobs.index', ['tab' => 'open']))
+        ->assertInertia(fn (Assert $page) => $page->where('jobs.data.0.id', $job->id));
+
+    $count()->assertInertia(fn (Assert $page) => $page->where('unfinishedJobs.counts.overdue', 0)
+        ->where('jobs.data.0.backlog_reason', 'scheduled'));
+
+    // At the very end of the window it is still not late.
+    $this->travelTo('2030-06-12 17:00:00');
+    $count()->assertInertia(fn (Assert $page) => $page->where('unfinishedJobs.counts.overdue', 0));
+
+    // A minute after the window: overdue.
+    $this->travelTo('2030-06-12 17:01:00');
+    $count()->assertInertia(fn (Assert $page) => $page->where('unfinishedJobs.counts.overdue', 1)
+        ->where('jobs.data.0.backlog_reason', 'overdue'));
 });

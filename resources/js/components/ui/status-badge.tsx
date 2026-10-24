@@ -60,3 +60,20 @@ export function OverdueFlag({
         </span>
     );
 }
+
+/** "Draft" on a booking that was saved without finishing (no confirmation sent yet): orange, next to its status. */
+export function DraftChip({ className }: { className?: string }) {
+    const t = useTrans();
+
+    return (
+        <span
+            data-test="draft-chip"
+            className={cn(
+                'da-draft-chip inline-flex h-5 w-fit shrink-0 items-center rounded-full px-2 text-[11px] font-semibold whitespace-nowrap',
+                className,
+            )}
+        >
+            {t('jobs.statuses.booking_draft')}
+        </span>
+    );
+}

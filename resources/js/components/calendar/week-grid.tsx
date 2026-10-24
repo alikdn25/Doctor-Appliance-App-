@@ -9,6 +9,8 @@ import { useLocale } from '@/lib/locale';
 import { isFinishedJob } from '@/components/jobs/types';
 import { statusLook } from '@/lib/status';
 import { cn } from '@/lib/utils';
+import { isDraftJob } from '@/lib/status';
+import { DraftChip } from '@/components/ui/status-badge';
 import { calendar } from '@/routes';
 
 type Props = {
@@ -155,6 +157,9 @@ export function WeekGrid({
                                                         visit.movable
                                                             ? 'cursor-grab'
                                                             : 'opacity-80',
+                                                        isDraftJob(
+                                                            visit.job.status,
+                                                        ) && 'da-draft',
                                                         visit.conflict &&
                                                             'border-destructive ring-1 ring-destructive',
                                                         isFinishedJob(
@@ -187,6 +192,9 @@ export function WeekGrid({
                                                         {clock.clock(
                                                             visit.start_time,
                                                         )}
+                                                        {isDraftJob(
+                                                            visit.job.status,
+                                                        ) && <DraftChip />}
                                                     </span>
                                                     <span className="block truncate">
                                                         {visit.job.customer}

@@ -108,6 +108,11 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 
 `new` → `scheduled` → `on_the_way` → `in_progress` → `waiting_for_parts` → `completed` → `invoiced` → `paid`, plus `waiting_for_customer`, `cancelled` and `on_hold`. Every status change is logged with user and time.
 
+A booking saved with **Save as draft** has the status **Draft** (`booking_draft`): no confirmation has gone to the
+customer yet. Drafts are orange with a "Draft" chip in My Jobs, the calendar and the Jobs list, are counted as
+"Drafts" in the unfinished-jobs bar, and the job page shows an orange "Booking not finished" strip with **Finish
+booking** (→ Scheduled, and the confirmation goes by itself). Draft is never picked from the status list.
+
 All unfinished jobs remain in a date-independent queue, reached from a compact persistent top bar with a job
 counter. It includes overdue visits, work needing scheduling, waiting for parts/customer, on-hold work and future
 scheduled work. Completed, invoiced, paid, cancelled, outcome-closed and deleted jobs are excluded. Reopened jobs
@@ -136,11 +141,18 @@ return. Each job counts once; access follows company, brand and technician assig
 - Completed, invoiced and paid jobs are greyed out in every list and hidden from the calendar by default
   ("Show completed" brings them back, greyed out).
 - Assign to own technicians or pass to a subcontractor.
+- **Tasks**: personal to-dos without a customer (title, date, a time or all day, note, for oneself or — for Owners and
+  Admins — a teammate, an optional reminder by push and email). Shown in the calendar and on My Jobs in their own
+  color; ticked done in one tap. Technicians see their own tasks; Owners and Admins see everyone's.
+- **Overdue** is shown only after a visit's arrival window has ended; inside the window a job is not overdue.
 
 ### 7.4 Technician mobile view (PWA)
 
 - Today's jobs list: customer, address, appliance, status, ticket size. My Jobs shows one day at a time (‹ › to
-  other days), a Completed tab and "+ Trip". For office roles a day also lists the jobs nobody is assigned to yet
+  other days), a Completed tab and the person's tasks of the day.
+- A round **"+"** above the bottom bar on every screen (hidden on screens with their own pinned actions) opens, from
+  the bottom up: **Job** (book a customer), **Expense** (a new business expense; a technician's goes to My expenses),
+  **Trip** (the mileage form: from, to, distance) and **Task**. The bottom bar has no Book item. For office roles a day also lists the jobs nobody is assigned to yet
   (marked "Not assigned") and says how many jobs other people have that day, with a link to the calendar.
 - One-tap navigation (opens Google Maps).
 - Status buttons: On my way (sends SMS with ETA), Started, Waiting for parts, Completed. Time on job is tracked automatically.
@@ -213,6 +225,13 @@ return. Each job counts once; access follows company, brand and technician assig
   history records "SMS opened from technician's phone". No automatic texts: day-before reminders
   go by email.
 - **Off** — everything that would be a text goes by email.
+
+**Booking confirmation**: the bottom of Book customer has **Finish booking** (main) and **Save as draft**. Finish
+booking saves the job and sends the confirmation by itself as the SMS mode says — Automatic: a text from the company
+number; From technician's phone: the phone's messages app opens with the text ready; when a text cannot go (no phone,
+opted out, no SMS account) it is emailed if the customer has an address; Off: nothing is sent. The sheet after
+booking says how it went. A finished booking whose day or arrival window changes asks **"Notify client?"** (Yes sends
+the updated confirmation). The job's "…" has **Resend confirmation** for finished bookings only.
 
 Messages: reminder the day before the visit, "On my way" with the arrival window (when the technician taps the
 button), estimate/invoice link ("Send by SMS" next to "Send by email"), Google review request (§8), a free text from
@@ -287,7 +306,8 @@ from the company number (provider voice).
 - Trips: date, from, to, distance, purpose, type (customer / parts store / supplier / other), driver.
 - Trips to customers are created when a job is started: from the job started before it that day (or the person's
   start address, e.g. home) to the job's address; road distance from Google Distance Matrix (server key in `.env`),
-  editable. Other trips: "+ Trip" on My Jobs and Mileage — only the destination is typed; "Navigate" saves the trip
+  editable. Other trips: "+ → Trip" opens the form by hand (from, to, distance); "Add trip" in Mileage's "…" —
+  only the destination is typed; "Navigate" saves the trip
   and opens Google Maps turn-by-turn to it ("Save only" for a trip already driven); the start is the phone's GPS
   position (or the last point of the day), and the next job's trip starts from that stop. "Enter by hand" on the
   same sheet adds a trip with any date and distance; trips are edited on the Mileage page.
