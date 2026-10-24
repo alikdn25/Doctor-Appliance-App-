@@ -37,6 +37,7 @@ class SaveJob
      * @param  array<string, mixed>|null  $newProperty  Address typed for an existing customer.
      * @param  array<string, string|null>|null  $occupant  Occupant of the job's address (saved on the address).
      * @param  array<string, string|null>|null  $billing  Billing address columns of the customer.
+     * @param  bool  $draft  "Save as draft": the booking stays a draft until "Finish booking".
      */
     public function create(
         ?Customer $customer,
@@ -50,8 +51,9 @@ class SaveJob
         ?array $newProperty = null,
         ?array $occupant = null,
         ?array $billing = null,
+        bool $draft = false,
     ): ServiceJob {
-        return DB::transaction(function () use ($customer, $attributes, $applianceIds, $newAppliances, $newCustomer, $visit, $user, $bringItems, $newProperty, $occupant, $billing) {
+        return DB::transaction(function () use ($customer, $attributes, $applianceIds, $newAppliances, $newCustomer, $visit, $user, $bringItems, $newProperty, $occupant, $billing, $draft) {
             if ($newCustomer !== null) {
                 $customer = $this->saveCustomer->handle(
                     null,
@@ -82,7 +84,7 @@ class SaveJob
             $job->customer()->associate($customer);
             $job->number = $this->nextNumber();
             $job->created_by = $user->id;
-            $job->status = JobStatus::New;
+            $job->status = $draft ? JobStatus::Draft : JobStatus::New;
             $job->save();
 
             $this->syncAppliances($job, $applianceIds, $newAppliances);

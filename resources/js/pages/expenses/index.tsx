@@ -15,7 +15,6 @@ import { useMoney } from '@/components/billing/money';
 import { FormField } from '@/components/form-field';
 import { ScreenHeader } from '@/components/screen-header';
 import { ActionSheet } from '@/components/ui/action-sheet';
-import { Fab } from '@/components/ui/fab';
 import { formatRange, PeriodPicker } from '@/components/ui/period-picker';
 import {
     Sheet,
@@ -43,7 +42,7 @@ import {
     store as storeCategory,
     update as updateCategory,
 } from '@/routes/expense-categories';
-import { create, destroy, edit, download, index } from '@/routes/expenses';
+import { destroy, edit, download, index } from '@/routes/expenses';
 import type { ExpenseCategory, ExpenseRow } from './types';
 
 type Filters = {
@@ -762,13 +761,6 @@ export default function BusinessExpenses({
                     </details>
                 )}
             </div>
-
-            <Fab
-                label={t('expenses.add')}
-                icon={<Plus />}
-                onClick={() => router.visit(create())}
-                data-test="add-expense"
-            />
 
             <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
                 <SheetContent

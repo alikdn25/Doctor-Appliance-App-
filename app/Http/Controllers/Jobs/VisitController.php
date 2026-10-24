@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Jobs;
 
 use App\Actions\Jobs\SaveVisit;
+use App\Enums\JobStatus;
+use App\Enums\VisitStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Jobs\VisitRequest;
 use App\Models\JobVisit;
@@ -23,9 +25,10 @@ class VisitController extends Controller
     public function store(VisitRequest $request, ServiceJob $job, SaveVisit $save): RedirectResponse
     {
         $visit = $request->visit();
-        $save->handle($job, null, $visit['attributes'], $visit['assignee_ids'], $request->user());
+        $saved = $save->handle($job, null, $visit['attributes'], $visit['assignee_ids'], $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.visit_created')]);
+        self::askToNotify($saved, null);
 
         // The calendar schedules visits without leaving the page.
         return $request->boolean('back') ? back() : to_route('jobs.show', $job);
@@ -34,9 +37,11 @@ class VisitController extends Controller
     public function update(VisitRequest $request, JobVisit $visit, SaveVisit $save): RedirectResponse
     {
         $data = $request->visit();
+        $was = [$visit->scheduled_start, $visit->scheduled_end];
         $save->handle($visit->job, $visit, $data['attributes'], $data['assignee_ids'], $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.visit_updated')]);
+        self::askToNotify($visit, $was);
 
         return $request->boolean('back') ? back() : to_route('jobs.show', $visit->service_job_id);
     }
@@ -67,15 +72,40 @@ class VisitController extends Controller
             currentCompany()->timezone,
         );
 
-        $save->move(
+        $was = [$visit->scheduled_start, $visit->scheduled_end];
+        $moved = $save->move(
             $visit,
             $start,
             isset($validated['from_user_id']) ? (int) $validated['from_user_id'] : null,
             $to,
             $request->user(),
         );
+        self::askToNotify($moved, $was);
 
         return back();
+    }
+
+    /**
+     * A finished booking got a new day or arrival window (or a new time for the same job): the page asks "Notify
+     * client?" and Yes sends the updated confirmation. Drafts, closed jobs and times already gone ask nothing.
+     *
+     * @param  array{0: mixed, 1: mixed}|null  $was  The time before the change; null for a new visit.
+     */
+    private static function askToNotify(JobVisit $visit, ?array $was): void
+    {
+        $visit->refresh();
+        $job = $visit->job;
+        $changed = $was === null
+            || ! $visit->scheduled_start->equalTo($was[0])
+            || ! $visit->scheduled_end->equalTo($was[1]);
+
+        if ($changed
+            && $job->status !== JobStatus::Draft
+            && $job->status->allowsVisitWork()
+            && $visit->status === VisitStatus::Scheduled
+            && $visit->scheduled_end->isFuture()) {
+            Inertia::flash('notify_client', ['job_id' => $job->id, 'number' => $job->number]);
+        }
     }
 
     public function destroy(Request $request, JobVisit $visit, SaveVisit $save): RedirectResponse

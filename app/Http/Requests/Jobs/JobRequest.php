@@ -138,6 +138,8 @@ class JobRequest extends FormRequest
             'new_customer_mode' => ['boolean'],
             'quick_booking' => ['boolean'],
             'open_invoice' => ['boolean'],
+            // "Save as draft" on Book customer: no confirmation goes yet.
+            'draft' => ['boolean'],
             'customer_id' => $newCustomer ? ['nullable'] : ['required', 'integer'],
             'property_id' => $newCustomer || is_array($this->input('new_property')) ? ['nullable'] : ['required', 'integer'],
             ...($newCustomer ? [

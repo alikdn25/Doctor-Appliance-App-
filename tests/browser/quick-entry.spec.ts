@@ -2,10 +2,11 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
-/** + Book of the menu books on the day the calendar shows (the bottom bar on a phone, the sidebar on a computer). */
+/** Booking starts on the day the calendar shows ("+ → Job" on a phone, Book customer in the sidebar on a computer). */
 async function bookShownDay(page: Page, mobile: boolean) {
     if (mobile) {
-        await page.locator('[data-test="bottom-nav-book"]').click();
+        await page.locator('[data-test="create-fab"]').click();
+        await page.locator('[data-test="create-job"]').click();
     } else {
         await page
             .locator('[data-sidebar="content"]')
@@ -79,7 +80,9 @@ test('an empty calendar day books a new caller using only name phone and time', 
     await expect(page.locator('#booking-date')).toHaveValue(date);
     await page.locator('#booking-from').fill('10:00');
     await page.locator('#booking-to').fill('12:00');
-    await page.getByRole('button', { name: 'Book', exact: true }).click();
+    await page
+        .getByRole('button', { name: 'Finish booking', exact: true })
+        .click();
     // Back on the day, with "Booked #… · …" and Open job.
     await expect(page).toHaveURL(
         new RegExp(`/calendar\\?date=${date}&view=day`),
@@ -132,7 +135,7 @@ test('quick booking finds an existing customer and shows their preferences', asy
     ).toBeVisible();
     await expect(chosen).toContainText('About the customer');
     await expect(
-        page.getByRole('button', { name: 'Book', exact: true }),
+        page.getByRole('button', { name: 'Finish booking', exact: true }),
     ).toBeEnabled();
 });
 
@@ -190,7 +193,9 @@ test('"Now" books a caller right away for today, before the technician\'s next j
         path: info.outputPath('booking-now.png'),
         fullPage: true,
     });
-    await page.getByRole('button', { name: 'Book', exact: true }).click();
+    await page
+        .getByRole('button', { name: 'Finish booking', exact: true })
+        .click();
     await expect(page).toHaveURL(/\/calendar\?date=.*&view=day/);
     await expect(
         page.locator('[data-test="booking-confirmation"]'),

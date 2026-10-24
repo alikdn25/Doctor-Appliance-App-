@@ -5,11 +5,10 @@ import { MoreSheet } from '@/components/more-sheet';
 import { BottomNav } from '@/components/ui/bottom-nav';
 import { navPath, useAppNavigation } from '@/hooks/use-app-navigation';
 import { useTrans } from '@/lib/i18n';
-import { create as bookCustomer } from '@/routes/jobs';
 
 /**
- * Phone bottom bar by role and chosen menu (UX-REDESIGN §5.1, §22). The active item is always highlighted; the
- * centre "+ Book" books on the day the calendar shows; More opens the full menu as a bottom sheet.
+ * Phone bottom bar by role and chosen menu (UX-REDESIGN §5.1, §22). The active item is always highlighted; More
+ * opens the full menu as a bottom sheet. Booking starts from the round "+" above the bar (CreateFab).
  */
 export function AppBottomNav() {
     const page = usePage();
@@ -22,11 +21,6 @@ export function AppBottomNav() {
     }
 
     const path = new URL(page.url, 'http://x').pathname;
-    const calendarDay =
-        page.component === 'calendar/index' &&
-        typeof page.props.date === 'string'
-            ? page.props.date
-            : null;
 
     return (
         <>
@@ -37,12 +31,7 @@ export function AppBottomNav() {
                         key: item.key,
                         label: t(item.title),
                         icon: item.icon,
-                        href:
-                            item.key === 'book' && calendarDay
-                                ? bookCustomer({
-                                      query: { book: 1, date: calendarDay },
-                                  })
-                                : item.href,
+                        href: item.href,
                         primary: item.primary,
                         badge: item.badge,
                         active: !item.primary && navPath(item.href) === path,

@@ -8,6 +8,8 @@ enum JobStatus: string
 {
     use HasOptions;
 
+    /** A booking saved with "Save as draft": no confirmation went to the customer yet (owner's task, Oct 24). */
+    case Draft = 'booking_draft';
     case New = 'new';
     case Scheduled = 'scheduled';
     case OnTheWay = 'on_the_way';
@@ -26,7 +28,8 @@ enum JobStatus: string
     }
 
     /**
-     * Statuses the office can set by hand. Invoiced and paid are set by invoices and payments.
+     * Statuses the office can set by hand. Invoiced and paid are set by invoices and payments; a draft is finished
+     * with "Finish booking", never picked from the list.
      *
      * @return list<self>
      */
@@ -34,7 +37,7 @@ enum JobStatus: string
     {
         return array_values(array_filter(
             self::cases(),
-            fn (self $status) => ! in_array($status, [self::Invoiced, self::Paid], true),
+            fn (self $status) => ! in_array($status, [self::Draft, self::Invoiced, self::Paid], true),
         ));
     }
 

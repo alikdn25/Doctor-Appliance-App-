@@ -4,6 +4,7 @@
 return [
     'back' => 'Back',
     'cancel' => 'Cancel',
+    'done' => 'Done',
     'clear' => 'Clear',
     'search' => 'Search',
     'remove' => 'Remove',

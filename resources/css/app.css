@@ -212,6 +212,13 @@
     --status-draft-from: #fafbfc;
     --status-draft-to: #d1dcf0;
     --status-draft-text: #334155;
+    --status-booking-draft-from: #fff3e3;
+    --status-booking-draft-to: #ffb35c;
+    --status-booking-draft-text: #7c2d12;
+    /* Tasks ("+ → Task") have their own colour in the calendar and on My Jobs. */
+    --task-from: #fdf2f8;
+    --task-to: #ec4899;
+    --task-text: #9d174d;
     --status-declined-from: #fff4f5;
     --status-declined-to: #ffbcc1;
     --status-declined-text: #9f1239;
@@ -462,6 +469,39 @@
             0 1px 3px rgb(120 20 20 / 0.3);
     }
 
+    .da-task {
+        border-left-color: var(--task-to);
+        background: linear-gradient(90deg, var(--task-from), transparent 70%);
+    }
+
+    /* The round "+" on every screen: the primary volume plus a wider glow, so it reads as the main action. */
+    .da-fab-glow {
+        box-shadow:
+            var(--shadow-primary-edges),
+            var(--shadow-glow),
+            0 0 0 6px rgb(46 120 255 / 0.12),
+            0 12px 28px -6px rgb(30 90 220 / 0.55);
+    }
+
+    /* A booking saved as a draft: orange chip and an orange edge on its card or calendar block. */
+    .da-draft-chip {
+        background: linear-gradient(
+            90deg,
+            var(--status-booking-draft-from),
+            var(--status-booking-draft-to)
+        );
+        color: var(--status-booking-draft-text);
+        box-shadow: var(--shadow-badge);
+    }
+
+    .da-draft {
+        border-color: var(--status-booking-draft-to);
+        box-shadow:
+            0 0 0 2px var(--status-booking-draft-to),
+            var(--shadow-badge);
+        background-color: var(--status-booking-draft-from);
+    }
+
     .da-avatar {
         border: 2px solid #fff;
         box-shadow: 0 4px 10px rgb(16 42 79 / 0.2);
@@ -599,8 +639,9 @@
     }
 }
 
-/* Inner screens with a pinned action bar have no tab bar (docs/DESIGN.md, Navigation). */
-body:has(.da-pinned) .da-tabbar {
+/* Inner screens with a pinned action bar have no tab bar (docs/DESIGN.md, Navigation), and no "+" over it. */
+body:has(.da-pinned) .da-tabbar,
+body:has(.da-pinned) .da-create-fab {
     display: none;
 }
 

@@ -54,6 +54,9 @@ import {
 } from '@/components/ui/sheet';
 import { useTouchDrag } from '@/hooks/use-touch-drag';
 import { useClock } from '@/lib/datetime';
+import { TaskList } from '@/components/tasks/task-list';
+import { TaskSheet } from '@/components/tasks/task-sheet';
+import type { TaskItem } from '@/components/tasks/types';
 import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
 import { calendar } from '@/routes';
@@ -78,6 +81,7 @@ type Props = {
     unscheduled: UnscheduledJob[];
     assignableUsers: Assignable[];
     nowMinutes?: number;
+    tasks?: TaskItem[];
 };
 
 /** New visits dropped on the calendar get a 2-hour arrival window and a 1-hour estimate. */
@@ -98,8 +102,10 @@ export default function CalendarPage({
     unscheduled,
     assignableUsers,
     nowMinutes = 0,
+    tasks = [],
 }: Props) {
     const t = useTrans();
+    const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
     // Solo: every job is the Owner's, so there is nobody to transfer to.
     const worksAlone = usePage().props.auth.company?.works_alone ?? false;
     // Finished work is hidden by default; "Show completed" brings it back (greyed out). Remembered per device.
@@ -545,6 +551,16 @@ export default function CalendarPage({
                     <div className="border-t p-3">{toSchedule}</div>
                 </details>
 
+                {/* Tasks ("+ → Task") of the shown day(s), in their own colour; hidden people's too. */}
+                <TaskList
+                    tasks={tasks.filter(
+                        (task) => !hiddenPeople.includes(task.user_id),
+                    )}
+                    onOpen={setEditingTask}
+                    byDay={view !== 'day'}
+                    showOwner={!worksAlone}
+                />
+
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
                     <div className="min-w-0">
                         {view === 'map' ? (
@@ -955,6 +971,12 @@ export default function CalendarPage({
                     end_time: toTime(hours.start * 60 + NEW_WINDOW),
                 }}
                 stayOnPage
+            />
+
+            <TaskSheet
+                open={editingTask !== null}
+                onOpenChange={(open) => !open && setEditingTask(null)}
+                task={editingTask}
             />
         </>
     );

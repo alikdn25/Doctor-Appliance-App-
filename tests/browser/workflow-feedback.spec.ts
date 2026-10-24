@@ -2,10 +2,11 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
-/** + Book of the menu books on the day the calendar shows (the bottom bar on a phone, the sidebar on a computer). */
+/** Booking starts on the day the calendar shows ("+ → Job" on a phone, Book customer in the sidebar on a computer). */
 async function bookShownDay(page: Page, mobile: boolean) {
     if (mobile) {
-        await page.locator('[data-test="bottom-nav-book"]').click();
+        await page.locator('[data-test="create-fab"]').click();
+        await page.locator('[data-test="create-job"]').click();
     } else {
         await page
             .locator('[data-sidebar="content"]')
@@ -23,15 +24,16 @@ test('visible menu and booking open the first visit directly from any working sc
     page,
 }, info) => {
     await page.goto('/company/settings');
-    // One menu: the sidebar on a computer, the bottom bar with "+ Book" and More on a phone (no menu button).
+    // One menu: the sidebar on a computer, the bottom bar with More and the round "+" on a phone (no menu button).
     await expect(
         page.getByRole('button', { name: 'Menu', exact: true }),
     ).toHaveCount(0);
     if (info.project.name === 'mobile') {
-        const book = page.locator('[data-test="bottom-nav-book"]');
-        const bounds = await book.boundingBox();
+        const plus = page.locator('[data-test="create-fab"]');
+        const bounds = await plus.boundingBox();
         expect(bounds!.height).toBeGreaterThanOrEqual(44);
-        await book.click();
+        await plus.click();
+        await page.locator('[data-test="create-job"]').click();
     } else {
         await page
             .locator('[data-sidebar="content"]')
@@ -48,7 +50,7 @@ test('visible menu and booking open the first visit directly from any working sc
     await expect(page.locator('[data-slot="date-chips"]')).toBeVisible();
     await expect(page.locator('[data-slot="time-window-chips"]')).toBeVisible();
     await expect(
-        page.getByRole('button', { name: 'Book', exact: true }),
+        page.getByRole('button', { name: 'Finish booking', exact: true }),
     ).toBeDisabled();
     await page.goto('/calendar?date=2026-10-12');
     await bookShownDay(page, info.project.name === 'mobile');

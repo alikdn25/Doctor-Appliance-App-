@@ -45,6 +45,7 @@ use App\Http\Controllers\Jobs\JobController;
 use App\Http\Controllers\Jobs\JobCostController;
 use App\Http\Controllers\Jobs\JobFieldController;
 use App\Http\Controllers\Jobs\JobMessageController;
+use App\Http\Controllers\Jobs\JobNoteController;
 use App\Http\Controllers\Jobs\JobStatusController;
 use App\Http\Controllers\Jobs\JobWarrantyController;
 use App\Http\Controllers\Jobs\JobWorkController;
@@ -59,6 +60,7 @@ use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\Settings\MenuModeController;
 use App\Http\Controllers\SmsInboxController;
 use App\Http\Controllers\SmsWebhookController;
+use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\TrashController;
 use Illuminate\Support\Facades\Route;
 
@@ -206,6 +208,13 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('trips/start-address', [TripController::class, 'startAddress'])->name('trips.start-address');
         Route::put('trips/{trip}', [TripController::class, 'update'])->name('trips.update');
         Route::delete('trips/{trip}', [TripController::class, 'destroy'])->name('trips.destroy');
+        Route::get('tasks/people', [TaskController::class, 'people'])->name('tasks.people');
+        Route::post('tasks', [TaskController::class, 'store'])->name('tasks.store');
+        Route::put('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+        Route::post('tasks/{task}/done', [TaskController::class, 'done'])->name('tasks.done');
+        Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+        Route::post('jobs/{job}/notes', [JobNoteController::class, 'store'])->name('jobs.notes.store');
+        Route::delete('job-notes/{note}', [JobNoteController::class, 'destroy'])->name('jobs.notes.destroy');
         Route::get('cash', [CashController::class, 'index'])->name('cash.index');
         Route::post('cash/deposits', [CashController::class, 'deposit'])->name('cash.deposit');
         Route::post('cash/{movement}/reverse', [CashController::class, 'reverse'])->name('cash.reverse');
@@ -225,6 +234,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('jobs/{job}/sms', [JobMessageController::class, 'sms'])->middleware('throttle:30,1')->name('jobs.sms');
         Route::get('jobs/{job}/booking-confirmation', [BookingConfirmationController::class, 'show'])->name('jobs.booking-confirmation.show');
         Route::post('jobs/{job}/booking-confirmation', [BookingConfirmationController::class, 'send'])->middleware('throttle:30,1')->name('jobs.booking-confirmation.send');
+        Route::post('jobs/{job}/finish-booking', [BookingConfirmationController::class, 'finish'])->middleware('throttle:30,1')->name('jobs.finish-booking');
         Route::post('jobs/{job}/messages/opened', [JobMessageController::class, 'opened'])->name('jobs.messages.opened');
 
         // Connecting the company's own payment provider account (OAuth). The callback URL is registered at the provider.
