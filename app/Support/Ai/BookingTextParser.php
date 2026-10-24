@@ -150,7 +150,7 @@ class BookingTextParser
         foreach ($lines as $i => $line) {
             if (preg_match('/^(customer|name|client)\s*[:\-]\s*(.+)$/i', $line, $m) || ($i === 0 && preg_match('/^(\p{Lu}[\p{L}\'.-]+)(\s+\p{Lu}[\p{L}\'.-]+){0,2}$/u', $line) && ! isset($used[$i]))) {
                 $name = trim($m[2] ?? $line);
-                $name = trim((string) preg_replace('/\+?\d[\d\s().-]{7,}\d|[A-Z0-9._%+-]+@\S+/i', '', $name), " ,-");
+                $name = trim((string) preg_replace('/\+?\d[\d\s().-]{7,}\d|[A-Z0-9._%+-]+@\S+/i', '', $name), ' ,-');
                 $parts = preg_split('/\s+/u', $name, 2) ?: [];
                 $fields['first_name'] = $parts[0] ?? null;
                 $fields['last_name'] = $parts[1] ?? null;

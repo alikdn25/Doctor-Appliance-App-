@@ -34,10 +34,10 @@ use App\Http\Controllers\Customers\PropertyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\Jobs\AssignmentController;
-use App\Http\Controllers\Jobs\CalendarController;
-use App\Http\Controllers\Jobs\JobAddressController;
 use App\Http\Controllers\Jobs\BookingConfirmationController;
 use App\Http\Controllers\Jobs\BookingTextController;
+use App\Http\Controllers\Jobs\CalendarController;
+use App\Http\Controllers\Jobs\JobAddressController;
 use App\Http\Controllers\Jobs\JobBacklogController;
 use App\Http\Controllers\Jobs\JobCloseController;
 use App\Http\Controllers\Jobs\JobController;
@@ -111,6 +111,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 
         Route::get('customers/avatar', [CustomerController::class, 'avatar'])->middleware('throttle:120,1')->name('customers.avatar');
         Route::get('customers/duplicates', [CustomerController::class, 'duplicates'])->name('customers.duplicates');
+        Route::patch('customers/{customer}/notes', [CustomerController::class, 'updateNotes'])->name('customers.notes');
         Route::patch('customers/{customer}/icon', [CustomerController::class, 'updateAvatar'])->name('customers.icon');
         Route::resource('customers', CustomerController::class);
         Route::post('customers/{customer}/properties', [PropertyController::class, 'store'])->name('properties.store');

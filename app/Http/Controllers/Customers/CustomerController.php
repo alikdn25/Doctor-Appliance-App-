@@ -19,6 +19,7 @@ use App\Models\CustomerEmail;
 use App\Models\CustomerPhone;
 use App\Models\Estimate;
 use App\Models\Invoice;
+use App\Models\JobPhoto;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\User;
@@ -170,6 +171,25 @@ class CustomerController extends Controller
                 ])->values(),
             ],
             'history' => $jobs->map(fn (ServiceJob $job) => self::historyRow($job))->values(),
+            // Notes tab: the team notes of the jobs (the customer's own notes are on the customer).
+            'jobNotes' => $jobs->filter(fn (ServiceJob $job) => filled($job->notes))
+                ->map(fn (ServiceJob $job) => ['job_id' => $job->id, 'number' => $job->number, 'notes' => $job->notes])
+                ->values(),
+            // Files tab: photos of the jobs the user can see, newest first.
+            'files' => JobPhoto::query()
+                ->whereIn('service_job_id', $jobs->modelKeys())
+                ->orderByDesc('id')
+                ->limit(60)
+                ->get()
+                ->map(fn (JobPhoto $photo) => [
+                    'id' => $photo->id,
+                    'url' => route('jobs.photos.show', [$photo->service_job_id, $photo->id]),
+                    'job_id' => $photo->service_job_id,
+                    'job_number' => $jobs->firstWhere('id', $photo->service_job_id)?->number,
+                    'kind' => $photo->kind->value,
+                    'taken_at' => $photo->taken_at?->toIso8601String(),
+                ])
+                ->values(),
             'summary' => self::summary($customer, $user),
             // Estimates and invoices of the jobs the user can see.
             'estimates' => Estimate::query()
@@ -290,6 +310,18 @@ class CustomerController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('customers.updated')]);
 
         return to_route('customers.show', $customer);
+    }
+
+    /** "About the customer", edited right on the Notes tab. */
+    public function updateNotes(Request $request, Customer $customer): RedirectResponse
+    {
+        Gate::authorize('update', $customer);
+        $data = $request->validate(['notes' => ['nullable', 'string', 'max:10000']]);
+        $customer->update(['notes' => filled($data['notes'] ?? null) ? trim($data['notes']) : null]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('customers.notes_saved')]);
+
+        return back();
     }
 
     /** Quick icon choice from the avatar (man / woman / neutral / automatic). */

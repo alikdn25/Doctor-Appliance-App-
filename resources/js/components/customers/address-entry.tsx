@@ -1,6 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import { MapPin } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     AddressAutocomplete,
     clearedPlace,
@@ -67,6 +67,12 @@ export function AddressEntry({
         value.city !== '' || value.unit !== '' || value.postal_code !== '',
     );
     const error = (field: string) => errors[`${errorPrefix}${field}`];
+    // Filled from outside (e.g. "Paste from message"): show the parts so they can be checked.
+    const filledParts =
+        value.city !== '' || value.unit !== '' || value.postal_code !== '';
+    useEffect(() => {
+        if (filledParts) setOpen(true);
+    }, [filledParts]);
 
     return (
         <div className="space-y-2">

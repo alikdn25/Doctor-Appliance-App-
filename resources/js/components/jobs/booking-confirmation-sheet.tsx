@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { Mail, MessageSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -34,12 +34,15 @@ export function BookingConfirmationSheet({
     open,
     onOpenChange,
     title,
+    jobUrl,
 }: {
     jobId: number | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     /** E.g. "Booked #1005. Send the customer a confirmation?" right after booking. */
     title?: string;
+    /** Right after booking: Open job next to Not now. */
+    jobUrl?: string;
 }) {
     const t = useTrans();
     const phoneText = usePhone();
@@ -143,13 +146,27 @@ export function BookingConfirmationSheet({
                                     phoneText(preview.sms.to)}
                             </li>
                         </ul>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => onOpenChange(false)}
-                        >
-                            {t('jobs.confirmation.not_now')}
-                        </Button>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                className={jobUrl ? undefined : 'col-span-2'}
+                                onClick={() => onOpenChange(false)}
+                            >
+                                {t('jobs.confirmation.not_now')}
+                            </Button>
+                            {jobUrl && (
+                                <Button asChild variant="tertiary">
+                                    <Link
+                                        href={jobUrl}
+                                        onClick={() => onOpenChange(false)}
+                                        data-test="confirmation-open-job"
+                                    >
+                                        {t('jobs.quick.open_job')}
+                                    </Link>
+                                </Button>
+                            )}
+                        </div>
                     </>
                 )}
             </SheetContent>
@@ -161,20 +178,16 @@ export function BookingConfirmationSheet({
  * Opens the confirmation right after a booking is saved (the "booking_confirmation" flash), on whatever screen the
  * booking lands.
  */
+type Booked = { job_id: number; number: number; message: string; url: string };
+
 export function BookingConfirmationPrompt() {
-    const t = useTrans();
-    const [booked, setBooked] = useState<{
-        job_id: number;
-        number: number;
-    } | null>(null);
+    const [booked, setBooked] = useState<Booked | null>(null);
 
     useEffect(
         () =>
             router.on('flash', (event) => {
                 const data = (event as CustomEvent).detail?.flash
-                    ?.booking_confirmation as
-                    | { job_id: number; number: number }
-                    | undefined;
+                    ?.booking_confirmation as Booked | undefined;
                 if (data) setBooked(data);
             }),
         [],
@@ -185,11 +198,8 @@ export function BookingConfirmationPrompt() {
             jobId={booked?.job_id ?? null}
             open={booked !== null}
             onOpenChange={(open) => !open && setBooked(null)}
-            title={
-                booked
-                    ? t('jobs.confirmation.booked', { number: booked.number })
-                    : undefined
-            }
+            title={booked?.message}
+            jobUrl={booked?.url}
         />
     );
 }

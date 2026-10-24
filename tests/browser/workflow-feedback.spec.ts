@@ -53,9 +53,13 @@ test('visible menu and booking open the first visit directly from any working sc
     await page.goto('/calendar?date=2026-10-12');
     await bookShownDay(page, info.project.name === 'mobile');
     await expect(page).toHaveURL(/book=1.*date=2026-10-12/);
-    await expect(page.locator('input[type="date"]').first()).toHaveValue(
-        '2026-10-12',
-    );
+    // The chosen day shows in the calendar under the day row (in the page, never over the days).
+    await page.locator('[data-test="booking-pick-date"]').click();
+    await expect(
+        page.locator(
+            '[data-test="month-calendar"] [role="radio"][aria-checked="true"]',
+        ),
+    ).toHaveText('12');
     await page.screenshot({
         path: info.outputPath('visible-menu-booking.png'),
         fullPage: true,

@@ -605,6 +605,5 @@ return [
         'sms_off' => 'Texts are off for this company (Settings → Messaging).',
         'emailed' => 'Booking confirmation sent to :email.',
         'not_now' => 'Not now',
-        'booked' => 'Booked #:number. Send the customer a confirmation?',
     ],
 ];

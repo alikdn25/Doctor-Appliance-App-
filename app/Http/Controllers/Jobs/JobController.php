@@ -361,15 +361,15 @@ class JobController extends Controller
 
         $visit = $request->boolean('quick_booking') && ! $request->boolean('open_invoice') ? $job->visits()->first() : null;
 
-        // Booking (UX-REDESIGN §7.1): back to the day's schedule with "Booked #1005 · Tomorrow 9–11" and Open job.
+        // Booking (UX-REDESIGN §7.1): back to the day's schedule; "Booked #1005 · Tomorrow 9–11" with Open job and
+        // Send Booking Confirmation opens there (one sheet, so no toast covers it).
         if ($visit !== null) {
-            Inertia::flash('toast', [
-                'type' => 'success',
+            Inertia::flash('booking_confirmation', [
+                'job_id' => $job->id,
+                'number' => $job->number,
                 'message' => __('jobs.quick.booked', ['number' => $job->number, 'when' => self::bookedWhen($visit)]),
-                'action' => ['label' => __('jobs.quick.open_job'), 'url' => route('jobs.show', $job, false)],
+                'url' => route('jobs.show', $job, false),
             ]);
-            // "Send Booking Confirmation" opens right after saving, wherever the booking lands.
-            Inertia::flash('booking_confirmation', ['job_id' => $job->id, 'number' => $job->number]);
             $date = CarbonImmutable::parse($visit->scheduled_start)->setTimezone(currentCompany()->timezone)->toDateString();
 
             return Gate::allows('dispatch', ServiceJob::class)
