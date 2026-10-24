@@ -43,9 +43,10 @@ export default function AppSidebarLayout({
                         <div className="relative z-10 -mt-4 flex min-w-0 flex-1 flex-col rounded-t-[20px] bg-background">
                             <UploadStatusBar />
                             {children}
-                            {/* Room for the fixed bottom bar on a phone. */}
+                            {/* Room for the fixed bottom bar and the "+" above it on a phone, so the last row can be
+                                scrolled clear of both. */}
                             <div
-                                className="h-20 md:hidden"
+                                className="h-40 md:hidden"
                                 aria-hidden="true"
                             />
                         </div>

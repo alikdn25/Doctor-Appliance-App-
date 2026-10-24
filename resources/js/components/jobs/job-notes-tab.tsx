@@ -4,7 +4,6 @@ import type { FormEvent } from 'react';
 import { CustomerNotesEditor } from '@/components/customers/customer-notes-editor';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
-import { IconButton } from '@/components/ui/icon-button';
 import { Section } from '@/components/ui/section';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
@@ -110,28 +109,26 @@ export function JobNotesTab({
                 ) : (
                     <ul className="space-y-2" data-test="job-notes">
                         {notes.map((note) => (
-                            <li
-                                key={note.id}
-                                className="da-card flex items-start gap-2 p-3"
-                            >
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-sm break-words whitespace-pre-wrap">
-                                        {note.body}
-                                    </p>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        {[note.author, time.dateTime(note.at)]
-                                            .filter(Boolean)
-                                            .join(' · ')}
-                                    </p>
-                                </div>
+                            <li key={note.id} className="da-card p-3">
+                                <p className="text-sm break-words whitespace-pre-wrap">
+                                    {note.body}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    {[note.author, time.dateTime(note.at)]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                </p>
+                                {/* Delete on its own line at the left: the right edge is where the "+" floats. */}
                                 {note.can_delete && (
-                                    <IconButton
-                                        variant="plain"
-                                        label={t('jobs.notes_tab.delete')}
+                                    <button
+                                        type="button"
+                                        className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-destructive"
                                         onClick={() => remove(note)}
+                                        data-test="job-note-delete"
                                     >
-                                        <Trash2 />
-                                    </IconButton>
+                                        <Trash2 className="size-4" />
+                                        {t('jobs.notes_tab.delete')}
+                                    </button>
                                 )}
                             </li>
                         ))}

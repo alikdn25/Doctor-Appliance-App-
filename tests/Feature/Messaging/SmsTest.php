@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\MessageKind;
 use App\Enums\UserRole;
 use App\Mail\CustomerMessageMail;
+use App\Messaging\Messenger;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
@@ -99,6 +101,34 @@ test('texts wait for the end of the quiet hours', function () {
 
     expect($message->fresh()->status)->toBe('sent');
     Http::assertSentCount(1);
+});
+
+test('a text waiting for the quiet hours never goes once its job or customer is deleted', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-10-14 22:30', 'America/Vancouver'));
+    $this->post(route('jobs.sms', $this->job), ['body' => 'Late text']);
+    $message = messages($this->company)->sole();
+    expect($message->status)->toBe('scheduled');
+
+    $this->delete(route('jobs.destroy', $this->job));
+    expect(inCompany($this->company, fn () => ServiceJob::withTrashed()->find($this->job->id)->trashed()))->toBeTrue();
+
+    $this->travelTo(CarbonImmutable::parse('2026-10-15 08:01', 'America/Vancouver'));
+    $this->artisan('messages:deliver-due')->assertSuccessful();
+
+    expect($message->fresh())->status->toBe('blocked')->status_reason->toBe(__('messages.blocked.deleted'));
+    Http::assertNothingSent();
+
+    // A customer deleted meanwhile: the same.
+    $this->travelTo(CarbonImmutable::parse('2026-10-15 22:30', 'America/Vancouver'));
+    $other = Customer::factory()->for($this->company)->withPhone('604-555-0188')->create();
+    $queued = inCompany($this->company, fn () => app(Messenger::class)->sms(MessageKind::General, $other, null, 'Hi'));
+    expect($queued->status)->toBe('scheduled');
+    inCompany($this->company, fn () => $other->delete());
+    $this->travelTo(CarbonImmutable::parse('2026-10-16 08:01', 'America/Vancouver'));
+    $this->artisan('messages:deliver-due')->assertSuccessful();
+
+    expect($queued->fresh()->status)->toBe('blocked');
+    Http::assertNothingSent();
 });
 
 test('texts to US numbers wait for the A2P 10DLC registration; Canadian numbers do not', function () {

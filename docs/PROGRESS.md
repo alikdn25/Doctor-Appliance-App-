@@ -1,3 +1,15 @@
+# October 24 — Fixes after the a46f263 deploy check
+
+- A text waiting for the end of quiet hours no longer goes out when its job or customer was deleted meanwhile: it
+  is marked "Not sent: the job or the customer was deleted" (restoring does not send it). Found by Grok: the queued
+  booking confirmation of the deleted TEST job #1012.
+- Job page → Notes: "Delete note" moved to its own line on the left, under the author and time, so the round "+"
+  never covers it; phones get extra room at the bottom of every page to scroll the last row clear of the "+".
+- No migrations.
+- Tests: SmsTest (job or customer deleted while a text waits), browser zz-plus-draft-tasks (Delete note not under "+").
+- Open: the time in the job's main block opens the technician choice; the time is changed with the pencil on the
+  Schedule card (owner to decide if a tap on the time should edit it).
+
 # October 24 — Owner's task: the "+" button, finishing a booking, the Messages tab, Overdue
 
 1. **"+" button**: Book left the bottom bar (Field and Office) and the car button left My Jobs. A round, volumetric
