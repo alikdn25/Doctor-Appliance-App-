@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import type { Assignable, Visit } from '@/components/jobs/types';
 import { VisitFields } from '@/components/jobs/visit-fields';
 import type { VisitFormValue } from '@/components/jobs/visit-fields';
+import { NotifyClientBox } from '@/components/jobs/job-edit-sheet';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -48,7 +49,10 @@ export function VisitDialog({
     stayOnPage?: boolean;
 }) {
     const t = useTrans();
-    const form = useForm<VisitFormValue>(toForm(visit, today));
+    const form = useForm<VisitFormValue & { notify: boolean }>({
+        ...toForm(visit, today),
+        notify: false,
+    });
 
     useEffect(() => {
         if (open) {
@@ -56,6 +60,7 @@ export function VisitDialog({
             form.setData({
                 ...toForm(visit, today),
                 ...(visit ? {} : initial),
+                notify: false,
             });
         }
         // Reset only when the dialog opens.
@@ -94,6 +99,12 @@ export function VisitDialog({
                         }
                         errors={form.errors as Record<string, string>}
                         assignableUsers={assignableUsers}
+                    />
+                    {/* Off by default: the customer gets the updated confirmation only when ticked. */}
+                    <NotifyClientBox
+                        id="visit-notify"
+                        checked={form.data.notify}
+                        onChange={(notify) => form.setData('notify', notify)}
                     />
                     <Button
                         type="submit"

@@ -2,6 +2,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 import * as React from "react"
 
+import { useKeyboardInset } from "@/hooks/use-keyboard-inset"
 import { cn } from "@/lib/utils"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
@@ -46,10 +47,24 @@ function SheetContent({
   className,
   children,
   side = "right",
+  style,
+  ref,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
 }) {
+  const own = React.useRef<HTMLDivElement | null>(null)
+  // A bottom sheet rides above the phone keyboard and keeps the field being typed in visible.
+  const keyboard = useKeyboardInset(own, side === "bottom")
+  const setRef = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      own.current = node
+      if (typeof ref === "function") ref(node)
+      else if (ref) ref.current = node
+    },
+    [ref]
+  )
+
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -67,6 +82,18 @@ function SheetContent({
             "da-sheet data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto max-h-[90dvh] overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]",
           className
         )}
+        style={
+          keyboard
+            ? {
+                ...style,
+                bottom: keyboard.bottom,
+                maxHeight: keyboard.height - 8,
+                overflowY: "auto",
+              }
+            : style
+        }
+        data-keyboard={keyboard ? "open" : undefined}
+        ref={setRef}
         {...props}
       >
         {children}

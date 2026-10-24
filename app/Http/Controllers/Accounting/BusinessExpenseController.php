@@ -9,6 +9,7 @@ use App\Http\Requests\Accounting\BusinessExpenseRequest;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseCategory;
 use App\Models\Membership;
+use App\Models\ServiceJob;
 use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Locale\Currencies;
@@ -156,10 +157,20 @@ class BusinessExpenseController extends Controller
         $categories = BusinessExpenseCategory::query()
             ->where(fn (Builder $query) => $query->where('is_active', true)->orWhere('id', $expense?->category_id ?? 0))
             ->orderBy('name')->get()->map(fn (BusinessExpenseCategory $category) => $this->category($category));
-        $data = $expense ? $this->row($expense->load(['category', 'creator'])) + ['notes' => $expense->notes] : null;
+        $data = $expense ? $this->row($expense->load(['category', 'creator', 'job'])) + ['notes' => $expense->notes] : null;
+        // The job it was for: the person's jobs of the last 90 days (newest first), plus the saved one and one opened
+        // from a job page.
+        $visible = fn () => ServiceJob::query()->visibleTo($request->user());
+        $jobs = $visible()->where('created_at', '>=', now()->subDays(90))->latest('id')->limit(50)->get()
+            ->concat($visible()->whereKey((int) $request->query('job'))->get())
+            ->concat($expense?->job ? [$expense->job] : [])
+            ->unique('id')->sortByDesc('id')->load('customer')
+            ->map(fn (ServiceJob $job) => ['id' => $job->id, 'number' => $job->number, 'customer' => $job->customer?->display_name])
+            ->values();
 
         return Inertia::render('expenses/form', [
-            'expense' => $data, 'categories' => $categories,
+            'expense' => $data, 'categories' => $categories, 'jobs' => $jobs,
+            'jobId' => $expense === null && $jobs->contains('id', (int) $request->query('job')) ? (int) $request->query('job') : null,
             'taxRates' => BillingPresenter::taxOptions($expense?->taxes ?? []),
             'currency' => $expense?->currency ?? currentCompany()->currency,
             'today' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
@@ -172,7 +183,7 @@ class BusinessExpenseController extends Controller
     private function row(BusinessExpense $expense): array
     {
         return [
-            ...$expense->only(['id', 'category_id', 'description', 'merchant', 'amount', 'tax_amount', 'taxes', 'currency']),
+            ...$expense->only(['id', 'category_id', 'service_job_id', 'description', 'merchant', 'amount', 'tax_amount', 'taxes', 'currency']),
             'spent_on' => $expense->spent_on->toDateString(), 'category' => $expense->category->name,
             'creator' => $expense->creator?->name, 'total' => $expense->total(),
             'receipt_url' => $expense->receipt_path ? route('expenses.receipt', $expense) : null,

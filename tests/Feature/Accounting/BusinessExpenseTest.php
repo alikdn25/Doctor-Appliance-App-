@@ -45,7 +45,7 @@ function overheadRecord(Company $company, User $user, BusinessExpenseCategory $c
 test('an expense saves price and tax separately with a private receipt and server-owned identity', function () {
     $this->post(route('expenses.store'), overheadPayload([
         'receipt' => UploadedFile::fake()->image('fuel.jpg'), 'currency' => 'USD', 'company_id' => 999,
-        'created_by' => $this->tech->id, 'service_job_id' => 999,
+        'created_by' => $this->tech->id,
     ]))->assertRedirect(route('expenses.index', ['from' => '2030-06-01', 'to' => '2030-06-30']))->assertSessionHasNoErrors();
 
     $expense = inCompany($this->company, fn () => BusinessExpense::query()->sole());

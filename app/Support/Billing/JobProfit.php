@@ -3,17 +3,20 @@
 namespace App\Support\Billing;
 
 use App\Enums\InvoiceStatus;
+use App\Models\BusinessExpense;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\JobCostItem;
 use App\Models\Payment;
 use App\Models\ServiceJob;
+use App\Models\TaxRate;
 
 /**
  * Profit of a job, in minor units of the company currency:
  * revenue without taxes (non-void invoices, less refunds given as settled)
  * − cost of every line (billed and internal) and of the job's cost lines (parts/materials on no invoice;
- *   supplier tax that is not recoverable included)
+ *   supplier tax that is not recoverable included) and of the business expenses entered for it
+ *   (price plus tax that is not recovered)
  * − processor fees (e.g. Square) on its payments.
  */
 class JobProfit
@@ -43,6 +46,9 @@ class JobProfit
 
         $cost += JobCostItem::query()->where('service_job_id', $job->id)->where('currency', $currency)
             ->get()->sum(fn (JobCostItem $item) => $item->totalCost());
+        $recoverable = TaxRate::query()->where('is_recoverable', true)->pluck('id')->all();
+        $cost += BusinessExpense::query()->where('service_job_id', $job->id)->where('currency', $currency)
+            ->get()->sum(fn (BusinessExpense $expense) => $expense->cost($recoverable));
         $fees = (int) Payment::query()->valid()->whereIn('invoice_id', $invoices->pluck('id'))->sum('processing_fee');
         $profit = $revenue - $cost - $fees;
         $private = ! $allCosts && $invoices->contains(fn (Invoice $invoice) => $invoice->items->contains(fn (InvoiceItem $item) => $item->unit_cost !== null && ! CostAccess::owns(auth()->user(), $item)));

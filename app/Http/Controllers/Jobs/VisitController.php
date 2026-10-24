@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Jobs;
 
 use App\Actions\Jobs\SaveVisit;
 use App\Enums\JobStatus;
-use App\Enums\VisitStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Jobs\VisitRequest;
+use App\Messaging\BookingConfirmation;
 use App\Models\JobVisit;
 use App\Models\Membership;
 use App\Models\ServiceJob;
@@ -22,26 +22,25 @@ use Inertia\Inertia;
  */
 class VisitController extends Controller
 {
-    public function store(VisitRequest $request, ServiceJob $job, SaveVisit $save): RedirectResponse
+    public function store(VisitRequest $request, ServiceJob $job, SaveVisit $save, BookingConfirmation $confirmation): RedirectResponse
     {
         $visit = $request->visit();
         $saved = $save->handle($job, null, $visit['attributes'], $visit['assignee_ids'], $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.visit_created')]);
-        self::askToNotify($saved, null);
+        self::notify($request, $saved, $confirmation);
 
         // The calendar schedules visits without leaving the page.
         return $request->boolean('back') ? back() : to_route('jobs.show', $job);
     }
 
-    public function update(VisitRequest $request, JobVisit $visit, SaveVisit $save): RedirectResponse
+    public function update(VisitRequest $request, JobVisit $visit, SaveVisit $save, BookingConfirmation $confirmation): RedirectResponse
     {
         $data = $request->visit();
-        $was = [$visit->scheduled_start, $visit->scheduled_end];
         $save->handle($visit->job, $visit, $data['attributes'], $data['assignee_ids'], $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.visit_updated')]);
-        self::askToNotify($visit, $was);
+        self::notify($request, $visit, $confirmation);
 
         return $request->boolean('back') ? back() : to_route('jobs.show', $visit->service_job_id);
     }
@@ -72,39 +71,35 @@ class VisitController extends Controller
             currentCompany()->timezone,
         );
 
-        $was = [$visit->scheduled_start, $visit->scheduled_end];
-        $moved = $save->move(
+        $save->move(
             $visit,
             $start,
             isset($validated['from_user_id']) ? (int) $validated['from_user_id'] : null,
             $to,
             $request->user(),
         );
-        self::askToNotify($moved, $was);
 
+        // Dragging never texts the customer: "Notify client" is a box in the visit's sheet.
         return back();
     }
 
     /**
-     * A finished booking got a new day or arrival window (or a new time for the same job): the page asks "Notify
-     * client?" and Yes sends the updated confirmation. Drafts, closed jobs and times already gone ask nothing.
-     *
-     * @param  array{0: mixed, 1: mixed}|null  $was  The time before the change; null for a new visit.
+     * "Notify client" ticked in the visit's sheet: the updated confirmation goes now. Unticked, nothing is sent.
+     * Drafts never send (Finish booking does).
      */
-    private static function askToNotify(JobVisit $visit, ?array $was): void
+    private static function notify(Request $request, JobVisit $visit, BookingConfirmation $confirmation): void
     {
-        $visit->refresh();
-        $job = $visit->job;
-        $changed = $was === null
-            || ! $visit->scheduled_start->equalTo($was[0])
-            || ! $visit->scheduled_end->equalTo($was[1]);
+        $job = $visit->job()->firstOrFail();
 
-        if ($changed
-            && $job->status !== JobStatus::Draft
-            && $job->status->allowsVisitWork()
-            && $visit->status === VisitStatus::Scheduled
-            && $visit->scheduled_end->isFuture()) {
-            Inertia::flash('notify_client', ['job_id' => $job->id, 'number' => $job->number]);
+        if (! $request->boolean('notify') || $job->status === JobStatus::Draft) {
+            return;
+        }
+
+        $sent = $confirmation->send($job, $request->user());
+        if ($sent['channel'] === BookingConfirmation::PHONE) {
+            JobController::flashBooked($job, $visit->refresh(), $sent);
+        } else {
+            BookingConfirmationController::flashResult($sent);
         }
     }
 

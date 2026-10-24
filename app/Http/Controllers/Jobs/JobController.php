@@ -13,6 +13,7 @@ use App\Enums\JobType;
 use App\Enums\LeadSource;
 use App\Enums\PaymentMethod;
 use App\Enums\PhotoKind;
+use App\Enums\UserRole;
 use App\Enums\VisitStatus;
 use App\Enums\VisitType;
 use App\Enums\WarrantyUnit;
@@ -24,6 +25,7 @@ use App\Messaging\BookingConfirmation;
 use App\Messaging\MessagingPresenter;
 use App\Models\Appliance;
 use App\Models\Brand;
+use App\Models\BusinessExpense;
 use App\Models\Customer;
 use App\Models\CustomerPhone;
 use App\Models\Estimate;
@@ -40,7 +42,6 @@ use App\Models\ServiceJob;
 use App\Models\SupplierReceipt;
 use App\Models\User;
 use App\Support\Billing\BillingPresenter;
-use App\Support\Billing\CostAccess;
 use App\Support\Billing\JobProfit;
 use App\Support\Jobs\JobBacklog;
 use App\Support\Jobs\JobPresenter;
@@ -479,6 +480,11 @@ class JobController extends Controller
                 'customer' => [
                     'id' => $job->customer->id,
                     'display_name' => $job->customer->display_name,
+                    // The edit sheet's name fields.
+                    'type' => $job->customer->type->value,
+                    'first_name' => $job->customer->first_name,
+                    'last_name' => $job->customer->last_name,
+                    'company_name' => $job->customer->company_name,
                     'avatar_icon' => $job->customer->avatarIcon(),
                     'avatar_style' => $job->customer->avatar_style,
                     'notes' => $job->customer->notes,
@@ -565,8 +571,8 @@ class JobController extends Controller
                     'warranty_ends_on' => $item->warranty_ends_on?->toDateString(),
                 ]))->values(),
             'warrantyUnits' => WarrantyUnit::options(),
-            // Costs, receipts and profit: only for people who see costs.
-            'costs' => CostAccess::canSee($user) ? [
+            // Costs, receipts and profit: only the Owner, once the job is closed (owner's update, October 24).
+            'costs' => $user->hasRole(UserRole::Owner) && $job->closed_at !== null ? [
                 'profit' => JobProfit::for($job),
                 'currency' => currentCompany()->currency,
                 'items' => JobCostItem::query()->where('service_job_id', $job->id)->orderBy('id')->get()
@@ -580,6 +586,18 @@ class JobController extends Controller
                         'unit' => $item->unit,
                         'unit_cost' => $item->unit_cost,
                         'total_cost' => $item->totalCost(),
+                    ])->values(),
+                // Business expenses entered for this job ("+" → Expense → Job).
+                'expenses' => BusinessExpense::query()->where('service_job_id', $job->id)->with('category')
+                    ->orderBy('spent_on')->orderBy('id')->get()
+                    ->map(fn (BusinessExpense $expense) => [
+                        'id' => $expense->id,
+                        'description' => $expense->description,
+                        'category' => $expense->category?->name,
+                        'merchant' => $expense->merchant,
+                        'spent_on' => $expense->spent_on->toDateString(),
+                        'total' => $expense->total(),
+                        'currency' => $expense->currency,
                     ])->values(),
                 'receipts' => SupplierReceipt::query()
                     ->whereHas('jobs', fn ($q) => $q->where('service_jobs.id', $job->id))

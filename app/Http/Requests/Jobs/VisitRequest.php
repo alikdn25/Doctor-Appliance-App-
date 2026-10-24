@@ -32,7 +32,8 @@ class VisitRequest extends FormRequest
      */
     public function rules(): array
     {
-        return self::visitRules();
+        // "Notify client": send the updated confirmation after saving.
+        return self::visitRules() + ['notify' => ['boolean']];
     }
 
     /**

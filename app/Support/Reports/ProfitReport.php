@@ -62,20 +62,19 @@ class ProfitReport
     }
 
     /**
-     * Expenses of the period in the company currency: price plus the taxes that are not recovered.
+     * Overhead expenses of the period in the company currency: price plus the taxes that are not recovered.
      */
     private static function expenses(CarbonImmutable $from, CarbonImmutable $to, string $currency): int
     {
         $recoverable = TaxRate::query()->where('is_recoverable', true)->pluck('id')->all();
 
+        // An expense for a job is in that job's cost, not the overhead.
         return (int) BusinessExpense::query()
+            ->whereNull('service_job_id')
             ->whereBetween('spent_on', [$from->toDateString(), $to->toDateString()])
             ->where('currency', $currency)
             ->get()
-            ->sum(fn (BusinessExpense $expense) => $expense->amount + ($expense->taxes === null
-                // Older entries with one undivided tax amount count it in full.
-                ? $expense->tax_amount
-                : collect($expense->taxes)->reject(fn (array $tax) => in_array((int) ($tax['tax_rate_id'] ?? 0), $recoverable, true))->sum('amount')));
+            ->sum(fn (BusinessExpense $expense) => $expense->cost($recoverable));
     }
 
     /**

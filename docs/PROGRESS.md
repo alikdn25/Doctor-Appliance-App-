@@ -1,3 +1,23 @@
+# October 24 — Owner's update: job page editing, Costs & profit, keyboard, More menu
+
+- **Costs & profit** on the job page: only the Owner, only on a closed job.
+- **"+" → Expense → Job** (optional): an expense for a job counts in that job's Costs and profit (listed there, opens
+  the expense) and no longer in the company overhead of the profit report. Only jobs the person may see can be
+  chosen. Migration: `business_expenses.service_job_id` (nullable, existing expenses stay overhead).
+- **Job page editing:** the Schedule block and "Change address" are gone. A pencil on the customer card opens one
+  sheet: customer name, address (another address of the customer or a new one), date, arrival window, technician,
+  then Save. "Notify client" at the bottom, off by default: ticked, the updated confirmation goes after Save;
+  unticked, nothing is sent. The "Notify client?" Yes / No question is removed everywhere; the calendar's visit
+  sheet has the same box, and dragging a visit on the calendar never texts. The customer card shows the day once:
+  "Tue, Oct 20 · 3:00–5:00 p.m.".
+- **Keyboard:** every bottom sheet rides above the phone keyboard and scrolls the field being typed in into view.
+- **More menu** scrolls to its last item (profile, notifications, log out were squeezed to nothing). Hints under
+  the switch: Field "Today · Calendar · Invoices", Office "Today · Calendar · Jobs".
+- Tests: JobEditSheetTest (sheet, Notify client, address, validation, tenant isolation, Costs visibility, expense
+  for a job), BookingDraftTest (Notify client box), browser zz-job-edit-sheet (sheet, day once, keyboard, More,
+  expense Job field), job-without-visits.
+- "Remove time" (a booked time not started yet) moved from the removed Schedule block to the bottom of the sheet.
+
 # October 24 — Fix after the 7ecb0de deploy check: badges cut off on job cards
 
 - My Jobs (and every list with job cards): the top row (arrival window, status, Overdue) now wraps to a second line

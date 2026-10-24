@@ -91,6 +91,9 @@ export function useCompanyTime() {
 
                 return (exact ? timeFormat : hourFormat).formatRange(from, to);
             },
+            /** "Tue, Oct 20 · 3:00–5:00 p.m.": the day once, then the window with minutes. */
+            dayWindow: (start: string, end: string) =>
+                `${dayFormat.format(new Date(start))} · ${timeFormat.formatRange(new Date(start), new Date(end))}`,
             /** "9:00 a.m. – 11:00 a.m." */
             timeRange: (start: string, end: string) =>
                 `${timeFormat.format(new Date(start))} – ${timeFormat.format(new Date(end))}`,

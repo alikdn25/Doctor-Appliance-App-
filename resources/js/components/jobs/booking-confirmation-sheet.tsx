@@ -186,8 +186,8 @@ export function BookingConfirmationPrompt() {
 }
 
 /**
- * "Notify client?" after a finished booking gets a new day or window, and "Resend confirmation" from the job's "…"
- * menu: the text and how it goes, then Yes / No. Yes sends it as the company's SMS setting says.
+ * "Resend confirmation" from the job's "…" menu: the text and how it goes, then Yes / No. Yes sends it as the
+ * company's SMS setting says.
  */
 export function ConfirmationSendSheet({
     jobId,
@@ -298,31 +298,5 @@ export function ConfirmationSendSheet({
                 )}
             </SheetContent>
         </Sheet>
-    );
-}
-
-/** "Notify client?" when the server says a finished booking was moved (the "notify_client" flash). */
-export function NotifyClientPrompt() {
-    const t = useTrans();
-    const [jobId, setJobId] = useState<number | null>(null);
-
-    useEffect(
-        () =>
-            router.on('flash', (event) => {
-                const data = (event as CustomEvent).detail?.flash
-                    ?.notify_client as { job_id: number } | undefined;
-                if (data) setJobId(data.job_id);
-            }),
-        [],
-    );
-
-    return (
-        <ConfirmationSendSheet
-            jobId={jobId}
-            open={jobId !== null}
-            onOpenChange={(open) => !open && setJobId(null)}
-            title={t('jobs.confirmation.notify_title')}
-            hint={t('jobs.confirmation.notify_hint')}
-        />
     );
 }

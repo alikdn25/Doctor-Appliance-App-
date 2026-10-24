@@ -18,7 +18,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 /**
  * Finishing a booking (owner's task, Oct 24): Finish booking sends the confirmation by itself, as the company's SMS
  * setting says; Save as draft sends nothing and leaves an orange Draft until "Finish booking" on the job page; a
- * finished booking that moves asks "Notify client?".
+ * finished booking that moves texts the client only when "Notify client" is ticked.
  */
 beforeEach(function () {
     config(['services.twilio' => [
@@ -136,29 +136,32 @@ test('a draft cannot be resent or set by hand, and another company cannot finish
         ->and(inCompany($this->company, fn () => Message::query()->count()))->toBe(0);
 });
 
-test('moving a finished booking asks "Notify client?"; a draft or an unchanged time does not', function () {
+test('a moved booking texts the client only when "Notify client" is ticked; dragging and drafts send nothing', function () {
     ($this->book)();
     $job = ($this->latest)();
     $visit = inCompany($this->company, fn () => JobVisit::query()->where('service_job_id', $job->id)->sole());
-    $payload = ['date' => '2026-10-16', 'start_time' => '13:00', 'end_time' => '15:00', 'assignee_ids' => [$this->owner->id], 'back' => true];
+    $payload = ['date' => '2026-10-16', 'start_time' => '15:00', 'end_time' => '17:00', 'assignee_ids' => [$this->owner->id], 'back' => true];
+    $sent = fn () => inCompany($this->company, fn () => Message::query()->where('kind', 'booking_confirmation')->count());
+    expect($sent())->toBe(1);
 
+    // No box ticked: the new time is saved, nothing goes and nothing asks.
     $this->put(route('visits.update', $visit), $payload)->assertSessionHasNoErrors();
-    expect(session('inertia.flash_data.notify_client'))->toBeNull();
+    expect($sent())->toBe(1)
+        ->and(session('inertia.flash_data.notify_client'))->toBeNull();
 
-    session()->forget('inertia.flash_data');
-    $this->put(route('visits.update', $visit), [...$payload, 'start_time' => '15:00', 'end_time' => '17:00'])->assertSessionHasNoErrors();
-    expect(session('inertia.flash_data.notify_client'))->toMatchArray(['job_id' => $job->id]);
+    // Ticked: the updated confirmation goes now.
+    $this->put(route('visits.update', $visit), [...$payload, 'start_time' => '09:00', 'end_time' => '11:00', 'notify' => true])->assertSessionHasNoErrors();
+    expect($sent())->toBe(2)
+        ->and(inCompany($this->company, fn () => Message::query()->latest('id')->first()->body))->toContain('9:00 a.m. - 11:00 a.m.');
 
     $this->put(route('visits.move', $visit), ['date' => '2026-10-17', 'start_time' => '09:00'])->assertSessionHasNoErrors();
-    expect(session('inertia.flash_data.notify_client'))->toMatchArray(['job_id' => $job->id]);
+    expect($sent())->toBe(2);
 
-    // Flash data stays in the test session until a page shows it.
-    session()->forget('inertia.flash_data');
     ($this->book)(['draft' => true]);
     $draft = ($this->latest)();
     $draftVisit = inCompany($this->company, fn () => JobVisit::query()->where('service_job_id', $draft->id)->sole());
-    $this->put(route('visits.update', $draftVisit), [...$payload, 'start_time' => '16:00', 'end_time' => '18:00'])->assertSessionHasNoErrors();
-    expect(session('inertia.flash_data.notify_client'))->toBeNull();
+    $this->put(route('visits.update', $draftVisit), [...$payload, 'notify' => true])->assertSessionHasNoErrors();
+    expect($sent())->toBe(2);
 });
 
 test('a draft gets no reminder the day before; once finished it does', function () {

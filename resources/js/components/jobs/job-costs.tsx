@@ -1,4 +1,4 @@
-import { router, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import {
     FileText,
     Link2,
@@ -29,6 +29,7 @@ import {
     store as storeCost,
     update as updateCost,
 } from '@/routes/jobs/costs';
+import { edit as editExpense } from '@/routes/expenses';
 import { store as storeReceipt } from '@/routes/jobs/receipts';
 import {
     destroy as destroyReceipt,
@@ -56,6 +57,16 @@ export type JobCosts = {
         unit_cost: number;
         total_cost: number;
     }[];
+    /** Business expenses entered for this job ("+" → Expense → Job). */
+    expenses: {
+        id: number;
+        description: string;
+        category: string | null;
+        merchant: string | null;
+        spent_on: string;
+        total: number;
+        currency: string;
+    }[];
     receipts: {
         id: number;
         name: string;
@@ -76,8 +87,8 @@ export type JobCosts = {
 };
 
 /**
- * Profit of the job, its costs that are on no invoice, and supplier receipts. Office (and technicians when the
- * company allows them to see costs); never shown to customers.
+ * Profit of the job, its costs that are on no invoice, the business expenses entered for it and supplier receipts.
+ * Only the Owner, on a closed job; never shown to customers.
  */
 export function JobCostsSection({
     jobId,
@@ -269,6 +280,39 @@ export function JobCostsSection({
                                 >
                                     <Trash2 />
                                 </Button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                {costs.expenses.length > 0 && (
+                    <ul
+                        className="divide-y rounded-md border text-sm"
+                        data-test="job-expenses"
+                    >
+                        {costs.expenses.map((expense) => (
+                            <li
+                                key={expense.id}
+                                className="flex min-h-11 items-center gap-2 p-2"
+                            >
+                                <Link
+                                    href={editExpense(expense.id)}
+                                    className="min-w-0 flex-1 underline-offset-4 hover:underline"
+                                >
+                                    {expense.description}
+                                    <span className="block text-xs text-muted-foreground">
+                                        {[
+                                            t('costs.expense'),
+                                            expense.category,
+                                            expense.merchant,
+                                            time.dateOnly(expense.spent_on),
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' · ')}
+                                    </span>
+                                </Link>
+                                <span className="tabular-nums">
+                                    {money(expense.total, expense.currency)}
+                                </span>
                             </li>
                         ))}
                     </ul>

@@ -67,7 +67,9 @@ export function MoreSheet({
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
                 side="bottom"
-                className="gap-3 px-4 pt-4"
+                // Nothing shrinks to fit: the menu scrolls, so every item stays reachable (a card with hidden overflow
+                // used to be squeezed to nothing at the bottom).
+                className="gap-3 px-4 pt-4 *:shrink-0"
                 data-test="more-sheet"
             >
                 <SheetHeader className="p-0 pr-12">
