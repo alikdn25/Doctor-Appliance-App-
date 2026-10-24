@@ -1,3 +1,34 @@
+# October 24 — Owner's update, PR 2: job page, technician, Solo / Team, Transfer, Field / Office
+
+Sections 1, 2, 3, 4 and 17 of the owner's task of October 24.
+
+1. **Job page**: a main block at the top — status, customer, job address, the day and arrival window, the technician
+   line, the gate code and access notes, then four buttons of one size: Navigate (light blue, to the job address),
+   Call (green), Text (white), On my way (white). Call and Text go to the occupant when the address has one,
+   otherwise to the customer; "Call the customer: name" is a small link under them. Start / Complete (and Waiting
+   for parts) sit in the main block; the bottom bar keeps payment and invoices. Change address and Send booking
+   confirmation are links in the block.
+2. **Instructions** for the technician right under the main block, always shown: the office writes them (saved by
+   themselves, `PUT jobs/{job}/instructions`, the job's `notes`), the technician reads them.
+3. **Tabs** Job (problem, bring list, appliances, Work done, schedule, estimates and invoices, signature) / Notes (the
+   job's texts) / Files (photos) / History (status history, details, change log), by a tap or a swipe.
+4. **Technician**: "Technician: name" under the customer; a tap (also on "Not assigned") opens the list with each
+   person's load that day ("2 jobs, free" / "busy 11–1") — kept from October 19.
+5. **Solo / Team**: the first row of More → Settings, for the Owner only (`PUT company/work-mode`). Solo hides the
+   technician choice, Transfer (calendar and Team) and the Team section (menu and settings); switching to Solo gives
+   open unassigned visits to the Owner. Companies with more than one active member are Team (data migration of
+   October 19); a new company starts as Solo (preselected at registration).
+6. **Transfer**: in the calendar day lanes and on a Team card — tick one or more jobs, Move to…, pick the person with
+   their load; the rest can go to someone else one by one (kept from October 19, hidden in Solo).
+7. **Field / Office**: the menu now changes with the switch. Field: Today · Calendar · Book · Invoices, More has
+   customers, map, invoices, mileage, expenses and the company settings. Office: Today · Calendar · Book · Jobs,
+   More has the Jobs list, reports, expenses & taxes, team and every company page.
+
+- No migrations.
+- Tests: WorkModeTest (Owner-only switch, Solo gives visits to the Owner), JobPageFeedbackTest (instructions: office
+  writes, technician reads, other company refused); browser specs for the job page at 380 px, Field / Office menu.
+- Next: PR 3 — estimates, company locations and logo, the job report, who gets what.
+
 # October 24 — Owner's update, PR 1: booking, customer, addresses, occupant
 
 Sections 5 and 6 of the owner's task of October 24.

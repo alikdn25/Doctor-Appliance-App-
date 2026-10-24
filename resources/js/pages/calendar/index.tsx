@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     ChevronDown,
@@ -100,6 +100,8 @@ export default function CalendarPage({
     nowMinutes = 0,
 }: Props) {
     const t = useTrans();
+    // Solo: every job is the Owner's, so there is nobody to transfer to.
+    const worksAlone = usePage().props.auth.company?.works_alone ?? false;
     // Finished work is hidden by default; "Show completed" brings it back (greyed out). Remembered per device.
     const [showCompleted, setShowCompleted] = useState(() => {
         try {
@@ -584,10 +586,14 @@ export default function CalendarPage({
                                 onOpen={open}
                                 transferLane={transferLane}
                                 selected={selected}
-                                onTransfer={(lane) => {
-                                    setSelected([]);
-                                    setTransferLane(lane.id);
-                                }}
+                                onTransfer={
+                                    worksAlone
+                                        ? undefined
+                                        : (lane) => {
+                                              setSelected([]);
+                                              setTransferLane(lane.id);
+                                          }
+                                }
                                 onToggle={(visit) =>
                                     setSelected((ids) =>
                                         ids.includes(visit.id)

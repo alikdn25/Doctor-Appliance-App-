@@ -47,6 +47,8 @@ test('the job page is one list on every screen, Activity below the customer', as
     const customer = page.locator('[data-test="job-customer"]');
     const activity = page.locator('[data-test="job-activity"]');
     await expect(customer).toBeVisible();
+    // Activity is the History tab under the main block (owner's update, October 24).
+    await page.getByRole('tab', { name: /^History/ }).click();
     await expect(activity).toBeVisible();
     const left = (await customer.boundingBox())!;
     const right = (await activity.boundingBox())!;

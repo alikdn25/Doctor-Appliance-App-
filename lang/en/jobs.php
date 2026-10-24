@@ -595,6 +595,19 @@ return [
     'history_entry' => [
         'created' => 'Job created',
     ],
+    'instructions' => [
+        'title' => 'Instructions',
+        'placeholder' => 'What the technician should know: what to bring, who to ask for, what was promised',
+        'none' => 'No instructions.',
+    ],
+    'page_tabs' => [
+        'label' => 'Job sections',
+        'job' => 'Job',
+        'notes' => 'Notes',
+        'files' => 'Files',
+        'history' => 'History',
+    ],
+    'call_customer' => 'Call the customer: :name',
     'confirmation' => [
         'send' => 'Send booking confirmation',
         'title' => 'Booking confirmation',

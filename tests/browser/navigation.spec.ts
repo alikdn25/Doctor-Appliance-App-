@@ -77,6 +77,16 @@ test('the owner gets Today, Calendar, Book, Jobs and More; Field swaps Jobs for 
     // The sheet hides the rest of the screen from assistive tech: close it before checking the bar.
     await more.getByRole('radio', { name: 'Field' }).click();
     await expect(more.getByRole('radio', { name: 'Field' })).toBeChecked();
+    // Field changes the menu itself: mileage in, the office screens (Reports, Team) out.
+    await expect(
+        more.getByRole('link', { name: 'Mileage', exact: true }),
+    ).toBeVisible();
+    await expect(
+        more.getByRole('link', { name: 'Reports', exact: true }),
+    ).toHaveCount(0);
+    await expect(
+        more.getByRole('link', { name: 'Team', exact: true }),
+    ).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(
         nav.locator('[data-test="bottom-nav-invoices"]'),

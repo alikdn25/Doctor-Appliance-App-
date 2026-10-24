@@ -100,3 +100,27 @@ test('adding the first team member switches the company to "with a team"', funct
     $this->get(route('jobs.create', ['book' => 1]))
         ->assertInertia(fn (Assert $page) => $page->where('bookingTechnician', $owner->id));
 });
+
+test('Solo / Team is switched by the Owner only, and Solo gives open unassigned visits to the Owner', function () {
+    $company = Company::factory()->create(['works_alone' => false]);
+    $owner = memberOf($company);
+    $admin = memberOf($company, UserRole::Admin);
+    $job = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($company)))
+        ->for(Brand::factory()->for($company))->create(['status' => JobStatus::Scheduled]);
+    $visit = inCompany($company, fn () => JobVisit::query()->forceCreate([
+        'company_id' => $company->id, 'service_job_id' => $job->id, 'status' => 'scheduled',
+        'scheduled_start' => now()->addDay(), 'scheduled_end' => now()->addDay()->addHours(2),
+    ]));
+
+    $this->actingAs($admin)->put(route('company.work-mode'), ['mode' => 'solo'])->assertForbidden();
+    expect($company->fresh()->works_alone)->toBeFalse();
+
+    $this->actingAs($owner)->put(route('company.work-mode'), ['mode' => 'solo'])->assertSessionHasNoErrors();
+    expect($company->fresh()->works_alone)->toBeTrue()
+        ->and(inCompany($company, fn () => $visit->fresh()->assignees()->pluck('users.id')->all()))->toBe([$owner->id]);
+
+    $this->actingAs($owner)->put(route('company.work-mode'), ['mode' => 'team'])->assertSessionHasNoErrors();
+    expect($company->fresh()->works_alone)->toBeFalse();
+
+    $this->actingAs($owner)->put(route('company.work-mode'), ['mode' => 'nobody'])->assertSessionHasErrors('mode');
+});

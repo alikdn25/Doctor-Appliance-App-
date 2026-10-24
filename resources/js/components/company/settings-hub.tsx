@@ -1,4 +1,4 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     BookOpen,
     Building,
@@ -18,6 +18,7 @@ import {
 import type { ReactNode } from 'react';
 import { ScreenHeader } from '@/components/screen-header';
 import { ListRow } from '@/components/ui/list-row';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { useTrans } from '@/lib/i18n';
 import { index as brands } from '@/routes/brands';
 import { edit as googleProfiles } from '@/routes/company/google-profiles';
@@ -26,6 +27,7 @@ import { edit as services } from '@/routes/company/services';
 import { edit, section as sectionRoute } from '@/routes/company/settings';
 import { index as taxes } from '@/routes/taxes';
 import { index as team } from '@/routes/team';
+import { workMode } from '@/routes/company';
 import type { Option } from '@/types';
 
 type Day = { closed: boolean; open: string | null; close: string | null };
@@ -104,6 +106,8 @@ export function SettingsHub({
     const t = useTrans();
     const { auth } = usePage().props;
     const locale = auth.company?.locale ?? 'en-US';
+    const worksAlone = auth.company?.works_alone ?? false;
+    const isOwner = auth.role?.value === 'owner';
     const unit = (value: number, kind: string) =>
         t(`company.hub.length.${kind}`, { count: value });
 
@@ -256,13 +260,20 @@ export function SettingsHub({
                   title: t('nav.brands'),
                   subtitle: t('company.hub.brands', { count: hub.brands }),
               },
-              {
-                  key: 'team',
-                  href: team(),
-                  icon: <Users />,
-                  title: t('nav.team'),
-                  subtitle: t('company.hub.people', { count: hub.team }),
-              },
+              // Solo has no Team section.
+              ...(worksAlone
+                  ? []
+                  : [
+                        {
+                            key: 'team',
+                            href: team(),
+                            icon: <Users />,
+                            title: t('nav.team'),
+                            subtitle: t('company.hub.people', {
+                                count: hub.team,
+                            }),
+                        },
+                    ]),
           ]
         : [];
 
@@ -272,6 +283,46 @@ export function SettingsHub({
             <ScreenHeader title={t('company.title')} subtitle={company.name} />
 
             <div className="mx-auto w-full max-w-2xl space-y-4 p-4 sm:p-6">
+                {/* Solo / Team: the first row, for the Owner only. */}
+                {isOwner && (
+                    <div
+                        className="da-card space-y-2 p-4"
+                        data-test="work-mode"
+                    >
+                        <p className="text-sm font-semibold">
+                            {t('company.work_mode.label')}
+                        </p>
+                        <SegmentedControl
+                            label={t('company.work_mode.label')}
+                            className="flex w-full"
+                            value={worksAlone ? 'solo' : 'team'}
+                            onChange={(mode) =>
+                                router.put(
+                                    workMode().url,
+                                    { mode },
+                                    { preserveScroll: true },
+                                )
+                            }
+                            options={[
+                                {
+                                    value: 'solo',
+                                    label: t('company.work_mode.solo'),
+                                },
+                                {
+                                    value: 'team',
+                                    label: t('company.work_mode.team'),
+                                },
+                            ]}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            {t(
+                                worksAlone
+                                    ? 'company.work_mode.solo_hint'
+                                    : 'company.work_mode.team_hint',
+                            )}
+                        </p>
+                    </div>
+                )}
                 {[rows, others].map((list, index) =>
                     list.length === 0 ? null : (
                         <div

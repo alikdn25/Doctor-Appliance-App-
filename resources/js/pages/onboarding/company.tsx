@@ -47,7 +47,8 @@ export default function CompanySetup({
     const form = useForm({
         name: '',
         ...defaults,
-        works_alone: null as boolean | null,
+        // A new company has one person: Solo unless the owner picks Team.
+        works_alone: true as boolean | null,
     });
     const { setData } = form;
     const timezoneDetected = useRef(false);

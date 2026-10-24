@@ -252,3 +252,23 @@ test('my jobs shows the day, the problem and the appliance picture', function ()
             ->where('visits.0.job.problem', 'Not heating')
             ->where('visits.0.job.appliance_types', ['Microwave']));
 });
+
+test('instructions for the technician are written by the office and only read by the technician', function () {
+    $company = Company::factory()->create();
+    $owner = memberOf($company);
+    $tech = memberOf($company, UserRole::Technician);
+    $stranger = memberOf(Company::factory()->create());
+    $job = ServiceJob::factory()->for(Property::factory()->for(Customer::factory()->for($company)))
+        ->for(Brand::factory()->for($company))->withVisit($tech)->create();
+
+    $this->actingAs($owner)->putJson(route('jobs.instructions', $job), ['notes' => 'Bring a door gasket'])
+        ->assertOk()->assertJson(['saved' => true]);
+    expect(inCompany($company, fn () => $job->fresh()->notes))->toBe('Bring a door gasket');
+
+    $this->actingAs($tech)->putJson(route('jobs.instructions', $job), ['notes' => 'changed'])->assertForbidden();
+    $this->actingAs($tech)->get(route('jobs.show', $job))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('job.notes', 'Bring a door gasket'));
+
+    $this->actingAs($stranger)->putJson(route('jobs.instructions', $job), ['notes' => 'x'])->assertNotFound();
+    expect(inCompany($company, fn () => $job->fresh()->notes))->toBe('Bring a door gasket');
+});

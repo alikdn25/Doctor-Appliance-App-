@@ -38,6 +38,24 @@ class JobWorkController extends Controller
     }
 
     /**
+     * Instructions for the technician (the job's team notes), written by the office right under the main block of
+     * the job page and saved by themselves.
+     */
+    public function instructions(Request $request, ServiceJob $job): RedirectResponse|JsonResponse
+    {
+        Gate::authorize('update', $job);
+
+        $notes = $request->validate(['notes' => ['nullable', 'string', 'max:5000']])['notes'] ?? null;
+        $job->update(['notes' => filled($notes) ? $notes : null]);
+
+        if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+            return response()->json(['saved' => true]);
+        }
+
+        return back();
+    }
+
+    /**
      * Adds a new appliance at the job's property, or links one that is already there.
      */
     public function storeAppliance(Request $request, ServiceJob $job, SaveJob $save): RedirectResponse

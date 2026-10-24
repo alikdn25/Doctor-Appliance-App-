@@ -42,11 +42,13 @@ test('the technician sees the visit buttons above everything and no signature re
         return hit !== null && button.contains(hit);
     });
     expect(onTop).toBe(true);
-    if (info.project.name === 'mobile') {
-        await expect(
-            tech.getByRole('navigation', { name: 'Main sections' }),
-        ).toBeHidden();
-    }
+    // On my way sits in the main block at the top of the page (owner's update, October 24), not in a bar.
+    await expect(
+        tech.locator('[data-test="job-main"]').getByRole('button', {
+            name: 'On my way',
+            exact: true,
+        }),
+    ).toBeVisible();
     await expect(
         tech.getByRole('button', { name: /Get signature|Sign again/ }),
     ).toHaveCount(0);
@@ -199,7 +201,7 @@ test('my jobs: Day | Completed with ‹ date ›, the day summary, + Trip button
     await context.close();
 });
 
-test('job page: ⋯ holds the rare actions, Work done saves by itself, Activity is folded', async ({
+test('job page: ⋯ holds the rare actions, Work done saves by itself, history is its own tab', async ({
     page,
 }, info) => {
     await page.goto(`/jobs/${fixture.job_id}`);
@@ -236,12 +238,10 @@ test('job page: ⋯ holds the rare actions, Work done saves by itself, Activity 
     );
 
     const activity = page.locator('[data-test="job-activity"]');
-    // One list, no Overview · Work · Money · Activity tabs; Activity is folded at the end.
+    // No Overview · Work · Money · Activity tabs; the history is the History tab (owner's update, October 24).
     await expect(page.locator('[data-test="job-anchors"]')).toHaveCount(0);
-    await expect(
-        activity.getByRole('heading', { name: 'Status history' }),
-    ).toBeHidden();
-    await activity.getByText('Activity', { exact: true }).click();
+    await expect(activity).toHaveCount(0);
+    await page.getByRole('tab', { name: /^History/ }).click();
     await expect(
         activity.getByRole('heading', { name: 'Status history' }),
     ).toBeVisible();
