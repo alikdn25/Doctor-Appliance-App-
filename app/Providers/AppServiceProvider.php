@@ -16,7 +16,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\SessionGuard;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -24,6 +26,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -55,6 +58,11 @@ class AppServiceProvider extends ServiceProvider
 
         // The price book and Google review locations are kept by the office.
         Gate::define('manageCatalog', fn (User $user) => $user->hasRole(UserRole::Owner, UserRole::Admin));
+
+        // Own counters: a plain "throttle:N,1" shares one counter per person across routes, so the version check
+        // and route planning would use up the limit of other actions.
+        RateLimiter::for('app-version', fn (Request $request) => Limit::perMinute(60)->by('app-version|'.$request->ip()));
+        RateLimiter::for('map-plan', fn (Request $request) => Limit::perMinute(60)->by('map-plan|'.($request->user()?->id ?? $request->ip())));
 
         Event::listen(Login::class, function (Login $event) {
             if ($event->user instanceof User && ! app(Impersonation::class)->isActive()) {

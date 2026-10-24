@@ -26,7 +26,7 @@ import {
     Users,
     Wallet,
 } from 'lucide-react';
-import { calendar, dashboard, expensesHub } from '@/routes';
+import { calendar, dashboard, expensesHub, map as mapPage } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as brands } from '@/routes/brands';
 import { index as cash } from '@/routes/cash';
@@ -122,9 +122,8 @@ export function useAppNavigation(): AppNavigation {
     const calendarItem =
         can.viewCalendar &&
         item('calendar', 'nav.calendar', calendar(), CalendarDays);
-    const map =
-        can.viewCalendar &&
-        item('map', 'nav.map', calendar({ query: { view: 'map' } }), MapPin);
+    // The Map tab (owner's task, Oct 24): every role and menu; a technician sees their own jobs there.
+    const map = can.viewMap && item('map', 'nav.map', mapPage(), MapPin);
     const jobsItem =
         can.viewJobs && item('jobs', 'nav.jobs', jobs(), ClipboardList);
     const invoicesItem =
@@ -150,10 +149,11 @@ export function useAppNavigation(): AppNavigation {
     const fieldWorker = !can.viewJobs && !can.viewCalendar;
 
     // Booking, expenses, trips and tasks start from the round "+" above the bar (owner's task, Oct 24).
+    // Map sits in every bar; a technician's My expenses is in More.
     const bottom = (
         fieldWorker
-            ? [today, mileage, myExpenses]
-            : [today, calendarItem, office ? jobsItem : invoicesItem]
+            ? [today, map, mileage]
+            : [today, calendarItem, map, office ? jobsItem : invoicesItem]
     ).filter(Boolean) as AppNavigation['bottom'];
 
     // My menu (owner's update, October 24): Field is for going on calls — jobs of the day, customers, invoices,

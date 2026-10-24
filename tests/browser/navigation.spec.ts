@@ -18,7 +18,7 @@ test.afterEach(async ({ page }) => {
     expect(pageErrors, 'No uncaught JavaScript errors').toEqual([]);
 });
 
-test('the owner gets Today, Calendar, Jobs, More and the round "+"; Field swaps Jobs for Invoices', async ({
+test('the owner gets Today, Calendar, Map, Jobs, More and the round "+"; Field swaps Jobs for Invoices', async ({
     page,
 }, info) => {
     test.skip(info.project.name !== 'mobile', 'The bottom bar is for phones');
@@ -38,7 +38,7 @@ test('the owner gets Today, Calendar, Jobs, More and the round "+"; Field swaps 
             .click();
         await page.keyboard.press('Escape');
     }
-    for (const key of ['today', 'calendar', 'jobs', 'more']) {
+    for (const key of ['today', 'calendar', 'map', 'jobs', 'more']) {
         await expect(
             nav.locator(`[data-test="bottom-nav-${key}"]`),
         ).toBeVisible();
@@ -98,6 +98,7 @@ test('the owner gets Today, Calendar, Jobs, More and the round "+"; Field swaps 
     await expect(
         nav.locator('[data-test="bottom-nav-invoices"]'),
     ).toBeVisible();
+    await expect(nav.locator('[data-test="bottom-nav-map"]')).toBeVisible();
     await expect(nav.locator('[data-test="bottom-nav-jobs"]')).toHaveCount(0);
     // Back to Office for the other scenarios.
     await nav.locator('[data-test="bottom-nav-more"]').click();
@@ -141,7 +142,7 @@ test('profile and security are in the same frame with ← and the bottom bar', a
 test.describe('technician', () => {
     test.use({ storageState: 'test-results/auth-tech.json' });
 
-    test('a technician gets Today, Mileage, My expenses and More, without the menu choice', async ({
+    test('a technician gets Today, Map, Mileage and More (My expenses in More), without the menu choice', async ({
         page,
     }, info) => {
         test.skip(
@@ -150,7 +151,7 @@ test.describe('technician', () => {
         );
         await page.goto('/my-jobs');
         const nav = page.getByRole('navigation', { name: 'Main sections' });
-        for (const key of ['today', 'mileage', 'my-expenses', 'more']) {
+        for (const key of ['today', 'map', 'mileage', 'more']) {
             await expect(
                 nav.locator(`[data-test="bottom-nav-${key}"]`),
             ).toBeVisible();
@@ -159,9 +160,15 @@ test.describe('technician', () => {
             0,
         );
 
+        await expect(
+            nav.locator('[data-test="bottom-nav-my-expenses"]'),
+        ).toHaveCount(0);
+
         await nav.locator('[data-test="bottom-nav-more"]').click();
         const more = page.locator('[data-test="more-sheet"]');
         await expect(more.locator('[data-test="menu-mode"]')).toHaveCount(0);
+        await expect(more.getByText('My expenses')).toBeVisible();
+        await expect(more.getByText('Map', { exact: true })).toHaveCount(0);
         await expect(more.locator('[data-test="more-logout"]')).toBeVisible();
         await page.screenshot({ path: info.outputPath('tech-more.png') });
     });

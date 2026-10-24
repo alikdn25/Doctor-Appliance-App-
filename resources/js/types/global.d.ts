@@ -18,6 +18,7 @@ declare module '@inertiajs/core' {
             locale: string;
             translations: Record<string, unknown>;
             sidebarOpen: boolean;
+            appVersion?: string;
             [key: string]: unknown;
         };
     }

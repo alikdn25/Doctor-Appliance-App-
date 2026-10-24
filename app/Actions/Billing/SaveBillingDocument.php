@@ -275,18 +275,16 @@ class SaveBillingDocument
     }
 
     /**
-     * Optional / selected of an estimate line. Good / Better / Best options are gone (owner's fixes, October 19):
-     * a line saved with an option is an ordinary line.
+     * Optional / selected of an estimate line.
      *
      * @param  array<string, mixed>  $item
-     * @return array{optional: bool, selected: bool, option_name: null}
+     * @return array{optional: bool, selected: bool}
      */
     private static function estimateFlags(array $item): array
     {
         return [
             'optional' => (bool) ($item['optional'] ?? false),
             'selected' => ! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false),
-            'option_name' => null,
         ];
     }
 

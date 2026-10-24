@@ -47,6 +47,7 @@ use App\Support\Jobs\JobBacklog;
 use App\Support\Jobs\JobPresenter;
 use App\Support\Locale\LocalTime;
 use App\Support\PhoneNumber;
+use App\Support\Routing\DayOrder;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -254,6 +255,10 @@ class JobController extends Controller
             ->with(['assignees', 'job.customer.primaryPhone', 'job.property', 'job.appliances', 'job.bringItems'])
             ->limit(100)
             ->get();
+        // The day in the order saved on the Map tab ("Apply").
+        if ($tab === 'day') {
+            $visits = DayOrder::sort($visits);
+        }
 
         $messaging = app(MessagingPresenter::class);
 

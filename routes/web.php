@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
 use App\Http\Controllers\Admin\WorkspaceController;
+use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\Billing\CashController;
 use App\Http\Controllers\Billing\DocumentDeliveryController;
 use App\Http\Controllers\Billing\EstimateController;
@@ -50,6 +51,7 @@ use App\Http\Controllers\Jobs\JobNoteController;
 use App\Http\Controllers\Jobs\JobStatusController;
 use App\Http\Controllers\Jobs\JobWarrantyController;
 use App\Http\Controllers\Jobs\JobWorkController;
+use App\Http\Controllers\Jobs\MapController;
 use App\Http\Controllers\Jobs\VisitActionController;
 use App\Http\Controllers\Jobs\VisitController;
 use App\Http\Controllers\ManifestController;
@@ -66,6 +68,8 @@ use App\Http\Controllers\TrashController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
+// The running version: the app compares it with the one it loaded to offer "Update" after a deploy.
+Route::get('app-version', AppVersionController::class)->middleware('throttle:app-version')->name('app-version');
 
 // Customer's online page of an estimate or invoice (link in the email; the token is the key).
 Route::middleware('throttle:60,1')->group(function () {
@@ -161,6 +165,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('visits/{visit}', [VisitController::class, 'destroy'])->name('visits.destroy');
         Route::put('visits/{visit}/move', [VisitController::class, 'move'])->name('visits.move');
         Route::get('calendar', CalendarController::class)->name('calendar');
+        Route::get('map', [MapController::class, 'show'])->name('map');
+        Route::post('map/order', [MapController::class, 'order'])->name('map.order');
+        Route::post('map/plan', [MapController::class, 'plan'])->middleware('throttle:map-plan')->name('map.plan');
         Route::get('technicians/load', [AssignmentController::class, 'load'])->name('technicians.load');
         Route::get('team/{membership}/open-visits', [AssignmentController::class, 'openVisits'])->name('technicians.open-visits');
         Route::put('jobs/{job}/address', JobAddressController::class)->name('jobs.address');

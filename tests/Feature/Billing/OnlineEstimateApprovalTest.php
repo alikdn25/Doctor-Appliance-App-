@@ -9,6 +9,7 @@ use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Estimate;
+use App\Models\EstimateItem;
 use App\Models\Invoice;
 use App\Models\InvoicePaymentLink;
 use App\Models\Payment;
@@ -177,6 +178,24 @@ test('the customer can type their name instead of drawing', function () {
         ->and($estimate->signature_type)->toBe('typed')
         ->and($estimate->signature_path)->toBeNull()
         ->and($estimate->signer_name)->toBe('M. Garcia');
+});
+
+test('the customer only approves or declines; the office can mark an estimate approved by hand', function () {
+    $estimate = approvalEstimate($this->company, $this->job);
+    $token = estimateToken($this->company, $estimate);
+
+    // No "Request changes": only Approve (with a signature) and Decline.
+    expect(collect(app('router')->getRoutes()->getRoutesByName())->keys()->filter(fn ($name) => str_starts_with($name, 'documents.public.'))->values()->all())
+        ->toEqualCanonicalizing(['documents.public.pdf', 'documents.public.pay', 'documents.public.approve', 'documents.public.decline', 'documents.public.deposit']);
+    $this->get(route('documents.public', $token))->assertInertia(fn (Assert $page) => $page
+        ->where('estimate.can_approve', true)
+        ->where('estimate.can_decline', true)
+        ->missing('estimate.can_request_changes'));
+
+    $this->actingAs($this->owner)->put(route('estimates.decide', $estimate), ['approved' => true])->assertSessionHasNoErrors();
+    $estimate = inCompany($this->company, fn () => $estimate->fresh());
+    expect($estimate->status)->toBe(EstimateStatus::Approved)
+        ->and($estimate->approvedOnline())->toBeFalse();
 });
 
 test('a drawn signature must be a PNG and a name is required', function () {
@@ -556,9 +575,10 @@ test('online optional selection recalculates the taxes selected on each item and
     expect($estimate->total)->toBe(16750)->and($estimate->tax_total)->toBe(1750);
 });
 
-function legacyOptionsEstimate(Company $company, ServiceJob $job): Estimate
-{
-    test()->post(route('estimates.store', $job), documentPayload([
+test('Good / Better / Best are gone from the code: an option sent with a line is ignored, every line counts', function () {
+    expect((new EstimateItem)->getFillable())->not->toContain('option_name');
+
+    $this->post(route('estimates.store', $this->job), documentPayload([
         'items' => [
             ['description' => 'Diagnosis', 'quantity' => '1', 'unit_price' => '50.00', 'taxable' => false],
             ['description' => 'Repair the old pump', 'quantity' => '1', 'unit_price' => '100.00', 'taxable' => false, 'option_name' => 'good'],
@@ -566,36 +586,16 @@ function legacyOptionsEstimate(Company $company, ServiceJob $job): Estimate
             ['description' => 'New washer', 'quantity' => '1', 'unit_price' => '900.00', 'taxable' => false, 'option_name' => 'best'],
         ],
     ]))->assertSessionHasNoErrors();
+    $estimate = inCompany($this->company, fn () => Estimate::query()->latest('id')->first());
 
-    return inCompany($company, fn () => Estimate::query()->latest('id')->first());
-}
-
-test('Good / Better / Best are gone: an option sent with a line is ignored and every line counts', function () {
-    $estimate = legacyOptionsEstimate($this->company, $this->job);
-
-    expect($estimate->total)->toBe(125000)
-        ->and(inCompany($this->company, fn () => $estimate->items()->whereNotNull('option_name')->count()))->toBe(0);
+    expect($estimate->total)->toBe(125000);
     $this->get(route('estimates.show', $estimate))->assertInertia(fn (Assert $page) => $page
         ->missing('document.options')
         ->missing('document.items.1.option_name'));
-});
 
-test('lines saved with an option before are ordinary lines: approved and invoiced in full, data kept', function () {
-    $estimate = legacyOptionsEstimate($this->company, $this->job);
-    // As saved by the old Good / Better / Best: only "better" chosen.
-    inCompany($this->company, function () use ($estimate) {
-        $estimate->items()->where('description', 'Repair the old pump')->update(['option_name' => 'good', 'selected' => false]);
-        $estimate->items()->where('description', 'New pump')->update(['option_name' => 'better', 'selected' => true]);
-        $estimate->items()->where('description', 'New washer')->update(['option_name' => 'best', 'selected' => false]);
-    });
-    $token = estimateToken($this->company, $estimate);
-
-    approveOnline($token)->assertSessionHasNoErrors();
+    approveOnline(estimateToken($this->company, $estimate))->assertSessionHasNoErrors();
     $estimate = inCompany($this->company, fn () => $estimate->fresh());
-    expect($estimate->status)->toBe(EstimateStatus::Approved)
-        ->and($estimate->total)->toBe(125000)
-        // The old values stay in the database.
-        ->and(inCompany($this->company, fn () => $estimate->items()->whereNotNull('option_name')->count()))->toBe(3);
+    expect($estimate->status)->toBe(EstimateStatus::Approved)->and($estimate->total)->toBe(125000);
 
     $this->actingAs($this->owner)->post(route('estimates.convert', $estimate))->assertSessionHasNoErrors();
     $lines = inCompany($this->company, fn () => Invoice::query()->latest('id')->first()->items()->pluck('description')->all());

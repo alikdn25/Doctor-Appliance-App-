@@ -35,6 +35,8 @@ php artisan optimize:clear
 php artisan app:deployment-check --before-migrate
 npm ci --no-audit --no-fund
 npm run build
+# The running version: the app offers "Update" when it differs from the one a phone loaded.
+printf '%s\n' "$deploy_commit" > storage/app/release
 # Back up the database before migrations (external storage, or a local copy until it is set up).
 # No backup, no migrations: the deployment stops here and maintenance mode stays on.
 if ! php artisan backup:run --reason=deploy; then

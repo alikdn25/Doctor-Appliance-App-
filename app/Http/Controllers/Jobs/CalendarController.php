@@ -103,6 +103,8 @@ class CalendarController extends Controller
             'end_minutes' => (int) min($dayStart->diffInMinutes($end), 24 * 60),
             'on_site_minutes' => (int) $start->diffInMinutes(DispatchConflicts::endOnSite($visit)->setTimezone($timezone)),
             'assignee_ids' => $visit->assignees->pluck('id')->values(),
+            // The order of the person's day saved on the map ("Apply"); null = by the window.
+            'route_position' => $visit->route_position,
             'job' => [
                 'id' => $job->id,
                 'number' => $job->number,

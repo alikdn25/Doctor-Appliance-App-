@@ -135,7 +135,7 @@ test('More scrolls to its last item, and the menu hint names the bottom bar', as
     const more = page.locator('[data-test="more-sheet"]');
     await expect(more).toBeVisible();
     await expect(more.locator('[data-test="menu-mode"]')).toContainText(
-        /Today · Calendar · (Jobs|Invoices)/,
+        /Today · Calendar · Map · (Jobs|Invoices)/,
     );
     await expect(more.locator('[data-test="menu-mode"]')).not.toContainText(
         'Book',

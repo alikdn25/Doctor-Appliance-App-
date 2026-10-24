@@ -60,6 +60,7 @@ return [
         'job_none' => 'No job: company expense',
         'job_hint' => 'An expense for a job counts in that job\'s Costs and profit.',
         'price' => 'Price',
+        'amount_paid' => 'Amount paid',
         'tax' => 'Tax',
         'total' => 'Total',
         'currency' => 'Currency',

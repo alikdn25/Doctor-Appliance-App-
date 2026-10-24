@@ -66,6 +66,8 @@ class AssignJob
                 $ids = $fromUserId === null ? [] : array_values(array_diff($ids, [$fromUserId]));
                 $ids[] = $toUserId;
                 $visit->assignees()->sync(array_values(array_unique($ids)));
+                // The new person's day has its own order: the visit goes by its window there.
+                $visit->forceFill(['route_position' => null])->save();
                 $this->syncJob($visit->job);
                 $moved++;
             }

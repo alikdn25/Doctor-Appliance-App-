@@ -1647,6 +1647,17 @@ export default function JobForm({
                                                 ? nowTime
                                                 : null
                                         }
+                                        // Booking for today: "Now" first, from this minute for an hour.
+                                        leading={
+                                            data.visit.date === today
+                                                ? {
+                                                      value: 'now',
+                                                      label: t(
+                                                          'jobs.quick.now',
+                                                      ),
+                                                  }
+                                                : undefined
+                                        }
                                         value={
                                             arrivalWindows.some(
                                                 (w) =>
@@ -1656,9 +1667,36 @@ export default function JobForm({
                                                         data.visit.end_time,
                                             )
                                                 ? data.visit.start_time
-                                                : null
+                                                : data.visit.date === today &&
+                                                    data.visit.start_time <=
+                                                        nowTime &&
+                                                    data.visit.end_time >
+                                                        nowTime
+                                                  ? 'now'
+                                                  : null
                                         }
                                         onChange={(start) => {
+                                            if (start === 'now') {
+                                                const [h, m] = nowTime
+                                                    .split(':')
+                                                    .map(Number);
+                                                const from =
+                                                    Math.floor(
+                                                        (h * 60 + m) / 5,
+                                                    ) * 5;
+                                                const to = Math.min(
+                                                    from + 60,
+                                                    23 * 60 + 59,
+                                                );
+                                                const hhmm = (v: number) =>
+                                                    `${String(Math.floor(v / 60)).padStart(2, '0')}:${String(v % 60).padStart(2, '0')}`;
+                                                setVisit({
+                                                    start_time: hhmm(from),
+                                                    end_time: hhmm(to),
+                                                });
+
+                                                return;
+                                            }
                                             const w = arrivalWindows.find(
                                                 (x) => x.start === start,
                                             );

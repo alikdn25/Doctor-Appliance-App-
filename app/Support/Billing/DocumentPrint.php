@@ -84,7 +84,6 @@ class DocumentPrint
             'terms' => $brand?->invoice_terms,
             'footer' => $brand?->invoice_footer,
             'approval' => $estimate ? self::approval($document, $money) : null,
-            // Good / Better / Best with each one's total.
         ];
     }
 

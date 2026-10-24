@@ -80,6 +80,14 @@ export default function BusinessExpenses({
     today: string;
 }) {
     const t = useTrans();
+    // My expenses (technicians): what was paid, no taxes.
+    const amountFields = companyView
+        ? (['price', 'tax', 'total'] as const)
+        : (['total'] as const);
+    const fieldLabel = (field: string) =>
+        !companyView && field === 'total'
+            ? 'expenses.fields.amount_paid'
+            : `expenses.fields.${field}`;
     const money = useMoney(currency);
     const time = useCompanyTime();
     const { errors } = usePage().props;
@@ -324,19 +332,15 @@ export default function BusinessExpenses({
                                         ).map((total) => (
                                             <div
                                                 key={total.currency}
-                                                className="grid grid-cols-3 gap-2 py-1 text-xs"
+                                                className={`grid gap-2 py-1 text-xs ${companyView ? 'grid-cols-3' : 'grid-cols-1'}`}
                                             >
-                                                {(
-                                                    [
-                                                        'price',
-                                                        'tax',
-                                                        'total',
-                                                    ] as const
-                                                ).map((field) => (
+                                                {amountFields.map((field) => (
                                                     <div key={field}>
                                                         <span className="text-muted-foreground">
                                                             {t(
-                                                                `expenses.fields.${field}`,
+                                                                fieldLabel(
+                                                                    field,
+                                                                ),
                                                             )}
                                                         </span>
                                                         <p className="mt-1 font-medium break-words tabular-nums">
@@ -359,20 +363,12 @@ export default function BusinessExpenses({
                                             <th className="px-4 py-3 text-left">
                                                 {t('expenses.fields.category')}
                                             </th>
-                                            {(
-                                                [
-                                                    'price',
-                                                    'tax',
-                                                    'total',
-                                                ] as const
-                                            ).map((field) => (
+                                            {amountFields.map((field) => (
                                                 <th
                                                     key={field}
                                                     className="px-4 py-3 text-right"
                                                 >
-                                                    {t(
-                                                        `expenses.fields.${field}`,
-                                                    )}
+                                                    {t(fieldLabel(field))}
                                                 </th>
                                             ))}
                                             <th className="w-14">
@@ -428,18 +424,22 @@ export default function BusinessExpenses({
                                                                 {total.currency}
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
-                                                            {money(
-                                                                total.price,
-                                                                total.currency,
-                                                            )}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
-                                                            {money(
-                                                                total.tax,
-                                                                total.currency,
-                                                            )}
-                                                        </td>
+                                                        {companyView && (
+                                                            <>
+                                                                <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
+                                                                    {money(
+                                                                        total.price,
+                                                                        total.currency,
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
+                                                                    {money(
+                                                                        total.tax,
+                                                                        total.currency,
+                                                                    )}
+                                                                </td>
+                                                            </>
+                                                        )}
                                                         <td className="px-4 py-3 text-right font-medium whitespace-nowrap tabular-nums">
                                                             {money(
                                                                 total.total,
@@ -549,15 +549,13 @@ export default function BusinessExpenses({
                                             )}
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2 text-xs">
-                                        {(
-                                            ['price', 'tax', 'total'] as const
-                                        ).map((field) => (
+                                    <div
+                                        className={`grid gap-2 text-xs ${companyView ? 'grid-cols-3' : 'grid-cols-1'}`}
+                                    >
+                                        {amountFields.map((field) => (
                                             <div key={field}>
                                                 <span className="text-muted-foreground">
-                                                    {t(
-                                                        `expenses.fields.${field}`,
-                                                    )}
+                                                    {t(fieldLabel(field))}
                                                 </span>
                                                 <p className="mt-1 font-medium break-words tabular-nums">
                                                     {money(
@@ -584,16 +582,14 @@ export default function BusinessExpenses({
                                                 'date',
                                                 'description',
                                                 'category',
-                                                'price',
-                                                'tax',
-                                                'total',
+                                                ...amountFields,
                                             ] as const
                                         ).map((field) => (
                                             <th
                                                 key={field}
                                                 className={`px-4 py-3 ${['price', 'tax', 'total'].includes(field) ? 'text-right' : 'text-left'}`}
                                             >
-                                                {t(`expenses.fields.${field}`)}
+                                                {t(fieldLabel(field))}
                                             </th>
                                         ))}
                                         <th>
@@ -630,18 +626,22 @@ export default function BusinessExpenses({
                                             <td className="px-4 py-3">
                                                 {expense.category}
                                             </td>
-                                            <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
-                                                {money(
-                                                    expense.amount,
-                                                    expense.currency,
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
-                                                {money(
-                                                    expense.tax_amount,
-                                                    expense.currency,
-                                                )}
-                                            </td>
+                                            {companyView && (
+                                                <>
+                                                    <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
+                                                        {money(
+                                                            expense.amount,
+                                                            expense.currency,
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
+                                                        {money(
+                                                            expense.tax_amount,
+                                                            expense.currency,
+                                                        )}
+                                                    </td>
+                                                </>
+                                            )}
                                             <td className="px-4 py-3 text-right font-medium whitespace-nowrap tabular-nums">
                                                 {money(
                                                     expense.total,

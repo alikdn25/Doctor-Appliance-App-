@@ -5,6 +5,7 @@ export type CalendarVisit = Visit & {
     end_minutes: number;
     on_site_minutes: number;
     assignee_ids: number[];
+    route_position: number | null;
     conflict: boolean;
     movable: boolean;
     job: {
@@ -53,6 +54,31 @@ export const inLane = (visit: CalendarVisit, lane: Lane) =>
     lane.id === null
         ? visit.assignee_ids.length === 0
         : visit.assignee_ids.includes(lane.id);
+
+/**
+ * One person's day in order: by the window, with the visits put in order on the map ("Apply") in their saved order
+ * in the places such visits take (the same rule as the Map tab).
+ */
+export const dayOrder = (visits: CalendarVisit[]) => {
+    const byTime = [...visits].sort(
+        (a, b) =>
+            a.date.localeCompare(b.date) ||
+            a.start_minutes - b.start_minutes ||
+            a.id - b.id,
+    );
+    const saved = byTime
+        .filter((visit) => visit.route_position !== null)
+        .sort(
+            (a, b) =>
+                (a.route_position ?? 0) - (b.route_position ?? 0) ||
+                a.id - b.id,
+        );
+    let next = 0;
+
+    return byTime.map((visit) =>
+        visit.route_position !== null ? saved[next++] : visit,
+    );
+};
 
 export const toTime = (minutes: number) => {
     const m = Math.max(0, Math.min(minutes, 24 * 60 - 15));

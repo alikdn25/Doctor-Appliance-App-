@@ -1,3 +1,44 @@
+# October 24 — Owner's task: Map tab, route, estimates, app update
+
+1. **Map tab** in the bottom bar for every role and menu (Field: Today · Calendar · Map · Invoices; Office: Today ·
+   Calendar · Map · Jobs; technician: Today · Map · Mileage, My expenses moved to More and its group opens by
+   itself). The bar had 4 items, so Invoices stayed. The calendar keeps its Map view; More has no Map item.
+2. **What the map shows** (`/map`): the chosen day's jobs (today by default, ‹ › and a date picker), pins numbered
+   in each person's order and coloured by job status, a technician filter for the office. A technician sees only
+   visits assigned to them.
+3. **Pin card**: customer, address, arrival window, technician, status; Navigate, Call (occupant, else customer),
+   Open job. Owner / Office: "Move to another technician" (the existing transfer).
+4. **Route**: Route draws the day (by road when Google Directions answers, otherwise straight lines) with driving
+   time and km/mi; Optimize suggests a better order that keeps the arrival windows (every order up to 8 stops,
+   step-by-step improvement above; started jobs stay first) and says how much time it saves; Apply saves the order
+   (`job_visits.route_position`), and the calendar and My Jobs follow it; Open in Google Maps sends the day's route
+   (split in parts of 4 stops on a phone). Road times come from Google Distance Matrix when the key allows,
+   otherwise they are estimated from coordinates (marked "Approximate"). Moving a visit to another time or person
+   clears its saved position.
+5. **Good / Better / Best**: the last mentions are gone from the code (model, revise, save, print). The unused
+   `estimate_items.option_name` column stays: dropping it removes data and needs the owner's approval
+   (database/approved-destructive-migrations.php). "Mark approved" now always recalculates the total.
+6. Checked: online estimate approval is Approve (with signature) / Decline only, the office has "Mark approved" —
+   already there, a test now pins it. Square-style receipt, sent only by "Send receipt" — already there. "Now" first
+   when booking for today, started windows hidden — already in Book customer; added to the full job form.
+   My expenses — own entries only already; now without taxes (amount paid only; taxes the office split off stay).
+7. **App update**: "New version available · Update" after a deploy, checked on opening, on returning to the app and
+   every 30 minutes (`GET /app-version`); the version is the deploy commit (`storage/app/release`, written by
+   deploy.sh) plus the built assets. Update refreshes the service worker and reloads. While a form or sheet with
+   typed changes is open the banner waits.
+8. Everything works in the installed app (same pages, no new service worker rules).
+
+- Fix found by CI: `/app-version` and the route planning have their own rate limits (a plain `throttle:N,1` shares
+  one counter per person across routes, so frequent version checks used up "Paste from message").
+
+- **Migration** `2026_10_31_000100_add_route_position_to_job_visits` (nullable column, nothing changes for existing
+  visits).
+- Tests: DayMapTest (technician sees only own jobs, office filter, Apply order, calendar/My Jobs follow, isolation,
+  move to another technician, plan and planner), AppVersionTest, BusinessExpenseTest (My expenses without taxes),
+  OnlineEstimateApprovalTest (no Good / Better / Best, Approve / Decline only, Mark approved), RoleAccessTest;
+  browser zz-map-update (Map tab, card, technician, update banner waits for a form), navigation.
+- Next: PR 3 — estimates, company locations and logo, the job report, who gets what.
+
 # October 24 — Owner's update: job page editing, Costs & profit, keyboard, More menu
 
 - **Costs & profit** on the job page: only the Owner, only on a closed job.
