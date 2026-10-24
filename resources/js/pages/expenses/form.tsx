@@ -19,11 +19,12 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
 import { index, store, update } from '@/routes/expenses';
-import type { ExpenseCategory, ExpenseRow } from './types';
+import type { ExpenseCategory, ExpenseJob, ExpenseRow } from './types';
 
 type ExpenseForm = {
     _method: 'post' | 'put';
     category_id: string;
+    service_job_id: string;
     new_category: string;
     spent_on: string;
     description: string;
@@ -44,9 +45,15 @@ export default function BusinessExpenseForm({
     today,
     taxRates,
     recentCategoryIds = [],
+    jobs = [],
+    jobId = null,
 }: {
     expense: ExpenseRow | null;
     categories: ExpenseCategory[];
+    /** The jobs it can be for (the person's recent ones). */
+    jobs?: ExpenseJob[];
+    /** Opened from a job page: that job is chosen. */
+    jobId?: number | null;
     currency: string;
     today: string;
     taxRates: TaxOption[];
@@ -61,6 +68,7 @@ export default function BusinessExpenseForm({
     const form = useForm<ExpenseForm>({
         _method: expense ? 'put' : 'post',
         category_id: expense ? String(expense.category_id) : '',
+        service_job_id: String(expense?.service_job_id ?? jobId ?? ''),
         new_category: '',
         spent_on: expense?.spent_on ?? today,
         description: expense?.description ?? '',
@@ -313,6 +321,36 @@ export default function BusinessExpenseForm({
                                     form.setData('merchant', event.target.value)
                                 }
                             />
+                        </FormField>
+                        {/* Optional: an expense for a job counts in that job's Costs. */}
+                        <FormField
+                            id="service_job_id"
+                            label={t('expenses.fields.job')}
+                            hint={t('expenses.fields.job_hint')}
+                            error={fieldErrors.service_job_id}
+                            className="sm:col-span-2"
+                        >
+                            <NativeSelect
+                                id="service_job_id"
+                                value={form.data.service_job_id}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'service_job_id',
+                                        event.target.value,
+                                    )
+                                }
+                            >
+                                <option value="">
+                                    {t('expenses.fields.job_none')}
+                                </option>
+                                {jobs.map((job) => (
+                                    <option key={job.id} value={job.id}>
+                                        {[`#${job.number}`, job.customer]
+                                            .filter(Boolean)
+                                            .join(' · ')}
+                                    </option>
+                                ))}
+                            </NativeSelect>
                         </FormField>
                         <FormField
                             id="amount"

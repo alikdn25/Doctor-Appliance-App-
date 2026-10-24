@@ -63,8 +63,8 @@ return [
     'my_menu' => 'My menu',
     'menu_field' => 'Field',
     'menu_office' => 'Office',
-    'menu_field_hint' => 'I go on calls: Today · Calendar · Book · Invoices, plus customers, mileage and expenses.',
-    'menu_office_hint' => 'I run the business: Today · Calendar · Book · Jobs, plus reports, team and settings.',
+    'menu_field_hint' => 'Today · Calendar · Invoices',
+    'menu_office_hint' => 'Today · Calendar · Jobs',
     'profile' => 'Profile',
     'back' => 'Back',
 ];

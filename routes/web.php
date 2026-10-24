@@ -43,6 +43,7 @@ use App\Http\Controllers\Jobs\JobBacklogController;
 use App\Http\Controllers\Jobs\JobCloseController;
 use App\Http\Controllers\Jobs\JobController;
 use App\Http\Controllers\Jobs\JobCostController;
+use App\Http\Controllers\Jobs\JobDetailsController;
 use App\Http\Controllers\Jobs\JobFieldController;
 use App\Http\Controllers\Jobs\JobMessageController;
 use App\Http\Controllers\Jobs\JobNoteController;
@@ -163,6 +164,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('technicians/load', [AssignmentController::class, 'load'])->name('technicians.load');
         Route::get('team/{membership}/open-visits', [AssignmentController::class, 'openVisits'])->name('technicians.open-visits');
         Route::put('jobs/{job}/address', JobAddressController::class)->name('jobs.address');
+        Route::put('jobs/{job}/details', JobDetailsController::class)->name('jobs.details');
         Route::put('jobs/{job}/technician', [AssignmentController::class, 'assign'])->name('jobs.technician');
         Route::post('visits/transfer', [AssignmentController::class, 'transfer'])->name('visits.transfer');
         Route::post('visits/{visit}/on-my-way', [VisitActionController::class, 'onMyWay'])->name('visits.on-my-way');

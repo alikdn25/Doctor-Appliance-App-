@@ -10,14 +10,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * Company overhead, independent of jobs, invoices and customer-facing documents.
+ * A business expense: company overhead, or a cost of one job when it is linked to it (then it counts in that job's
+ * Costs and profit, not in the overhead). Never on customer-facing documents.
  * Price and the tax paid are stored separately in the expense's original currency.
  */
 class BusinessExpense extends Model
 {
     use BelongsToCompany, SoftDeletes;
 
-    protected $fillable = ['category_id', 'spent_on', 'description', 'merchant', 'amount', 'tax_amount', 'taxes', 'notes'];
+    protected $fillable = ['category_id', 'service_job_id', 'spent_on', 'description', 'merchant', 'amount', 'tax_amount', 'taxes', 'notes'];
 
     protected function casts(): array
     {
@@ -29,10 +30,29 @@ class BusinessExpense extends Model
         return $this->amount + $this->tax_amount;
     }
 
+    /**
+     * What it costs the company: the price plus the taxes that are not recovered.
+     *
+     * @param  list<int>  $recoverable  Ids of the tax rates the company recovers
+     */
+    public function cost(array $recoverable): int
+    {
+        return $this->amount + ($this->taxes === null
+            // Older entries with one undivided tax amount count it in full.
+            ? $this->tax_amount
+            : (int) collect($this->taxes)->reject(fn (array $tax) => in_array((int) ($tax['tax_rate_id'] ?? 0), $recoverable, true))->sum('amount'));
+    }
+
     /** @return BelongsTo<BusinessExpenseCategory, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(BusinessExpenseCategory::class, 'category_id');
+    }
+
+    /** @return BelongsTo<ServiceJob, $this> */
+    public function job(): BelongsTo
+    {
+        return $this->belongsTo(ServiceJob::class, 'service_job_id')->withTrashed();
     }
 
     /** @return BelongsTo<User, $this> */

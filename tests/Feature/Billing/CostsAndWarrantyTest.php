@@ -209,6 +209,8 @@ test('the job profit takes revenue without tax, all costs and processor fees', f
         ->and($profit['fees'])->toBe(59)
         ->and($profit['profit'])->toBe(62900 - 29980 - 59);
 
+    // The block is the Owner's, on a closed job.
+    inCompany($this->company, fn () => $this->job->forceFill(['closed_at' => now()])->save());
     $this->get(route('jobs.show', $this->job))->assertInertia(fn (Assert $page) => $page->where('costs.profit.profit', 62900 - 29980 - 59));
     $this->actingAs($this->tech)->get(route('jobs.show', $this->job))->assertInertia(fn (Assert $page) => $page->where('costs', null));
 });

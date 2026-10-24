@@ -4,6 +4,7 @@ namespace App\Http\Requests\Accounting;
 
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Models\BusinessExpense;
+use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Billing\MoneyInput;
 use App\Support\Locale\Currencies;
@@ -44,6 +45,13 @@ class BusinessExpenseRequest extends FormRequest
                     ->where(fn ($query) => $query->where('is_active', true)->orWhere('id', $expense?->category_id ?? 0)),
             ],
             'new_category' => ['nullable', 'required_without:category_id', 'string', 'max:80'],
+            // Optional: the job it was for (one the person may see); kept when it is the job saved before.
+            'service_job_id' => ['nullable', 'integer', function (string $attribute, mixed $value, \Closure $fail) use ($expense) {
+                $kept = $expense instanceof BusinessExpense && (int) $expense->service_job_id === (int) $value;
+                if (! $kept && ! ServiceJob::query()->visibleTo($this->user())->whereKey((int) $value)->exists()) {
+                    $fail(__('expenses.job_invalid'));
+                }
+            }],
             'spent_on' => ['required', 'date_format:Y-m-d'],
             'description' => ['required', 'string', 'max:255'],
             'merchant' => ['nullable', 'string', 'max:150'],
@@ -66,6 +74,7 @@ class BusinessExpenseRequest extends FormRequest
         $expense = $this->route('expense');
         $currency = $expense instanceof BusinessExpense ? $expense->currency : currentCompany()->currency;
 
+        $data['service_job_id'] = isset($data['service_job_id']) ? (int) $data['service_job_id'] : null;
         $data['amount'] = Currencies::toMinor($data['amount'], $currency);
         if ($this->boolean('use_named_taxes')) {
             $kept = collect($expense?->taxes ?? [])->keyBy('tax_rate_id');

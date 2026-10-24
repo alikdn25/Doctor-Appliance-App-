@@ -9,6 +9,7 @@ export type ExpenseCategory = {
 export type ExpenseRow = {
     id: number;
     category_id: number;
+    service_job_id: number | null;
     category: string;
     spent_on: string;
     description: string;
@@ -32,4 +33,11 @@ export type ExpenseRow = {
     can_update: boolean;
     can_delete: boolean;
     notes?: string | null;
+};
+
+/** A job an expense can be for: "#1005 · Jane Smith". */
+export type ExpenseJob = {
+    id: number;
+    number: number;
+    customer: string | null;
 };

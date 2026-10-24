@@ -10,7 +10,6 @@ import {
     FileText,
     Flag,
     KeyRound,
-    MapPin,
     MapPinPlus,
     ListChecks,
     MessageSquare,
@@ -55,6 +54,8 @@ import type {
     ClosureReasons,
 } from '@/components/jobs/finish-dialog';
 import { JobAddressSheet } from '@/components/jobs/job-address-sheet';
+import { JobEditSheet } from '@/components/jobs/job-edit-sheet';
+import type { JobEditCustomer } from '@/components/jobs/job-edit-sheet';
 import { JobApplianceDialog } from '@/components/jobs/job-appliance-dialog';
 import { JobCostsSection } from '@/components/jobs/job-costs';
 import type { JobCosts } from '@/components/jobs/job-costs';
@@ -117,12 +118,7 @@ import {
     techNotes,
     technician as technicianRoute,
 } from '@/routes/jobs';
-import {
-    destroy as destroyVisit,
-    finishScreen,
-    onMyWay,
-    start,
-} from '@/routes/visits';
+import { finishScreen, onMyWay, start } from '@/routes/visits';
 import type { Option } from '@/types';
 
 type Job = {
@@ -155,7 +151,7 @@ type Job = {
     created_at: string | null;
     completed_at: string | null;
     allows_visit_work: boolean;
-    customer: {
+    customer: JobEditCustomer & {
         id: number;
         display_name: string;
         avatar_icon: AvatarIcon;
@@ -459,6 +455,7 @@ export default function JobShow({
         'job' | 'notes' | 'messages' | 'files' | 'history'
     >('job');
     const [addressOpen, setAddressOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
     const textFromPhone =
         messaging.mode === 'technician_phone' &&
         messaging.phone &&
@@ -554,14 +551,6 @@ export default function JobShow({
 
     const [deleteOpen, setDeleteOpen] = useState(false);
     const remove = () => setDeleteOpen(true);
-
-    const removeVisit = (visit: Visit) => {
-        if (confirm(t('jobs.confirm_delete_visit'))) {
-            router.delete(destroyVisit(visit.id).url, {
-                preserveScroll: true,
-            });
-        }
-    };
 
     const onMyWayNow = (visit: Visit) => {
         // From the technician's phone: the messages app opens with the text ready; the status change records
@@ -792,100 +781,6 @@ export default function JobShow({
         </Section>
     );
 
-    const schedule = (
-        <Section title={t('jobs.sections.visits')}>
-            {current ? (
-                <div className="da-card space-y-1 p-3">
-                    <div className="flex items-start gap-2">
-                        <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                                {time.window(
-                                    current.scheduled_start,
-                                    current.scheduled_end,
-                                )}
-                                {current.strict_arrival && <StrictBadge />}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                                {current.assignees.length > 0
-                                    ? current.assignees
-                                          .map((a) => a.name)
-                                          .join(', ')
-                                    : t('jobs.unassigned')}
-                                {current.estimated_duration_minutes &&
-                                    ` · ${t('jobs.estimated_on_site', { time: formatMinutes(current.estimated_duration_minutes, t) })}`}
-                            </div>
-                        </div>
-                        {can.update && (
-                            <div className="flex">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    aria-label={t('jobs.edit_visit')}
-                                    onClick={() =>
-                                        setVisitDialog({
-                                            open: true,
-                                            visit: current,
-                                        })
-                                    }
-                                >
-                                    <Pencil />
-                                </Button>
-                                {current.status === 'scheduled' && (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        aria-label={t('jobs.delete_visit')}
-                                        onClick={() => removeVisit(current)}
-                                    >
-                                        <Trash2 />
-                                    </Button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                    {(current.on_the_way_at || current.started_at) && (
-                        <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                            {(['on_the_way_at', 'started_at'] as const).map(
-                                (field) =>
-                                    current[field] && (
-                                        <div key={field}>
-                                            <dt className="inline">
-                                                {t(`jobs.visit_times.${field}`)}
-                                                :{' '}
-                                            </dt>
-                                            <dd className="inline">
-                                                {time.time(current[field])}
-                                            </dd>
-                                        </div>
-                                    ),
-                            )}
-                        </dl>
-                    )}
-                </div>
-            ) : (
-                <p className="text-sm text-muted-foreground">
-                    {t('jobs.no_visits')}
-                </p>
-            )}
-            {!current &&
-                can.update &&
-                !['cancelled', 'invoiced', 'paid'].includes(job.status) && (
-                    <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() =>
-                            setVisitDialog({ open: true, visit: null })
-                        }
-                    >
-                        <CalendarPlus />{' '}
-                        {job.visits.length > 0
-                            ? t('jobs.schedule_again')
-                            : t('jobs.add_visit')}
-                    </Button>
-                )}
-        </Section>
-    );
-
     return (
         <>
             <Head title={t('jobs.job_number', { number: job.number })} />
@@ -1056,11 +951,8 @@ export default function JobShow({
                             >
                                 {current ? (
                                     <>
-                                        {time.isToday(current.scheduled_start)
-                                            ? t('jobs.tabs.today')
-                                            : time.day(current.scheduled_start)}
-                                        {' · '}
-                                        {time.window(
+                                        {/* "Tue, Oct 20 · 3:00–5:00 p.m.": the day once, then the window. */}
+                                        {time.dayWindow(
                                             current.scheduled_start,
                                             current.scheduled_end,
                                         )}
@@ -1075,6 +967,19 @@ export default function JobShow({
                                 )}
                             </p>
                         </div>
+                        {/* Pencil: name, address, date, window and technician in one sheet. */}
+                        {can.update && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-11 shrink-0"
+                                aria-label={t('jobs.details.edit')}
+                                onClick={() => setEditOpen(true)}
+                                data-test="job-edit"
+                            >
+                                <Pencil />
+                            </Button>
+                        )}
                     </div>
 
                     {/* Technician: one tap opens the choice with each person's load (team only). */}
@@ -1250,20 +1155,6 @@ export default function JobShow({
                             })}
                         </div>
                     )}
-
-                    <div className="flex flex-wrap gap-x-4">
-                        {hasAddress && can.update && (
-                            <button
-                                type="button"
-                                className="flex min-h-11 items-center gap-1.5 text-sm font-medium text-link"
-                                onClick={() => setAddressOpen(true)}
-                                data-test="job-change-address"
-                            >
-                                <MapPin className="size-4" />
-                                {t('jobs.address.change')}
-                            </button>
-                        )}
-                    </div>
 
                     {/* Other numbers, e.g. the second person of a couple: Call and SMS for each. */}
                     {job.customer.phones.length > 1 && (
@@ -1519,7 +1410,6 @@ export default function JobShow({
                                                 </p>
                                             </Section>
                                         )}
-                                        {schedule}
                                         {documents}
                                         {job.signature && (
                                             <SignatureSection
@@ -1844,6 +1734,36 @@ export default function JobShow({
                     currentId={technicians[0]?.id ?? null}
                     allowNone
                     onPick={assign}
+                />
+            )}
+            {can.update && (
+                <JobEditSheet
+                    open={editOpen}
+                    onOpenChange={setEditOpen}
+                    jobId={job.id}
+                    customer={job.customer}
+                    canRename={can.updateCustomer}
+                    propertyId={property.id}
+                    currentAddress={hasAddress ? property.full_address : ''}
+                    otherAddresses={otherAddresses}
+                    when={
+                        current
+                            ? {
+                                  date: current.date,
+                                  start_time: current.start_time,
+                                  end_time: current.end_time,
+                              }
+                            : null
+                    }
+                    today={today}
+                    technicianId={technicians[0]?.id ?? null}
+                    technicians={
+                        can.assign && !worksAlone ? assignableUsers : null
+                    }
+                    canNotify={!draft}
+                    removableVisitId={
+                        current?.status === 'scheduled' ? current.id : null
+                    }
                 />
             )}
             {can.work && (

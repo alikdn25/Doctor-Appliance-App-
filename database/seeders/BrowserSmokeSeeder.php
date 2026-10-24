@@ -80,6 +80,11 @@ class BrowserSmokeSeeder extends Seeder
                     ['description' => 'Part GST and PST', 'quantity' => '1', 'unit_price' => 5000, 'taxable' => true, 'tax_rate_ids' => [$gst->id, $pst->id]],
                 ],
             ], $owner);
+            // Its own open job for the job page's edit sheet, booked in three days (not on today's lists).
+            $editJob = ServiceJob::factory()->for($property)->withVisit($tech, [
+                'scheduled_start' => now()->startOfDay()->addDays(3)->setTime(10, 0),
+                'scheduled_end' => now()->startOfDay()->addDays(3)->setTime(12, 0),
+            ])->create(['brand_id' => $brand->id, 'description' => 'Browser edit sheet job']);
             $category = BusinessExpenseCategory::create(['name' => 'Tools']);
             $category->forceFill(['created_by' => $owner->id])->save();
             $expense = new BusinessExpense([
@@ -99,6 +104,7 @@ class BrowserSmokeSeeder extends Seeder
 
             return [
                 'customer_id' => $customer->id, 'job_id' => $job->id, 'waiting_job_id' => $waiting->id, 'finished_job_id' => $finished->id,
+                'edit_job_id' => $editJob->id,
                 'invoice_id' => $invoice->id, 'public_token' => PublicDocument::token($invoice),
                 'gst_id' => $gst->id, 'pst_id' => $pst->id, 'today' => now()->toDateString(),
             ];
