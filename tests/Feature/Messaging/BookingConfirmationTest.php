@@ -44,20 +44,21 @@ beforeEach(function () {
     $this->actingAs($this->owner);
 });
 
-test('the preview names the day, window and address and shows where it can go', function () {
+test('the preview names the day, window and address and says how it goes', function () {
     $this->getJson(route('jobs.booking-confirmation.show', $this->job))
         ->assertOk()
-        ->assertJsonPath('email', 'payer@example.com')
-        ->assertJsonPath('sms.to', '+16045550142')
-        ->assertJsonPath('sms.blocked', null)
+        ->assertJsonPath('channel', 'sms')
+        ->assertJsonPath('to', '+16045550142')
+        ->assertJsonPath('reason', null)
         ->assertJson(fn ($json) => $json->where('body', fn (string $body) => str_contains($body, 'Hi Paula')
             && str_contains($body, 'Doctor Appliance')
             && str_contains($body, 'Thursday, Oct 15')
+            && str_contains($body, '9:00 a.m. - 11:00 a.m.')
             && str_contains($body, '500 Rental Ave'))->etc());
 });
 
-test('by SMS it goes to the customer\'s phone, not the occupant\'s', function () {
-    $this->post(route('jobs.booking-confirmation.send', $this->job), ['channel' => 'sms'])->assertSessionHasNoErrors();
+test('Resend goes by SMS to the customer\'s phone, not the occupant\'s', function () {
+    $this->post(route('jobs.booking-confirmation.send', $this->job))->assertSessionHasNoErrors();
 
     $message = inCompany($this->company, fn () => Message::query()->sole());
     expect($message->kind->value)->toBe('booking_confirmation')
@@ -67,49 +68,59 @@ test('by SMS it goes to the customer\'s phone, not the occupant\'s', function ()
     Http::assertNotSent(fn (Request $request) => ($request['To'] ?? null) === '+16045550177');
 });
 
-test('by email it goes to the customer\'s email', function () {
-    $this->post(route('jobs.booking-confirmation.send', $this->job), ['channel' => 'email'])->assertSessionHasNoErrors();
+test('when a text cannot go it is emailed instead', function () {
+    inCompany($this->company, fn () => $this->customer->phones()->update(['sms_opted_out_at' => now()]));
+
+    $this->getJson(route('jobs.booking-confirmation.show', $this->job))
+        ->assertJsonPath('channel', 'email')->assertJsonPath('to', 'payer@example.com')
+        ->assertJsonPath('reason', __('messages.blocked.opted_out'));
+    $this->post(route('jobs.booking-confirmation.send', $this->job))->assertSessionHasNoErrors();
 
     $message = inCompany($this->company, fn () => Message::query()->sole());
     expect($message->channel)->toBe(Message::EMAIL)->and($message->to)->toBe('payer@example.com');
     Mail::assertQueued(CustomerMessageMail::class, fn (CustomerMessageMail $mail) => $mail->hasTo('payer@example.com'));
 });
 
-test('without an email the email is recorded as not sent', function () {
-    inCompany($this->company, fn () => $this->customer->emails()->delete());
+test('without a phone that can be texted or an email nothing goes and the reason is said', function () {
+    inCompany($this->company, function () {
+        $this->customer->phones()->update(['sms_opted_out_at' => now()]);
+        $this->customer->emails()->delete();
+    });
 
-    $this->post(route('jobs.booking-confirmation.send', $this->job), ['channel' => 'email']);
+    $this->getJson(route('jobs.booking-confirmation.show', $this->job))->assertJsonPath('channel', null);
+    $this->post(route('jobs.booking-confirmation.send', $this->job));
 
-    expect(inCompany($this->company, fn () => Message::query()->sole()->status))->toBe('blocked');
+    expect(inCompany($this->company, fn () => Message::query()->count()))->toBe(0);
+    expect(session('inertia.flash_data.toast.type'))->toBe('error');
     Mail::assertNothingQueued();
 });
 
-test('SMS from the app only in Automatic mode', function () {
+test('with SMS off nothing is sent', function () {
     $this->company->update(['sms_mode' => 'off']);
 
-    $this->getJson(route('jobs.booking-confirmation.show', $this->job))->assertJsonPath('sms.mode', 'off')
-        ->assertJsonPath('sms.blocked', __('jobs.confirmation.sms_off'));
-    $this->post(route('jobs.booking-confirmation.send', $this->job), ['channel' => 'sms'])->assertNotFound();
+    $this->getJson(route('jobs.booking-confirmation.show', $this->job))
+        ->assertJsonPath('channel', null)->assertJsonPath('reason', __('jobs.confirmation.sms_off'));
+    $this->post(route('jobs.booking-confirmation.send', $this->job));
+
+    expect(inCompany($this->company, fn () => Message::query()->count()))->toBe(0);
+    Mail::assertNothingQueued();
+    Http::assertNothingSent();
 });
 
-test('a booking opens the confirmation prompt', function () {
-    $this->post(route('jobs.store'), [
-        'quick_booking' => true, 'brand_id' => $this->brand->id, 'job_type' => 'repair',
-        'new_customer_mode' => false, 'customer_id' => $this->customer->id, 'property_id' => $this->property->id,
-        'add_visit' => true,
-        'visit' => ['date' => '2026-10-16', 'start_time' => '09:00', 'end_time' => '11:00', 'assignee_ids' => [$this->owner->id]],
-    ])->assertSessionHasNoErrors();
+test('from the technician\'s phone the page opens the messages app with the text', function () {
+    $this->company->update(['sms_mode' => 'technician_phone']);
 
-    $job = inCompany($this->company, fn () => ServiceJob::query()->latest('id')->first());
-    expect(session('inertia.flash_data.booking_confirmation'))->toMatchArray(['job_id' => $job->id, 'number' => $job->number]);
+    $this->getJson(route('jobs.booking-confirmation.show', $this->job))
+        ->assertJsonPath('channel', 'phone')->assertJsonPath('to', '+16045550142');
+    Http::assertNothingSent();
 });
 
 test('another company\'s job is not found and a collector cannot send', function () {
     $stranger = memberOf(Company::factory()->create());
     $collector = memberOf($this->company, UserRole::Collector);
     $this->actingAs($stranger)->getJson(route('jobs.booking-confirmation.show', $this->job))->assertNotFound();
+    $this->actingAs($stranger)->post(route('jobs.booking-confirmation.send', $this->job))->assertNotFound();
 
-    $this->actingAs($collector)
-        ->post(route('jobs.booking-confirmation.send', $this->job), ['channel' => 'email'])->assertForbidden();
+    $this->actingAs($collector)->post(route('jobs.booking-confirmation.send', $this->job))->assertForbidden();
     expect(inCompany($this->company, fn () => Message::query()->count()))->toBe(0);
 });

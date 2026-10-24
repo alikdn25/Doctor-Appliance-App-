@@ -18,13 +18,14 @@ import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { InboxHeaderButton } from '@/components/inbox-header-button';
 import { cardButton, JobCard } from '@/components/jobs/job-card';
 import { StrictBadge } from '@/components/jobs/job-outcome';
-import { QuickTripSheet } from '@/components/jobs/quick-trip-sheet';
 import { TechnicianPicker } from '@/components/jobs/technician-picker';
+import { TaskList } from '@/components/tasks/task-list';
+import { TaskSheet } from '@/components/tasks/task-sheet';
+import type { TaskItem } from '@/components/tasks/types';
 import type { Visit } from '@/components/jobs/types';
 import { openSmsApp } from '@/components/messaging/job-messaging';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
-import { Fab } from '@/components/ui/fab';
 import { FilterChips } from '@/components/ui/filter-chips';
 import { Input } from '@/components/ui/input';
 import { ListRow } from '@/components/ui/list-row';
@@ -77,7 +78,7 @@ const shiftDay = (ymd: string, by: number) => {
 /**
  * My Jobs (UX-REDESIGN §6.1, §24): [Day | Completed] with ‹ date › on one line, the day in one sentence
  * ("3 jobs · next at 1 p.m."), compact cards with Navigate, Call and the visit step (On my way, Start job,
- * Finish visit), the next job outlined, and + Trip as a floating button.
+ * Finish visit) and the next job outlined. Trips and tasks start from the round "+" (CreateFab).
  */
 export default function MyJobs({
     tab,
@@ -87,10 +88,10 @@ export default function MyJobs({
     visits,
     cashOnHand = {},
     othersOnDay = 0,
-    recentStops = [],
+    tasks = [],
 }: {
     tab: Tab;
-    recentStops?: string[];
+    tasks?: TaskItem[];
     othersOnDay?: number;
     date: string;
     today: string;
@@ -101,6 +102,7 @@ export default function MyJobs({
     const t = useTrans();
     const time = useCompanyTime();
     const install = useInstallPrompt();
+    const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
     const { auth } = usePage().props;
     // The search runs on the server over both tabs; it stays open while switching tabs.
     const [searchOpen, setSearchOpen] = useState(initialSearch !== '');
@@ -133,7 +135,6 @@ export default function MyJobs({
     }, [search]);
 
     const [status, setStatus] = useState('');
-    const [tripOpen, setTripOpen] = useState(false);
     // "Not assigned" (office, team mode): one tap opens the technician choice.
     const canAssign =
         (auth.can?.viewCalendar ?? false) && !auth.company?.works_alone;
@@ -421,6 +422,8 @@ export default function MyJobs({
                     />
                 )}
 
+                <TaskList tasks={tasks} onOpen={setEditingTask} />
+
                 {shown.length === 0 && (
                     <p className="da-card p-10 text-center text-sm text-muted-foreground">
                         {term
@@ -528,12 +531,10 @@ export default function MyJobs({
                 )}
             </div>
 
-            <Fab
-                variant="secondary"
-                label={t('jobs.tabs.add_trip')}
-                icon={<Car />}
-                onClick={() => setTripOpen(true)}
-                data-test="trip-fab"
+            <TaskSheet
+                open={editingTask !== null}
+                onOpenChange={(open) => !open && setEditingTask(null)}
+                task={editingTask}
             />
 
             {canAssign && assigning && (
@@ -557,12 +558,6 @@ export default function MyJobs({
                     }}
                 />
             )}
-
-            <QuickTripSheet
-                open={tripOpen}
-                onOpenChange={setTripOpen}
-                recent={recentStops}
-            />
         </>
     );
 }

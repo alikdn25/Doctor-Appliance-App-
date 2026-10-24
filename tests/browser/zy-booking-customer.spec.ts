@@ -112,23 +112,25 @@ test('Paste from message fills the form; a booking with an occupant asks to send
         fullPage: true,
     });
 
-    await page.getByRole('button', { name: 'Book', exact: true }).click();
+    await page
+        .getByRole('button', { name: 'Finish booking', exact: true })
+        .click();
+    // Finish booking sends the confirmation by itself (owner's task, Oct 24): the sheet says how it went.
     const confirmation = page.locator('[data-test="booking-confirmation"]');
     await expect(confirmation).toBeVisible();
-    await expect(confirmation).toContainText('77 Rental Rd');
-    await expect(confirmation).toContainText(
-        `peter.owner${digits}@example.com`,
+    await expect(confirmation).toContainText(/Booked #\d+/);
+    await expect(
+        confirmation.locator('[data-test="booking-confirmation-result"]'),
+    ).toContainText(
+        new RegExp(
+            `Confirmation (texted to|will be texted to|emailed to peter\\.owner${digits}@example\\.com)`,
+        ),
     );
     await page.screenshot({
         path: info.outputPath('380-booking-confirmation.png'),
     });
-    await confirmation.locator('[data-test="confirmation-email"]').click();
+    await confirmation.getByRole('button', { name: 'Done' }).click();
     await expect(confirmation).toHaveCount(0);
-    await expect(
-        page.getByText(
-            `Booking confirmation sent to peter.owner${digits}@example.com`,
-        ),
-    ).toBeVisible();
 });
 
 test('an existing customer picks one of their addresses or a new one, with its occupant filled in', async ({

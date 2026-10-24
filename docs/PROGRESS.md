@@ -1,3 +1,37 @@
+# October 24 — Owner's task: the "+" button, finishing a booking, the Messages tab, Overdue
+
+1. **"+" button**: Book left the bottom bar (Field and Office) and the car button left My Jobs. A round, volumetric
+   "+" with the blue glow sits above the bottom bar on every screen (hidden on screens with pinned actions, like the
+   bar). It opens, from the bottom up: **Job** (Book customer, on the calendar's day), **Expense** (new expense; a
+   technician's lands in My expenses), **Trip** (the mileage form: from, to, km; Mileage → "…" keeps the trip with
+   Navigate) and **Task**.
+2. **Tasks**: title, date, a time or all day, note, for me or (Owner/Admin) a teammate, reminder (none, at the start,
+   15 min, 1 h, 1 day; all day counts from 8:00). Shown in pink in the calendar (day and week, whose task it is) and on
+   My Jobs (own tasks), ticked done in one tap, edited and deleted in the same sheet. The reminder goes once by push,
+   email (when delivery is on) and the bell (`tasks:send-reminders`, every minute).
+3. **Finishing a booking**: Book customer ends with **Save as draft** and **Finish booking**. Finish booking saves the
+   job and sends the confirmation by itself by the SMS mode: Automatic — a text from the company number; From
+   technician's phone — "Text from my phone" opens the messages app with the text; a text that cannot go (no phone,
+   opted out, no SMS account) is emailed when there is an address; Off — nothing. The "Booked #…" sheet says how it
+   went. Save as draft → status **Draft** (orange, "Draft" chip in My Jobs, the calendar and the Jobs list), a
+   **Drafts** counter in the unfinished-jobs bar, an orange "Booking not finished" strip with Finish booking on the job
+   page (→ Scheduled + the confirmation). A finished booking whose day or window changes (edit, drag, a new time) asks
+   **"Notify client?"** (Yes / No). "Send booking confirmation" left the job page; its "…" has **Resend
+   confirmation** for finished bookings.
+4. **Messages tab**: the job page's tabs are Job · Notes · Messages · Files · History. Messages has the texts, their
+   statuses, Send SMS and Open chat. Notes has About the customer (editable) and the team's notes on the job (author
+   and time; the author or the office deletes one).
+5. **Overdue**: only after the arrival window ends — every place already compared with the window's end; a test now
+   pins it (inside the window: Scheduled; a minute after: Overdue).
+
+- **Migration** `2026_10_29_000100_create_tasks_and_job_notes`: new tables `tasks` and `job_notes` (nothing cascades,
+  soft deletes). No changes to existing data. Job status `booking_draft` needs no migration (a string column).
+- Scheduler: new `tasks:send-reminders` every minute (the existing `schedule:run` cron runs it).
+- Tests: BookingDraftTest, BookingConfirmationTest (auto channel, email fallback, Off), TaskTest, JobNotesTest,
+  JobBacklogTest (Overdue after the window), tenant isolation for tasks and job notes; browser spec
+  zz-plus-draft-tasks (390 px) and updated navigation / booking / job page specs.
+- Next: PR 3 — estimates, company locations and logo, the job report, who gets what.
+
 # October 24 — Fix after the 8cb60d8 deploy check: arrival window one hour early in texts
 
 The booking confirmation said "Arrival window: 12:00 p.m. - 2:00 p.m." for a 1:00–3:00 p.m. visit on Dec 22. PHP's

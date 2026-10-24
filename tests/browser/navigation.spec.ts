@@ -18,7 +18,7 @@ test.afterEach(async ({ page }) => {
     expect(pageErrors, 'No uncaught JavaScript errors').toEqual([]);
 });
 
-test('the owner gets Today, Calendar, Book, Jobs and More; Field swaps Jobs for Invoices', async ({
+test('the owner gets Today, Calendar, Jobs, More and the round "+"; Field swaps Jobs for Invoices', async ({
     page,
 }, info) => {
     test.skip(info.project.name !== 'mobile', 'The bottom bar is for phones');
@@ -38,11 +38,18 @@ test('the owner gets Today, Calendar, Book, Jobs and More; Field swaps Jobs for 
             .click();
         await page.keyboard.press('Escape');
     }
-    for (const key of ['today', 'calendar', 'book', 'jobs', 'more']) {
+    for (const key of ['today', 'calendar', 'jobs', 'more']) {
         await expect(
             nav.locator(`[data-test="bottom-nav-${key}"]`),
         ).toBeVisible();
     }
+    // Booking left the bar for the round "+" (owner's task, Oct 24): Job, Expense, Trip, Task from the bottom up.
+    await expect(nav.locator('[data-test="bottom-nav-book"]')).toHaveCount(0);
+    await page.locator('[data-test="create-fab"]').click();
+    const menu = page.locator('[data-test="create-menu"] button');
+    await expect(menu).toHaveText(['Task', 'Trip', 'Expense', 'Job']);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[data-test="create-menu"]')).toHaveCount(0);
     // Root screen: no back arrow, no menu button.
     await expect(page.locator('[data-test="back-button"]:visible')).toHaveCount(
         0,

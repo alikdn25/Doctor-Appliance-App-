@@ -31,7 +31,7 @@ class JobBacklogController extends Controller
     }
 
     /**
-     * Unfinished work by urgency: overdue → needs scheduling → waiting → on hold → scheduled (nearest visit first);
+     * Unfinished work by urgency: overdue → drafts → needs scheduling → waiting → on hold → scheduled (nearest visit first);
      * or, from "⋯", the newest jobs first.
      *
      * @param  array{search: string, reason: string, sort: string}  $filters
@@ -49,7 +49,7 @@ class JobBacklogController extends Controller
                 $filters['sort'] === 'newest',
                 fn ($query) => $query->orderByDesc('id'),
                 fn ($query) => $query
-                    ->orderByRaw("CASE backlog_reason WHEN 'overdue' THEN 0 WHEN 'needs_schedule' THEN 1 WHEN 'waiting_for_parts' THEN 2 WHEN 'waiting_for_customer' THEN 3 WHEN 'on_hold' THEN 4 ELSE 5 END")
+                    ->orderByRaw("CASE backlog_reason WHEN 'overdue' THEN 0 WHEN 'draft' THEN 1 WHEN 'needs_schedule' THEN 2 WHEN 'waiting_for_parts' THEN 3 WHEN 'waiting_for_customer' THEN 4 WHEN 'on_hold' THEN 5 ELSE 6 END")
                     ->orderByRaw("{$nextVisit} asc nulls last", [now()->utc()])
                     ->orderBy('created_at')
                     ->orderBy('id'),

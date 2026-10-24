@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Jobs;
 use App\Enums\JobStatus;
 use App\Enums\VisitStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Tasks\TaskController;
 use App\Models\Appliance;
 use App\Models\Company;
 use App\Models\JobVisit;
@@ -67,6 +68,8 @@ class CalendarController extends Controller
             'lanes' => $this->lanes($visits),
             // The red "now" line (§9.2): minutes since the company's midnight, on today's day view.
             'nowMinutes' => (int) $today->diffInMinutes(CarbonImmutable::now($timezone)),
+            // Tasks ("+ → Task") of the shown days, in their own colour.
+            'tasks' => TaskController::between($user, $from, $to),
             'visits' => $visits->map(fn (JobVisit $visit) => [
                 ...$this->visit($visit, $timezone),
                 'conflict' => in_array($visit->id, $conflicts, true),

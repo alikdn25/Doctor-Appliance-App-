@@ -10,6 +10,7 @@ import { useTrans } from '@/lib/i18n';
 import { useLocale } from '@/lib/locale';
 import { statusLook } from '@/lib/status';
 import { cn } from '@/lib/utils';
+import { isDraftJob } from '@/lib/status';
 
 /**
  * Week on a phone (UX-REDESIGN §9.3): an agenda, one section per day ("Fri, Oct 9 · 3 jobs") with its jobs; it
@@ -68,6 +69,8 @@ export function WeekAgenda({
                                         key={visit.id}
                                         className={cn(
                                             'flex items-center gap-2 border-l-4 pr-1',
+                                            isDraftJob(visit.job.status) &&
+                                                'bg-[var(--status-booking-draft-from)]',
                                             isFinishedJob(visit.job.status) &&
                                                 'opacity-60 grayscale',
                                         )}

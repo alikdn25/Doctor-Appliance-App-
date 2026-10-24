@@ -676,8 +676,12 @@ export default function QuickBook({
         applianceType !== '';
 
     const sending = useRef(false);
+    const [saveMode, setSaveMode] = useState<'finish' | 'draft'>('finish');
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        submitAs('finish');
+    };
+    const submitAs = (mode: 'finish' | 'draft') => {
         // A double tap fires twice before `processing` re-renders: the ref stops the second job.
         if (!ready || form.processing || sending.current) return;
         sending.current = true;
@@ -686,8 +690,10 @@ export default function QuickBook({
         const known = customer?.properties
             .find((p) => p.id === data.property_id)
             ?.appliances?.find((a) => a.type === applianceType);
+        setSaveMode(mode);
         form.transform(({ new_property, billing, ...d }) => ({
             ...d,
+            draft: booking && mode === 'draft',
             ...(needsAddress ? { new_property, property_id: null } : {}),
             // The billing address goes with the switch: off = the job address is the customer's own.
             ...(occupantOn ? { billing } : {}),
@@ -1560,12 +1566,12 @@ export default function QuickBook({
                     ))}
 
                 <StickyActionBar>
-                    <div className="flex w-full items-center gap-3">
+                    <div className="flex w-full flex-col gap-2">
                         <p
                             role="status"
                             data-test="booking-status"
                             className={cn(
-                                'min-w-0 flex-1 text-sm',
+                                'min-w-0 text-sm',
                                 ready
                                     ? 'font-semibold text-success'
                                     : 'text-muted-foreground',
@@ -1577,19 +1583,45 @@ export default function QuickBook({
                                       items: missing.join(', '),
                                   })}
                         </p>
-                        <Button
-                            type="submit"
-                            size="lg"
-                            className="shrink-0 px-8"
-                            disabled={!ready}
-                            loading={form.processing}
-                        >
-                            {t(
-                                booking
-                                    ? 'jobs.quick.book'
-                                    : 'jobs.quick.continue_invoice',
-                            )}
-                        </Button>
+                        {booking ? (
+                            // Finish booking sends the confirmation by itself; Save as draft sends nothing yet.
+                            <div className="grid grid-cols-[2fr_3fr] gap-2">
+                                <Button
+                                    type="button"
+                                    size="lg"
+                                    variant="outline"
+                                    disabled={!ready}
+                                    loading={
+                                        form.processing && saveMode === 'draft'
+                                    }
+                                    onClick={() => submitAs('draft')}
+                                    data-test="booking-save-draft"
+                                >
+                                    {t('jobs.quick.save_draft')}
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    size="lg"
+                                    disabled={!ready}
+                                    loading={
+                                        form.processing && saveMode === 'finish'
+                                    }
+                                    data-test="booking-finish"
+                                >
+                                    {t('jobs.quick.finish_booking')}
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button
+                                type="submit"
+                                size="lg"
+                                className="w-full"
+                                disabled={!ready}
+                                loading={form.processing}
+                            >
+                                {t('jobs.quick.continue_invoice')}
+                            </Button>
+                        )}
                     </div>
                 </StickyActionBar>
             </form>

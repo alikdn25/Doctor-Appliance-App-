@@ -149,15 +149,11 @@ export function useAppNavigation(): AppNavigation {
     // Technicians (and anyone without the office screens) work in the field.
     const fieldWorker = !can.viewJobs && !can.viewCalendar;
 
+    // Booking, expenses, trips and tasks start from the round "+" above the bar (owner's task, Oct 24).
     const bottom = (
         fieldWorker
             ? [today, mileage, myExpenses]
-            : [
-                  today,
-                  calendarItem,
-                  book && { ...book, title: 'nav.book', primary: true },
-                  office ? jobsItem : invoicesItem,
-              ]
+            : [today, calendarItem, office ? jobsItem : invoicesItem]
     ).filter(Boolean) as AppNavigation['bottom'];
 
     // My menu (owner's update, October 24): Field is for going on calls — jobs of the day, customers, invoices,

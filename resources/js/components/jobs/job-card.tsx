@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { OverdueFlag } from '@/components/ui/status-badge';
 import { useTrans } from '@/lib/i18n';
+import { isDraftJob } from '@/lib/status';
 import { cn } from '@/lib/utils';
 
 /** The three card buttons share the row on a phone: compact text and icon. */
@@ -94,10 +95,12 @@ export function JobCard({
         <li
             data-test="job-card"
             data-accent={accent || undefined}
+            data-draft={isDraftJob(job.status) || undefined}
             className={cn(
                 'da-card overflow-hidden',
                 office && 'flex items-center pr-3',
                 accent && 'ring-2 ring-link',
+                isDraftJob(job.status) && 'da-draft',
                 // Finished work is muted (grey) in every list.
                 isFinishedJob(job.status) && 'opacity-60 grayscale',
             )}

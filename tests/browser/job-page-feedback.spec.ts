@@ -146,7 +146,12 @@ test('my jobs: Day | Completed with ‹ date ›, the day summary, + Trip button
     await expect(
         tech.getByRole('radio', { name: 'Completed', exact: true }),
     ).toBeVisible();
-    await expect(tech.locator('[data-test="trip-fab"]')).toBeVisible();
+    // Trips start from the round "+" (owner's task, Oct 24); a technician books no jobs.
+    await expect(tech.locator('[data-test="create-fab"]')).toBeVisible();
+    await tech.locator('[data-test="create-fab"]').click();
+    await expect(tech.locator('[data-test="create-trip"]')).toBeVisible();
+    await expect(tech.locator('[data-test="create-job"]')).toHaveCount(0);
+    await tech.keyboard.press('Escape');
     await expect(tech.locator('[data-test="day-summary"]')).toContainText(
         /\d+ jobs?/,
     );

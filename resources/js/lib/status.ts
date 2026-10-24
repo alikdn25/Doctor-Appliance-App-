@@ -11,6 +11,7 @@ import {
     Package,
     PauseCircle,
     Pencil,
+    PencilLine,
     Receipt,
     RotateCcw,
     Send,
@@ -37,13 +38,15 @@ export type StatusTone =
     | 'paid'
     | 'cancelled'
     | 'draft'
+    | 'booking-draft'
     | 'declined'
     | 'refunded';
 
 type StatusLook = { tone: StatusTone; icon: LucideIcon; strike?: boolean };
 
 const looks: Record<string, StatusLook> = {
-    // Jobs and visits.
+    // Jobs and visits. A booking saved as a draft is orange (owner's task, Oct 24).
+    booking_draft: { tone: 'booking-draft', icon: PencilLine },
     new: { tone: 'new', icon: FilePlus },
     scheduled: { tone: 'scheduled', icon: CalendarDays },
     on_the_way: { tone: 'on-the-way', icon: Car },
@@ -89,4 +92,9 @@ export function statusStyle(status: string): CSSProperties {
 /** Cancelled, void and revised records are struck through in lists. */
 export function isStruckThrough(status: string): boolean {
     return statusLook(status).strike === true;
+}
+
+/** A booking saved with "Save as draft" (no confirmation sent yet). */
+export function isDraftJob(status: string): boolean {
+    return status === 'booking_draft';
 }

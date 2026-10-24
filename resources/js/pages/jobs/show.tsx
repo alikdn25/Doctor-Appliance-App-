@@ -17,6 +17,7 @@ import {
     Navigation,
     Package,
     Pencil,
+    PencilLine,
     Phone,
     Play,
     Plus,
@@ -45,7 +46,9 @@ import { CustomerNotes } from '@/components/customers/customer-notes';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
 import InputError from '@/components/input-error';
-import { BookingConfirmationSheet } from '@/components/jobs/booking-confirmation-sheet';
+import { ConfirmationSendSheet } from '@/components/jobs/booking-confirmation-sheet';
+import { JobNotesTab } from '@/components/jobs/job-notes-tab';
+import type { TeamNote } from '@/components/jobs/job-notes-tab';
 import { FinishDialog } from '@/components/jobs/finish-dialog';
 import type {
     CallbackInfo,
@@ -97,6 +100,7 @@ import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
 import { smsUrl } from '@/lib/sms';
 import { cn } from '@/lib/utils';
+import { isDraftJob } from '@/lib/status';
 import { show as showAppliance } from '@/routes/appliances';
 import { show as showCustomer } from '@/routes/customers';
 import { create as createEstimate } from '@/routes/estimates';
@@ -107,6 +111,7 @@ import {
 import {
     destroy,
     edit,
+    finishBooking as finishBookingRoute,
     index,
     instructions as instructionsRoute,
     techNotes,
@@ -173,6 +178,7 @@ type Job = {
     estimates: DocumentRow[];
     invoices: DocumentRow[];
     minutes_on_job: number;
+    team_notes: TeamNote[];
     history: {
         id: number;
         from_label: string | null;
@@ -403,6 +409,19 @@ export default function JobShow({
     const [statusOpen, setStatusOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
     const [confirmationOpen, setConfirmationOpen] = useState(false);
+    const draft = isDraftJob(job.status);
+    const [finishing, setFinishing] = useState(false);
+    // Finish booking: Scheduled, and the confirmation goes by itself (the "Booked …" sheet says how).
+    const finishBooking = () =>
+        router.post(
+            finishBookingRoute(job.id).url,
+            {},
+            {
+                preserveScroll: true,
+                onStart: () => setFinishing(true),
+                onFinish: () => setFinishing(false),
+            },
+        );
     const [paying, setPaying] = useState<Props['payable'][number] | null>(null);
     const money = useMoney();
     const [warrantyOpen, setWarrantyOpen] = useState(openWarranty);
@@ -436,9 +455,9 @@ export default function JobShow({
     const hasAddress = Boolean(property.line1 && property.city);
     const worksAlone = auth.company?.works_alone ?? false;
     const [pickerOpen, setPickerOpen] = useState(false);
-    const [tab, setTab] = useState<'job' | 'notes' | 'files' | 'history'>(
-        'job',
-    );
+    const [tab, setTab] = useState<
+        'job' | 'notes' | 'messages' | 'files' | 'history'
+    >('job');
     const [addressOpen, setAddressOpen] = useState(false);
     const textFromPhone =
         messaging.mode === 'technician_phone' &&
@@ -481,13 +500,13 @@ export default function JobShow({
             </Link>
         </Button>
     ) : messaging.mode === 'automatic' ? (
-        // Automatic texts go from the company number: the job's conversation on the Notes tab.
+        // Automatic texts go from the company number: the job's conversation on the Messages tab.
         <Button
             variant="outline"
             className="px-2"
             data-test="job-text"
             onClick={() => {
-                setTab('notes');
+                setTab('messages');
                 requestAnimationFrame(() =>
                     document.getElementById('job-tabs')?.scrollIntoView({
                         behavior: 'smooth',
@@ -870,10 +889,11 @@ export default function JobShow({
     return (
         <>
             <Head title={t('jobs.job_number', { number: job.number })} />
-            <BookingConfirmationSheet
+            <ConfirmationSendSheet
                 jobId={job.id}
                 open={confirmationOpen}
                 onOpenChange={setConfirmationOpen}
+                title={t('jobs.confirmation.resend')}
             />
 
             <ScreenHeader
@@ -906,12 +926,15 @@ export default function JobShow({
                                     icon: <ShieldCheck />,
                                     onSelect: () => setWarrantyOpen(true),
                                 },
-                            can.work && {
-                                key: 'booking-confirmation',
-                                label: t('jobs.confirmation.send'),
-                                icon: <Send />,
-                                onSelect: () => setConfirmationOpen(true),
-                            },
+                            // Only for a finished booking; a draft has Finish booking at the top.
+                            can.work &&
+                                !draft &&
+                                current?.status === 'scheduled' && {
+                                    key: 'resend-confirmation',
+                                    label: t('jobs.confirmation.resend'),
+                                    icon: <Send />,
+                                    onSelect: () => setConfirmationOpen(true),
+                                },
                             can.update && {
                                 key: 'edit',
                                 label: t('jobs.edit_job'),
@@ -932,6 +955,34 @@ export default function JobShow({
             />
 
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 sm:p-6">
+                {draft && (
+                    <section
+                        className="da-draft-chip flex flex-wrap items-center gap-3 rounded-2xl p-3"
+                        data-test="job-draft-banner"
+                    >
+                        <PencilLine className="size-5 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                            <p className="font-semibold">
+                                {t('jobs.confirmation.banner')}
+                            </p>
+                            <p className="text-sm">
+                                {t('jobs.confirmation.banner_hint')}
+                            </p>
+                        </div>
+                        {can.update && (
+                            <Button
+                                type="button"
+                                className="w-full sm:w-auto"
+                                loading={finishing}
+                                onClick={finishBooking}
+                                data-test="job-finish-booking"
+                            >
+                                {t('jobs.confirmation.finish')}
+                            </Button>
+                        )}
+                    </section>
+                )}
+
                 {myVisit?.strict_arrival && myVisit.status === 'scheduled' && (
                     <p className="flex items-center gap-2 rounded-lg bg-red-600 p-3 text-sm font-semibold text-white">
                         <AlarmClock className="size-5 shrink-0" />
@@ -1212,17 +1263,6 @@ export default function JobShow({
                                 {t('jobs.address.change')}
                             </button>
                         )}
-                        {can.work && current?.status === 'scheduled' && (
-                            <button
-                                type="button"
-                                className="flex min-h-11 items-center gap-1.5 text-sm font-medium text-link"
-                                onClick={() => setConfirmationOpen(true)}
-                                data-test="job-send-confirmation"
-                            >
-                                <Send className="size-4" />
-                                {t('jobs.confirmation.send')}
-                            </button>
-                        )}
                     </div>
 
                     {/* Other numbers, e.g. the second person of a couple: Call and SMS for each. */}
@@ -1497,10 +1537,25 @@ export default function JobShow({
                             {
                                 value: 'notes',
                                 label: t('jobs.page_tabs.notes'),
+                                count: job.team_notes.length,
+                                content: (
+                                    <JobNotesTab
+                                        jobId={job.id}
+                                        customerId={job.customer.id}
+                                        customerNotes={job.customer.notes}
+                                        canUpdateCustomer={can.updateCustomer}
+                                        canWork={can.work}
+                                        notes={job.team_notes}
+                                    />
+                                ),
+                            },
+                            {
+                                value: 'messages',
+                                label: t('jobs.page_tabs.messages'),
                                 content: (
                                     <div
                                         className="flex flex-col gap-5"
-                                        data-test="job-tab-notes"
+                                        data-test="job-tab-messages"
                                     >
                                         <JobMessagingSection
                                             jobId={job.id}

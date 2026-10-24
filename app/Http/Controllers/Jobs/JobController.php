@@ -18,8 +18,9 @@ use App\Enums\VisitType;
 use App\Enums\WarrantyUnit;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Customers\CustomerController;
-use App\Http\Controllers\Mileage\TripController;
+use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Requests\Jobs\JobRequest;
+use App\Messaging\BookingConfirmation;
 use App\Messaging\MessagingPresenter;
 use App\Models\Appliance;
 use App\Models\Brand;
@@ -30,13 +31,13 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\JobBringItem;
 use App\Models\JobCostItem;
+use App\Models\JobNote;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
 use App\Models\Membership;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\SupplierReceipt;
-use App\Models\Trip;
 use App\Models\User;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\CostAccess;
@@ -275,8 +276,8 @@ class JobController extends Controller
             'search' => $search,
             // Cash this person collected and has not handed in yet.
             'cashOnHand' => CashLedger::balances()[$user->id] ?? [],
-            // The Trip sheet's "Recent" chips (only for people who log trips).
-            'recentStops' => Gate::allows('create', Trip::class) ? TripController::recentStops($user) : [],
+            // The person's own tasks of the day ("+ → Task"), in their own colour above the jobs.
+            'tasks' => $tab === 'day' && $search === '' ? TaskController::between($user, $date, $date->addDay(), onlyOwn: true) : [],
             'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging) {
                 $job = $visit->job;
 
@@ -342,8 +343,11 @@ class JobController extends Controller
         ]);
     }
 
-    public function store(JobRequest $request, SaveJob $save): RedirectResponse
+    public function store(JobRequest $request, SaveJob $save, BookingConfirmation $confirmation): RedirectResponse
     {
+        $booking = $request->boolean('quick_booking') && ! $request->boolean('open_invoice') && $request->visit() !== null;
+        $draft = $booking && $request->boolean('draft');
+
         $job = $save->create(
             $request->customer(),
             $request->jobAttributes(),
@@ -356,19 +360,15 @@ class JobController extends Controller
             $request->newProperty(),
             $request->occupant(),
             $request->billing(),
+            $draft,
         );
 
-        $visit = $request->boolean('quick_booking') && ! $request->boolean('open_invoice') ? $job->visits()->first() : null;
+        $visit = $booking ? $job->visits()->first() : null;
 
-        // Booking (UX-REDESIGN §7.1): back to the day's schedule; "Booked #1005 · Tomorrow 9–11" with Open job and
-        // Send Booking Confirmation opens there (one sheet, so no toast covers it).
+        // Booking (UX-REDESIGN §7.1): back to the day's schedule with "Booked #1005 · Tomorrow 9–11". Finish booking
+        // sends the confirmation by itself (the company's SMS setting); Save as draft sends nothing.
         if ($visit !== null) {
-            Inertia::flash('booking_confirmation', [
-                'job_id' => $job->id,
-                'number' => $job->number,
-                'message' => __('jobs.quick.booked', ['number' => $job->number, 'when' => self::bookedWhen($visit)]),
-                'url' => route('jobs.show', $job, false),
-            ]);
+            self::flashBooked($job, $visit, $draft ? null : $confirmation->send($job, $request->user()));
             $date = CarbonImmutable::parse($visit->scheduled_start)->setTimezone(currentCompany()->timezone)->toDateString();
 
             return Gate::allows('dispatch', ServiceJob::class)
@@ -384,9 +384,27 @@ class JobController extends Controller
     }
 
     /**
+     * The "Booked #1005 · Tomorrow 9–11" sheet after a booking is saved or finished, with how the confirmation went
+     * (null for a draft).
+     *
+     * @param  array<string, mixed>|null  $sent
+     */
+    public static function flashBooked(ServiceJob $job, JobVisit $visit, ?array $sent): void
+    {
+        Inertia::flash('booking_confirmation', [
+            'job_id' => $job->id,
+            'number' => $job->number,
+            'message' => __($sent === null ? 'jobs.quick.drafted' : 'jobs.quick.booked', ['number' => $job->number, 'when' => self::bookedWhen($visit)]),
+            'url' => route('jobs.show', $job, false),
+            'draft' => $sent === null,
+            'sent' => $sent,
+        ]);
+    }
+
+    /**
      * "Today 9–11 a.m.", "Tomorrow 1–3 p.m." or "Fri, Oct 16 9–11 a.m." in the company's time zone and format.
      */
-    private static function bookedWhen(JobVisit $visit): string
+    public static function bookedWhen(JobVisit $visit): string
     {
         $company = currentCompany();
         $start = CarbonImmutable::parse($visit->scheduled_start)->setTimezone($company->timezone);
@@ -410,7 +428,7 @@ class JobController extends Controller
         $job->load([
             'brand', 'customer.phones', 'property', 'appliances', 'visits.assignees', 'statusChanges.user',
             'photos.user', 'signer', 'estimates', 'invoices',
-            'bringItems.checker', 'previousJob', 'followUps', 'closer',
+            'bringItems.checker', 'previousJob', 'followUps', 'closer', 'teamNotes.user',
         ]);
         $canUpdate = Gate::allows('update', $job);
         $property = $job->property;
@@ -477,6 +495,13 @@ class JobController extends Controller
                 ],
                 'appliances' => $job->appliances->map(fn (Appliance $a) => JobPresenter::appliance($a))->values(),
                 'visits' => $job->visits->map(fn (JobVisit $v) => JobPresenter::visit($v, $user, $timezone))->values(),
+                'team_notes' => $job->teamNotes->map(fn (JobNote $note) => [
+                    'id' => $note->id,
+                    'body' => $note->body,
+                    'author' => $note->user?->name,
+                    'at' => JobPresenter::iso($note->created_at),
+                    'can_delete' => $note->user_id === $user->id || $canUpdate,
+                ])->values(),
                 'minutes_on_job' => $job->visits->sum(fn (JobVisit $v) => $v->minutesOnJob() ?? 0),
                 'history' => $job->statusChanges->map(fn ($c) => JobPresenter::statusChange($c))->values(),
                 'photos' => $job->photos->map(fn (JobPhoto $photo) => [

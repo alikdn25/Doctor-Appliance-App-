@@ -81,15 +81,11 @@ test('the Trip sheet offers the person\'s last five stores and suppliers, newest
     tripFor($this->company, $this->tech, '10 First Ave', 'client', $this->visit->id, '2026-10-09');
     tripFor($this->company, memberOf($this->company, UserRole::Technician), 'Their Store', date: '2026-10-09');
 
-    $this->actingAs($this->tech)->get(route('jobs.mine'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('jobs/mine')
-            ->where('recentStops', ['Store F', 'store b', 'Store E', 'Store D', 'Supplier C']));
-
-    $this->get(route('trips.index'))
+    // The Trip sheet (with turn-by-turn directions) is on Mileage; the "+" opens the form by hand.
+    $this->actingAs($this->tech)->get(route('trips.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('trips/index')
-            ->where('recentStops.0', 'Store F')
+            ->where('recentStops', ['Store F', 'store b', 'Store E', 'Store D', 'Supplier C'])
             ->where('openManual', false));
 });
 
@@ -99,7 +95,7 @@ test('recent stops never come from another company', function () {
     tripFor($other, $otherTech, 'Foreign Store');
     tripFor($this->company, $this->tech, 'Own Store');
 
-    $this->actingAs($this->tech)->get(route('jobs.mine'))
+    $this->actingAs($this->tech)->get(route('trips.index'))
         ->assertInertia(fn (Assert $page) => $page->where('recentStops', ['Own Store']));
 });
 

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 /**
  * Owner's update of October 24 (PR 2) on a 380 px phone: the job page's main block, Instructions, the Job / Notes /
- * Files / History tabs, and Solo / Team as the first row of Settings.
+ * Messages / Files / History tabs, and Solo / Team as the first row of Settings.
  */
 test.use({ viewport: { width: 380, height: 800 } });
 
@@ -90,6 +90,9 @@ test('the job page: main block on top, Instructions, then tabs by tap and swipe'
     await expect(page.locator('[data-test="job-tab-job"]')).toBeVisible();
     await swipe(page, '#job-tabs [role="tabpanel"]', -150);
     await expect(tab('Notes')).toHaveAttribute('aria-selected', 'true');
+    await swipe(page, '#job-tabs [role="tabpanel"]', -150);
+    await expect(tab('Messages')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('[data-test="job-tab-messages"]')).toBeVisible();
     await swipe(page, '#job-tabs [role="tabpanel"]', -150);
     await expect(tab('Files')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('[data-test="job-tab-files"]')).toBeVisible();
