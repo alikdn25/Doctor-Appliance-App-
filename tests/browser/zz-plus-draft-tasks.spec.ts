@@ -202,3 +202,23 @@ test('the job page has Job · Notes · Messages · Files · History; a team note
         fullPage: true,
     });
 });
+
+test('job card badges (status, Overdue) stay inside the card on a phone', async ({
+    page,
+}) => {
+    await page.goto('/my-jobs');
+    const cards = page.locator('[data-test="job-card"]');
+    await expect(cards.first()).toBeVisible();
+    for (const card of await cards.all()) {
+        const box = (await card.boundingBox())!;
+        for (const badge of await card
+            .locator('[data-test="job-card-status-row"] > *')
+            .all()) {
+            const edge = (await badge.boundingBox())!;
+            expect(edge.x + edge.width).toBeLessThanOrEqual(
+                box.x + box.width + 1,
+            );
+        }
+    }
+    await noSideScroll(page);
+});
