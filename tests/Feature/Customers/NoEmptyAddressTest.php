@@ -106,14 +106,15 @@ test('the job address can move to another address of the same customer only', fu
     expect(inCompany($this->company, fn () => $job->fresh()->property_id))->toBe($rental->id);
 });
 
-test('old empty addresses: jobs move to the only real address and empty ones without jobs go to the trash', function () {
+test('old empty addresses: jobs move to the primary real address and empty ones without jobs go to the trash', function () {
     $real = Property::factory()->for($this->customer)->create(['line1' => '3 Real Rd', 'is_primary' => false]);
     $empty = emptyAddressOf($this->company, $this->customer);
     $job = ServiceJob::factory()->for($empty)->create(['status' => JobStatus::Scheduled]);
 
-    // Another customer: two real addresses, so the job on the empty one stays where it is.
+    // Another customer with two real addresses: the job goes to the primary one (owner's update, October 24).
     $other = Customer::factory()->for($this->company)->create();
-    Property::factory()->for($other)->count(2)->create();
+    Property::factory()->for($other)->create(['line1' => '10 First Rd', 'is_primary' => false]);
+    $otherPrimary = Property::factory()->for($other)->create(['line1' => '11 Main Rd', 'is_primary' => true]);
     $otherEmpty = emptyAddressOf($this->company, $other, false);
     $otherJob = ServiceJob::factory()->for($otherEmpty)->create();
 
@@ -121,15 +122,22 @@ test('old empty addresses: jobs move to the only real address and empty ones wit
     $lonely = Customer::factory()->for($this->company)->create();
     $lonelyEmpty = emptyAddressOf($this->company, $lonely);
 
+    // A fourth: only an empty address with a job, which stays (nowhere to move it).
+    $noAddress = Customer::factory()->for($this->company)->create();
+    $noAddressEmpty = emptyAddressOf($this->company, $noAddress);
+    $noAddressJob = ServiceJob::factory()->for($noAddressEmpty)->create();
+
     EmptyAddresses::clean();
 
-    inCompany($this->company, function () use ($job, $real, $empty, $otherJob, $otherEmpty, $lonelyEmpty) {
+    inCompany($this->company, function () use ($job, $real, $empty, $otherJob, $otherPrimary, $otherEmpty, $lonelyEmpty, $noAddressJob, $noAddressEmpty) {
         expect($job->fresh()->property_id)->toBe($real->id)
             ->and(Property::query()->find($empty->id))->toBeNull()
             ->and(Property::onlyTrashed()->find($empty->id))->not->toBeNull()
             ->and($real->fresh()->is_primary)->toBeTrue()
-            ->and($otherJob->fresh()->property_id)->toBe($otherEmpty->id)
-            ->and(Property::query()->find($otherEmpty->id))->not->toBeNull()
-            ->and(Property::onlyTrashed()->find($lonelyEmpty->id))->not->toBeNull();
+            ->and($otherJob->fresh()->property_id)->toBe($otherPrimary->id)
+            ->and(Property::onlyTrashed()->find($otherEmpty->id))->not->toBeNull()
+            ->and(Property::onlyTrashed()->find($lonelyEmpty->id))->not->toBeNull()
+            ->and($noAddressJob->fresh()->property_id)->toBe($noAddressEmpty->id)
+            ->and(Property::query()->find($noAddressEmpty->id))->not->toBeNull();
     });
 });

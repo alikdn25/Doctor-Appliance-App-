@@ -21,7 +21,7 @@ class MessageContext
     public static function for(Customer $customer, ?ServiceJob $job = null, ?JobVisit $visit = null, ?User $tech = null): array
     {
         $company = currentCompany();
-        $job?->loadMissing('brand');
+        $job?->loadMissing(['brand', 'property']);
 
         return [
             'customer_first_name' => $customer->first_name ?: $customer->display_name,
@@ -31,6 +31,7 @@ class MessageContext
             'tech_name' => $tech?->name ? strtok($tech->name, ' ') : null,
             'visit_date' => $visit ? self::date($visit->scheduled_start) : null,
             'arrival_window' => $visit ? self::window($visit) : null,
+            'address' => $job?->property?->fullAddress(),
         ];
     }
 

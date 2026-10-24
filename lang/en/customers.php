@@ -105,6 +105,7 @@ return [
         'phone_label' => 'Phone type',
         'email' => 'Email',
         'email_label' => 'Email type',
+        'billing_address' => 'Billing address',
     ],
 
     'types' => [

@@ -5,10 +5,11 @@ namespace App\Support\Customers;
 use Illuminate\Support\Facades\DB;
 
 /**
- * No address without an address (owner's fixes, October 19): old quick bookings left customers with an empty
- * address. Jobs, estimates, invoices and appliances on an empty address move to the customer's address when the
- * customer has exactly one; empty addresses left without jobs go to the trash (soft delete, restorable). Every
- * customer with addresses keeps exactly one primary. Runs over all companies (a data migration).
+ * No address without an address (owner's fixes, October 19 and 24): old quick bookings left customers with an
+ * empty address. Jobs, estimates, invoices and appliances on an empty address move to the customer's primary
+ * address (the first real one when none is marked primary); empty addresses left without jobs go to the trash
+ * (soft delete, restorable). Every customer with addresses keeps exactly one primary. Runs over all companies
+ * (a data migration).
  */
 class EmptyAddresses
 {
@@ -19,14 +20,15 @@ class EmptyAddresses
             ->where(fn ($w) => $w->whereNull('line1')->orWhere('line1', ''));
 
         foreach (DB::table('properties')->where($empty)->get() as $property) {
-            $others = DB::table('properties')
+            $target = DB::table('properties')
                 ->where('customer_id', $property->customer_id)
                 ->whereNull('deleted_at')
                 ->where('line1', '!=', '')
-                ->pluck('id');
+                ->orderByDesc('is_primary')
+                ->orderBy('id')
+                ->value('id');
 
-            if ($others->count() === 1) {
-                $target = $others->first();
+            if ($target !== null) {
                 foreach (['service_jobs', 'estimates', 'invoices', 'appliances'] as $table) {
                     DB::table($table)->where('property_id', $property->id)->update(['property_id' => $target]);
                 }

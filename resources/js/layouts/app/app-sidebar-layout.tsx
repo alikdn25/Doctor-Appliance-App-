@@ -3,6 +3,7 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
+import { BookingConfirmationPrompt } from '@/components/jobs/booking-confirmation-sheet';
 import { AppBottomNav } from '@/components/app-bottom-nav';
 import { BreadcrumbsContext } from '@/components/back-button';
 import { ScreenHeaderSlot } from '@/components/screen-header';
@@ -45,6 +46,7 @@ export default function AppSidebarLayout({
                             />
                         </div>
                         <AppBottomNav />
+                        <BookingConfirmationPrompt />
                     </AppContent>
                 </AppShell>
             </ScreenHeaderSlot.Provider>

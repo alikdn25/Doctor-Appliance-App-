@@ -8,6 +8,7 @@ use App\Enums\LeadSource;
 use App\Enums\PaymentTerms;
 use App\Enums\PhoneLabel;
 use App\Models\Customer;
+use App\Rules\PostalCode;
 use App\Support\NameAvatar;
 use App\Support\PhoneNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -96,7 +97,51 @@ class CustomerRequest extends FormRequest
         $rules['property.id'] = ['nullable', 'integer'];
         $rules += PropertyRequest::addressRules('property.', 'required_if_accepted:add_property');
 
+        // Billing address of the payer; sent empty = the same as the primary address.
+        if ($this->has('billing')) {
+            $rules += self::billingRules('billing.');
+        }
+
         return $rules;
+    }
+
+    /**
+     * Billing address rules: optional, but a street needs a city.
+     *
+     * @return array<string, array<mixed>>
+     */
+    public static function billingRules(string $prefix): array
+    {
+        return [
+            rtrim($prefix, '.') => ['nullable', 'array'],
+            "{$prefix}line1" => ['nullable', 'string', 'max:255'],
+            "{$prefix}unit" => ['nullable', 'string', 'max:50'],
+            "{$prefix}city" => ['nullable', "required_with:{$prefix}line1", 'string', 'max:100'],
+            "{$prefix}region" => ['nullable', 'string', 'max:50'],
+            "{$prefix}postal_code" => ['nullable', 'string', 'max:20', new PostalCode],
+            "{$prefix}country" => ['nullable', 'string', 'size:2'],
+        ];
+    }
+
+    /**
+     * Customer columns for a validated billing address; an empty street clears it (same as the primary address).
+     *
+     * @param  array<string, mixed>|null  $billing
+     * @return array<string, string|null>
+     */
+    public static function billingColumns(?array $billing): array
+    {
+        $filled = filled($billing['line1'] ?? null);
+        $columns = [];
+        foreach (Customer::BILLING_FIELDS as $field) {
+            $value = $filled ? trim((string) ($billing[$field] ?? '')) : '';
+            $columns["billing_{$field}"] = $value === '' ? null : $value;
+        }
+        if ($filled) {
+            $columns['billing_country'] = strtoupper($columns['billing_country'] ?? currentCompany()->country);
+        }
+
+        return $columns;
     }
 
     /**
@@ -127,6 +172,8 @@ class CustomerRequest extends FormRequest
             'company_name' => __('customers.fields.company_name'),
             'phones.*.number' => __('customers.fields.phone'),
             'emails.*.email' => __('customers.fields.email'),
+            'billing.line1' => __('customers.fields.billing_address'),
+            'billing.city' => __('properties.fields.city'),
             ...PropertyRequest::addressAttributes('property.'),
         ];
     }
@@ -138,6 +185,7 @@ class CustomerRequest extends FormRequest
     {
         return collect($this->validated())
             ->only(['type', 'first_name', 'last_name', 'company_name', 'lead_source', 'payment_terms', 'tags', 'notes', 'avatar_style'])
+            ->merge($this->has('billing') ? self::billingColumns($this->validated('billing')) : [])
             ->all();
     }
 

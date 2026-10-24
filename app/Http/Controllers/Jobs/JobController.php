@@ -355,6 +355,8 @@ class JobController extends Controller
             $request->user(),
             $request->bringItems(),
             $request->newProperty(),
+            $request->occupant(),
+            $request->billing(),
         );
 
         $visit = $request->boolean('quick_booking') && ! $request->boolean('open_invoice') ? $job->visits()->first() : null;
@@ -366,6 +368,8 @@ class JobController extends Controller
                 'message' => __('jobs.quick.booked', ['number' => $job->number, 'when' => self::bookedWhen($visit)]),
                 'action' => ['label' => __('jobs.quick.open_job'), 'url' => route('jobs.show', $job, false)],
             ]);
+            // "Send Booking Confirmation" opens right after saving, wherever the booking lands.
+            Inertia::flash('booking_confirmation', ['job_id' => $job->id, 'number' => $job->number]);
             $date = CarbonImmutable::parse($visit->scheduled_start)->setTimezone(currentCompany()->timezone)->toDateString();
 
             return Gate::allows('dispatch', ServiceJob::class)
@@ -747,7 +751,7 @@ class JobController extends Controller
                 fn (Builder $q) => $q->whereHas('phones', fn (Builder $p) => $p->where('number_normalized', 'like', "%{$digits}%")),
                 fn (Builder $q) => $q->search($search),
             )
-            ->with(['primaryPhone', 'properties.appliances'])
+            ->with(['primaryPhone', 'primaryEmail', 'properties.appliances'])
             ->orderBy('display_name')
             ->limit(8)
             ->get();
@@ -796,7 +800,7 @@ class JobController extends Controller
      */
     public static function customerOption(Customer $customer): array
     {
-        $customer->loadMissing(['primaryPhone', 'properties.appliances']);
+        $customer->loadMissing(['primaryPhone', 'primaryEmail', 'properties.appliances']);
 
         return [
             'id' => $customer->id,
@@ -807,9 +811,17 @@ class JobController extends Controller
             'avatar_icon' => $customer->avatarIcon(),
             'notes' => $customer->notes,
             'phone' => $customer->primaryPhone?->number,
+            'email' => $customer->primaryEmail?->email,
+            'billing' => $customer->billingAddressParts(),
             'lead_source' => $customer->lead_source?->value,
             'properties' => $customer->properties->map(fn (Property $p) => [
                 'id' => $p->id,
+                // The occupant saved at this address, filled in by itself when it is booked again.
+                'occupant' => [
+                    'name' => $p->site_contact_name,
+                    'phone' => $p->site_contact_phone,
+                    'access_notes' => $p->access_notes,
+                ],
                 'label' => $p->label,
                 'full_address' => $p->fullAddress(),
                 'is_primary' => $p->is_primary,

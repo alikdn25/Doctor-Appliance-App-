@@ -399,6 +399,9 @@ class CustomerController extends Controller
             'payment_terms' => $customer->payment_terms?->value,
             'tags' => $customer->tags,
             'notes' => $customer->notes,
+            // Null = the same as the primary address.
+            'billing' => $customer->billingAddressParts(),
+            'billing_address' => $customer->billingAddress(),
             'phones' => $customer->phones->map(fn (CustomerPhone $p) => [
                 'id' => $p->id,
                 'label' => $p->label->value,

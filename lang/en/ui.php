@@ -17,5 +17,7 @@ return [
     'overdue' => 'Overdue',
     'today' => 'Today',
     'tomorrow' => 'Tomorrow',
+    'previous_month' => 'Previous month',
+    'next_month' => 'Next month',
     'undo' => 'Undo',
 ];

@@ -48,6 +48,7 @@ export function AddressEntry({
     errorPrefix = '',
     label,
     autoFocus,
+    optional = false,
 }: {
     id: string;
     value: AddressData;
@@ -56,6 +57,8 @@ export function AddressEntry({
     errorPrefix?: string;
     label?: string;
     autoFocus?: boolean;
+    /** Not needed to save (e.g. a billing address): no required marks. */
+    optional?: boolean;
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -76,7 +79,7 @@ export function AddressEntry({
                     id={id}
                     autoComplete="street-address"
                     autoFocus={autoFocus}
-                    required
+                    required={!optional}
                     value={value.line1}
                     country={value.country}
                     aria-invalid={!!error('line1')}
@@ -114,7 +117,7 @@ export function AddressEntry({
                             id={`${id}-city`}
                             autoComplete="address-level2"
                             maxLength={100}
-                            required
+                            required={!optional}
                             value={value.city}
                             onChange={(e) =>
                                 onChange({

@@ -273,6 +273,14 @@ class Messenger
             ->where('customer_id', $customer->id)->whereKey($recipient->id)->firstOrFail();
     }
 
+    /**
+     * An email to the customer's primary address, or a "not sent" record when there is none.
+     */
+    public function emailMessage(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user = null, ?string $subject = null): Message
+    {
+        return $this->email($kind, $customer, $job, $body, $user, $subject, failIfMissing: true);
+    }
+
     private function email(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user, ?string $subject, bool $failIfMissing, bool $afterCommit = false): ?Message
     {
         $email = $customer->primaryEmail()->value('email');

@@ -22,8 +22,8 @@ return [
     'open_in_maps' => 'Open in Maps',
     'unit_prefix' => 'Unit :unit',
     'gate_code' => 'Gate / buzzer: :code',
-    'site_contact' => 'On-site contact',
-    'call_site_contact' => 'Call on-site contact',
+    'site_contact' => 'Occupant',
+    'call_site_contact' => 'Call the occupant',
 
     'fields' => [
         'label' => 'Label (e.g. Home, Rental)',
@@ -36,8 +36,9 @@ return [
         'country' => 'Country',
         'access_notes' => 'Access notes',
         'gate_code' => 'Gate / buzzer code',
-        'site_contact_name' => 'On-site contact name',
-        'site_contact_phone' => 'On-site contact phone',
+        'site_contact_name' => 'Occupant name',
+        'site_contact_phone' => 'Occupant phone',
+        'occupant_phone' => 'Occupant phone',
     ],
 
     // Labels of the region and postal code fields per country (config/countries.php).

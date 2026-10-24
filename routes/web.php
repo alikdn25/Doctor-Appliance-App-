@@ -36,6 +36,8 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\Jobs\AssignmentController;
 use App\Http\Controllers\Jobs\CalendarController;
 use App\Http\Controllers\Jobs\JobAddressController;
+use App\Http\Controllers\Jobs\BookingConfirmationController;
+use App\Http\Controllers\Jobs\BookingTextController;
 use App\Http\Controllers\Jobs\JobBacklogController;
 use App\Http\Controllers\Jobs\JobCloseController;
 use App\Http\Controllers\Jobs\JobController;
@@ -123,6 +125,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('my-jobs', [JobController::class, 'mine'])->name('jobs.mine');
         Route::get('jobs/not-completed', JobBacklogController::class)->name('jobs.backlog');
         Route::get('jobs/customers', [JobController::class, 'lookup'])->name('jobs.lookup');
+        Route::post('jobs/parse-message', BookingTextController::class)->middleware('throttle:30,1')->name('jobs.parse-message');
         Route::get('jobs/deleted', [JobController::class, 'trash'])->name('jobs.trash');
         Route::post('jobs/{job}/restore', [JobController::class, 'restore'])->withTrashed()->name('jobs.restore');
         Route::resource('jobs', JobController::class);
@@ -217,6 +220,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('invoices/{invoice}/sms', [DocumentDeliveryController::class, 'smsInvoice'])->middleware('throttle:30,1')->name('invoices.sms');
         Route::post('invoices/{invoice}/review-request', InvoiceReviewRequestController::class)->middleware('throttle:30,1')->name('invoices.review-request');
         Route::post('jobs/{job}/sms', [JobMessageController::class, 'sms'])->middleware('throttle:30,1')->name('jobs.sms');
+        Route::get('jobs/{job}/booking-confirmation', [BookingConfirmationController::class, 'show'])->name('jobs.booking-confirmation.show');
+        Route::post('jobs/{job}/booking-confirmation', [BookingConfirmationController::class, 'send'])->middleware('throttle:30,1')->name('jobs.booking-confirmation.send');
         Route::post('jobs/{job}/messages/opened', [JobMessageController::class, 'opened'])->name('jobs.messages.opened');
 
         // Connecting the company's own payment provider account (OAuth). The callback URL is registered at the provider.
