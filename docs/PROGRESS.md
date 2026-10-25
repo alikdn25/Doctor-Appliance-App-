@@ -1954,6 +1954,13 @@ Stage 1 code is ready for the first testing installation. Connect the server age
 install the tested code commit from SERVER_HANDOFF.md. No deployment has occurred in this workspace.
 Verify mobile layouts, receipt camera uploads, Google map credentials, mail/SMS delivery, payment callbacks
 and backup restore using LAUNCH_TESTING.md.
+Map route checked live on October 24 (390 px, Owner): Directions, Distance Matrix and Routes APIs are on the browser
+key, the route follows streets and the "Approximate" note is gone; test jobs were removed.
+Later (not urgent): Google deprecated `DistanceMatrixService`, `DirectionsService` and `DirectionsRenderer` on
+2026-02-25 (at least 12 months notice before shutdown). Move `resources/js/pages/map/index.tsx` to
+`routes.RouteMatrix` and `routes.Route.computeRoutes`.
+Open owner decisions on sessions: reset user 2's remember token and old sessions (logs out every device), and owner
+2FA. 6,020 of 8,332 user 2 sessions came from a cookie-less scanner during the old autologin build 9fa26df.
 Stripe remains the second payment provider. Then Stage 2 (parts orders, warranty claims, online booking,
 payment reminders), Stage 3 and subscription billing.
 
