@@ -67,7 +67,8 @@ test('Pick date opens a calendar in the page under the days, never over them', a
         fullPage: true,
     });
 
-    // A day in the calendar picks it and folds the calendar.
+    // A day in the calendar picks it and folds the calendar. Next month's last day is always past the 7 day chips.
+    await calendar.getByRole('button', { name: 'Next month' }).click();
     await calendar.locator('[role="radio"]:not([disabled])').last().click();
     await expect(calendar).toHaveCount(0);
     await expect(
