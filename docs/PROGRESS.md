@@ -1959,8 +1959,9 @@ key, the route follows streets and the "Approximate" note is gone; test jobs wer
 Later (not urgent): Google deprecated `DistanceMatrixService`, `DirectionsService` and `DirectionsRenderer` on
 2026-02-25 (at least 12 months notice before shutdown). Move `resources/js/pages/map/index.tsx` to
 `routes.RouteMatrix` and `routes.Route.computeRoutes`.
-Open owner decisions on sessions: reset user 2's remember token and old sessions (logs out every device), and owner
-2FA. 6,020 of 8,332 user 2 sessions came from a cookie-less scanner during the old autologin build 9fa26df.
+Sessions: 6,020 of 8,332 user 2 sessions came from a cookie-less scanner during the old autologin build 9fa26df.
+On October 25 user 2's remember token was reset and all 8,332 of their sessions were deleted (other users untouched).
+Owner 2FA: the owner decided not yet.
 Stripe remains the second payment provider. Then Stage 2 (parts orders, warranty claims, online booking,
 payment reminders), Stage 3 and subscription billing.
 
