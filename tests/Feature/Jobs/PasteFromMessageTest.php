@@ -1,11 +1,11 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Models\AiRequest;
 use App\Models\Company;
 use App\Models\Customer;
-use App\Support\Ai\AiProvider;
-use App\Support\Ai\AiUnavailable;
-use App\Support\Ai\JsonExtractor;
+use App\Services\AI\AiUnavailable;
+use Tests\Fakes\FakeAiTransport;
 
 /**
  * "Paste from message" on Book customer: the text is split into the form's fields by the AI provider, or by the
@@ -15,28 +15,18 @@ beforeEach(function () {
     $this->company = Company::factory()->create(['country' => 'CA']);
     $this->owner = memberOf($this->company);
     $this->actingAs($this->owner);
-    config(['services.ai.provider' => null]);
+    config(['ai.key' => null]);
 });
 
 function fakeAi(?Closure $answer): void
 {
-    app()->instance(AiProvider::class, new class($answer) extends AiProvider
-    {
-        public function __construct(private readonly ?Closure $answer) {}
+    if ($answer === null) {
+        config(['ai.key' => null]);
 
-        public function for(Company $company): ?JsonExtractor
-        {
-            return $this->answer === null ? null : new class($this->answer) implements JsonExtractor
-            {
-                public function __construct(private readonly Closure $answer) {}
+        return;
+    }
 
-                public function extract(string $instructions, string $text, array $schema): array
-                {
-                    return ($this->answer)($text, $schema);
-                }
-            };
-        }
-    });
+    FakeAiTransport::install(fn (array $request) => $answer($request['messages'][0]['content'], $request['schema']));
 }
 
 test('without an AI provider the basic parser fills phone, email, address, appliance and the problem', function () {
@@ -110,4 +100,14 @@ test('a known phone brings the customer from this company only', function () {
 test('people who cannot create jobs cannot use it', function () {
     $collector = memberOf($this->company, UserRole::Collector);
     $this->actingAs($collector)->postJson(route('jobs.parse-message'), ['text' => 'hello'])->assertForbidden();
+});
+
+test('it goes through the AI service on the booking model and is logged', function () {
+    config(['ai.models.booking' => 'claude-haiku-5-5']);
+    $fake = FakeAiTransport::install(fn () => throw new AiUnavailable('Down'));
+
+    $this->postJson(route('jobs.parse-message'), ['text' => '604 555 0100 washer'])->assertJsonPath('source', 'basic');
+
+    expect($fake->requests[0]['model'])->toBe('claude-haiku-5-5')
+        ->and(AiRequest::withoutCompanyScope()->sole()->feature)->toBe('paste_message');
 });

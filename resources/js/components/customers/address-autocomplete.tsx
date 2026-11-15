@@ -139,6 +139,44 @@ export function toAddress(
 }
 
 /**
+ * Checks a typed address with Google Places (Quick booking): the first suggestion for the text, split into our
+ * fields with its place ID. Null without a Maps key, when nothing matches or when Google cannot be reached.
+ */
+export async function verifyAddress(
+    key: string | null | undefined,
+    text: string,
+    country: string,
+): Promise<PickedAddress | null> {
+    if (!key || text.trim().length < 3) {
+        return null;
+    }
+
+    try {
+        const places = await loadPlaces(key);
+        const { suggestions } =
+            await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+                input: text,
+                includedRegionCodes: [country.toLowerCase()],
+            });
+        const prediction = suggestions.find(
+            (s) => s.placePrediction,
+        )?.placePrediction;
+
+        if (!prediction) {
+            return null;
+        }
+
+        const place = prediction.toPlace();
+        await place.fetchFields({ fields: ['addressComponents', 'location'] });
+        const address = toAddress(place, country);
+
+        return address.line1 && address.city ? address : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
  * Street address input with Google Places suggestions in the company's country. Without a Maps key (or when
  * Google cannot be reached) it is a plain input, so the address is typed by hand as before.
  */

@@ -5,6 +5,7 @@ import {
     ClipboardPaste,
     ExternalLink,
     Search,
+    Sparkles,
     X,
 } from 'lucide-react';
 import type { FormEvent, ReactNode } from 'react';
@@ -15,6 +16,7 @@ import {
     addressComplete,
     emptyAddress,
 } from '@/components/customers/address-entry';
+import { verifyAddress } from '@/components/customers/address-autocomplete';
 import { CustomerNotes } from '@/components/customers/customer-notes';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
@@ -36,6 +38,8 @@ import { isPossiblePhone, usePhone } from '@/lib/phone';
 import { cn } from '@/lib/utils';
 import { index as brandsPage } from '@/routes/brands';
 import { create, index, lookup, parseMessage, store } from '@/routes/jobs';
+import { quickBooking } from '@/routes/jobs';
+import { QUICK_BOOKING_RESULT_KEY } from '@/lib/quick-booking';
 import { xsrfToken } from '@/lib/http';
 import {
     Sheet,
@@ -106,6 +110,57 @@ type Parsed = {
         appliance_brand: string | null;
         problem: string | null;
     };
+};
+
+/** What Quick booking read from the text (server: QuickBookingParser), handed over from its screen. */
+type QuickResult = {
+    customer: CustomerChoice | null;
+    matched_by: 'phone' | 'name_address' | null;
+    fields: {
+        first_name: string | null;
+        last_name: string | null;
+        phone: string | null;
+        email: string | null;
+        address: {
+            line1: string;
+            city: string | null;
+            region: string | null;
+            postal_code: string | null;
+        } | null;
+        unit: string | null;
+        buzzer: string | null;
+        appliance_type: string | null;
+        brand: string | null;
+        model: string | null;
+        problem: string | null;
+        date: string | null;
+        arrival_now: boolean;
+        arrival_start: string | null;
+        arrival_end: string | null;
+        notes: string | null;
+    };
+};
+
+/** How a field filled by the AI is marked until the person checks the form. */
+const AI_FILLED =
+    'rounded-2xl bg-amber-50 p-2 ring-2 ring-amber-300 dark:bg-amber-950/40 dark:ring-amber-700';
+
+const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+/** Reads (and removes) the Quick booking result once; null on a normal visit. */
+const takeQuickResult = (): QuickResult | null => {
+    if (typeof window === 'undefined') return null;
+    if (new URLSearchParams(window.location.search).get('quick') !== '1') {
+        return null;
+    }
+    try {
+        const raw = sessionStorage.getItem(QUICK_BOOKING_RESULT_KEY);
+        sessionStorage.removeItem(QUICK_BOOKING_RESULT_KEY);
+
+        return raw ? (JSON.parse(raw) as QuickResult) : null;
+    } catch {
+        return null;
+    }
 };
 
 /** An on/off switch as a whole raised row (one tap). */
@@ -306,6 +361,7 @@ export default function QuickBook({
     arrivalWindows = [],
     bookingTechnicians = [],
     busy = {},
+    closedDays = [],
     customer: initialCustomer,
 }: {
     booking: boolean;
@@ -323,6 +379,7 @@ export default function QuickBook({
     arrivalWindows?: Window[];
     bookingTechnicians?: { id: number; name: string }[];
     busy?: Record<number, Busy[]>;
+    closedDays?: string[];
     customer: CustomerChoice | null;
 }) {
     const t = useTrans();
@@ -641,6 +698,259 @@ export default function QuickBook({
             .finally(() => setPasting(false));
     };
 
+    // Quick booking: the AI's reading of the text fills the form once; the filled fields are marked, a customer found
+    // in the book is used (never a duplicate), the address is checked with the address suggestions, and without a
+    // day or window the free windows of the next days are offered. Nothing is saved until Save.
+    const [aiFilled, setAiFilled] = useState<Set<string>>(new Set());
+    const [quickInfo, setQuickInfo] = useState<{
+        matchedBy: QuickResult['matched_by'];
+        customerName: string | null;
+        address: 'checking' | 'verified' | 'unverified' | null;
+        needsTime: boolean;
+    } | null>(null);
+    const [applianceBrand, setApplianceBrand] = useState('');
+    const [applianceModel, setApplianceModel] = useState('');
+    const hl = (key: string) => (aiFilled.has(key) ? AI_FILLED : undefined);
+    const mapsKey = auth.company?.google_maps_key ?? null;
+
+    const applyQuick = (result: QuickResult) => {
+        const f = result.fields;
+        const filled = new Set<string>();
+        const mark = (key: string, value: unknown) => {
+            if (value !== null && value !== undefined && value !== '') {
+                filled.add(key);
+            }
+        };
+        const jobAddress = f.address
+            ? {
+                  ...emptyAddress(country),
+                  line1: f.address.line1,
+                  unit: f.unit ?? '',
+                  city: f.address.city ?? '',
+                  region: f.address.region ?? '',
+                  postal_code: f.address.postal_code ?? '',
+              }
+            : null;
+        const extra = !f.appliance_type
+            ? [f.brand, f.model && `model ${f.model}`]
+                  .filter(Boolean)
+                  .join(', ')
+            : '';
+        const description = [f.problem, extra].filter(Boolean).join('. ');
+        const notes = [f.buzzer && `Buzzer: ${f.buzzer}`, f.notes]
+            .filter(Boolean)
+            .join('\n');
+        mark('problem', description);
+        mark('notes', notes);
+        if (f.appliance_type) {
+            setApplianceType(f.appliance_type);
+            filled.add('appliance');
+            setApplianceBrand(f.brand ?? '');
+            setApplianceModel(f.model ?? '');
+            mark('brand_model', f.brand ?? f.model);
+        }
+
+        let verifyTarget: 'new_customer' | 'new_property' | null = null;
+        if (result.customer) {
+            const choice = result.customer;
+            setCustomer(choice);
+            setMatches([]);
+            filled.add('customer');
+            const usable = choice.properties.filter(
+                (p) => (p.address?.line1 ?? p.full_address) !== '',
+            );
+            const known = usable.find(
+                (p) =>
+                    jobAddress !== null &&
+                    p.address?.line1.trim().toLowerCase() ===
+                        jobAddress.line1.trim().toLowerCase(),
+            );
+            const property =
+                known ??
+                (jobAddress
+                    ? undefined
+                    : (usable.find((p) => p.is_primary) ?? usable[0]));
+            setNewAddress(!property && jobAddress !== null);
+            if (!property && jobAddress) {
+                verifyTarget = 'new_property';
+                filled.add('address');
+            }
+            form.setData((d) => ({
+                ...d,
+                new_customer_mode: false,
+                customer_id: choice.id,
+                property_id: property?.id ?? null,
+                new_property:
+                    !property && jobAddress ? jobAddress : d.new_property,
+                description: description || d.description,
+                notes: notes || d.notes,
+                occupant: occupantOf(property),
+                billing: billingOf(choice, country),
+            }));
+        } else {
+            mark('phone', f.phone);
+            mark('first_name', f.first_name);
+            mark('last_name', f.last_name);
+            mark('email', f.email);
+            if (jobAddress) {
+                verifyTarget = 'new_customer';
+                filled.add('address');
+            }
+            form.setData((d) => ({
+                ...d,
+                new_customer: {
+                    ...d.new_customer,
+                    first_name: f.first_name ?? '',
+                    last_name: f.last_name ?? '',
+                    phone: f.phone ?? '',
+                    email: f.email ?? '',
+                    property: jobAddress ?? d.new_customer.property,
+                },
+                description: description || d.description,
+                notes: notes || d.notes,
+            }));
+        }
+
+        // The day and arrival window the customer asked for.
+        const date =
+            f.date && f.date >= today
+                ? f.date
+                : f.arrival_now || f.arrival_start
+                  ? today
+                  : null;
+        if (date) {
+            filled.add('when');
+            const window = f.arrival_start
+                ? arrivalWindows.find(
+                      (w) =>
+                          w.start === f.arrival_start &&
+                          w.end === f.arrival_end,
+                  )
+                : undefined;
+            if (f.arrival_now && date === today) {
+                setSlot({ kind: 'now' });
+                form.setData((d) => ({ ...d, visit: { ...d.visit, date } }));
+            } else if (window) {
+                setSlot({ kind: 'window', ...window });
+                form.setData((d) => ({ ...d, visit: { ...d.visit, date } }));
+            } else if (f.arrival_start && f.arrival_end) {
+                setSlot({ kind: 'custom' });
+                form.setData((d) => ({
+                    ...d,
+                    visit: {
+                        ...d.visit,
+                        date,
+                        start_time: f.arrival_start ?? d.visit.start_time,
+                        end_time: f.arrival_end ?? d.visit.end_time,
+                    },
+                }));
+            } else {
+                const first =
+                    date === today ? upcomingToday[0] : arrivalWindows[0];
+                setSlot(first ? { kind: 'window', ...first } : { kind: 'now' });
+                form.setData((d) => ({ ...d, visit: { ...d.visit, date } }));
+            }
+        }
+
+        setAiFilled(filled);
+        setQuickInfo({
+            matchedBy: result.matched_by,
+            customerName: result.customer?.display_name ?? null,
+            address: verifyTarget && mapsKey ? 'checking' : null,
+            needsTime: !date,
+        });
+
+        // The address is checked with the same suggestions the address field uses (Google Places).
+        if (verifyTarget && jobAddress && mapsKey) {
+            const text = [
+                jobAddress.line1,
+                jobAddress.city,
+                [jobAddress.region, jobAddress.postal_code]
+                    .filter(Boolean)
+                    .join(' '),
+            ]
+                .filter(Boolean)
+                .join(', ');
+            void verifyAddress(mapsKey, text, country).then((found) => {
+                setQuickInfo((info) =>
+                    info
+                        ? {
+                              ...info,
+                              address: found ? 'verified' : 'unverified',
+                          }
+                        : info,
+                );
+                if (!found) return;
+                const checked = {
+                    ...found,
+                    unit: jobAddress.unit || found.unit || '',
+                };
+                form.setData((d) =>
+                    verifyTarget === 'new_customer'
+                        ? {
+                              ...d,
+                              new_customer: {
+                                  ...d.new_customer,
+                                  property: {
+                                      ...d.new_customer.property,
+                                      ...checked,
+                                  },
+                              },
+                          }
+                        : {
+                              ...d,
+                              new_property: { ...d.new_property, ...checked },
+                          },
+                );
+            });
+        }
+    };
+    useEffect(() => {
+        const result = takeQuickResult();
+        if (result) applyQuick(result);
+        // Once, on opening from Quick booking.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Free windows of the next days (company windows not taken by every technician; "Now" first for today),
+    // offered when the text named no day or window.
+    const freeWindows = useMemo(() => {
+        const options: { date: string; slot: Slot; label: string }[] = [];
+        const people = bookingTechnicians.map((p) => p.id);
+        const free = (date: string, w: Window) =>
+            people.length === 0 ||
+            people.some(
+                (id) =>
+                    !(busy[id] ?? []).some(
+                        (b) =>
+                            b.date === date &&
+                            b.start < w.end &&
+                            b.end > w.start,
+                    ),
+            );
+        for (let i = 0; i < 7 && options.length < 6; i++) {
+            const date = addDays(today, i);
+            const weekday =
+                WEEKDAY_KEYS[new Date(`${date}T00:00:00Z`).getUTCDay()];
+            if (closedDays.includes(weekday)) continue;
+            if (i === 0) {
+                options.push({ date, slot: { kind: 'now' }, label: '' });
+            }
+            for (const w of arrivalWindows) {
+                if (i === 0 && w.start <= nowTime) continue;
+                if (free(date, w)) {
+                    options.push({
+                        date,
+                        slot: { kind: 'window', ...w },
+                        label: '',
+                    });
+                }
+            }
+        }
+
+        return options.slice(0, 6);
+    }, [arrivalWindows, bookingTechnicians, busy, closedDays, nowTime, today]);
+
     const phoneValid =
         existing || isPossiblePhone(data.new_customer.phone, country);
     const phoneError =
@@ -702,7 +1012,15 @@ export default function QuickBook({
                 ? {}
                 : known
                   ? { appliance_ids: [known.id] }
-                  : { new_appliances: [{ type: applianceType }] }),
+                  : {
+                        new_appliances: [
+                            {
+                                type: applianceType,
+                                manufacturer: applianceBrand.trim() || null,
+                                model_number: applianceModel.trim() || null,
+                            },
+                        ],
+                    }),
         }));
         form.post(store().url, {
             onFinish: () => {
@@ -869,6 +1187,47 @@ export default function QuickBook({
                     </div>
                 )}
 
+                {quickInfo && (
+                    <section
+                        className="da-card space-y-1.5 border-amber-300 p-4 text-sm"
+                        data-test="quick-booking-filled"
+                    >
+                        <p className="flex items-center gap-2 font-semibold">
+                            <Sparkles className="size-4 text-amber-500" />
+                            {t('jobs.quick_booking.filled')}
+                        </p>
+                        {quickInfo.customerName && (
+                            <p data-test="quick-booking-existing">
+                                {t(
+                                    quickInfo.matchedBy === 'phone'
+                                        ? 'jobs.quick_booking.existing_by_phone'
+                                        : 'jobs.quick_booking.existing_by_name',
+                                    { name: quickInfo.customerName },
+                                )}
+                            </p>
+                        )}
+                        {quickInfo.address === 'verified' && (
+                            <p data-test="quick-booking-address-verified">
+                                {t('jobs.quick_booking.address_verified')}
+                            </p>
+                        )}
+                        {quickInfo.address === 'unverified' && (
+                            <p
+                                className="text-amber-700 dark:text-amber-300"
+                                data-test="quick-booking-address-unverified"
+                            >
+                                {t('jobs.quick_booking.address_unverified')}
+                            </p>
+                        )}
+                        <Link
+                            href={quickBooking()}
+                            className="inline-flex min-h-11 items-center font-medium text-link"
+                        >
+                            {t('jobs.quick_booking.back_to_text')}
+                        </Link>
+                    </section>
+                )}
+
                 <Button
                     type="button"
                     variant="outline"
@@ -882,7 +1241,12 @@ export default function QuickBook({
                 {existing ? (
                     /* The customer is chosen: one row with Change; their notes stay visible. */
                     <section className="space-y-2" data-test="booking-customer">
-                        <div className="da-card flex items-center gap-3 p-3">
+                        <div
+                            className={cn(
+                                'da-card flex items-center gap-3 p-3',
+                                hl('customer'),
+                            )}
+                        >
                             <span className="min-w-0 flex-1">
                                 <span className="block truncate font-semibold">
                                     {customer.display_name}
@@ -966,14 +1330,16 @@ export default function QuickBook({
                             </Step>
                         )}
                         {needsAddress && (
-                            <AddressEntry
-                                id="booking-address"
-                                label={t('jobs.quick.job_address')}
-                                value={data.new_property}
-                                errors={errors}
-                                errorPrefix="new_property."
-                                onChange={setNewProperty}
-                            />
+                            <div className={hl('address')}>
+                                <AddressEntry
+                                    id="booking-address"
+                                    label={t('jobs.quick.job_address')}
+                                    value={data.new_property}
+                                    errors={errors}
+                                    errorPrefix="new_property."
+                                    onChange={setNewProperty}
+                                />
+                            </div>
                         )}
                         <InputError message={errors.customer_id} />
                     </section>
@@ -983,6 +1349,7 @@ export default function QuickBook({
                             id="booking-phone"
                             label={t('customers.fields.phone')}
                             error={phoneError}
+                            className={hl('phone')}
                         >
                             <PhoneInput
                                 id="booking-phone"
@@ -1010,6 +1377,7 @@ export default function QuickBook({
                                 id="booking-name"
                                 label={t('customers.fields.first_name')}
                                 error={errors['new_customer.first_name']}
+                                className={hl('first_name')}
                             >
                                 <Input
                                     id="booking-name"
@@ -1032,6 +1400,7 @@ export default function QuickBook({
                                 id="booking-last-name"
                                 label={t('customers.fields.last_name')}
                                 error={errors['new_customer.last_name']}
+                                className={hl('last_name')}
                             >
                                 <div className="relative">
                                     <Input
@@ -1072,6 +1441,7 @@ export default function QuickBook({
                             id="booking-email"
                             label={t('jobs.quick.email')}
                             error={errors['new_customer.email']}
+                            className={hl('email')}
                         >
                             <Input
                                 id="booking-email"
@@ -1088,14 +1458,16 @@ export default function QuickBook({
                             />
                         </FormField>
                         {/* The address comes right after the name: a booking always has one. */}
-                        <AddressEntry
-                            id="booking-address"
-                            label={t('jobs.quick.job_address')}
-                            value={data.new_customer.property}
-                            errors={errors}
-                            errorPrefix="new_customer.property."
-                            onChange={setProperty}
-                        />
+                        <div className={hl('address')}>
+                            <AddressEntry
+                                id="booking-address"
+                                label={t('jobs.quick.job_address')}
+                                value={data.new_customer.property}
+                                errors={errors}
+                                errorPrefix="new_customer.property."
+                                onChange={setProperty}
+                            />
+                        </div>
                     </>
                 )}
 
@@ -1181,6 +1553,7 @@ export default function QuickBook({
                     <Step
                         title={t('jobs.quick.appliance')}
                         hint={t('jobs.quick.appliance_optional')}
+                        className={hl('appliance')}
                     >
                         <div className="rounded-2xl p-0.5">
                             <ApplianceTypePicker
@@ -1195,6 +1568,49 @@ export default function QuickBook({
                                 }
                             />
                         </div>
+                        {applianceType !== '' &&
+                            (applianceBrand !== '' ||
+                                applianceModel !== '' ||
+                                aiFilled.has('appliance')) && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <FormField
+                                        id="booking-appliance-brand"
+                                        label={t(
+                                            'appliances.fields.manufacturer',
+                                        )}
+                                        className={hl('brand_model')}
+                                    >
+                                        <Input
+                                            id="booking-appliance-brand"
+                                            maxLength={100}
+                                            value={applianceBrand}
+                                            onChange={(event) =>
+                                                setApplianceBrand(
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                    </FormField>
+                                    <FormField
+                                        id="booking-appliance-model"
+                                        label={t(
+                                            'appliances.fields.model_number',
+                                        )}
+                                        className={hl('brand_model')}
+                                    >
+                                        <Input
+                                            id="booking-appliance-model"
+                                            maxLength={100}
+                                            value={applianceModel}
+                                            onChange={(event) =>
+                                                setApplianceModel(
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                    </FormField>
+                                </div>
+                            )}
                         <InputError
                             message={
                                 errors['new_appliances.0.type'] ??
@@ -1208,6 +1624,7 @@ export default function QuickBook({
                     id="booking-problem"
                     label={t('jobs.quick.problem')}
                     error={errors.description}
+                    className={hl('problem')}
                 >
                     <Textarea
                         id="booking-problem"
@@ -1222,7 +1639,69 @@ export default function QuickBook({
                 </FormField>
 
                 {booking && (
-                    <Step title={t('jobs.quick.when')}>
+                    <Step title={t('jobs.quick.when')} className={hl('when')}>
+                        {quickInfo?.needsTime && freeWindows.length > 0 && (
+                            <div
+                                className="space-y-2"
+                                data-test="quick-booking-free"
+                            >
+                                <p className="text-xs text-muted-foreground">
+                                    {t('jobs.quick_booking.free_windows')}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {freeWindows.map((option) => {
+                                        const chosen =
+                                            data.visit.date === option.date &&
+                                            (option.slot.kind === 'now'
+                                                ? slot.kind === 'now'
+                                                : slot.kind === 'window' &&
+                                                  option.slot.kind ===
+                                                      'window' &&
+                                                  slot.start ===
+                                                      option.slot.start);
+                                        const day =
+                                            option.date === today
+                                                ? t('jobs.quick.today')
+                                                : option.date ===
+                                                    addDays(today, 1)
+                                                  ? t('jobs.quick.tomorrow')
+                                                  : new Intl.DateTimeFormat(
+                                                        locale,
+                                                        {
+                                                            weekday: 'short',
+                                                            timeZone: 'UTC',
+                                                        },
+                                                    ).format(
+                                                        new Date(
+                                                            `${option.date}T00:00:00Z`,
+                                                        ),
+                                                    );
+
+                                        return (
+                                            <button
+                                                key={`${option.date}-${option.slot.kind === 'window' ? option.slot.start : 'now'}`}
+                                                type="button"
+                                                className="da-chip da-press inline-flex min-h-11 items-center rounded-2xl px-3 text-sm font-semibold"
+                                                data-state={
+                                                    chosen ? 'on' : 'off'
+                                                }
+                                                onClick={() => {
+                                                    setVisit({
+                                                        date: option.date,
+                                                    });
+                                                    setSlot(option.slot);
+                                                }}
+                                            >
+                                                {day}{' '}
+                                                {option.slot.kind === 'window'
+                                                    ? range(option.slot)
+                                                    : t('jobs.quick.now')}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                         <div className="flex items-center gap-2">
                             <DateChips
                                 className="min-w-0 flex-1"
@@ -1427,7 +1906,11 @@ export default function QuickBook({
                     )}
 
                 {/* More details, folded: about the customer, brand, source, notes for the team. */}
-                <details className="da-card group" data-test="booking-more">
+                <details
+                    className="da-card group"
+                    data-test="booking-more"
+                    open={aiFilled.has('notes') || undefined}
+                >
                     <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold [&::-webkit-details-marker]:hidden">
                         <span className="flex-1">
                             {t('jobs.quick.more_details')}
@@ -1511,6 +1994,7 @@ export default function QuickBook({
                             id="booking-team-notes"
                             label={t('jobs.fields.notes')}
                             error={errors.notes}
+                            className={hl('notes')}
                         >
                             <Textarea
                                 id="booking-team-notes"

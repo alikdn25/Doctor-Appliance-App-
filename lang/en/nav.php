@@ -53,6 +53,7 @@ return [
         'open' => 'Add',
         'close' => 'Close',
         'job' => 'Job',
+        'quick_booking' => 'Quick booking',
         'expense' => 'Expense',
         'trip' => 'Trip',
         'task' => 'Task',

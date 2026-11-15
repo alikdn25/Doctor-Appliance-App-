@@ -10,6 +10,7 @@ import {
     PackageCheck,
     Play,
     Search,
+    Sparkles,
     UserX,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -36,7 +37,7 @@ import { useTrans } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
-import { mine, show, technician } from '@/routes/jobs';
+import { mine, quickBooking, show, technician } from '@/routes/jobs';
 import { finishScreen, onMyWay, start } from '@/routes/visits';
 
 type MyVisit = Visit & {
@@ -288,6 +289,19 @@ export default function MyJobs({
             />
 
             <div className="mx-auto w-full max-w-2xl space-y-3 p-4 pb-24 sm:p-6">
+                {auth.can.quickBooking && (
+                    <Button
+                        asChild
+                        variant="outline"
+                        className="w-full"
+                        data-test="today-quick-booking"
+                    >
+                        <Link href={quickBooking()}>
+                            <Sparkles /> {t('jobs.quick_booking.button')}
+                        </Link>
+                    </Button>
+                )}
+
                 {install && (
                     <Button variant="outline" onClick={() => void install()}>
                         <Download /> {t('jobs.install.button')}

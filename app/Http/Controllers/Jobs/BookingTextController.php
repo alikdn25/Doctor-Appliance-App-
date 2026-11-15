@@ -21,7 +21,7 @@ class BookingTextController extends Controller
         Gate::authorize('create', ServiceJob::class);
 
         $text = $request->validate(['text' => ['required', 'string', 'max:5000']])['text'];
-        $result = $parser->parse($text, currentCompany());
+        $result = $parser->parse($text, currentCompany(), $request->user());
         $phone = $result['fields']['phone'];
 
         // CustomerPhone is tenant-scoped: only this company's customers are found.

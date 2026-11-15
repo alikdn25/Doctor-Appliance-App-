@@ -1,12 +1,19 @@
 import { router, usePage } from '@inertiajs/react';
-import { Car, ClipboardPlus, ListTodo, Plus, Wallet } from 'lucide-react';
+import {
+    Car,
+    ClipboardPlus,
+    ListTodo,
+    Plus,
+    Sparkles,
+    Wallet,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { TaskSheet } from '@/components/tasks/task-sheet';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { create as createExpense } from '@/routes/expenses';
-import { create as bookCustomer } from '@/routes/jobs';
+import { create as bookCustomer, quickBooking } from '@/routes/jobs';
 import { index as trips } from '@/routes/trips';
 
 type Item = {
@@ -18,7 +25,7 @@ type Item = {
 
 /**
  * The round "+" above the bottom bar on every screen (owner's task, Oct 24), volumetric with the blue glow. A tap
- * opens Job · Expense · Trip · Task, from the bottom up, next to the thumb: Job books a customer (on the day the
+ * opens Job · Quick booking · Expense · Trip · Task, from the bottom up, next to the thumb: Job books a customer (on the day the
  * calendar shows), Expense and Trip open the new expense and the mileage form, Task opens the task sheet here.
  * Screens with their own pinned actions (forms) hide it, like the bottom bar.
  */
@@ -78,6 +85,12 @@ export function CreateFab() {
                 label: t('nav.create.expense'),
                 icon: <Wallet />,
                 onSelect: () => router.visit(createExpense()),
+            },
+            can.quickBooking && {
+                key: 'quick-booking',
+                label: t('nav.create.quick_booking'),
+                icon: <Sparkles />,
+                onSelect: () => router.visit(quickBooking()),
             },
             can.createJobs && {
                 key: 'job',

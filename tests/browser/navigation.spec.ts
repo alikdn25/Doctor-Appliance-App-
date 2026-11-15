@@ -47,7 +47,13 @@ test('the owner gets Today, Calendar, Map, Jobs, More and the round "+"; Field s
     await expect(nav.locator('[data-test="bottom-nav-book"]')).toHaveCount(0);
     await page.locator('[data-test="create-fab"]').click();
     const menu = page.locator('[data-test="create-menu"] button');
-    await expect(menu).toHaveText(['Task', 'Trip', 'Expense', 'Job']);
+    await expect(menu).toHaveText([
+        'Task',
+        'Trip',
+        'Expense',
+        'Quick booking',
+        'Job',
+    ]);
     await page.keyboard.press('Escape');
     await expect(page.locator('[data-test="create-menu"]')).toHaveCount(0);
     // Root screen: no back arrow, no menu button.
