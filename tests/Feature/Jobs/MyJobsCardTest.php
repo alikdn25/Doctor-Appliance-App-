@@ -79,7 +79,7 @@ test('the Finish visit screen shows the job and saves the work notes with the re
     $this->get(route('visits.finish-screen', $this->visit))->assertRedirect(route('jobs.show', $this->job));
 });
 
-test('part needed keeps the job waiting for parts and other technicians cannot open the screen', function () {
+test('part needed marks the job Need to order parts and other technicians cannot open the screen', function () {
     $foreign = memberOf(Company::factory()->create(), UserRole::Owner);
     $this->visit->forceFill(['status' => VisitStatus::InProgress, 'started_at' => now()])->saveQuietly();
     $this->job->forceFill(['status' => JobStatus::InProgress])->saveQuietly();
@@ -90,11 +90,11 @@ test('part needed keeps the job waiting for parts and other technicians cannot o
     $this->actingAs($foreign)->get(route('visits.finish-screen', $this->visit))->assertNotFound();
 
     $this->actingAs($this->tech)->post(route('visits.finish', $this->visit), [
-        'outcome' => 'waiting_for_parts',
+        'outcome' => 'need_to_order_parts',
         'tech_notes' => 'Needs drain pump.',
     ])->assertSessionHasNoErrors();
 
     $job = ServiceJob::withoutCompanyScope()->find($this->job->id);
-    expect($job->status)->toBe(JobStatus::WaitingForParts)
+    expect($job->status)->toBe(JobStatus::NeedToOrderParts)
         ->and($job->tech_notes)->toBe('Needs drain pump.');
 });

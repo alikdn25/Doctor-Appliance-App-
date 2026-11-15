@@ -7,6 +7,8 @@ use App\Enums\PaymentMethod;
 use App\Enums\UserRole;
 use App\Models\AiRequest;
 use App\Models\Appliance;
+use App\Models\AssistantAction;
+use App\Models\AssistantMessage;
 use App\Models\AuditLog;
 use App\Models\BotToken;
 use App\Models\Brand;
@@ -161,6 +163,8 @@ beforeEach(function () {
             ]);
             BotToken::issue($company, 'Website '.$company->id, $owner);
             AiRequest::create(['user_id' => $owner->id, 'feature' => 'quick_booking', 'model' => 'claude-haiku-5-5', 'status' => 'ok']);
+            AssistantMessage::create(['user_id' => $owner->id, 'conversation' => (string) Str::uuid(), 'role' => 'user', 'content' => [], 'text' => 'Secret question']);
+            AssistantAction::create(['user_id' => $owner->id, 'conversation' => (string) Str::uuid(), 'type' => 'booking', 'params' => [], 'summary' => 'Secret']);
         });
     }
     $this->estimateB = Estimate::withoutCompanyScope()->where('company_id', $this->companyB->id)->sole();
@@ -218,6 +222,8 @@ dataset('tenant models', [
     'review requests' => [ReviewRequest::class],
     'booking bot tokens' => [BotToken::class],
     'AI requests' => [AiRequest::class],
+    'assistant messages' => [AssistantMessage::class],
+    'assistant actions' => [AssistantAction::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -239,7 +245,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         JobAppliance::class, JobAssignee::class, JobBringItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
         Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class, TaxReserveTransfer::class, Trip::class, BotToken::class,
-        Task::class, JobNote::class, AiRequest::class,
+        Task::class, JobNote::class, AiRequest::class, AssistantMessage::class, AssistantAction::class,
     ])->sort()->values()->all());
 });
 

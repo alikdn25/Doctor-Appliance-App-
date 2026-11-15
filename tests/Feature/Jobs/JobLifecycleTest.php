@@ -146,8 +146,8 @@ describe('closing a job', function () {
 
     test('finishing as completed records "repaired"; waiting for parts leaves the job open', function () {
         startVisit($this->visit, $this->tech);
-        $this->post(route('visits.finish', $this->visit), ['outcome' => 'waiting_for_parts'])->assertRedirect();
-        expect($this->job->fresh())->status->toBe(JobStatus::WaitingForParts)->outcome->toBeNull();
+        $this->post(route('visits.finish', $this->visit), ['outcome' => 'need_to_order_parts'])->assertRedirect();
+        expect($this->job->fresh())->status->toBe(JobStatus::NeedToOrderParts)->outcome->toBeNull();
 
         $this->actingAs($this->owner)->post(route('visits.store', $this->job), ['date' => '2030-07-01', 'start_time' => '13:00', 'end_time' => '15:00', 'assignee_ids' => [$this->tech->id]]);
         $second = JobVisit::withoutCompanyScope()->where('service_job_id', $this->job->id)->latest('id')->first();

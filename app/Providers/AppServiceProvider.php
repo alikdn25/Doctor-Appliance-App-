@@ -62,12 +62,15 @@ class AppServiceProvider extends ServiceProvider
         // The price book and Google review locations are kept by the office.
         Gate::define('manageCatalog', fn (User $user) => $user->hasRole(UserRole::Owner, UserRole::Admin));
         // Quick booking (AI reads a dictated or pasted text into the booking form): Owner and Office only.
+        // The AI assistant: Owner only for now (Office later).
+        Gate::define('useAssistant', fn (User $user) => $user->hasRole(UserRole::Owner));
         Gate::define('useQuickBooking', fn (User $user) => $user->hasRole(UserRole::Owner, UserRole::Admin));
 
         // Own counters: a plain "throttle:N,1" shares one counter per person across routes, so the version check
         // and route planning would use up the limit of other actions.
         RateLimiter::for('app-version', fn (Request $request) => Limit::perMinute(60)->by('app-version|'.$request->ip()));
         RateLimiter::for('map-plan', fn (Request $request) => Limit::perMinute(60)->by('map-plan|'.($request->user()?->id ?? $request->ip())));
+        RateLimiter::for('assistant', fn (Request $request) => Limit::perMinute(20)->by('assistant|'.($request->user()?->id ?? $request->ip())));
         RateLimiter::for('quick-booking', fn (Request $request) => Limit::perMinute(20)->by('quick-booking|'.($request->user()?->id ?? $request->ip())));
 
         Event::listen(Login::class, function (Login $event) {

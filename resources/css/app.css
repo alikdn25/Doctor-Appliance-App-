@@ -188,6 +188,9 @@
     --status-in-progress-from: #fffbe9;
     --status-in-progress-to: #ffe08a;
     --status-in-progress-text: #92400e;
+    --status-need-to-order-parts-from: #fff1f7;
+    --status-need-to-order-parts-to: #fbb6d6;
+    --status-need-to-order-parts-text: #9d174d;
     --status-waiting-for-parts-from: #fbf6ff;
     --status-waiting-for-parts-to: #dfc0ff;
     --status-waiting-for-parts-text: #6b21a8;

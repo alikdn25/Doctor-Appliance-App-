@@ -59,6 +59,7 @@ const JOB_STATUSES = [
     'scheduled',
     'on_the_way',
     'in_progress',
+    'need_to_order_parts',
     'waiting_for_parts',
     'waiting_for_customer',
     'on_hold',

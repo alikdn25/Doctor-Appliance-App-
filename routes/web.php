@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
 use App\Http\Controllers\Admin\WorkspaceController;
 use App\Http\Controllers\AppVersionController;
+use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\Billing\CashController;
 use App\Http\Controllers\Billing\DocumentDeliveryController;
 use App\Http\Controllers\Billing\EstimateController;
@@ -110,6 +111,13 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Tenant area: everything here runs inside the current company.
     Route::middleware(['verified', 'tenant'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+        // AI assistant (Owner only).
+        Route::get('assistant', [AssistantController::class, 'index'])->name('assistant.index');
+        Route::post('assistant/ask', [AssistantController::class, 'ask'])->middleware('throttle:assistant')->name('assistant.ask');
+        Route::post('assistant/new-chat', [AssistantController::class, 'fresh'])->name('assistant.new-chat');
+        Route::post('assistant/actions/{action}/confirm', [AssistantController::class, 'confirm'])->name('assistant.actions.confirm');
+        Route::post('assistant/actions/{action}/cancel', [AssistantController::class, 'cancel'])->name('assistant.actions.cancel');
 
         Route::get('messages', [SmsInboxController::class, 'index'])->name('messages.index');
         Route::get('messages/older', [SmsInboxController::class, 'older'])->name('messages.older');

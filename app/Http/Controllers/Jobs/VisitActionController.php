@@ -143,7 +143,8 @@ class VisitActionController extends Controller
 
         $job = JobCloseController::visitJob($visit);
         $data = JobCloseController::validateClose($request, $job, [
-            JobStatus::Completed->value, JobStatus::WaitingForParts->value,
+            // "Part needed": the old value waiting_for_parts is still accepted from an app not yet updated.
+            JobStatus::Completed->value, JobStatus::NeedToOrderParts->value, JobStatus::WaitingForParts->value,
             ...array_map(fn (JobOutcome $o) => $o->value, JobOutcome::closing()),
         ]);
         $note = $data['note'] ?? null;
@@ -154,8 +155,8 @@ class VisitActionController extends Controller
             $job->forceFill(['tech_notes' => $notes])->save();
         }
 
-        if ($data['outcome'] === JobStatus::WaitingForParts->value) {
-            $workflow->finish($visit, $request->user(), JobStatus::WaitingForParts, $note);
+        if (in_array($data['outcome'], [JobStatus::NeedToOrderParts->value, JobStatus::WaitingForParts->value], true)) {
+            $workflow->finish($visit, $request->user(), JobStatus::NeedToOrderParts, $note);
 
             return back();
         }

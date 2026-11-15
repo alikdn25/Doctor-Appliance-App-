@@ -108,7 +108,7 @@ export default function FinishVisit({
                 ? 'fixed_under_warranty'
                 : 'completed'
             : data.result === 'parts'
-              ? 'waiting_for_parts'
+              ? 'need_to_order_parts'
               : data.no_repair;
 
     const submit = (e: FormEvent) => {

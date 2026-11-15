@@ -15,10 +15,11 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class JobBacklog
 {
-    public const REASONS = ['draft', 'overdue', 'needs_schedule', 'waiting_for_parts', 'waiting_for_customer', 'on_hold', 'scheduled'];
+    public const REASONS = ['draft', 'overdue', 'needs_schedule', 'need_to_order_parts', 'waiting_for_parts', 'waiting_for_customer', 'on_hold', 'scheduled'];
 
     private const REASON_SQL = "CASE
         WHEN status = 'booking_draft' THEN 'draft'
+        WHEN status = 'need_to_order_parts' THEN 'need_to_order_parts'
         WHEN status = 'waiting_for_parts' THEN 'waiting_for_parts'
         WHEN status = 'waiting_for_customer' THEN 'waiting_for_customer'
         WHEN status = 'on_hold' THEN 'on_hold'
