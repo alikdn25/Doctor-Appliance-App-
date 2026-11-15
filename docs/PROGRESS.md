@@ -1,3 +1,22 @@
+# November 15 — Fix: AI schemas the API accepts, basic paste parser, saved-customer prompt, Square import message
+
+1. **AI schemas** (`BookingTextParser`, `QuickBookingParser`, `ProblemFinder`): no node combines `enum` with an array
+   `type` and no enum contains `null` (the Anthropic API rejected the old `appliance_type`). All text fields are plain
+   strings: the AI returns `""` for anything missing and `"unknown"` for an appliance that is not stated; both become
+   `null` before the form is filled. Addresses are always objects (empty strings when absent → `null`).
+   `AiSchemaNullableEnumTest` walks every schema and tool schema recursively.
+2. **`php artisan ai:schema-smoke`**: one real minimal request per AI feature (claude-haiku-5-5, 256 tokens, the feature's
+   exact schema/tools), prints OK or the API error. Not run in CI; not logged as AiRequest.
+3. **Basic paste parser** (when the AI is down): one-line messages — name = words before the phone, address = text after
+   the phone up to the first period when it starts with a house number, problem = the rest.
+4. **Phone of a saved customer, other name**: the pasted person is filled in as a new customer and the form shows
+   "This phone belongs to saved customer <name>. Use saved customer?" with a button to switch.
+5. **/square-import** shows one message: "Square is not available for your company yet." when Square cannot be connected,
+   otherwise "Connect Square first." with the Connect Square button (server prop `notice`).
+
+- Next: the owner registers the Square OAuth redirect URL `https://app.doctor-appliance.ca/payment-providers/square/callback`
+  and sets `SQUARE_APPLICATION_ID` when Square is to be offered.
+
 # November 15 — Fix: AI schemas with nullable enums, "Import from Square" always shown
 
 1. **AI schemas**: every nullable field with an enum lists `null` in the enum. `appliance_type` in Paste from message

@@ -43,7 +43,10 @@ class SquareImportController extends Controller
         return Inertia::render('company/square-import', [
             'connected' => $connection !== null,
             // Square is set up on this installation and serves the company's country: offer to connect it here.
-            'canConnect' => array_key_exists('square', $providers->availableFor(currentCompany())),
+            'canConnect' => $canConnect = array_key_exists('square', $providers->availableFor(currentCompany())),
+            // The one message shown without a connection: "Connect Square first." with the button, or only
+            // "Square is not available for your company yet." when it cannot be connected.
+            'notice' => $connection !== null ? null : ($canConnect ? 'connect' : 'not_available'),
             'account' => $connection?->account_name,
             'missingScopes' => $missing,
             'checkError' => $error,

@@ -96,6 +96,8 @@ type ParsedAddress = {
 type Parsed = {
     source: 'ai' | 'basic';
     customer: CustomerChoice | null;
+    /** A saved customer with the pasted phone but another name: offered, never picked silently. */
+    phone_customer: CustomerChoice | null;
     fields: {
         first_name: string | null;
         last_name: string | null;
@@ -478,6 +480,10 @@ export default function QuickBook({
     const [pasteOpen, setPasteOpen] = useState(false);
     const [pasteText, setPasteText] = useState('');
     const [pasting, setPasting] = useState(false);
+    const [phoneOwner, setPhoneOwner] = useState<{
+        choice: CustomerChoice;
+        parsed: Parsed;
+    } | null>(null);
     const isToday = data.visit.date === today;
     const technicianId = data.visit.assignee_ids[0] ?? null;
 
@@ -685,6 +691,11 @@ export default function QuickBook({
             )
             .then((parsed: Parsed) => {
                 applyParsed(parsed);
+                setPhoneOwner(
+                    parsed.phone_customer
+                        ? { choice: parsed.phone_customer, parsed }
+                        : null,
+                );
                 setPasteOpen(false);
                 setPasteText('');
                 toast.success(
@@ -1368,9 +1379,37 @@ export default function QuickBook({
                                 onChange={(phone) => {
                                     form.clearErrors('new_customer.phone');
                                     setNewCustomer({ phone });
+                                    setPhoneOwner(null);
                                 }}
                             />
-                            {!nameSearch && (
+                            {phoneOwner && (
+                                <div
+                                    className="da-card mt-2 flex items-center gap-3 p-3 text-sm"
+                                    data-test="booking-phone-owner"
+                                >
+                                    <span className="min-w-0 flex-1">
+                                        {t('jobs.quick.paste_phone_owner', {
+                                            name: phoneOwner.choice
+                                                .display_name,
+                                        })}
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() => {
+                                            applyParsed({
+                                                ...phoneOwner.parsed,
+                                                customer: phoneOwner.choice,
+                                            });
+                                            setPhoneOwner(null);
+                                        }}
+                                    >
+                                        {t('jobs.quick.paste_use_saved')}
+                                    </Button>
+                                </div>
+                            )}
+                            {!nameSearch && !phoneOwner && (
                                 <Matches
                                     matches={matches}
                                     onUse={useCustomer}

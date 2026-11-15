@@ -44,28 +44,30 @@ class QuickBookingParser
      */
     public static function schema(): array
     {
-        $text = ['type' => ['string', 'null']];
+        // Anthropic structured outputs: no node may combine "enum" with an array "type", so every field is a plain
+        // string ("" when missing, "unknown" for an appliance type that is not stated); normalize() maps both to null.
+        $text = ['type' => 'string'];
         $properties = [
             'first_name' => $text,
             'last_name' => $text,
             'phone' => $text,
             'email' => $text,
             'address' => [
-                'type' => ['object', 'null'],
+                'type' => 'object',
                 'properties' => ['line1' => $text, 'city' => $text, 'region' => $text, 'postal_code' => $text],
                 'required' => ['line1', 'city', 'region', 'postal_code'],
                 'additionalProperties' => false,
             ],
             'unit' => $text,
             'buzzer' => $text,
-            'appliance_type' => ['type' => ['string', 'null'], 'enum' => [...array_map(fn (ApplianceType $t) => $t->value, ApplianceType::cases()), null]],
+            'appliance_type' => ['type' => 'string', 'enum' => [...array_map(fn (ApplianceType $t) => $t->value, ApplianceType::cases()), 'unknown']],
             'brand' => $text,
             'model' => $text,
             'problem' => $text,
-            'date' => ['type' => ['string', 'null'], 'description' => 'YYYY-MM-DD'],
+            'date' => ['type' => 'string', 'description' => 'YYYY-MM-DD, or "" when not given'],
             'arrival_now' => ['type' => 'boolean'],
-            'arrival_start' => ['type' => ['string', 'null'], 'description' => 'HH:MM, 24-hour'],
-            'arrival_end' => ['type' => ['string', 'null'], 'description' => 'HH:MM, 24-hour'],
+            'arrival_start' => ['type' => 'string', 'description' => 'HH:MM, 24-hour, or "" when not given'],
+            'arrival_end' => ['type' => 'string', 'description' => 'HH:MM, 24-hour, or "" when not given'],
             'notes' => $text,
         ];
 
@@ -91,18 +93,19 @@ class QuickBookingParser
             Rules:
             - Write field values in English. Keep people's names, street names and city names exactly as written (do not translate
               or transliterate them).
-            - Use null for anything that is not in the text. Never guess or invent a value.
+            - Use "" (an empty string) for anything that is not in the text. Never guess or invent a value.
             - phone: the customer's phone as written, with the country code if given (the company is in country {$company->country}).
             - address: the street address of the job (line1 = house number and street, without the unit). unit = apartment, suite
               or unit number. buzzer = buzzer, entry or gate code.
-            - appliance_type: one of the listed values or null. brand and model as written (model = model number).
+            - appliance_type: one of the listed values. If the appliance is not stated, return "unknown". brand and model as
+              written (model = model number). When there is no address, all address fields are "".
             - problem: a short description of what is wrong, in English.
             - Dates: today is {$today}, the time now is {$time} (company time zone {$company->timezone}). Turn "today",
               "tomorrow", "on Monday", "next Friday" into a date (YYYY-MM-DD); a weekday means the next such day after today.
             - Arrival: the company's arrival windows are {$windows}. When the customer's wish fits one window ("morning",
               "after 1"), give that window's start and end; when they name other times, give those times (24-hour HH:MM).
               arrival_now = true only when they want someone right away / as soon as possible today.
-            - notes: anything else useful for the visit (parking, pets, best time to call) in English; null when nothing.
+            - notes: anything else useful for the visit (parking, pets, best time to call) in English; "" when nothing.
             TEXT;
     }
 

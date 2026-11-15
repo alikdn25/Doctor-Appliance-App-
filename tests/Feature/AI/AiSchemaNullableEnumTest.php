@@ -1,34 +1,35 @@
 <?php
 
+use App\Console\Commands\AiSchemaSmokeCommand;
+use App\Models\Company;
+use App\Services\AI\AiFeature;
 use App\Services\AI\Assistant\AssistantTools;
 use App\Services\AI\Problems\ProblemFinder;
 use App\Services\AI\QuickBookingParser;
 use App\Services\AI\Review\AppReviewer;
 use App\Support\Ai\BookingTextParser;
+use Tests\Fakes\FakeAiTransport;
 
 /**
- * Every JSON schema sent to the AI: a field that may be null and has an enum must list null in the enum, or the
- * structured answer can never be null and the API rejects or distorts it.
+ * Every JSON schema sent to the AI, as the Anthropic API accepts it: no node may combine "enum" with an array
+ * "type" (the API rejects it), and no enum may contain null. Missing values are "" or "unknown" and become null in
+ * the app.
  */
 
 /**
- * Paths of nullable fields with an enum, and the ones of them that miss null.
+ * Paths of the nodes the API would reject.
  *
  * @param  array<string, mixed>|list<mixed>  $node
- * @param  list<string>  $checked
- * @param  list<string>  $missing
+ * @param  list<string>  $bad
  */
-function walkAiSchema(array $node, string $path, array &$checked, array &$missing): void
+function walkAiSchema(array $node, string $path, array &$bad): void
 {
-    if (array_key_exists('enum', $node)) {
-        $types = (array) ($node['type'] ?? []);
-        $nullable = in_array('null', $types, true) || ($node['nullable'] ?? false) === true;
-
-        if ($nullable) {
-            $checked[] = $path;
-            if (! in_array(null, (array) $node['enum'], true)) {
-                $missing[] = $path;
-            }
+    if (array_key_exists('enum', $node) && is_array($node['enum'])) {
+        if (is_array($node['type'] ?? null)) {
+            $bad[] = $path.' (enum with a type array)';
+        }
+        if (in_array(null, $node['enum'], true)) {
+            $bad[] = $path.' (null in enum)';
         }
     }
 
@@ -37,7 +38,7 @@ function walkAiSchema(array $node, string $path, array &$checked, array &$missin
             $child = (array) $child;
         }
         if (is_array($child)) {
-            walkAiSchema($child, $path.'.'.$key, $checked, $missing);
+            walkAiSchema($child, $path.'.'.$key, $bad);
         }
     }
 }
@@ -46,33 +47,59 @@ dataset('ai schemas', fn () => [
     'booking text parser' => [BookingTextParser::schema()],
     'quick booking parser' => [QuickBookingParser::schema()],
     'problem finder' => [ProblemFinder::schema()],
-    'app review (inconvenient)' => [AppReviewer::schema()],
+    'app review' => [AppReviewer::schema()],
     'assistant tools' => [array_map(fn (array $tool) => $tool['inputSchema'], AssistantTools::definitions())],
 ]);
 
-test('nullable fields with an enum list null in the enum', function (array $schema) {
-    $checked = [];
-    $missing = [];
-    walkAiSchema($schema, '$', $checked, $missing);
+test('no schema node combines enum with a type array or lists null in an enum', function (array $schema) {
+    $bad = [];
+    walkAiSchema($schema, '$', $bad);
 
-    expect($missing)->toBe([]);
+    expect($bad)->toBe([]);
 })->with('ai schemas');
 
-test('the check sees the appliance type of both booking parsers', function () {
-    foreach ([BookingTextParser::schema(), QuickBookingParser::schema()] as $schema) {
-        $checked = [];
-        $missing = [];
-        walkAiSchema($schema, '$', $checked, $missing);
+test('the smoke command covers every AI feature with the same schemas', function () {
+    $requests = AiSchemaSmokeCommand::requests();
 
-        expect($checked)->toContain('$.properties.appliance_type')
-            ->and($schema['properties']['appliance_type']['enum'])->toContain(null);
+    expect(array_keys($requests))->toEqualCanonicalizing(array_map(fn (AiFeature $f) => $f->value, AiFeature::cases()));
+
+    foreach ($requests as [$schema, $tools]) {
+        $bad = [];
+        walkAiSchema(['schema' => $schema ?? [], 'tools' => $tools], '$', $bad);
+        expect($bad)->toBe([]);
     }
 });
 
-test('the check catches a nullable enum without null', function () {
-    $checked = [];
-    $missing = [];
-    walkAiSchema(['properties' => ['kind' => ['type' => ['string', 'null'], 'enum' => ['a', 'b']]]], '$', $checked, $missing);
+test('the walk catches an enum with a type array and null in an enum, at any depth', function () {
+    $bad = [];
+    walkAiSchema(['properties' => [
+        'kind' => ['type' => ['string', 'null'], 'enum' => ['a', 'b']],
+        'list' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => (object) ['x' => ['type' => 'string', 'enum' => ['a', null]]]]],
+    ]], '$', $bad);
 
-    expect($missing)->toBe(['$.properties.kind']);
+    expect($bad)->toBe(['$.properties.kind (enum with a type array)', '$.properties.list.items.properties.x (null in enum)']);
+});
+
+test('appliance type "unknown" and empty strings from the AI become null in the filled form', function () {
+    $company = Company::factory()->create(['country' => 'CA']);
+    $this->actingAs(memberOf($company));
+    config(['ai.key' => 'test']);
+    FakeAiTransport::install(fn () => [
+        'first_name' => 'Jane', 'last_name' => 'Doe', 'company_name' => '', 'phone' => '778-555-0142', 'email' => '',
+        'job_address' => ['line1' => '45 Oak Ave', 'unit' => '', 'city' => 'Burnaby', 'region' => '', 'postal_code' => ''],
+        'billing_address' => ['line1' => '', 'unit' => '', 'city' => '', 'region' => '', 'postal_code' => ''],
+        'occupant_name' => '', 'occupant_phone' => '', 'access_notes' => '',
+        'appliance_type' => 'unknown', 'appliance_brand' => '', 'problem' => 'Not working, makes a loud noise',
+    ]);
+
+    $this->postJson(route('jobs.parse-message'), ['text' => 'Jane Doe 778-555-0142, 45 Oak Ave, Burnaby. Not working, makes a loud noise'])
+        ->assertOk()
+        ->assertJsonPath('source', 'ai')
+        ->assertJsonPath('fields.appliance_type', null)
+        ->assertJsonPath('fields.company_name', null)
+        ->assertJsonPath('fields.email', null)
+        ->assertJsonPath('fields.job_address.unit', null)
+        ->assertJsonPath('fields.billing_address', null)
+        ->assertJsonPath('fields.occupant_name', null)
+        ->assertJsonPath('fields.phone', '+17785550142');
 });

@@ -2,20 +2,25 @@ import { expect, test } from '@playwright/test';
 
 /**
  * Import from Square (owner's task of November 15, PR 3) on a 390 px phone: the screen opens for the Owner and, with
- * no Square account connected in the browser fixtures, says to connect Square first and offers no import.
+ * Square not set up in the browser fixtures, says only that Square is not available and offers no import.
  */
 test.use({ viewport: { width: 390, height: 844 } });
 
-test('the import screen asks to connect Square first', async ({ page }) => {
+test('without Square on the installation the import screen only says it is not available', async ({
+    page,
+}) => {
     await page.goto('/square-import');
     await expect(
         page.getByRole('heading', { name: 'Import from Square' }),
     ).toBeVisible();
-    await expect(page.getByText('Connect Square first')).toBeVisible();
-    // Square is not set up in the browser fixtures: no connect button, a note instead.
+    // Square is not set up in the browser fixtures: only "not available", no "Connect Square first" and no button.
     await expect(
         page.getByText('Square is not available for your company yet.'),
     ).toBeVisible();
+    await expect(page.getByText('Connect Square first')).toHaveCount(0);
+    await expect(
+        page.getByRole('link', { name: 'Connect Square' }),
+    ).toHaveCount(0);
     await expect(page.locator('[data-test="square-import-start"]')).toHaveCount(
         0,
     );
