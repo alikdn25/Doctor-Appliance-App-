@@ -26,13 +26,16 @@ class PaymentProviderController extends Controller
         Gate::authorize('managePayments', $company);
         $provider = $this->available($providers, $provider);
 
+        // "Import from Square" asks for the extra read permissions and comes back to the import screen.
+        $import = $request->query('for') === 'import' && $provider->key() === 'square';
+
         // The state ties the callback to this session, company and provider (CSRF protection for OAuth).
         $state = Str::random(40);
         $request->session()->put(self::STATE_KEY, [
-            'state' => $state, 'company_id' => $company->id, 'provider' => $provider->key(),
+            'state' => $state, 'company_id' => $company->id, 'provider' => $provider->key(), 'import' => $import,
         ]);
 
-        return Inertia::location($provider->authorizationUrl($company, $state));
+        return Inertia::location($provider->authorizationUrl($company, $state, $import ? (array) config('payments.square.import_scopes') : []));
     }
 
     public function callback(Request $request, string $provider, PaymentProviders $providers): RedirectResponse
@@ -55,6 +58,12 @@ class PaymentProviderController extends Controller
             $provider->connect($company, $request->query(), $request->user());
         } catch (PaymentProviderException $e) {
             return $this->back('error', $e->getMessage());
+        }
+
+        if ($expected['import'] ?? false) {
+            Inertia::flash('toast', ['type' => 'success', 'message' => __('square_import.access_granted')]);
+
+            return to_route('square-import.show');
         }
 
         return $this->back('success', __('payments.connect.connected', ['provider' => $provider->label()]));

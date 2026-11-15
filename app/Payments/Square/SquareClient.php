@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Thin client for the Square APIs used here (OAuth, merchants, locations, payment links).
+ * Thin client for the Square APIs used here (OAuth, merchants, locations, payment links, and reading customers,
+ * invoices and orders for the import).
  * Credentials and environment come from config/services.php (.env); nothing is hard-coded.
  */
 class SquareClient
@@ -132,6 +133,98 @@ class SquareClient
     public function deletePaymentLink(string $accessToken, string $linkId): void
     {
         $this->api($accessToken)->delete('/v2/online-checkout/payment-links/'.rawurlencode($linkId))->throw();
+    }
+
+    /**
+     * The permissions the token was granted (OAuth token status).
+     *
+     * @return list<string>
+     */
+    public function tokenScopes(string $accessToken): array
+    {
+        $response = Http::withToken($accessToken)
+            ->withHeaders(['Square-Version' => config('services.square.api_version')])
+            ->acceptJson()
+            ->timeout(20)
+            ->post($this->baseUrl().'/oauth2/token/status');
+
+        if ($response->failed()) {
+            $this->fail('square.token_status', $response);
+        }
+
+        return array_values(array_filter((array) $response->json('scopes'), 'is_string'));
+    }
+
+    /**
+     * One page of the seller's customers.
+     *
+     * @return array{items: list<array<string, mixed>>, cursor: string|null}
+     */
+    public function customers(string $accessToken, ?string $cursor = null): array
+    {
+        return $this->page($accessToken, '/v2/customers', array_filter(['limit' => 100, 'cursor' => $cursor]), 'customers', 'square.customers');
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function locations(string $accessToken): array
+    {
+        $response = $this->api($accessToken)->get('/v2/locations');
+
+        if ($response->failed()) {
+            $this->fail('square.locations', $response);
+        }
+
+        return array_values((array) $response->json('locations'));
+    }
+
+    /**
+     * One page of a location's invoices.
+     *
+     * @return array{items: list<array<string, mixed>>, cursor: string|null}
+     */
+    public function invoices(string $accessToken, string $locationId, ?string $cursor = null): array
+    {
+        return $this->page($accessToken, '/v2/invoices', array_filter(['location_id' => $locationId, 'limit' => 200, 'cursor' => $cursor]), 'invoices', 'square.invoices');
+    }
+
+    /**
+     * Orders by id (line items, taxes, tenders), up to 100 at a time.
+     *
+     * @param  list<string>  $orderIds
+     * @return list<array<string, mixed>>
+     */
+    public function orders(string $accessToken, array $orderIds): array
+    {
+        if ($orderIds === []) {
+            return [];
+        }
+
+        $response = $this->api($accessToken)->post('/v2/orders/batch-retrieve', ['order_ids' => array_values($orderIds)]);
+
+        if ($response->failed()) {
+            $this->fail('square.orders', $response);
+        }
+
+        return array_values((array) $response->json('orders'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array{items: list<array<string, mixed>>, cursor: string|null}
+     */
+    private function page(string $accessToken, string $path, array $query, string $key, string $context): array
+    {
+        $response = $this->api($accessToken)->get($path, $query);
+
+        if ($response->failed()) {
+            $this->fail($context, $response);
+        }
+
+        $cursor = $response->json('cursor');
+
+        return ['items' => array_values((array) $response->json($key)), 'cursor' => is_string($cursor) && $cursor !== '' ? $cursor : null];
     }
 
     private function api(string $accessToken): PendingRequest

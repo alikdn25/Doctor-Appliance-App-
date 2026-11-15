@@ -60,6 +60,40 @@ Five PRs, each waits for the owner's "ok" (SPEC §7.15).
   or company's action refused, no delete tool), JobStatusTest / MyJobsCardTest / JobLifecycleTest (Need to order
   parts), tenant isolation, role permissions; browser zz-assistant (390 px).
 - Next: PR 3 — import customers and invoice history from Square (after the owner's "ok").
+- PR 2 merged (#63) after the owner's "ok".
+
+## PR 3 — Import customers and invoice history from Square (done)
+
+1. **Import from Square** (Owner only): a button next to the connected Square account in Settings → Payments opens
+   the import screen. It uses the connected account; when the token lacks reading customers / invoices (checked with
+   Square's token status), "Allow access in Square" asks for them (`payments.square.import_scopes`) and comes back to
+   the import. No AI.
+2. **Customers**: every Square customer with first and last name, company, phone (E.164), email, address, notes and
+   Square customer id. Duplicates by Square id, then phone, then email.
+3. **Check before import**: new customers, matches, already imported, without phone and email; each match has Merge /
+   Skip / Create new and there is "Merge all". Nothing is written before **Import**. Merge only fills what the
+   existing customer lacks (name parts, notes, another phone / email / address) and never overwrites.
+4. **Invoice history**: every invoice of every location (drafts left out) with number, date, status, lines, totals,
+   taxes, payments and payment method, linked to the customer. Kept in their own read-only table (`square_invoices`,
+   "Imported from Square"): they have no job, cannot be edited, are not in the tax reserve or the app's invoice
+   lists, and show on the customer card ("Invoices imported from Square") and to the assistant.
+5. **Background with progress**: reading and importing run in the queue; the screen shows the progress. A repeated
+   import brings only new and changed customers and invoices (by Square id and Square's update time). Imported
+   customers get nothing: no SMS, no email.
+6. **Undo this import**: the customers it created (with their addresses and imported invoices) go to Deleted items
+   for 30 days, and what a merge added to existing customers is taken back. Restoring a customer brings its imported
+   invoices back. Each import and undo is in the change log ("Square import": who, when, how many customers and
+   invoices).
+
+- **Migration** `2026_11_15_000300_create_square_import_tables`: new tables `square_imports`,
+  `square_import_customers`, `square_invoices`; new nullable columns `customers.square_customer_id`,
+  `square_import_id`, `square_updated_at`. Nothing existing changes.
+- Square: the app must be allowed `CUSTOMERS_READ` and `INVOICES_READ` in the Square Developer dashboard (OAuth
+  permissions of the application); the Owner presses "Allow access in Square" once.
+- Tests: SquareImportTest (faked Square: duplicates by phone and email, merge, skip / create new, repeated import
+  without duplicates, tax reserve unchanged, nothing sent, Undo to Deleted items and restore, missing permissions
+  asked for, Owner only, other company refused), tenant isolation; browser zz-square-import (390 px).
+- Next: PR 4 — Find problems (after the owner's "ok").
 
 # October 24 — Owner's task: Map tab, route, estimates, app update
 

@@ -80,9 +80,11 @@ class SquareProvider implements PaymentProvider
         ];
     }
 
-    public function authorizationUrl(Company $company, string $state): string
+    public function authorizationUrl(Company $company, string $state, array $extraScopes = []): string
     {
-        return $this->client->authorizationUrl($state, $this->redirectUri(), (array) config('payments.square.scopes'));
+        $scopes = array_values(array_unique([...(array) config('payments.square.scopes'), ...$extraScopes]));
+
+        return $this->client->authorizationUrl($state, $this->redirectUri(), $scopes);
     }
 
     public function connect(Company $company, array $query, User $user): void
@@ -389,7 +391,7 @@ class SquareProvider implements PaymentProvider
         ])->save();
     }
 
-    private function connection(Company $company): ?PaymentProviderConnection
+    public function connection(Company $company): ?PaymentProviderConnection
     {
         return $this->currentCompany->runAs($company, fn () => PaymentProviderConnection::query()
             ->where('provider', $this->key())

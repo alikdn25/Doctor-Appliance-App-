@@ -27,6 +27,7 @@ use App\Http\Controllers\Company\MemberTransitionController;
 use App\Http\Controllers\Company\MessagingSettingsController;
 use App\Http\Controllers\Company\PaymentProviderController;
 use App\Http\Controllers\Company\ServiceController;
+use App\Http\Controllers\Company\SquareImportController;
 use App\Http\Controllers\Company\SwitchCompanyController;
 use App\Http\Controllers\Company\TaxRateController;
 use App\Http\Controllers\Company\TeamController;
@@ -261,6 +262,14 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('payment-providers/{provider}/connect', [PaymentProviderController::class, 'connect'])->name('payment-providers.connect');
         Route::get('payment-providers/{provider}/callback', [PaymentProviderController::class, 'callback'])->name('payment-providers.callback');
         Route::delete('payment-providers/{provider}', [PaymentProviderController::class, 'disconnect'])->name('payment-providers.disconnect');
+
+        // Import of customers and invoice history from Square (Owner only).
+        Route::get('square-import', [SquareImportController::class, 'show'])->name('square-import.show');
+        Route::post('square-import', [SquareImportController::class, 'start'])->name('square-import.start');
+        Route::get('square-import/{import}/status', [SquareImportController::class, 'status'])->name('square-import.status');
+        Route::post('square-import/{import}/run', [SquareImportController::class, 'run'])->name('square-import.run');
+        Route::delete('square-import/{import}', [SquareImportController::class, 'discard'])->name('square-import.discard');
+        Route::post('square-import/{import}/undo', [SquareImportController::class, 'undo'])->name('square-import.undo');
 
         // The UI kit, to check every component and state on a phone and a desktop. Local development only.
         if (app()->environment('local')) {

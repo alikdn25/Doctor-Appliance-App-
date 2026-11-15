@@ -26,6 +26,8 @@ return [
         'payment_reminder' => 'Payment reminder sent',
         'reschedule' => 'Booking moved',
         'booking' => 'Booking form opened',
+        'done' => 'Imported',
+        'undone' => 'Import undone',
     ],
     'types' => [
         'customer' => 'Customer',
@@ -34,6 +36,7 @@ return [
         'invoice' => 'Invoice',
         'payment' => 'Payment',
         'assistant' => 'AI assistant',
+        'square_import' => 'Square import',
     ],
     'sources' => [
         'web' => 'In the app',
@@ -48,6 +51,8 @@ return [
         'company_name' => 'Business name',
         'notes' => 'Notes',
         'status' => 'Status',
+        'customers' => 'Customers',
+        'invoices' => 'Invoices',
         'description' => 'Problem',
         'tech_notes' => 'Work done',
         'brand_id' => 'Brand',

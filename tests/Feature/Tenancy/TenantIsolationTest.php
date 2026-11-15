@@ -47,6 +47,9 @@ use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\SmsAccount;
 use App\Models\SmsRegistration;
+use App\Models\SquareImport;
+use App\Models\SquareImportCustomer;
+use App\Models\SquareInvoice;
 use App\Models\SupplierReceipt;
 use App\Models\SupplierReceiptLink;
 use App\Models\Task;
@@ -165,6 +168,9 @@ beforeEach(function () {
             AiRequest::create(['user_id' => $owner->id, 'feature' => 'quick_booking', 'model' => 'claude-haiku-5-5', 'status' => 'ok']);
             AssistantMessage::create(['user_id' => $owner->id, 'conversation' => (string) Str::uuid(), 'role' => 'user', 'content' => [], 'text' => 'Secret question']);
             AssistantAction::create(['user_id' => $owner->id, 'conversation' => (string) Str::uuid(), 'type' => 'booking', 'params' => [], 'summary' => 'Secret']);
+            $import = SquareImport::create(['user_id' => $owner->id, 'status' => 'done']);
+            $import->rows()->create(['square_id' => 'SQ-'.$company->id, 'data' => ['first_name' => 'Secret'], 'kind' => 'new', 'decision' => 'new']);
+            (new SquareInvoice)->forceFill(['customer_id' => $job->customer_id, 'square_import_id' => $import->id, 'square_invoice_id' => 'INV-'.$company->id, 'status' => 'paid', 'currency' => 'CAD', 'items' => [], 'taxes' => [], 'payments' => []])->save();
         });
     }
     $this->estimateB = Estimate::withoutCompanyScope()->where('company_id', $this->companyB->id)->sole();
@@ -224,6 +230,9 @@ dataset('tenant models', [
     'AI requests' => [AiRequest::class],
     'assistant messages' => [AssistantMessage::class],
     'assistant actions' => [AssistantAction::class],
+    'Square imports' => [SquareImport::class],
+    'Square import customers' => [SquareImportCustomer::class],
+    'Square invoices' => [SquareInvoice::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -245,7 +254,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         JobAppliance::class, JobAssignee::class, JobBringItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
         Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class, TaxReserveTransfer::class, Trip::class, BotToken::class,
-        Task::class, JobNote::class, AiRequest::class, AssistantMessage::class, AssistantAction::class,
+        Task::class, JobNote::class, AiRequest::class, AssistantMessage::class, AssistantAction::class, SquareImport::class, SquareImportCustomer::class, SquareInvoice::class,
     ])->sort()->values()->all());
 });
 

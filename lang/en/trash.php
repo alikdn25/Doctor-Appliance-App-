@@ -18,5 +18,6 @@ return [
         'payment' => 'Payment',
         'expense' => 'Expense',
         'cost' => 'Job cost',
+        'square_invoice' => 'Invoice imported from Square',
     ],
 ];

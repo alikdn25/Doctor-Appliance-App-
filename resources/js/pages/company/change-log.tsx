@@ -68,6 +68,7 @@ export default function ChangeLog({
                             'invoice',
                             'payment',
                             'assistant',
+                            'square_import',
                         ].map((type) => (
                             <option key={type} value={type}>
                                 {t(`history.types.${type}`)}
