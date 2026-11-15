@@ -25,8 +25,8 @@ Five PRs, each waits for the owner's "ok" (SPEC §7.15).
 
 - **Migration** `2026_11_15_000100_create_ai_requests` (new table only, nothing existing changes).
 - Tests: AiServiceTest (own model per feature, log with tokens/cost/time, errors and refusals logged, daily limit per
-  company, no key, tools), QuickBookingTest (parsing with a faked AI, time zone, empty fields, customer by phone / name
-  + address, other company never found, nothing saved, guest cannot save, AI error and limit messages, Owner/Office
+  company, no key, tools), QuickBookingTest (parsing with a faked AI, time zone, empty fields, customer by phone or by name
+  and address, other company never found, nothing saved, guest cannot save, AI error and limit messages, Owner/Office
   only, key never in the page), PasteFromMessageTest (booking model), tenant isolation and role permissions; browser
   zz-quick-booking (390 px).
 - Next: PR 2 — AI assistant (after the owner's "ok").
