@@ -20,7 +20,7 @@ class AnthropicTransport implements AiTransport
         try {
             $message = (new Client(apiKey: (string) config('ai.key')))->messages->create(
                 maxTokens: $request['max_tokens'],
-                messages: $request['messages'],
+                messages: self::messages($request['messages']),
                 model: $request['model'],
                 outputConfig: $outputConfig === [] ? null : $outputConfig,
                 system: $request['system'],
@@ -55,5 +55,28 @@ class AnthropicTransport implements AiTransport
             ],
             model: $message->model,
         );
+    }
+
+    /**
+     * Stored messages back into the request: a tool call without arguments must stay a JSON object ({}), which
+     * decoding turned into an empty list.
+     *
+     * @param  list<array<string, mixed>>  $messages
+     * @return list<array<string, mixed>>
+     */
+    private static function messages(array $messages): array
+    {
+        return array_map(function (array $message) {
+            if (is_array($message['content'] ?? null)) {
+                $message['content'] = array_map(
+                    fn ($block) => is_array($block) && ($block['type'] ?? null) === 'tool_use' && ($block['input'] ?? []) === []
+                        ? [...$block, 'input' => new \stdClass]
+                        : $block,
+                    $message['content'],
+                );
+            }
+
+            return $message;
+        }, $messages);
     }
 }

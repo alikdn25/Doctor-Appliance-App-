@@ -14,6 +14,9 @@ enum JobStatus: string
     case Scheduled = 'scheduled';
     case OnTheWay = 'on_the_way';
     case InProgress = 'in_progress';
+    /** The technician needs a part ("Part needed"); the office has not ordered it yet. */
+    case NeedToOrderParts = 'need_to_order_parts';
+    /** The part is ordered; the job waits for it to arrive. */
     case WaitingForParts = 'waiting_for_parts';
     case WaitingForCustomer = 'waiting_for_customer';
     case Completed = 'completed';
@@ -70,6 +73,6 @@ enum JobStatus: string
      */
     public function reschedulable(): bool
     {
-        return in_array($this, [self::New, self::WaitingForParts, self::WaitingForCustomer, self::OnHold, self::Completed], true);
+        return in_array($this, [self::New, self::NeedToOrderParts, self::WaitingForParts, self::WaitingForCustomer, self::OnHold, self::Completed], true);
     }
 }

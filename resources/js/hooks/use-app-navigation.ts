@@ -20,6 +20,7 @@ import {
     Percent,
     Plus,
     Receipt,
+    Sparkles,
     Star,
     Tags,
     Trash2,
@@ -28,6 +29,7 @@ import {
 } from 'lucide-react';
 import { calendar, dashboard, expensesHub, map as mapPage } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
+import { index as assistantPage } from '@/routes/assistant';
 import { index as brands } from '@/routes/brands';
 import { index as cash } from '@/routes/cash';
 import { bookingBot, changeLog } from '@/routes/company';
@@ -172,6 +174,8 @@ export function useAppNavigation(): AppNavigation {
         invoicesItem,
         // With automatic texting the inbox sits in the header of Today and Jobs as well.
         messages,
+        can.useAssistant &&
+            item('assistant', 'nav.assistant', assistantPage(), Sparkles),
     ].filter(Boolean) as AppNavItem[];
 
     const fieldMoney = [

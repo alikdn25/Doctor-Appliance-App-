@@ -158,7 +158,7 @@ class CalendarController extends Controller
     }
 
     /**
-     * Open jobs with no upcoming visit: new jobs and jobs waiting for parts.
+     * Open jobs with no upcoming visit: new jobs and jobs that need or wait for parts.
      *
      * @return list<array<string, mixed>>
      */
@@ -166,7 +166,7 @@ class CalendarController extends Controller
     {
         return ServiceJob::query()
             ->visibleTo($user)
-            ->whereIn('status', [JobStatus::New->value, JobStatus::WaitingForParts->value])
+            ->whereIn('status', [JobStatus::New->value, JobStatus::NeedToOrderParts->value, JobStatus::WaitingForParts->value])
             ->whereDoesntHave('visits', fn ($q) => $q->whereIn('status', VisitStatus::openValues()))
             ->with(['customer', 'property', 'appliances'])
             ->orderBy('id')

@@ -46,6 +46,7 @@ return [
     'expenses_and_taxes' => 'Expenses & taxes',
     'my_expenses' => 'My expenses',
     'today' => 'Today',
+    'assistant' => 'Assistant',
     'book' => 'Book',
     'map' => 'Map',
     'more' => 'More',

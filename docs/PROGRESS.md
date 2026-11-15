@@ -30,6 +30,36 @@ Five PRs, each waits for the owner's "ok" (SPEC §7.15).
   only, key never in the page), PasteFromMessageTest (booking model), tenant isolation and role permissions; browser
   zz-quick-booking (390 px).
 - Next: PR 2 — AI assistant (after the owner's "ok").
+- PR 1 merged (#62) after the owner's "ok".
+
+## PR 2 — AI assistant (done)
+
+1. **Assistant** in More (Owner only; Office later, one line in `useAssistant`): a chat laid out like the SMS screen,
+   questions typed or dictated with the keyboard microphone, "New chat" in the header. Always `AI_MODEL_ASSISTANT`.
+2. **Read-only tools**, every query inside the user's company and visibility: unpaid / overdue invoices (balance, due
+   date, days overdue), jobs on a date or period, jobs by group (Need to order parts, Waiting for parts, Overdue, Not
+   completed), customer search (name, phone, email, address), customer history (jobs, estimates, invoices, payments),
+   estimates waiting for an answer, revenue and payments for a period, free windows on a date.
+3. **Actions only with confirmation**: SMS payment reminder for an invoice (Automatic SMS mode), moving a scheduled
+   visit to another date / window (the customer is not texted, like dragging), a new booking (the text goes to the
+   Quick booking parser on `AI_MODEL_BOOKING` and the same filled form opens; the person saves it). The AI only
+   proposes: a "What I will do" card with Confirm and Cancel; nothing runs without Confirm, a double tap cannot run it
+   twice. Each confirmed action is in the change log as "AI assistant" (source `ai_assistant`, type "AI assistant").
+   There is no tool that deletes anything.
+4. **The chat is kept as sent to the AI and only appended to** (system prompt and tools fixed; the current time goes
+   with each question), so earlier answers stay valid; a conversation starts over by itself after 120 messages.
+5. **New job status "Need to order parts"** (owner's answer): "Part needed" on the technician's finish screen now
+   sets it (the old app value `waiting_for_parts` still works the same way); the office presses **Parts ordered** on
+   the job page → Waiting for parts. Its own group in the unfinished-jobs bar and filters, pink colour. No migration
+   (the status is a string). The demo seeder follows.
+
+- **Migration** `2026_11_15_000200_create_assistant_tables`: new tables `assistant_messages` and `assistant_actions`
+  (nothing cascades; nothing existing changes).
+- Tests: AssistantTest (Owner only, assistant model, tool loop, append-only history, isolation of every tool,
+  nothing without Confirm, Cancel, confirmed reminder / move / booking, change log as AI assistant, another person's
+  or company's action refused, no delete tool), JobStatusTest / MyJobsCardTest / JobLifecycleTest (Need to order
+  parts), tenant isolation, role permissions; browser zz-assistant (390 px).
+- Next: PR 3 — import customers and invoice history from Square (after the owner's "ok").
 
 # October 24 — Owner's task: Map tab, route, estimates, app update
 

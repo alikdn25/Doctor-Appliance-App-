@@ -1,0 +1,40 @@
+<?php
+
+return [
+    'title' => 'Assistant',
+    'subtitle' => 'Jobs, invoices, customers',
+    'placeholder' => 'Ask a question…',
+    'send' => 'Send',
+    'new_chat' => 'New chat',
+    'thinking' => 'Looking it up…',
+    'empty' => 'Ask about unpaid invoices, today\'s jobs, a customer\'s history, revenue or free windows. You can also ask to send a payment reminder, move a booking or book a customer: you confirm every action.',
+    'examples' => [
+        'Which invoices are overdue?',
+        'What jobs do we have tomorrow?',
+        'Which jobs need parts ordered?',
+        'How much did we take this month?',
+    ],
+    'failed' => 'The assistant did not answer. Try again.',
+    'limit' => 'Today\'s AI limit for your company is used up.',
+    'not_set_up' => 'The AI is not set up yet (no API key).',
+    'gave_up' => 'I could not finish this. Try asking in a simpler way.',
+    'what_i_will_do' => 'What I will do',
+    'confirm' => 'Confirm',
+    'cancel' => 'Cancel',
+    'statuses' => [
+        'pending' => 'Waiting for your confirmation',
+        'running' => 'Running…',
+        'confirmed' => 'Done',
+        'cancelled' => 'Cancelled',
+        'failed' => 'Not done',
+    ],
+    'actions' => [
+        'reminder' => 'Send :customer (:phone) an SMS reminder to pay invoice #:number, balance :balance.',
+        'reminder_sent' => 'Payment reminder for invoice #:number sent.',
+        'reschedule' => 'Move job #:number (:customer) from :from to :to. The customer is not texted.',
+        'rescheduled' => 'Job #:number moved to :when.',
+        'booking' => 'Open a new booking from: “:text”',
+        'booking_opened' => 'The booking form is open. Check it and save.',
+        'not_possible' => 'This cannot be done now.',
+    ],
+];

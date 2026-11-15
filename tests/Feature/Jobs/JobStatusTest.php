@@ -82,6 +82,9 @@ test('waiting for parts, then a second visit completes the job', function () {
     $this->post(route('visits.start', $this->visit));
     $this->post(route('visits.finish', $this->visit), ['outcome' => 'waiting_for_parts', 'note' => 'Needs pump']);
 
+    // "Part needed" → Need to order parts; the office orders it → Waiting for parts.
+    expect($this->job->fresh()->status)->toBe(JobStatus::NeedToOrderParts);
+    $this->actingAs($this->owner)->put(route('jobs.status', $this->job), ['status' => 'waiting_for_parts'])->assertSessionHasNoErrors();
     expect($this->job->fresh()->status)->toBe(JobStatus::WaitingForParts);
 
     $this->actingAs($this->owner)
@@ -102,7 +105,8 @@ test('waiting for parts, then a second visit completes the job', function () {
     expect($this->job->fresh()->status)->toBe(JobStatus::Completed)
         ->and(statusLog($this->job))->toBe([
             ['scheduled', 'in_progress'],
-            ['in_progress', 'waiting_for_parts'],
+            ['in_progress', 'need_to_order_parts'],
+            ['need_to_order_parts', 'waiting_for_parts'],
             ['waiting_for_parts', 'scheduled'],
             ['scheduled', 'in_progress'],
             ['in_progress', 'completed'],
@@ -230,4 +234,12 @@ test('the job page offers the status buttons to whoever is assigned', function (
             ->where('statusOptions', [])
             ->where('can.update', false)
             ->where('can.work', true));
+});
+
+test('an app not yet updated still sends waiting_for_parts: it means Part needed', function () {
+    $this->actingAs($this->tech);
+    $this->post(route('visits.start', $this->visit));
+    $this->post(route('visits.finish', $this->visit), ['outcome' => 'waiting_for_parts'])->assertSessionHasNoErrors();
+
+    expect($this->job->fresh()->status)->toBe(JobStatus::NeedToOrderParts);
 });

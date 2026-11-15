@@ -23,6 +23,9 @@ return [
         'deleted' => 'Deleted',
         'restored' => 'Restored',
         'force_deleted' => 'Removed for good',
+        'payment_reminder' => 'Payment reminder sent',
+        'reschedule' => 'Booking moved',
+        'booking' => 'Booking form opened',
     ],
     'types' => [
         'customer' => 'Customer',
@@ -30,10 +33,12 @@ return [
         'estimate' => 'Estimate',
         'invoice' => 'Invoice',
         'payment' => 'Payment',
+        'assistant' => 'AI assistant',
     ],
     'sources' => [
         'web' => 'In the app',
         'bot' => 'Booking bot',
+        'ai_assistant' => 'AI assistant',
         'public' => 'Customer page or payment provider',
         'console' => 'Server',
     ],

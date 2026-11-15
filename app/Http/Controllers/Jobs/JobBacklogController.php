@@ -49,7 +49,7 @@ class JobBacklogController extends Controller
                 $filters['sort'] === 'newest',
                 fn ($query) => $query->orderByDesc('id'),
                 fn ($query) => $query
-                    ->orderByRaw("CASE backlog_reason WHEN 'overdue' THEN 0 WHEN 'draft' THEN 1 WHEN 'needs_schedule' THEN 2 WHEN 'waiting_for_parts' THEN 3 WHEN 'waiting_for_customer' THEN 4 WHEN 'on_hold' THEN 5 ELSE 6 END")
+                    ->orderByRaw("CASE backlog_reason WHEN 'overdue' THEN 0 WHEN 'draft' THEN 1 WHEN 'needs_schedule' THEN 2 WHEN 'need_to_order_parts' THEN 3 WHEN 'waiting_for_parts' THEN 4 WHEN 'waiting_for_customer' THEN 5 WHEN 'on_hold' THEN 6 ELSE 7 END")
                     ->orderByRaw("{$nextVisit} asc nulls last", [now()->utc()])
                     ->orderBy('created_at')
                     ->orderBy('id'),

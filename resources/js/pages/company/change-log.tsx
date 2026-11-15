@@ -67,6 +67,7 @@ export default function ChangeLog({
                             'estimate',
                             'invoice',
                             'payment',
+                            'assistant',
                         ].map((type) => (
                             <option key={type} value={type}>
                                 {t(`history.types.${type}`)}
@@ -81,7 +82,13 @@ export default function ChangeLog({
                         }
                     >
                         <option value="">{t('history.all_sources')}</option>
-                        {['web', 'bot', 'public', 'console'].map((source) => (
+                        {[
+                            'web',
+                            'bot',
+                            'ai_assistant',
+                            'public',
+                            'console',
+                        ].map((source) => (
                             <option key={source} value={source}>
                                 {t(`history.sources.${source}`)}
                             </option>

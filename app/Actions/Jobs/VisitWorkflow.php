@@ -49,11 +49,11 @@ class VisitWorkflow
     }
 
     /**
-     * @param  JobStatus  $outcome  Completed or WaitingForParts.
+     * @param  JobStatus  $outcome  Completed or NeedToOrderParts ("Part needed").
      */
     public function finish(JobVisit $visit, User $user, JobStatus $outcome, ?string $note = null): void
     {
-        if (! in_array($outcome, [JobStatus::Completed, JobStatus::WaitingForParts], true)) {
+        if (! in_array($outcome, [JobStatus::Completed, JobStatus::NeedToOrderParts], true)) {
             throw ValidationException::withMessages(['outcome' => __('jobs.errors.invalid_transition')]);
         }
 

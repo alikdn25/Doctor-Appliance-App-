@@ -277,7 +277,8 @@ class DemoSeeder extends Seeder
         $workflow = app(VisitWorkflow::class);
         $first = $parts->visits()->first();
         $workflow->start($first, $tech);
-        $workflow->finish($first, $tech, JobStatus::WaitingForParts, 'Drain pump ordered.');
+        $workflow->finish($first, $tech, JobStatus::NeedToOrderParts, 'Needs a drain pump.');
+        $parts->update(['status' => JobStatus::WaitingForParts]);
         $parts->update(['tech_notes' => 'Drain pump seized. Ordered replacement pump.']);
 
         // Diagnosis paid on the first visit, the repair quoted for when the part arrives.

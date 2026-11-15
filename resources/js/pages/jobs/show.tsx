@@ -115,6 +115,7 @@ import {
     finishBooking as finishBookingRoute,
     index,
     instructions as instructionsRoute,
+    status as statusRoute,
     techNotes,
     technician as technicianRoute,
 } from '@/routes/jobs';
@@ -630,6 +631,29 @@ export default function JobShow({
                           },
                       ]
                     : []),
+            ];
+        }
+
+        // "Part needed" from the technician: the office orders the part, then the job waits for it.
+        if (job.status === 'need_to_order_parts' && can.update && !current) {
+            return [
+                {
+                    key: 'parts-ordered',
+                    label: t('jobs.actions.parts_ordered'),
+                    icon: <Package />,
+                    onClick: () =>
+                        router.put(
+                            statusRoute(job.id).url,
+                            { status: 'waiting_for_parts' },
+                            { preserveScroll: true },
+                        ),
+                },
+                {
+                    key: 'schedule',
+                    label: t('jobs.actions.schedule_next'),
+                    icon: <CalendarPlus />,
+                    onClick: () => setVisitDialog({ open: true, visit: null }),
+                },
             ];
         }
 

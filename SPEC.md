@@ -106,7 +106,11 @@ Permissions are configurable per role later; v1 uses fixed roles above.
 
 ### Job statuses
 
-`new` → `scheduled` → `on_the_way` → `in_progress` → `waiting_for_parts` → `completed` → `invoiced` → `paid`, plus `waiting_for_customer`, `cancelled` and `on_hold`. Every status change is logged with user and time.
+`new` → `scheduled` → `on_the_way` → `in_progress` → `need_to_order_parts` → `waiting_for_parts` → `completed` → `invoiced` → `paid`, plus `waiting_for_customer`, `cancelled` and `on_hold`. Every status change is logged with user and time.
+
+**Need to order parts** (`need_to_order_parts`): the technician pressed "Part needed" when finishing a visit; the office
+orders the part and presses **Parts ordered** on the job page, which moves the job to **Waiting for parts**. Both are
+groups of the unfinished-jobs bar.
 
 A booking saved with **Save as draft** has the status **Draft** (`booking_draft`): no confirmation has gone to the
 customer yet. Drafts are orange with a "Draft" chip in My Jobs, the calendar and the Jobs list, are counted as
@@ -114,7 +118,7 @@ customer yet. Drafts are orange with a "Draft" chip in My Jobs, the calendar and
 booking** (→ Scheduled, and the confirmation goes by itself). Draft is never picked from the status list.
 
 All unfinished jobs remain in a date-independent queue, reached from a compact persistent top bar with a job
-counter. It includes overdue visits, work needing scheduling, waiting for parts/customer, on-hold work and future
+counter. It includes overdue visits, work needing scheduling, parts to order, waiting for parts/customer, on-hold work and future
 scheduled work. Completed, invoiced, paid, cancelled, outcome-closed and deleted jobs are excluded. Reopened jobs
 return. Each job counts once; access follows company, brand and technician assignment permissions.
 

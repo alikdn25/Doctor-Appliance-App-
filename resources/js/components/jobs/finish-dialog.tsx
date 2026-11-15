@@ -156,7 +156,7 @@ export function FinishDialog({
                                     variant="outline"
                                     className="h-12"
                                     disabled={form.processing}
-                                    onClick={() => send('waiting_for_parts')}
+                                    onClick={() => send('need_to_order_parts')}
                                 >
                                     <PackageSearch />{' '}
                                     {t('jobs.actions.waiting_for_parts')}

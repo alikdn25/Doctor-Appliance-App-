@@ -237,6 +237,7 @@ export function JobCard({
 export const STATUS_CIRCLES: Record<string, string> = {
     on_hold: 'linear-gradient(135deg,#FCA5A5,#DC2626 60%,#991B1B)',
     in_progress: 'linear-gradient(135deg,#FDBA74,#F97316 60%,#C2410C)',
+    need_to_order_parts: 'linear-gradient(135deg,#F9A8D4,#DB2777 60%,#9D174D)',
     waiting_for_parts: 'linear-gradient(135deg,#D8B4FE,#9333EA 60%,#6B21A8)',
     on_the_way: 'linear-gradient(135deg,#FDE68A,#EAB308 60%,#A16207)',
     waiting_for_customer: 'linear-gradient(135deg,#D6B89C,#9C6B4E 60%,#6B4430)',

@@ -9,6 +9,7 @@ import {
     Clock,
     FilePlus,
     Package,
+    PackageSearch,
     PauseCircle,
     Pencil,
     PencilLine,
@@ -30,6 +31,7 @@ export type StatusTone =
     | 'scheduled'
     | 'on-the-way'
     | 'in-progress'
+    | 'need-to-order-parts'
     | 'waiting-for-parts'
     | 'waiting-for-customer'
     | 'on-hold'
@@ -51,6 +53,7 @@ const looks: Record<string, StatusLook> = {
     scheduled: { tone: 'scheduled', icon: CalendarDays },
     on_the_way: { tone: 'on-the-way', icon: Car },
     in_progress: { tone: 'in-progress', icon: Wrench },
+    need_to_order_parts: { tone: 'need-to-order-parts', icon: PackageSearch },
     waiting_for_parts: { tone: 'waiting-for-parts', icon: Package },
     waiting_for_customer: { tone: 'waiting-for-customer', icon: UserRound },
     on_hold: { tone: 'on-hold', icon: PauseCircle },
