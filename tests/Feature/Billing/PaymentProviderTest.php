@@ -54,7 +54,7 @@ class FakePaymentProvider implements PaymentProvider
         return ['account' => 'Fake account', 'location' => null, 'currency' => $company->currency, 'connected_at' => null];
     }
 
-    public function authorizationUrl(Company $company, string $state): string
+    public function authorizationUrl(Company $company, string $state, array $extraScopes = []): string
     {
         return "https://pay.example.test/oauth?state={$state}";
     }

@@ -23,6 +23,9 @@ return [
         // Permissions asked from the company's Square account.
         'scopes' => ['MERCHANT_PROFILE_READ', 'PAYMENTS_READ', 'PAYMENTS_WRITE', 'ORDERS_READ', 'ORDERS_WRITE'],
 
+        // Asked only when the Owner presses "Import from Square": reading customers, invoices, orders and payments.
+        'import_scopes' => ['CUSTOMERS_READ', 'INVOICES_READ', 'ORDERS_READ', 'PAYMENTS_READ'],
+
         // Access tokens last 30 days; they are refreshed when this close to expiry (and by the daily command).
         'refresh_before_days' => 7,
     ],

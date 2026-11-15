@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { CheckCircle2, Plus, X } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect } from 'react';
@@ -19,6 +19,7 @@ import {
     connect as connectProvider,
     disconnect as disconnectProvider,
 } from '@/routes/payment-providers';
+import { show as squareImport } from '@/routes/square-import';
 import type { Option } from '@/types';
 
 const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
@@ -1181,6 +1182,19 @@ export default function CompanySettingsPage({
                                         </>
                                     ) : null}
                                 </div>
+                                {provider.connected &&
+                                    provider.key === 'square' && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            asChild
+                                            data-test="square-import-button"
+                                        >
+                                            <Link href={squareImport()}>
+                                                {t('square_import.button')}
+                                            </Link>
+                                        </Button>
+                                    )}
                                 {provider.connected ? (
                                     <Button
                                         type="button"

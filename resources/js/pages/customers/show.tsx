@@ -123,6 +123,7 @@ type Props = {
     summary: CustomerSummary;
     estimates: DocumentRow[];
     invoices: DocumentRow[];
+    importedInvoices?: ImportedInvoice[];
     canCreateJob: boolean;
     canUpdate: boolean;
     canDelete: boolean;
@@ -133,6 +134,18 @@ type Props = {
         messages: MessageItem[];
         chat_url: string | null;
     };
+};
+
+/** An invoice brought from Square: history only, never edited. */
+type ImportedInvoice = {
+    id: number;
+    number: string | null;
+    status: string;
+    issued_on: string | null;
+    total: number;
+    amount_paid: number;
+    currency: string;
+    items: string;
 };
 
 type Tab = 'client' | 'work' | 'notes' | 'files';
@@ -149,6 +162,7 @@ export default function CustomerShow({
     summary,
     estimates,
     invoices,
+    importedInvoices = [],
     canCreateJob,
     canUpdate,
     canDelete,
@@ -577,6 +591,48 @@ export default function CustomerShow({
                     <DocumentList documents={[...invoices, ...estimates]} />
                 )}
             </section>
+            {importedInvoices.length > 0 && (
+                <section className="space-y-2" data-test="imported-invoices">
+                    <h2 className="text-base font-semibold">
+                        {t('square_import.imported_invoices')}
+                    </h2>
+                    <ul className="da-card divide-y">
+                        {importedInvoices.map((invoice) => (
+                            <li
+                                key={invoice.id}
+                                className="flex items-start gap-3 px-4 py-3 text-sm"
+                            >
+                                <span className="min-w-0 flex-1">
+                                    <span className="block font-semibold">
+                                        #{invoice.number ?? '—'} ·{' '}
+                                        {invoice.issued_on}
+                                    </span>
+                                    <span className="block truncate text-muted-foreground">
+                                        {invoice.items ||
+                                            t('square_import.imported_badge')}
+                                    </span>
+                                    <Badge variant="outline" className="mt-1">
+                                        {t('square_import.imported_badge')}
+                                    </Badge>
+                                </span>
+                                <span className="shrink-0 text-right">
+                                    <span className="block font-semibold">
+                                        {money(invoice.total, invoice.currency)}
+                                    </span>
+                                    <span className="block text-xs text-muted-foreground">
+                                        {t('square_import.paid', {
+                                            amount: money(
+                                                invoice.amount_paid,
+                                                invoice.currency,
+                                            ),
+                                        })}
+                                    </span>
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
             <section className="space-y-3">
                 <h2 className="text-base font-semibold">
                     {t('messages.title')}

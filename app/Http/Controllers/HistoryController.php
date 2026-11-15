@@ -61,7 +61,7 @@ class HistoryController extends Controller
         $this->authorizeOwner($request);
 
         $filters = $request->validate([
-            'type' => ['nullable', Rule::in(['customer', 'job', 'estimate', 'invoice', 'payment', 'assistant'])],
+            'type' => ['nullable', Rule::in(['customer', 'job', 'estimate', 'invoice', 'payment', 'assistant', 'square_import'])],
             'source' => ['nullable', Rule::in(['web', 'bot', 'ai_assistant', 'public', 'console'])],
             'user' => ['nullable', 'integer'],
         ]);

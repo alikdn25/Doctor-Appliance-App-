@@ -131,6 +131,12 @@ class Customer extends Model
                     ->where('deleted_at', $customer->deletedTogetherAt)
                     ->get()
                     ->each(fn (Property $property) => $property->restore());
+                // Invoices imported from Square that went with it (Undo import) come back too.
+                SquareInvoice::withoutCompanyScope()->onlyTrashed()
+                    ->where('company_id', $customer->company_id)
+                    ->where('customer_id', $customer->id)
+                    ->where('deleted_at', $customer->deletedTogetherAt)
+                    ->update(['deleted_at' => null]);
             }
         });
     }

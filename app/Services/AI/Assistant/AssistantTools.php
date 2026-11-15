@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\JobVisit;
 use App\Models\Payment;
 use App\Models\ServiceJob;
+use App\Models\SquareInvoice;
 use App\Models\User;
 use App\Support\Billing\Money;
 use App\Support\Jobs\FreeWindows;
@@ -51,7 +52,7 @@ class AssistantTools
         ];
 
         return [
-            $tool('unpaid_invoices', 'Unpaid and partly paid invoices with balance, due date and days overdue. Includes invoices imported from Square.', [
+            $tool('unpaid_invoices', 'Unpaid and partly paid invoices with balance, due date and days overdue.', [
                 'overdue_only' => ['type' => 'boolean', 'description' => 'Only invoices past their due date.'],
             ]),
             $tool('jobs_on_dates', 'Visits (jobs) scheduled from one date to another, with customer, address, window, technician and status.', [
@@ -169,7 +170,6 @@ class AssistantTools
                 'issued_on' => $i->issued_on->toDateString(),
                 'due_on' => $i->due_on?->toDateString(),
                 'days_overdue' => $i->due_on !== null && $i->due_on->lt($today) ? (int) $i->due_on->diffInDays($today) : 0,
-                'imported_from_square' => (bool) ($i->getAttribute('imported_from') === 'square'),
             ])->values()->all(),
             'totals_by_currency' => $invoices->groupBy('currency')->map(fn (Collection $g, string $c) => $this->money((int) $g->sum('balance'), $c))->all(),
         ];
@@ -295,8 +295,13 @@ class AssistantTools
             'invoices' => $invoices->map(fn (Invoice $i) => [
                 'invoice_id' => $i->id, 'number' => $i->number, 'status' => $i->status->value, 'total' => $this->money($i->total, $i->currency),
                 'balance' => $this->money($i->balance, $i->currency), 'issued_on' => $i->issued_on->toDateString(),
-                'imported_from_square' => (bool) ($i->getAttribute('imported_from') === 'square'),
             ])->values()->all(),
+            'invoices_imported_from_square' => SquareInvoice::query()->where('customer_id', $customer->id)->orderByDesc('issued_on')->limit(self::LIMIT)->get()
+                ->map(fn (SquareInvoice $i) => [
+                    'number' => $i->number, 'status' => $i->status, 'issued_on' => $i->issued_on?->toDateString(),
+                    'total' => $this->money($i->total, $i->currency), 'paid' => $this->money($i->amount_paid, $i->currency),
+                    'payments' => collect($i->payments)->map(fn (array $p) => ['amount' => $this->money((int) $p['amount'], $i->currency), 'method' => $p['method'], 'paid_at' => $p['paid_at']])->all(),
+                ])->values()->all(),
             'payments' => $payments->map(fn (Payment $p) => ['amount' => $this->money($p->amount, $p->currency), 'method' => $p->method->value, 'received' => $this->local($p->received_at), 'invoice_id' => $p->invoice_id])->values()->all(),
         ];
     }

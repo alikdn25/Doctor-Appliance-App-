@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\JobCostItem;
 use App\Models\Payment;
 use App\Models\Property;
+use App\Models\SquareInvoice;
 use App\Support\Jobs\JobPresenter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -38,6 +39,7 @@ class TrashController extends Controller
         'payment' => Payment::class,
         'expense' => BusinessExpense::class,
         'cost' => JobCostItem::class,
+        'square_invoice' => SquareInvoice::class,
     ];
 
     public function index(Request $request): Response
@@ -76,7 +78,7 @@ class TrashController extends Controller
                 $property?->restore();
             }
 
-            if ($model instanceof Property) {
+            if ($model instanceof Property || $model instanceof SquareInvoice) {
                 $model->customer()->withTrashed()->first()?->restore();
             }
 
@@ -106,6 +108,8 @@ class TrashController extends Controller
                 ->where('deleted_at', $model->getRawOriginal('deleted_at'))->exists(),
             'appliance' => Property::onlyTrashed()->whereKey($model->getAttribute('property_id'))
                 ->where('deleted_at', $model->getRawOriginal('deleted_at'))->exists(),
+            'square_invoice' => Customer::onlyTrashed()->whereKey($model->getAttribute('customer_id'))
+                ->where('deleted_at', $model->getRawOriginal('deleted_at'))->exists(),
             default => false,
         };
     }
@@ -118,7 +122,7 @@ class TrashController extends Controller
         $detail = match ($type) {
             'property' => $model instanceof Property ? $model->fullAddress() : null,
             'appliance' => $model instanceof Appliance ? trim(implode(' ', array_filter([$model->type?->label(), $model->manufacturer, $model->model_number]))) : null,
-            'estimate', 'invoice' => $model->getAttribute('customer_id') ? Customer::withTrashed()->find($model->getAttribute('customer_id'))?->display_name : null,
+            'estimate', 'invoice', 'square_invoice' => $model->getAttribute('customer_id') ? Customer::withTrashed()->find($model->getAttribute('customer_id'))?->display_name : null,
             default => null,
         };
 

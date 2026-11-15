@@ -22,6 +22,7 @@ use App\Models\Invoice;
 use App\Models\JobPhoto;
 use App\Models\Property;
 use App\Models\ServiceJob;
+use App\Models\SquareInvoice;
 use App\Models\User;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Locale\Countries;
@@ -171,6 +172,19 @@ class CustomerController extends Controller
                 ])->values(),
             ],
             'history' => $jobs->map(fn (ServiceJob $job) => self::historyRow($job))->values(),
+            // Invoice history brought from Square (read-only, "Imported from Square").
+            'importedInvoices' => Gate::allows('viewAny', Invoice::class) ? SquareInvoice::query()->where('customer_id', $customer->id)
+                ->orderByDesc('issued_on')->orderByDesc('id')->limit(200)->get()
+                ->map(fn (SquareInvoice $i) => [
+                    'id' => $i->id,
+                    'number' => $i->number,
+                    'status' => $i->status,
+                    'issued_on' => $i->issued_on?->toDateString(),
+                    'total' => $i->total,
+                    'amount_paid' => $i->amount_paid,
+                    'currency' => $i->currency,
+                    'items' => collect($i->items)->pluck('name')->take(3)->implode(', '),
+                ])->values() : [],
             // Notes tab: the team notes of the jobs (the customer's own notes are on the customer).
             'jobNotes' => $jobs->filter(fn (ServiceJob $job) => filled($job->notes))
                 ->map(fn (ServiceJob $job) => ['job_id' => $job->id, 'number' => $job->number, 'notes' => $job->notes])

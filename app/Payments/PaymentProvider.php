@@ -52,9 +52,12 @@ interface PaymentProvider
     public function connectionSummary(Company $company): ?array;
 
     /**
-     * Where to send the Owner to authorize the company's account. $state is checked on return.
+     * Where to send the Owner to authorize the company's account. $state is checked on return. $extraScopes asks for
+     * more permissions than payments need (e.g. reading customers and invoices for an import).
+     *
+     * @param  list<string>  $extraScopes
      */
-    public function authorizationUrl(Company $company, string $state): string;
+    public function authorizationUrl(Company $company, string $state, array $extraScopes = []): string;
 
     /**
      * Finishes the OAuth flow with the provider's callback query (code, error …) and stores the connection.
