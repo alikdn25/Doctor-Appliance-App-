@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property string $role
  * @property list<array<string, mixed>>|string $content
  * @property string|null $text
+ * @property int $tools_version
  * @property Carbon $created_at
  */
 class AssistantMessage extends Model
@@ -25,7 +26,7 @@ class AssistantMessage extends Model
 
     public const UPDATED_AT = null;
 
-    protected $fillable = ['user_id', 'conversation', 'role', 'content', 'text'];
+    protected $fillable = ['user_id', 'conversation', 'role', 'content', 'text', 'tools_version'];
 
     /**
      * @return array<string, string>

@@ -11,6 +11,7 @@ use App\Http\Controllers\Jobs\JobController;
 use App\Messaging\MessagingPresenter;
 use App\Messaging\Messenger;
 use App\Models\AssistantAction;
+use App\Models\AssistantMessage;
 use App\Models\Invoice;
 use App\Models\JobVisit;
 use App\Models\User;
@@ -48,6 +49,7 @@ class AssistantActions
 
         $action = AssistantAction::create([
             'user_id' => $user->id, 'conversation' => $conversation, 'type' => $type,
+            'after_message_id' => AssistantMessage::query()->where('conversation', $conversation)->max('id'),
             'params' => $params, 'summary' => $summary, 'status' => 'pending',
         ]);
 

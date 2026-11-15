@@ -44,6 +44,8 @@ type CompanySettings = {
     travel_buffer_minutes: number;
     estimate_valid_days: number | null;
     estimate_followup_days: number | null;
+    parts_stale_days?: number;
+    estimate_stale_days?: number;
     technicians_can_delete_jobs: boolean;
     works_alone: boolean;
     diagnostic_service_id: number | null;
@@ -156,6 +158,8 @@ export default function CompanySettingsPage({
         mileage_rate: company.mileage_rate ?? '',
         estimate_valid_days: company.estimate_valid_days,
         estimate_followup_days: company.estimate_followup_days,
+        parts_stale_days: company.parts_stale_days ?? 7,
+        estimate_stale_days: company.estimate_stale_days ?? 3,
         technicians_can_delete_jobs: company.technicians_can_delete_jobs,
         works_alone: company.works_alone,
         diagnostic_service_id: company.diagnostic_service_id,
@@ -495,6 +499,50 @@ export default function CompanySettingsPage({
                                         e.target.value === ''
                                             ? null
                                             : Number(e.target.value),
+                                    )
+                                }
+                            />
+                        </FormField>
+                        <FormField
+                            id="parts_stale_days"
+                            label={t('company.fields.parts_stale_days')}
+                            hint={t('company.problem_days_hint')}
+                            error={errors.parts_stale_days}
+                            className="sm:max-w-xs"
+                        >
+                            <Input
+                                id="parts_stale_days"
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                max={365}
+                                value={form.data.parts_stale_days ?? ''}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'parts_stale_days',
+                                        Number(e.target.value) || 1,
+                                    )
+                                }
+                            />
+                        </FormField>
+                        <FormField
+                            id="estimate_stale_days"
+                            label={t('company.fields.estimate_stale_days')}
+                            hint={t('company.problem_days_hint')}
+                            error={errors.estimate_stale_days}
+                            className="sm:max-w-xs"
+                        >
+                            <Input
+                                id="estimate_stale_days"
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                max={365}
+                                value={form.data.estimate_stale_days ?? ''}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'estimate_stale_days',
+                                        Number(e.target.value) || 1,
                                     )
                                 }
                             />

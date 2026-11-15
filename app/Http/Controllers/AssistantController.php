@@ -9,6 +9,7 @@ use App\Services\AI\AiService;
 use App\Services\AI\AiUnavailable;
 use App\Services\AI\Assistant\AssistantActions;
 use App\Services\AI\Assistant\AssistantChat;
+use App\Services\AI\Problems\ProblemFinder;
 use App\Services\AI\QuickBookingParser;
 use App\Support\Customers\CustomerFinder;
 use Illuminate\Http\JsonResponse;
@@ -53,6 +54,11 @@ class AssistantController extends Controller
         // A conversation id belongs to one person; another person's id is refused.
         abort_if(AssistantMessage::withoutCompanyScope()->where('conversation', $conversation)->where('user_id', '!=', $user->id)->exists(), 403);
 
+        // Started with an older set of tools (or too long): it goes on as a new conversation.
+        if (! $chat->usable($conversation)) {
+            $conversation = (string) Str::uuid();
+        }
+
         try {
             $chat->ask($user, $conversation, trim($data['question']));
             $error = null;
@@ -63,7 +69,30 @@ class AssistantController extends Controller
             [$error, $status] = [__('assistant.failed'), 503];
         }
 
-        return response()->json(['items' => $chat->items($user, $conversation), 'message' => $error], $status);
+        return response()->json(['conversation' => $conversation, 'items' => $chat->items($user, $conversation), 'message' => $error], $status);
+    }
+
+    /**
+     * "Find problems": only when the Owner presses it (or asks the assistant); never on a schedule.
+     */
+    public function findProblems(Request $request, AssistantChat $chat, ProblemFinder $finder): JsonResponse
+    {
+        Gate::authorize('useAssistant');
+
+        $conversation = $request->validate(['conversation' => ['required', 'uuid']])['conversation'];
+        $user = $request->user();
+        abort_if(AssistantMessage::withoutCompanyScope()->where('conversation', $conversation)->where('user_id', '!=', $user->id)->exists(), 403);
+
+        try {
+            $finder->run($user, $conversation);
+            [$error, $status] = [null, 200];
+        } catch (AiLimitReached) {
+            [$error, $status] = [__('assistant.limit'), 429];
+        } catch (AiUnavailable) {
+            [$error, $status] = [__('assistant.failed'), 503];
+        }
+
+        return response()->json(['conversation' => $conversation, 'items' => $chat->items($user, $conversation), 'message' => $error], $status);
     }
 
     public function fresh(): JsonResponse

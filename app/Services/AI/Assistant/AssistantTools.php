@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Models\ServiceJob;
 use App\Models\SquareInvoice;
 use App\Models\User;
+use App\Services\AI\Problems\ProblemFinder;
 use App\Support\Billing\Money;
 use App\Support\Jobs\FreeWindows;
 use App\Support\Jobs\JobBacklog;
@@ -30,7 +31,13 @@ class AssistantTools
 {
     private const LIMIT = 50;
 
-    public function __construct(private readonly AssistantActions $actions) {}
+    /** Raised whenever the tool list changes: a conversation keeps the tools it started with. */
+    public const VERSION = 2;
+
+    public function __construct(
+        private readonly AssistantActions $actions,
+        private readonly ProblemFinder $problems,
+    ) {}
 
     /**
      * Tool definitions for the Messages API.
@@ -74,6 +81,7 @@ class AssistantTools
             $tool('free_windows', 'The company\'s arrival windows on a date with the technicians free in each.', [
                 'date' => $date,
             ], ['date']),
+            $tool('find_problems', 'Run the problem check: overdue invoices, parts waiting too long, estimates without an answer, unclosed past jobs, schedule overlaps, customers missing a phone or address, duplicates and technical errors. Use it when the owner asks what needs fixing or what is wrong. The full report is shown to the owner as a card; summarise it briefly.'),
             $tool('propose_payment_reminder', 'Propose sending the customer an SMS reminder to pay an invoice. Nothing is sent until the user presses Confirm.', [
                 'invoice_id' => ['type' => 'integer'],
             ], ['invoice_id']),
@@ -105,6 +113,7 @@ class AssistantTools
                 'estimates_waiting' => $this->estimatesWaiting(),
                 'revenue' => $this->revenue((string) ($input['from'] ?? ''), (string) ($input['to'] ?? '')),
                 'free_windows' => ['date' => $input['date'] ?? null, 'windows' => FreeWindows::on(currentCompany(), $this->date((string) ($input['date'] ?? ''))->toDateString())],
+                'find_problems' => $this->findProblems($user, $conversation),
                 'propose_payment_reminder' => $this->actions->propose(AssistantAction::PAYMENT_REMINDER, $input, $user, $conversation),
                 'propose_reschedule' => $this->actions->propose(AssistantAction::RESCHEDULE, $input, $user, $conversation),
                 'propose_booking' => $this->actions->propose(AssistantAction::BOOKING, $input, $user, $conversation),
@@ -118,6 +127,20 @@ class AssistantTools
         }
 
         return (string) json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function findProblems(User $user, string $conversation): array
+    {
+        $report = $this->problems->run($user, $conversation)->report;
+
+        return [
+            'summary' => $report['summary'],
+            'problems' => array_map(fn (array $p) => ['severity' => $p['severity'], 'title' => $p['title'], 'action' => $p['action']], $report['problems']),
+            'note' => 'The full report with links is already shown to the owner as a card.',
+        ];
     }
 
     private function money(int $minor, string $currency): string

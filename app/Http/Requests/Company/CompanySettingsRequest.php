@@ -49,6 +49,9 @@ class CompanySettingsRequest extends FormRequest
             'mileage_rate' => ['nullable', 'numeric', 'min:0', 'max:1000'],
             'estimate_valid_days' => ['nullable', 'integer', 'min:1', 'max:365'],
             'estimate_followup_days' => ['nullable', 'integer', 'min:1', 'max:90'],
+            // Find problems: jobs waiting for parts and estimates without an answer longer than this.
+            'parts_stale_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
+            'estimate_stale_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
             'technicians_can_delete_jobs' => ['boolean'],
             'works_alone' => ['sometimes', 'boolean'],
             'strict_arrival_reminder_minutes' => ['sometimes', 'integer', 'min:5', 'max:480'],

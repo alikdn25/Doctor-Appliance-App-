@@ -116,6 +116,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         // AI assistant (Owner only).
         Route::get('assistant', [AssistantController::class, 'index'])->name('assistant.index');
         Route::post('assistant/ask', [AssistantController::class, 'ask'])->middleware('throttle:assistant')->name('assistant.ask');
+        Route::post('assistant/find-problems', [AssistantController::class, 'findProblems'])->middleware('throttle:assistant')->name('assistant.find-problems');
         Route::post('assistant/new-chat', [AssistantController::class, 'fresh'])->name('assistant.new-chat');
         Route::post('assistant/actions/{action}/confirm', [AssistantController::class, 'confirm'])->name('assistant.actions.confirm');
         Route::post('assistant/actions/{action}/cancel', [AssistantController::class, 'cancel'])->name('assistant.actions.cancel');
