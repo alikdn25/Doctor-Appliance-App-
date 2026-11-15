@@ -214,17 +214,17 @@ from Telnyx.
 
 Required in production:
 
-| Variable                                                                                                         | Notes                                                                                  |
-| ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `APP_NAME`, `APP_ENV=production`, `APP_DEBUG=false`                                                              |                                                                                        |
-| `APP_KEY`                                                                                                        | `php artisan key:generate` once; never change it (encrypted tokens depend on it)       |
-| `APP_URL`                                                                                                        | `https://app.doctor-appliance.ca` — used in links, webhooks, OAuth callbacks           |
-| `DB_CONNECTION=pgsql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`                         | PostgreSQL                                                                             |
-| `SESSION_DRIVER=database`, `SESSION_SECURE_COOKIE=true`                                                          |                                                                                        |
-| `QUEUE_CONNECTION`, `CACHE_STORE`                                                                                | `database` (or `redis`, §5)                                                            |
+| Variable                                                                                                                                  | Notes                                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `APP_NAME`, `APP_ENV=production`, `APP_DEBUG=false`                                                                                       |                                                                                        |
+| `APP_KEY`                                                                                                                                 | `php artisan key:generate` once; never change it (encrypted tokens depend on it)       |
+| `APP_URL`                                                                                                                                 | `https://app.doctor-appliance.ca` — used in links, webhooks, OAuth callbacks           |
+| `DB_CONNECTION=pgsql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`                                                  | PostgreSQL                                                                             |
+| `SESSION_DRIVER=database`, `SESSION_SECURE_COOKIE=true`                                                                                   |                                                                                        |
+| `QUEUE_CONNECTION`, `CACHE_STORE`                                                                                                         | `database` (or `redis`, §5)                                                            |
 | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME`, `MAIL_REPLY_TO_ADDRESS` | transactional email provider; `MAIL_FROM_ADDRESS` on a verified domain                 |
-| Optional 2FA                                                                                                     | Enabled by each user in Security settings. Legacy AUTH_REQUIRE_TWO_FACTOR is ignored.  |
-| `MEDIA_DISK=public`, `PRIVATE_MEDIA_DISK=local`                                                                  | private media (photos, signatures, receipts) stay in `storage/app/private`; back it up |
+| Optional 2FA                                                                                                                              | Enabled by each user in Security settings. Legacy AUTH_REQUIRE_TWO_FACTOR is ignored.  |
+| `MEDIA_DISK=public`, `PRIVATE_MEDIA_DISK=local`                                                                                           | private media (photos, signatures, receipts) stay in `storage/app/private`; back it up |
 
 Required for the features that use them (empty = the feature is off):
 
