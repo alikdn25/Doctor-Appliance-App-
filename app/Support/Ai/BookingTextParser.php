@@ -57,9 +57,11 @@ class BookingTextParser
      */
     public static function schema(): array
     {
-        $text = ['type' => ['string', 'null']];
+        // Anthropic structured outputs: no node may combine "enum" with an array "type", so every field is a plain
+        // string ("" when missing, "unknown" for an appliance type that is not stated); normalize() maps both to null.
+        $text = ['type' => 'string'];
         $address = [
-            'type' => ['object', 'null'],
+            'type' => 'object',
             'properties' => [
                 'line1' => $text, 'unit' => $text, 'city' => $text, 'region' => $text, 'postal_code' => $text,
             ],
@@ -77,7 +79,7 @@ class BookingTextParser
             'occupant_name' => $text,
             'occupant_phone' => $text,
             'access_notes' => $text,
-            'appliance_type' => ['type' => ['string', 'null'], 'enum' => [...array_map(fn (ApplianceType $t) => $t->value, ApplianceType::cases()), null]],
+            'appliance_type' => ['type' => 'string', 'enum' => [...array_map(fn (ApplianceType $t) => $t->value, ApplianceType::cases()), 'unknown']],
             'appliance_brand' => $text,
             'problem' => $text,
         ];
@@ -95,11 +97,12 @@ class BookingTextParser
         return <<<TEXT
             You fill in a booking form of an appliance repair company from a message the office pasted (an SMS, an email or call notes).
             The customer is the person or company who pays (for example a landlord or property manager). The occupant is someone else
-            who lives at the job address (a tenant); leave occupant fields null when nobody else is mentioned. The job address is where
-            the work is done; billing_address only when the payer's own address is given and differs from it. Phone numbers as written,
-            with the country code when known (the company is in country {$company->country}). appliance_type is one of the listed
-            values or null. problem is a short description of what is wrong, in the message's words. Use null for anything not in the
-            message; never invent details.
+            who lives at the job address (a tenant); leave occupant fields "" when nobody else is mentioned. The job address is where
+            the work is done; billing_address only when the payer's own address is given and differs from it (otherwise all its fields
+            are ""). Phone numbers as written, with the country code when known (the company is in country {$company->country}).
+            appliance_type is one of the listed values. If the appliance is not stated, return "unknown". problem is a short
+            description of what is wrong, in the message's words. Use "" (an empty string) for anything not in the message; never
+            invent details.
             TEXT;
     }
 
@@ -134,13 +137,17 @@ class BookingTextParser
                     $used[$i] = true;
                 } elseif ($fields['phone'] === null) {
                     $fields['phone'] = $number;
-                    $used[$i] = $used[$i] ?? $this->onlyContact($line);
+                    $rest = $this->aroundPhone($line, $number, $fields);
+                    if ($rest !== $line) {
+                        $lines[$i] = $line = $rest;
+                    }
+                    $used[$i] = $used[$i] ?? ($rest === '' || $this->onlyContact($rest));
                 }
             }
         }
 
         // The address: a line starting with a house number and a street word, or one labelled "Address".
-        foreach ($lines as $i => $line) {
+        foreach ($fields['job_address'] === null ? $lines : [] as $i => $line) {
             $value = preg_replace('/^(job\s+)?address\s*[:\-]\s*/i', '', $line, 1, $labelled);
             if ($labelled || preg_match('/^\d+[A-Z]?\s+\D+\b(st|street|ave|avenue|rd|road|dr|drive|blvd|boulevard|way|cres|crescent|pl|place|ct|court|lane|ln|hwy|highway|terrace|trail|close|gate|row)\b/i', $line)) {
                 $parts = array_map('trim', explode(',', (string) $value));
@@ -161,7 +168,7 @@ class BookingTextParser
         }
 
         // The name: "Name: …", or a short first line of words only.
-        foreach ($lines as $i => $line) {
+        foreach ($fields['first_name'] === null ? $lines : [] as $i => $line) {
             if (preg_match('/^(customer|name|client)\s*[:\-]\s*(.+)$/i', $line, $m) || ($i === 0 && preg_match('/^(\p{Lu}[\p{L}\'.-]+)(\s+\p{Lu}[\p{L}\'.-]+){0,2}$/u', $line) && ! isset($used[$i]))) {
                 $name = trim($m[2] ?? $line);
                 $name = trim((string) preg_replace('/\+?\d[\d\s().-]{7,}\d|[A-Z0-9._%+-]+@\S+/i', '', $name), ' ,-');
@@ -199,6 +206,48 @@ class BookingTextParser
         $fields['problem'] = $problem !== '' ? $problem : null;
 
         return $fields;
+    }
+
+    /**
+     * A one-line message such as "John Smith 604-555-0123, 123 Main St, Vancouver. Fridge not cooling": the words before
+     * the phone are the name; the text after it up to the first period is the address when it starts with a house number.
+     * Returns what is left of the line (the problem).
+     *
+     * @param  array<string, mixed>  $fields
+     */
+    private function aroundPhone(string $line, string $number, array &$fields): string
+    {
+        $at = mb_strpos($line, $number);
+        if ($at === false) {
+            return $line;
+        }
+
+        $before = trim(mb_substr($line, 0, $at), " \t,;:-");
+        $after = ltrim(mb_substr($line, $at + mb_strlen($number)), " \t,;:-");
+        $before = trim((string) preg_replace('/^(customer|name|client)\s*[:\-]?\s*/i', '', $before));
+        $before = trim((string) preg_replace('/(^|\s*\b)(call|text|phone|cell|mobile|tel|contact|number)\s*[:#]?$/i', '', $before), " \t,;:-");
+        $leftBefore = $before;
+
+        if (preg_match('/^\p{Lu}[\p{L}\'.-]+(\s+\p{Lu}[\p{L}\'.-]+){0,2}$/u', $before)) {
+            $parts = preg_split('/\s+/u', $before, 2) ?: [];
+            $fields['first_name'] = $parts[0] ?? null;
+            $fields['last_name'] = $parts[1] ?? null;
+            $leftBefore = '';
+        }
+
+        if (preg_match('/^\d+[A-Z]?\s+\D/u', $after)) {
+            $end = preg_match('/\.(\s|$)/u', $after, $m, PREG_OFFSET_CAPTURE) ? $m[0][1] : strlen($after);
+            $address = trim(substr($after, 0, $end), " \t,");
+            $after = trim(substr($after, $end + 1));
+            $parts = array_values(array_filter(array_map('trim', explode(',', $address)), fn ($p) => $p !== ''));
+            $fields['job_address'] = ['line1' => $parts[0], 'unit' => null, 'city' => $parts[1] ?? null, 'region' => null, 'postal_code' => null];
+            if (isset($parts[2]) && preg_match('/^([A-Za-z]{2})\s*(.*)$/', $parts[2], $rest)) {
+                $fields['job_address']['region'] = strtoupper($rest[1]);
+                $fields['job_address']['postal_code'] = trim($rest[2]) ?: null;
+            }
+        }
+
+        return trim($leftBefore.' '.$after);
     }
 
     /** A line that holds nothing but a phone (and maybe a label) is used up by it. */

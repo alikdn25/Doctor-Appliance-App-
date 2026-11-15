@@ -111,3 +111,57 @@ test('it goes through the AI service on the booking model and is logged', functi
     expect($fake->requests[0]['model'])->toBe('claude-haiku-5-5')
         ->and(AiRequest::withoutCompanyScope()->sole()->feature)->toBe('paste_message');
 });
+
+test('the basic parser reads a one-line message: name before the phone, address up to the period, the rest as the problem', function () {
+    $this->postJson(route('jobs.parse-message'), ['text' => 'John Smith 604-555-0123, 123 Main St, Vancouver. Fridge not cooling'])
+        ->assertOk()
+        ->assertJsonPath('source', 'basic')
+        ->assertJsonPath('fields.first_name', 'John')
+        ->assertJsonPath('fields.last_name', 'Smith')
+        ->assertJsonPath('fields.phone', '+16045550123')
+        ->assertJsonPath('fields.job_address.line1', '123 Main St')
+        ->assertJsonPath('fields.job_address.city', 'Vancouver')
+        ->assertJsonPath('fields.appliance_type', 'refrigerator')
+        ->assertJsonPath('fields.problem', 'Fridge not cooling');
+});
+
+test('the basic parser leaves the appliance empty when none is named', function () {
+    $this->postJson(route('jobs.parse-message'), ['text' => 'Jane Doe 778-555-0142, 45 Oak Ave, Burnaby. Not working, makes a loud noise'])
+        ->assertOk()
+        ->assertJsonPath('source', 'basic')
+        ->assertJsonPath('fields.first_name', 'Jane')
+        ->assertJsonPath('fields.last_name', 'Doe')
+        ->assertJsonPath('fields.phone', '+17785550142')
+        ->assertJsonPath('fields.job_address.line1', '45 Oak Ave')
+        ->assertJsonPath('fields.job_address.city', 'Burnaby')
+        ->assertJsonPath('fields.appliance_type', null)
+        ->assertJsonPath('fields.problem', 'Not working, makes a loud noise');
+});
+
+test('a label before the phone is not taken for a name', function () {
+    $this->postJson(route('jobs.parse-message'), ['text' => 'Call 604 555 0100 washer leaking'])
+        ->assertJsonPath('fields.first_name', null)
+        ->assertJsonPath('fields.phone', '+16045550100')
+        ->assertJsonPath('fields.problem', 'washer leaking');
+});
+
+test('a saved customer with the pasted phone but another name is offered, not picked', function () {
+    $saved = Customer::factory()->for($this->company)->create(['first_name' => 'Robert', 'last_name' => 'Brown', 'company_name' => null]);
+    inCompany($this->company, fn () => $saved->phones()->create(['label' => 'mobile', 'number' => '+17785550142', 'is_primary' => true]));
+
+    $this->postJson(route('jobs.parse-message'), ['text' => 'Jane Doe 778-555-0142, 45 Oak Ave, Burnaby. Not working'])
+        ->assertOk()
+        ->assertJsonPath('customer', null)
+        ->assertJsonPath('phone_customer.id', $saved->id)
+        ->assertJsonPath('phone_customer.display_name', 'Robert Brown')
+        ->assertJsonPath('fields.first_name', 'Jane')
+        ->assertJsonPath('fields.job_address.line1', '45 Oak Ave');
+
+    // The same name (or no name at all) still picks the saved customer.
+    $this->postJson(route('jobs.parse-message'), ['text' => 'Robert Brown 778-555-0142 oven broken'])
+        ->assertJsonPath('customer.id', $saved->id)
+        ->assertJsonPath('phone_customer', null);
+    $this->postJson(route('jobs.parse-message'), ['text' => '778-555-0142 oven broken'])
+        ->assertJsonPath('customer.id', $saved->id)
+        ->assertJsonPath('phone_customer', null);
+});

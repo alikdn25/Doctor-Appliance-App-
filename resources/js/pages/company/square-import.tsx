@@ -84,7 +84,7 @@ function Progress({ item }: { item: Import }) {
  */
 export default function SquareImport({
     connected,
-    canConnect,
+    notice,
     account,
     missingScopes,
     checkError,
@@ -94,6 +94,7 @@ export default function SquareImport({
 }: {
     connected: boolean;
     canConnect: boolean;
+    notice: 'connect' | 'not_available' | null;
     account: string | null;
     missingScopes: string[];
     checkError: string | null;
@@ -164,32 +165,33 @@ export default function SquareImport({
                     {t('square_import.intro')}
                 </p>
 
-                {!connected && (
+                {notice !== null && (
                     <div
                         className="da-card space-y-3 p-4"
                         role="alert"
                         data-test="square-import-connect"
                     >
-                        <p className="text-sm">
-                            {t('square_import.not_connected')}
-                        </p>
-                        {!canConnect && (
-                            <p className="text-sm text-muted-foreground">
+                        {notice === 'connect' ? (
+                            <>
+                                <p className="text-sm">
+                                    {t('square_import.not_connected')}
+                                </p>
+                                <Button asChild>
+                                    <a
+                                        href={
+                                            connectProvider('square', {
+                                                query: { for: 'import' },
+                                            }).url
+                                        }
+                                    >
+                                        {t('square_import.connect')}
+                                    </a>
+                                </Button>
+                            </>
+                        ) : (
+                            <p className="text-sm">
                                 {t('square_import.not_available')}
                             </p>
-                        )}
-                        {canConnect && (
-                            <Button asChild>
-                                <a
-                                    href={
-                                        connectProvider('square', {
-                                            query: { for: 'import' },
-                                        }).url
-                                    }
-                                >
-                                    {t('square_import.connect')}
-                                </a>
-                            </Button>
                         )}
                     </div>
                 )}

@@ -105,6 +105,8 @@ return [
         'paste_basic' => 'Filled what could be read. Check the fields before booking.',
         'paste_failed' => 'Could not read the message. Try again or type the details.',
         'paste_known' => 'Found in your customers: :name',
+        'paste_phone_owner' => 'This phone belongs to saved customer :name. Use saved customer?',
+        'paste_use_saved' => 'Use saved customer',
         'missing' => [
             'intro' => 'To save, add: :items.',
             'brand' => 'a brand (Company settings → Brands)',

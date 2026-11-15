@@ -128,7 +128,7 @@ class ProblemFinder
             - links: the records from the findings the owner should open (type and id exactly as given). Never invent ids.
             - For technical problems write claude_task: a ready task for Claude Code (the developer agent) in one block:
               what is failing (exact error text and how often), where to look, what to fix, and "add a test" — direct
-              instructions, no explanations. Business problems have claude_task null.
+              instructions, no explanations. Business problems have claude_task "" (an empty string).
             - Plain English. Do not repeat the same item in several problems. Do not claim anything not in the findings.
             - summary: one or two sentences: how many problems and the most important one.
             TEXT;
@@ -165,7 +165,7 @@ class ProblemFinder
                                     'additionalProperties' => false,
                                 ],
                             ],
-                            'claude_task' => ['type' => ['string', 'null']],
+                            'claude_task' => ['type' => 'string'],
                         ],
                         'required' => ['severity', 'kind', 'title', 'why', 'action', 'links', 'claude_task'],
                         'additionalProperties' => false,
