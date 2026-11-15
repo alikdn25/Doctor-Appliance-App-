@@ -1,3 +1,16 @@
+# November 15 — Fix: AI schemas with nullable enums, "Import from Square" always shown
+
+1. **AI schemas**: every nullable field with an enum lists `null` in the enum. `appliance_type` in Paste from message
+   (`BookingTextParser`) and Quick booking (`QuickBookingParser`) already had it; Find problems, App review
+   (Inconvenient) and the assistant tools have no nullable enums. New test `AiSchemaNullableEnumTest` walks every schema
+   sent to the AI (both booking parsers, Find problems, App review, assistant tools) and fails on a nullable enum without
+   `null`.
+2. **"Import from Square"** is always shown in Company settings → Payments. Without a Square connection the import screen
+   says "Connect Square first." with a Connect Square button (asks the import permissions too and comes back to the
+   import screen); when Square is not available for the company it says so, without the button.
+
+- Next: the owner registers the Square OAuth redirect URL `https://app.doctor-appliance.ca/payment-providers/square/callback`.
+
 # November 15 — Owner's task: Quick booking, AI assistant, Square import, Find problems, App review
 
 Five PRs, each waits for the owner's "ok" (SPEC §7.15).

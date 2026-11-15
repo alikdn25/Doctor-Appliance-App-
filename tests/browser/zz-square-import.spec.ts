@@ -12,6 +12,10 @@ test('the import screen asks to connect Square first', async ({ page }) => {
         page.getByRole('heading', { name: 'Import from Square' }),
     ).toBeVisible();
     await expect(page.getByText('Connect Square first')).toBeVisible();
+    // Square is not set up in the browser fixtures: no connect button, a note instead.
+    await expect(
+        page.getByText('Square is not available for your company yet.'),
+    ).toBeVisible();
     await expect(page.locator('[data-test="square-import-start"]')).toHaveCount(
         0,
     );
@@ -20,4 +24,14 @@ test('the import screen asks to connect Square first', async ({ page }) => {
         viewport: innerWidth,
     }));
     expect(width.page).toBeLessThanOrEqual(width.viewport + 1);
+});
+
+test('Import from Square is always shown in payment settings', async ({
+    page,
+}) => {
+    await page.goto('/company/settings/payments');
+    const button = page.locator('[data-test="square-import-button"]');
+    await expect(button).toBeVisible();
+    await button.click();
+    await expect(page).toHaveURL(/\/square-import$/);
 });

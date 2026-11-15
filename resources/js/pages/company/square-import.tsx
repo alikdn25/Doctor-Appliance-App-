@@ -84,6 +84,7 @@ function Progress({ item }: { item: Import }) {
  */
 export default function SquareImport({
     connected,
+    canConnect,
     account,
     missingScopes,
     checkError,
@@ -92,6 +93,7 @@ export default function SquareImport({
     history,
 }: {
     connected: boolean;
+    canConnect: boolean;
     account: string | null;
     missingScopes: string[];
     checkError: string | null;
@@ -163,9 +165,33 @@ export default function SquareImport({
                 </p>
 
                 {!connected && (
-                    <p className="da-card p-4 text-sm" role="alert">
-                        {t('square_import.not_connected')}
-                    </p>
+                    <div
+                        className="da-card space-y-3 p-4"
+                        role="alert"
+                        data-test="square-import-connect"
+                    >
+                        <p className="text-sm">
+                            {t('square_import.not_connected')}
+                        </p>
+                        {!canConnect && (
+                            <p className="text-sm text-muted-foreground">
+                                {t('square_import.not_available')}
+                            </p>
+                        )}
+                        {canConnect && (
+                            <Button asChild>
+                                <a
+                                    href={
+                                        connectProvider('square', {
+                                            query: { for: 'import' },
+                                        }).url
+                                    }
+                                >
+                                    {t('square_import.connect')}
+                                </a>
+                            </Button>
+                        )}
+                    </div>
                 )}
                 {checkError && (
                     <p className="da-card p-4 text-sm text-danger" role="alert">

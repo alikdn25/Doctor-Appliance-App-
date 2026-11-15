@@ -1230,19 +1230,6 @@ export default function CompanySettingsPage({
                                         </>
                                     ) : null}
                                 </div>
-                                {provider.connected &&
-                                    provider.key === 'square' && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            asChild
-                                            data-test="square-import-button"
-                                        >
-                                            <Link href={squareImport()}>
-                                                {t('square_import.button')}
-                                            </Link>
-                                        </Button>
-                                    )}
                                 {provider.connected ? (
                                     <Button
                                         type="button"
@@ -1282,6 +1269,22 @@ export default function CompanySettingsPage({
                                 )}
                             </div>
                         ))}
+                        {/* Always shown: the import screen asks to connect Square first when it is not connected. */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+                            <p className="text-sm text-muted-foreground">
+                                {t('square_import.button_hint')}
+                            </p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                asChild
+                                data-test="square-import-button"
+                            >
+                                <Link href={squareImport()}>
+                                    {t('square_import.button')}
+                                </Link>
+                            </Button>
+                        </div>
                         <FormField
                             id="payment_provider"
                             label={t('company.fields.payment_provider')}
