@@ -4,6 +4,7 @@ namespace App\Services\AI\Assistant;
 
 use App\Models\AssistantAction;
 use App\Models\AssistantMessage;
+use App\Models\ProblemReport;
 use App\Models\User;
 use App\Services\AI\AiFeature;
 use App\Services\AI\AiService;
@@ -34,11 +35,22 @@ class AssistantChat
     {
         $last = AssistantMessage::query()->where('user_id', $user->id)->latest('id')->first();
 
-        if ($last === null || AssistantMessage::query()->where('conversation', $last->conversation)->count() >= self::MAX_MESSAGES) {
+        if ($last === null || ! $this->usable($last->conversation)) {
             return (string) Str::uuid();
         }
 
         return $last->conversation;
+    }
+
+    /**
+     * A conversation can go on while it is short enough and was started with today's tools.
+     */
+    public function usable(string $conversation): bool
+    {
+        $messages = AssistantMessage::query()->where('conversation', $conversation);
+
+        return (clone $messages)->count() < self::MAX_MESSAGES
+            && ! (clone $messages)->where('tools_version', '!=', AssistantTools::VERSION)->exists();
     }
 
     /**
@@ -95,14 +107,19 @@ class AssistantChat
         $messages = AssistantMessage::query()
             ->where('user_id', $user->id)->where('conversation', $conversation)->whereNotNull('text')
             ->orderBy('id')->get()
-            ->map(fn (AssistantMessage $m) => ['kind' => 'message', 'id' => 'm'.$m->id, 'from' => $m->role, 'text' => $m->text, 'at' => $m->created_at->toIso8601String(), 'sort' => $m->created_at->getTimestampMs() * 10]);
+            ->map(fn (AssistantMessage $m) => ['kind' => 'message', 'id' => 'm'.$m->id, 'from' => $m->role, 'text' => $m->text, 'at' => $m->created_at->toIso8601String(), 'sort' => [$m->id, 0, 0]]);
 
         $actions = AssistantAction::query()
             ->where('user_id', $user->id)->where('conversation', $conversation)
             ->orderBy('id')->get()
-            ->map(fn (AssistantAction $a) => self::action($a) + ['sort' => $a->created_at->getTimestampMs() * 10 + 5]);
+            ->map(fn (AssistantAction $a) => self::action($a) + ['sort' => [(int) $a->after_message_id, 1, $a->id]]);
 
-        return $messages->concat($actions)->sortBy([['sort', 'asc']])->map(fn (array $item) => collect($item)->except('sort')->all())->values()->all();
+        $reports = ProblemReport::query()
+            ->where('user_id', $user->id)->where('conversation', $conversation)
+            ->orderBy('id')->get()
+            ->map(fn (ProblemReport $r) => self::report($r) + ['sort' => [(int) $r->after_message_id, 2, $r->id]]);
+
+        return $messages->concat($actions)->concat($reports)->sort(fn (array $a, array $b) => $a['sort'] <=> $b['sort'])->map(fn (array $item) => collect($item)->except('sort')->all())->values()->all();
     }
 
     /**
@@ -114,11 +131,19 @@ class AssistantChat
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public static function report(ProblemReport $r): array
+    {
+        return ['kind' => 'problems', 'id' => 'p'.$r->id, 'summary' => $r->report['summary'] ?? '', 'problems' => $r->report['problems'] ?? [], 'at' => $r->created_at->toIso8601String()];
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $content
      */
     private function append(User $user, string $conversation, string $role, array $content, ?string $text): void
     {
-        AssistantMessage::create(['user_id' => $user->id, 'conversation' => $conversation, 'role' => $role, 'content' => $content, 'text' => $text]);
+        AssistantMessage::create(['user_id' => $user->id, 'conversation' => $conversation, 'role' => $role, 'content' => $content, 'text' => $text, 'tools_version' => AssistantTools::VERSION]);
     }
 
     /**

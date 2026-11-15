@@ -1,5 +1,14 @@
-import { Head, router } from '@inertiajs/react';
-import { Check, MessageSquarePlus, Send, Sparkles, X } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import {
+    Check,
+    Copy,
+    ExternalLink,
+    MessageSquarePlus,
+    Search,
+    Send,
+    Sparkles,
+    X,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
@@ -11,7 +20,7 @@ import { xsrfToken } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
 import { QUICK_BOOKING_RESULT_KEY } from '@/lib/quick-booking';
 import { cn } from '@/lib/utils';
-import { ask, newChat } from '@/routes/assistant';
+import { ask, findProblems, newChat } from '@/routes/assistant';
 import { cancel, confirm } from '@/routes/assistant/actions';
 import { create } from '@/routes/jobs';
 
@@ -32,7 +41,129 @@ type Action = {
     result: string | null;
     at: string;
 };
-type Item = Message | Action;
+type Problem = {
+    severity: 'high' | 'medium' | 'low';
+    kind: 'business' | 'technical';
+    title: string;
+    why: string;
+    action: string;
+    links: { type: string; id: number; label: string; url: string }[];
+    claude_task: string | null;
+};
+type Problems = {
+    kind: 'problems';
+    id: string;
+    summary: string;
+    problems: Problem[];
+    at: string;
+};
+type Item = Message | Action | Problems;
+
+/** A ready task for Claude Code, one block, with Copy. */
+function TaskBlock({ text }: { text: string }) {
+    const t = useTrans();
+    const [copied, setCopied] = useState(false);
+
+    return (
+        <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-muted-foreground">
+                    {t('assistant.problems.claude_task')}
+                </span>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                        void navigator.clipboard
+                            ?.writeText(text)
+                            .then(() => setCopied(true))
+                            .catch(() => undefined)
+                    }
+                >
+                    <Copy />{' '}
+                    {copied
+                        ? t('assistant.problems.copied')
+                        : t('assistant.problems.copy')}
+                </Button>
+            </div>
+            <pre className="max-h-64 overflow-auto rounded-xl bg-muted p-3 text-xs leading-snug whitespace-pre-wrap">
+                {text}
+            </pre>
+        </div>
+    );
+}
+
+const SEVERITY_CLASS: Record<Problem['severity'], string> = {
+    high: 'bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-100',
+    medium: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100',
+    low: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100',
+};
+
+/** The Find problems report: problems by importance, what to do, links, Claude Code tasks. */
+function ProblemsCard({ item }: { item: Problems }) {
+    const t = useTrans();
+
+    return (
+        <div className="da-card space-y-3 p-4" data-test="assistant-problems">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t('assistant.problems.title')}
+            </p>
+            <p className="text-[15px] leading-snug">{item.summary}</p>
+            {item.problems.map((problem, index) => (
+                <div
+                    key={index}
+                    className="space-y-2 border-t pt-3"
+                    data-test="assistant-problem"
+                >
+                    <p className="flex items-start gap-2">
+                        <span
+                            className={cn(
+                                'shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold',
+                                SEVERITY_CLASS[problem.severity],
+                            )}
+                        >
+                            {t(
+                                `assistant.problems.severity.${problem.severity}`,
+                            )}
+                        </span>
+                        <span className="font-semibold">{problem.title}</span>
+                    </p>
+                    {problem.why && (
+                        <p className="text-sm text-muted-foreground">
+                            {problem.why}
+                        </p>
+                    )}
+                    {problem.action && (
+                        <p className="text-sm">
+                            <span className="font-semibold">
+                                {t('assistant.problems.action')}:
+                            </span>{' '}
+                            {problem.action}
+                        </p>
+                    )}
+                    {problem.links.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {problem.links.map((link) => (
+                                <Link
+                                    key={link.url}
+                                    href={link.url}
+                                    className="da-chip da-press inline-flex min-h-11 items-center gap-1.5 rounded-2xl px-3 text-sm font-medium"
+                                >
+                                    <ExternalLink className="size-4" />
+                                    {link.label}
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                    {problem.claude_task && (
+                        <TaskBlock text={problem.claude_task} />
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
 
 const post = (url: string, body: Record<string, unknown> = {}) =>
     fetch(url, {
@@ -165,15 +296,33 @@ export default function AssistantIndex({
         end.current?.scrollIntoView({ block: 'end' });
     }, [items, pending]);
 
+    const [checking, setChecking] = useState(false);
+    const runFindProblems = () => {
+        if (pending !== null || checking) return;
+        setChecking(true);
+        setError(null);
+        post(findProblems().url, { conversation })
+            .then(async (response) => {
+                const body = await response.json().catch(() => null);
+                if (body?.conversation) setConversation(body.conversation);
+                if (body?.items) setItems(body.items);
+                if (!response.ok) {
+                    setError(body?.message ?? t('assistant.failed'));
+                }
+            })
+            .catch(() => setError(t('assistant.failed')))
+            .finally(() => setChecking(false));
+    };
     const send = (text: string) => {
         const value = text.trim();
-        if (value === '' || pending !== null) return;
+        if (value === '' || pending !== null || checking) return;
         setPending(value);
         setQuestion('');
         setError(null);
         post(ask().url, { question: value, conversation })
             .then(async (response) => {
                 const body = await response.json().catch(() => null);
+                if (body?.conversation) setConversation(body.conversation);
                 if (body?.items) setItems(body.items);
                 if (!response.ok) {
                     setError(body?.message ?? t('assistant.failed'));
@@ -231,6 +380,18 @@ export default function AssistantIndex({
                 aria-label={t('assistant.title')}
                 className="mx-auto flex min-h-[calc(100dvh-9rem)] w-full max-w-3xl flex-col px-4 pt-3 sm:px-6"
             >
+                <div className="flex flex-wrap gap-2 pb-3">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        loading={checking}
+                        disabled={pending !== null}
+                        onClick={runFindProblems}
+                        data-test="assistant-find-problems"
+                    >
+                        <Search /> {t('assistant.problems.button')}
+                    </Button>
+                </div>
                 <div className="flex-1 space-y-3" data-test="assistant-thread">
                     {items.length === 0 && pending === null && (
                         <div className="space-y-3 py-6">
@@ -254,7 +415,9 @@ export default function AssistantIndex({
                         </div>
                     )}
                     {items.map((item) =>
-                        item.kind === 'action' ? (
+                        item.kind === 'problems' ? (
+                            <ProblemsCard key={item.id} item={item} />
+                        ) : item.kind === 'action' ? (
                             <ActionCard
                                 key={item.id}
                                 item={item}
@@ -299,6 +462,15 @@ export default function AssistantIndex({
                                 {t('assistant.thinking')}
                             </p>
                         </>
+                    )}
+                    {checking && (
+                        <p
+                            role="status"
+                            className="flex items-center gap-2 text-sm text-muted-foreground"
+                        >
+                            <Sparkles className="size-4 animate-pulse" />
+                            {t('assistant.problems.running')}
+                        </p>
                     )}
                     {error && (
                         <p

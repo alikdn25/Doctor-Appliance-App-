@@ -94,6 +94,36 @@ Five PRs, each waits for the owner's "ok" (SPEC §7.15).
   without duplicates, tax reserve unchanged, nothing sent, Undo to Deleted items and restore, missing permissions
   asked for, Owner only, other company refused), tenant isolation; browser zz-square-import (390 px).
 - Next: PR 4 — Find problems (after the owner's "ok").
+- PR 3 merged (#64). The owner said "always ok": from now on PRs are merged when CI is green, without asking.
+
+## PR 4 — Find problems (done)
+
+1. **"Find problems"** button on the Assistant screen (Owner only); the same check runs when the owner asks the
+   assistant "what needs fixing" (tool `find_problems`). Only on the button or the question: no schedule, no
+   background analysis.
+2. **Collected by code** (`ProblemCollector`, no AI), inside the company: overdue invoices; jobs in Need to order
+   parts / Waiting for parts longer than the company's limit (default 7 days, from the status history); estimates
+   without an answer longer than the limit (default 3 days); open jobs whose visit window has passed; technician
+   overlaps in the next 14 days; customers without a phone or an address; possible duplicates (same phone or email).
+   Technical, last 7 days: texts not sent (this company); for a platform administrator only (they can hold other
+   companies' data): Laravel log errors grouped by message, Square errors from the log, failed queue jobs, failed
+   backups. The two limits are company settings (Settings → numbering block: "Parts waiting too long after",
+   "Estimate without an answer after").
+3. **One request to `AI_MODEL_ASSISTANT`** with the findings: problems by importance (Urgent / This week / Later),
+   why (with the numbers) and what to do; business problems link to the job, customer, invoice or estimate (only
+   records that were found, the AI cannot invent a link); technical problems carry a ready task for Claude Code in
+   one block with Copy. "No problems found" without asking the AI when nothing was found. The AI fixes nothing.
+   Each run is kept (`problem_reports`) and shown as a card in the chat.
+4. A new set of assistant tools starts a new conversation by itself (`tools_version`), so earlier conversations stay
+   valid for the AI.
+
+- **Migration** `2026_11_15_000400_add_problem_checks`: `companies.parts_stale_days` (7), `estimate_stale_days` (3),
+  table `problem_reports`, `assistant_messages.tools_version`, `assistant_actions.after_message_id` (the card's place
+  in the chat). Nothing existing changes.
+- Tests: FindProblemsTest (each check, company limits, technical checks and who sees them, isolation, one request on
+  the assistant model, links only to found records, Claude Code task, nothing found without AI, the assistant's
+  question, Owner only, no schedule), tenant isolation; browser zz-assistant (Find problems button).
+- Next: PR 5 — App review.
 
 # October 24 — Owner's task: Map tab, route, estimates, app update
 

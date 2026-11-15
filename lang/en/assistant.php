@@ -19,6 +19,17 @@ return [
     'not_set_up' => 'The AI is not set up yet (no API key).',
     'gave_up' => 'I could not finish this. Try asking in a simpler way.',
     'what_i_will_do' => 'What I will do',
+    'problems' => [
+        'button' => 'Find problems',
+        'running' => 'Checking jobs, invoices, customers and errors…',
+        'title' => 'Problems found',
+        'none' => 'No problems found. Everything checked looks fine.',
+        'severity' => ['high' => 'Urgent', 'medium' => 'This week', 'low' => 'Later'],
+        'action' => 'What to do',
+        'claude_task' => 'Task for Claude Code',
+        'copy' => 'Copy',
+        'copied' => 'Copied',
+    ],
     'confirm' => 'Confirm',
     'cancel' => 'Cancel',
     'statuses' => [

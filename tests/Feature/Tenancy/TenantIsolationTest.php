@@ -41,6 +41,7 @@ use App\Models\Message;
 use App\Models\MessageRead;
 use App\Models\Payment;
 use App\Models\PaymentProviderConnection;
+use App\Models\ProblemReport;
 use App\Models\Property;
 use App\Models\ReviewRequest;
 use App\Models\Service;
@@ -168,6 +169,7 @@ beforeEach(function () {
             AiRequest::create(['user_id' => $owner->id, 'feature' => 'quick_booking', 'model' => 'claude-haiku-5-5', 'status' => 'ok']);
             AssistantMessage::create(['user_id' => $owner->id, 'conversation' => (string) Str::uuid(), 'role' => 'user', 'content' => [], 'text' => 'Secret question']);
             AssistantAction::create(['user_id' => $owner->id, 'conversation' => (string) Str::uuid(), 'type' => 'booking', 'params' => [], 'summary' => 'Secret']);
+            ProblemReport::create(['user_id' => $owner->id, 'findings' => ['business' => [], 'technical' => []], 'report' => ['summary' => 'Secret', 'problems' => []]]);
             $import = SquareImport::create(['user_id' => $owner->id, 'status' => 'done']);
             $import->rows()->create(['square_id' => 'SQ-'.$company->id, 'data' => ['first_name' => 'Secret'], 'kind' => 'new', 'decision' => 'new']);
             (new SquareInvoice)->forceFill(['customer_id' => $job->customer_id, 'square_import_id' => $import->id, 'square_invoice_id' => 'INV-'.$company->id, 'status' => 'paid', 'currency' => 'CAD', 'items' => [], 'taxes' => [], 'payments' => []])->save();
@@ -233,6 +235,7 @@ dataset('tenant models', [
     'Square imports' => [SquareImport::class],
     'Square import customers' => [SquareImportCustomer::class],
     'Square invoices' => [SquareInvoice::class],
+    'problem reports' => [ProblemReport::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -254,7 +257,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         JobAppliance::class, JobAssignee::class, JobBringItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
         Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class, TaxReserveTransfer::class, Trip::class, BotToken::class,
-        Task::class, JobNote::class, AiRequest::class, AssistantMessage::class, AssistantAction::class, SquareImport::class, SquareImportCustomer::class, SquareInvoice::class,
+        Task::class, JobNote::class, AiRequest::class, AssistantMessage::class, AssistantAction::class, SquareImport::class, SquareImportCustomer::class, SquareInvoice::class, ProblemReport::class,
     ])->sort()->values()->all());
 });
 

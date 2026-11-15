@@ -29,6 +29,16 @@ test('More has Assistant; the chat says when the AI is not set up', async ({
     ).toHaveText('Which invoices are overdue?');
     await expect(page.locator('[data-test="assistant-error"]')).toBeVisible();
 
+    // Find problems runs only on this button; without an AI key it says so.
+    await page.locator('[data-test="assistant-find-problems"]').click();
+    await expect(
+        page
+            .locator(
+                '[data-test="assistant-error"], [data-test="assistant-problems"]',
+            )
+            .first(),
+    ).toBeVisible();
+
     const width = await page.evaluate(() => ({
         page: document.documentElement.scrollWidth,
         viewport: innerWidth,

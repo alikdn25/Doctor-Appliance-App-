@@ -32,7 +32,7 @@ class AssistantAction extends Model
 
     public const BOOKING = 'booking';
 
-    protected $fillable = ['user_id', 'conversation', 'type', 'params', 'summary', 'status', 'result', 'decided_at'];
+    protected $fillable = ['user_id', 'conversation', 'after_message_id', 'type', 'params', 'summary', 'status', 'result', 'decided_at'];
 
     /**
      * @return array<string, string>
