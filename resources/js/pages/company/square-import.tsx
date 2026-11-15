@@ -171,12 +171,13 @@ export default function SquareImport({
                         data-test="square-import-connect"
                     >
                         <p className="text-sm">
-                            {t(
-                                canConnect
-                                    ? 'square_import.not_connected'
-                                    : 'square_import.not_available',
-                            )}
+                            {t('square_import.not_connected')}
                         </p>
+                        {!canConnect && (
+                            <p className="text-sm text-muted-foreground">
+                                {t('square_import.not_available')}
+                            </p>
+                        )}
                         {canConnect && (
                             <Button asChild>
                                 <a
