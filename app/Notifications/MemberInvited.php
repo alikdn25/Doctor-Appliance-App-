@@ -34,6 +34,7 @@ class MemberInvited extends Notification implements ShouldQueue
         $minutes = (int) config('auth.passwords.'.config('auth.defaults.passwords').'.expire');
 
         return (new MailMessage)
+            ->from((string) config('mail.from.address'), $this->companyName)
             ->subject(__('notifications.invited.subject', ['company' => $this->companyName]))
             ->greeting(__('notifications.invited.greeting', ['name' => $notifiable->name]))
             ->line(__('notifications.invited.line', ['company' => $this->companyName]))

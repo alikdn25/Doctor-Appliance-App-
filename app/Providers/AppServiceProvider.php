@@ -12,6 +12,7 @@ use App\Sms\SmsProvider;
 use App\Sms\SmsProviders;
 use App\Support\Audit\ActionSource;
 use App\Support\Database\MigrationGuard;
+use App\Support\Mail\MailSender;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\TimezoneDatabase;
 use Carbon\CarbonImmutable;
@@ -21,6 +22,7 @@ use Illuminate\Auth\SessionGuard;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -75,6 +77,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('usage', fn (Request $request) => Limit::perMinute(120)->by('usage|'.($request->user()?->id ?? $request->ip())));
         RateLimiter::for('assistant', fn (Request $request) => Limit::perMinute(20)->by('assistant|'.($request->user()?->id ?? $request->ip())));
         RateLimiter::for('quick-booking', fn (Request $request) => Limit::perMinute(20)->by('quick-booking|'.($request->user()?->id ?? $request->ip())));
+
+        // Every email: the configured sender name and a Reply-To, also for mail that does not set its own.
+        Event::listen(MessageSending::class, [MailSender::class, 'applyDefaults']);
 
         Event::listen(Login::class, function (Login $event) {
             if ($event->user instanceof User && ! app(Impersonation::class)->isActive()) {

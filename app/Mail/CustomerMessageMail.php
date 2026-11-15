@@ -5,11 +5,11 @@ namespace App\Mail;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Message;
+use App\Support\Mail\MailSender;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 
@@ -27,12 +27,11 @@ class CustomerMessageMail extends Mailable implements ShouldQueue
     {
         return $this->inCompany(function () {
             $brand = $this->message()->job?->brand;
-            $name = $brand?->sender_name ?: ($brand?->name ?? Company::query()->find($this->companyId)?->name);
-            $replyTo = $brand?->sender_email ?: $brand?->email;
+            $company = Company::query()->find($this->companyId);
 
             return new Envelope(
-                from: new Address((string) config('mail.from.address'), $name),
-                replyTo: $replyTo ? [new Address($replyTo, $name)] : [],
+                from: MailSender::from($brand, $company),
+                replyTo: MailSender::replyTo($brand, $company),
                 subject: $this->subjectLine,
             );
         });
