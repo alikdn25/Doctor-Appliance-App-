@@ -115,4 +115,20 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Fallback "Reply-To" Address
+    |--------------------------------------------------------------------------
+    |
+    | Replies go to the company's email from its settings (the brand's sender
+    | or contact email). Mail without one (or sent outside a company, such as
+    | password resets) uses this address. It is deliberately not the global
+    | "reply_to" key, which Laravel would add next to the company's address.
+    |
+    */
+
+    'fallback_reply_to' => [
+        'address' => env('MAIL_REPLY_TO_ADDRESS'),
+    ],
+
 ];

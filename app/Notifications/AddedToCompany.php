@@ -28,6 +28,7 @@ class AddedToCompany extends Notification implements ShouldQueue
     public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage)
+            ->from((string) config('mail.from.address'), $this->companyName)
             ->subject(__('notifications.added.subject', ['company' => $this->companyName]))
             ->greeting(__('notifications.added.greeting', ['name' => $notifiable->name]))
             ->line(__('notifications.added.line', ['company' => $this->companyName]))

@@ -9,12 +9,12 @@ use App\Support\Billing\DocumentPdf;
 use App\Support\Billing\DocumentPrint;
 use App\Support\Billing\Money;
 use App\Support\Billing\PublicDocument;
+use App\Support\Mail\MailSender;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Attachment;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 
@@ -51,11 +51,10 @@ class ReceiptMail extends Mailable implements ShouldQueue
             $invoice = $this->invoice();
             $brand = $invoice->brand;
             $brandName = $brand?->name ?? $this->company()->name;
-            $replyTo = $brand?->sender_email ?: $brand?->email;
 
             return new Envelope(
-                from: new Address((string) config('mail.from.address'), $brand?->sender_name ?: $brandName),
-                replyTo: $replyTo ? [new Address($replyTo, $brand?->sender_name ?: $brandName)] : [],
+                from: MailSender::from($brand, $this->company()),
+                replyTo: MailSender::replyTo($brand, $this->company()),
                 subject: __('documents.receipt.subject', ['brand' => $brandName, 'number' => $invoice->number]),
             );
         });

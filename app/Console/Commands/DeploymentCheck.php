@@ -27,6 +27,11 @@ class DeploymentCheck extends Command
             'Writable storage' => is_writable(storage_path()) && is_writable(storage_path('app')) && is_writable(storage_path('framework')),
             'Writable bootstrap cache' => is_writable(base_path('bootstrap/cache')),
         ];
+        $testTransport = self::usesTestMailer();
+        if (config('app.env') === 'production') {
+            // In production a log/array mailer means customer emails silently go nowhere.
+            $checks['Real email transport (MAIL_MAILER is not log/array)'] = ! $testTransport;
+        }
         try {
             $connection = DB::connection();
             $connection->getPdo();
@@ -45,11 +50,22 @@ class DeploymentCheck extends Command
         foreach ($checks as $label => $ok) {
             $this->line(($ok ? 'PASS ' : 'FAIL ').$label);
         }
-        if (in_array(config('mail.default'), ['log', 'array'], true)) {
+        if ($testTransport) {
             $this->warn('Email uses a test transport; customer emails will not be delivered.');
         }
         $this->line('Verify the queue worker, minute scheduler, HTTPS and backup restore separately.');
 
         return in_array(false, $checks, true) ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * The default mailer's transport (not only its name), so a renamed log mailer is caught too.
+     */
+    private static function usesTestMailer(): bool
+    {
+        $mailer = (string) config('mail.default');
+        $transport = (string) config("mail.mailers.{$mailer}.transport", $mailer);
+
+        return in_array($mailer, ['log', 'array'], true) || in_array($transport, ['log', 'array'], true);
     }
 }

@@ -8,12 +8,12 @@ use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Support\Billing\DocumentPdf;
 use App\Support\Billing\PublicDocument;
+use App\Support\Mail\MailSender;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Attachment;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 
@@ -53,12 +53,11 @@ class DocumentMail extends Mailable implements ShouldQueue
             $document = $this->document();
             $brand = $document->brand;
             $brandName = $brand?->name ?? $this->company()->name;
-            $replyTo = $brand?->sender_email ?: $brand?->email;
 
             return new Envelope(
                 // The platform's verified sender address with the brand's name; replies go to the brand.
-                from: new Address((string) config('mail.from.address'), $brand?->sender_name ?: $brandName),
-                replyTo: $replyTo ? [new Address($replyTo, $brand?->sender_name ?: $brandName)] : [],
+                from: MailSender::from($brand, $this->company()),
+                replyTo: MailSender::replyTo($brand, $this->company()),
                 subject: __('documents.mail.subject', [
                     'kind' => $this->kind(),
                     'number' => $document->number,

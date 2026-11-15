@@ -2175,3 +2175,9 @@ code has changed yet. Product decisions from the approved mockup:
 Design screens 6–15 are drawn on the same canvas: Book customer, Invoice, Take payment, Paid, Review request (phone) and
 Calendar Day / Week / Map (desktop) plus Day and Map (phone). They are listed in DESIGN.md. Next: owner review of the
 new screens, then restyle the app screen by screen to DESIGN.md (field screens first) and implement decisions 1–5.
+
+## Email delivery (November 15, 2026)
+
+✅ Real email transport: every email is sent from `MAIL_FROM_ADDRESS` with the company/brand name, replies go to the
+brand's sender/contact email, else `MAIL_REPLY_TO_ADDRESS` (notifications and password reset included). New
+`php artisan mail:test {to}`; `app:deployment-check` fails in production while `MAIL_MAILER` is log/array.
