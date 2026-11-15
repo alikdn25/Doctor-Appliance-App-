@@ -114,6 +114,7 @@ class HandleInertiaRequests extends Middleware
                 // Quick booking (AI): Owner and Office.
                 'quickBooking' => $user->can('useQuickBooking'),
                 'useAssistant' => $user->can('useAssistant'),
+                'runAppReview' => $user->can('runAppReview'),
                 'createTasks' => $user->can('create', Task::class),
                 'viewCustomers' => $user->can('viewAny', Customer::class),
                 'viewMessageInbox' => $user->can('viewAny', Message::class),

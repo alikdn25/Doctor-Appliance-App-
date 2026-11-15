@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
+import { useEffect } from 'react';
 import { formatMoney } from '@/components/billing/money';
 import { CustomerAvatar } from '@/components/customers/customer-avatar';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
@@ -9,6 +10,7 @@ import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { DataTable } from '@/components/ui/data-table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useCompanyTime } from '@/lib/datetime';
+import { startFlow, trackSearch } from '@/lib/usage';
 import { FilterChips } from '@/components/ui/filter-chips';
 import { SearchField } from '@/components/ui/search-field';
 import { usePage } from '@inertiajs/react';
@@ -70,6 +72,13 @@ export default function CustomersIndex({
             { preserveState: true, preserveScroll: true, replace: true },
         );
 
+    // App review: whether a customer search found anything.
+    useEffect(() => {
+        if (filters.search !== '') {
+            trackSearch('customers', customers.total > 0);
+        }
+    }, [filters.search, customers.total]);
+
     const filtered =
         filters.search !== '' || filters.type !== '' || filters.tag !== '';
 
@@ -97,7 +106,10 @@ export default function CustomersIndex({
                 <SearchField
                     value={filters.search}
                     placeholder={t('customers.search')}
-                    onSearch={(search) => apply({ search })}
+                    onSearch={(search) => {
+                        if (search !== '') startFlow('customer_search');
+                        apply({ search });
+                    }}
                 />
 
                 <FilterChips

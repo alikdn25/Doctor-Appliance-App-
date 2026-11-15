@@ -1,4 +1,5 @@
 import { toast as sonner } from 'sonner';
+import { trackError } from '@/lib/usage';
 
 /**
  * Toasts (UX-REDESIGN §4.8): a short message at the bottom; with an Undo action for things that can be taken
@@ -6,7 +7,11 @@ import { toast as sonner } from 'sonner';
  */
 export const toast = {
     success: (message: string) => sonner.success(message),
-    error: (message: string) => sonner.error(message),
+    error: (message: string) => {
+        trackError('toast');
+
+        return sonner.error(message);
+    },
     info: (message: string) => sonner(message),
     withUndo: (message: string, undoLabel: string, onUndo: () => void) =>
         sonner(message, {

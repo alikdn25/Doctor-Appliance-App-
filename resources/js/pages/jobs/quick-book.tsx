@@ -40,6 +40,7 @@ import { index as brandsPage } from '@/routes/brands';
 import { create, index, lookup, parseMessage, store } from '@/routes/jobs';
 import { quickBooking } from '@/routes/jobs';
 import { QUICK_BOOKING_RESULT_KEY } from '@/lib/quick-booking';
+import { trackSearch } from '@/lib/usage';
 import { xsrfToken } from '@/lib/http';
 import {
     Sheet,
@@ -527,9 +528,13 @@ export default function QuickBook({
                 },
             )
                 .then((response) => (response.ok ? response.json() : null))
-                .then((found: { customers: CustomerChoice[] } | null) =>
-                    setMatches(found?.customers ?? []),
-                )
+                .then((found: { customers: CustomerChoice[] } | null) => {
+                    setMatches(found?.customers ?? []);
+                    trackSearch(
+                        byName ? 'booking_name' : 'booking_phone',
+                        (found?.customers ?? []).length > 0,
+                    );
+                })
                 .catch(() => undefined);
         }, 300);
 

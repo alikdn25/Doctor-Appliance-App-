@@ -1,6 +1,7 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Check,
+    ClipboardCheck,
     Copy,
     ExternalLink,
     MessageSquarePlus,
@@ -22,6 +23,7 @@ import { QUICK_BOOKING_RESULT_KEY } from '@/lib/quick-booking';
 import { cn } from '@/lib/utils';
 import { ask, findProblems, newChat } from '@/routes/assistant';
 import { cancel, confirm } from '@/routes/assistant/actions';
+import { index as reviewsPage } from '@/routes/app-reviews';
 import { create } from '@/routes/jobs';
 
 type Message = {
@@ -283,6 +285,7 @@ export default function AssistantIndex({
     configured: boolean;
 }) {
     const t = useTrans();
+    const { auth } = usePage().props;
     const [conversation, setConversation] = useState(initialConversation);
     const [items, setItems] = useState<Item[]>(initialItems);
     const [question, setQuestion] = useState('');
@@ -391,6 +394,19 @@ export default function AssistantIndex({
                     >
                         <Search /> {t('assistant.problems.button')}
                     </Button>
+                    {auth.can?.runAppReview && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            asChild
+                            data-test="assistant-app-review"
+                        >
+                            <Link href={reviewsPage()}>
+                                <ClipboardCheck />{' '}
+                                {t('assistant.review.button')}
+                            </Link>
+                        </Button>
+                    )}
                 </div>
                 <div className="flex-1 space-y-3" data-test="assistant-thread">
                     {items.length === 0 && pending === null && (

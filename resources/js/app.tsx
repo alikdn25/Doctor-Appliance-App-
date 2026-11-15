@@ -7,6 +7,7 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { startUploadQueue } from '@/lib/upload-queue';
+import { startUsageLog } from '@/lib/usage';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -52,3 +53,6 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 
 // Photos and signatures saved on the phone keep uploading in the background.
 startUploadQueue();
+
+// The action log for App review (screens, taps, forms, errors; never customer data), sent in the background.
+startUsageLog();
