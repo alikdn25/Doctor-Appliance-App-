@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Services\AI\AiTransport;
+use App\Services\AI\AnthropicTransport;
 use App\Services\Impersonation;
 use App\Sms\RoutedSmsProvider;
 use App\Sms\SmsProvider;
@@ -47,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         // The platform's SMS providers (config/sms.php): Telnyx for new numbers, each account its own provider.
         $this->app->singleton(SmsProviders::class);
         $this->app->bind(SmsProvider::class, RoutedSmsProvider::class);
+        $this->app->bind(AiTransport::class, AnthropicTransport::class);
     }
 
     /**
@@ -58,11 +61,14 @@ class AppServiceProvider extends ServiceProvider
 
         // The price book and Google review locations are kept by the office.
         Gate::define('manageCatalog', fn (User $user) => $user->hasRole(UserRole::Owner, UserRole::Admin));
+        // Quick booking (AI reads a dictated or pasted text into the booking form): Owner and Office only.
+        Gate::define('useQuickBooking', fn (User $user) => $user->hasRole(UserRole::Owner, UserRole::Admin));
 
         // Own counters: a plain "throttle:N,1" shares one counter per person across routes, so the version check
         // and route planning would use up the limit of other actions.
         RateLimiter::for('app-version', fn (Request $request) => Limit::perMinute(60)->by('app-version|'.$request->ip()));
         RateLimiter::for('map-plan', fn (Request $request) => Limit::perMinute(60)->by('map-plan|'.($request->user()?->id ?? $request->ip())));
+        RateLimiter::for('quick-booking', fn (Request $request) => Limit::perMinute(20)->by('quick-booking|'.($request->user()?->id ?? $request->ip())));
 
         Event::listen(Login::class, function (Login $event) {
             if ($event->user instanceof User && ! app(Impersonation::class)->isActive()) {

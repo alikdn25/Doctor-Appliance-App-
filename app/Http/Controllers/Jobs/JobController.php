@@ -26,6 +26,7 @@ use App\Messaging\MessagingPresenter;
 use App\Models\Appliance;
 use App\Models\Brand;
 use App\Models\BusinessExpense;
+use App\Models\Company;
 use App\Models\Customer;
 use App\Models\CustomerPhone;
 use App\Models\Estimate;
@@ -344,6 +345,10 @@ class JobController extends Controller
             // Company clock, so the booking form never suggests a window that has already passed.
             'nowTime' => CarbonImmutable::now(currentCompany()->timezone)->format('H:i'),
             'arrivalWindows' => currentCompany()->arrivalWindows(),
+            // Days the company is closed: Quick booking offers free windows on open days only.
+            'closedDays' => collect(currentCompany()->business_hours ?? Company::defaultBusinessHours())
+                ->filter(fn ($day) => is_array($day) && ($day['closed'] ?? false))
+                ->keys()->values()->all(),
             ...($quick ? $this->bookingTechnicians() : []),
             ...$this->formOptions($request->user()),
         ]);

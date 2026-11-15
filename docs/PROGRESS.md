@@ -1,3 +1,36 @@
+# November 15 — Owner's task: Quick booking, AI assistant, Square import, Find problems, App review
+
+Five PRs, each waits for the owner's "ok" (SPEC §7.15).
+
+## PR 1 — Quick booking (done)
+
+1. **One AI service** (`app/Services/AI`): every AI request goes through `AiService` on the Anthropic API (official PHP
+   SDK). Each feature always uses its own model, no switching and no fallbacks: `AI_MODEL_BOOKING` (Quick booking,
+   Paste from message), `AI_MODEL_ASSISTANT` (assistant, Find problems), `AI_MODEL_REVIEW` (App review). Tools (tool
+   use) are passed through for the assistant. Every request is logged in `ai_requests`: company, user, feature, model,
+   tokens, cost (USD, prices in `config/ai.php`), time, status. Daily limit per company
+   (`AI_DAILY_LIMIT_PER_COMPANY`, company time zone). The key stays on the server.
+2. **Quick booking** (Owner and Office): a button on Today and in "+". One big text field (typed, dictated with the
+   keyboard microphone, or an SMS pasted) and Parse. The AI returns name, phone (E.164), email, address, unit, buzzer,
+   appliance, brand, model, problem, date, arrival window, notes; English values, names and addresses as written;
+   "tomorrow" / "on Monday" by the company's time zone; nothing invented. The text is kept on the screen (also after
+   an error, and when going back from the form).
+3. **The filled form** is the usual Book customer: AI-filled fields are highlighted; a customer found by phone (then
+   by name + address) is used and named ("Existing customer found by phone: …"), no duplicate; the address is checked
+   with Google Places (the existing suggestions, same browser key) and the result is said; brand and model go to the
+   new appliance; the buzzer goes to "Notes for the team" ("Buzzer: 1234"); without a day or window the free windows
+   of the next open days are offered ("Now" for today). Only Save / Finish booking stores anything.
+4. **Paste from message** now goes through the same service and model (`AI_MODEL_BOOKING`); without a key or over the
+   limit it still uses the basic parser. The old `AI_PROVIDER`, `ANTHROPIC_MODEL` and xAI (Grok) settings are gone.
+
+- **Migration** `2026_11_15_000100_create_ai_requests` (new table only, nothing existing changes).
+- Tests: AiServiceTest (own model per feature, log with tokens/cost/time, errors and refusals logged, daily limit per
+  company, no key, tools), QuickBookingTest (parsing with a faked AI, time zone, empty fields, customer by phone / name
+  + address, other company never found, nothing saved, guest cannot save, AI error and limit messages, Owner/Office
+  only, key never in the page), PasteFromMessageTest (booking model), tenant isolation and role permissions; browser
+  zz-quick-booking (390 px).
+- Next: PR 2 — AI assistant (after the owner's "ok").
+
 # October 24 — Owner's task: Map tab, route, estimates, app update
 
 1. **Map tab** in the bottom bar for every role and menu (Field: Today · Calendar · Map · Invoices; Office: Today ·

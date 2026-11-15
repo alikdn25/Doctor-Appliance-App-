@@ -344,7 +344,92 @@ from the company number (provider voice).
 - Google Maps / Places (v1)
 - Transactional email provider (v1)
 - QuickBooks Online (later)
-- AI features (later, not in scope now)
+- Anthropic API for the AI features of §7.15 (v1)
+- Square import of customers and invoice history (§7.15.3)
+
+### 7.15 AI features and Square import (owner's task of November 15)
+
+Built in five PRs, in this order. Each one waits for the owner's "ok" before the next.
+
+**Common AI service.** Every AI request goes through one service (`app/Services/AI`) on the Anthropic API. It
+supports tools (tool use). Each feature always uses its own model, set in `.env`, with no automatic switching between
+models: `AI_MODEL_BOOKING` (reading the text of a booking only), `AI_MODEL_ASSISTANT` (the assistant and Find
+problems), `AI_MODEL_REVIEW` (App review only). Every request is logged: company, user, feature, model, tokens, cost,
+time. A daily request limit per company is set in `.env` (`AI_DAILY_LIMIT_PER_COMPANY`). The API key
+(`ANTHROPIC_API_KEY`) never reaches the browser. The AI never saves, sends, changes or deletes anything by itself.
+
+#### 7.15.1 Quick booking (PR 1)
+
+- "Quick booking" on Today and in the "+" menu; Owner and Office only.
+- One big multi-line text field and Parse. Voice is the phone keyboard's microphone (no own recording); an SMS from
+  the customer can be pasted; the text can be edited before Parse.
+- Parse sends the text (Russian, English or mixed) to `AI_MODEL_BOOKING` and gets: first and last name, phone, email,
+  address, unit, buzzer, appliance, brand, model, problem, date, arrival window, notes. Field values in English, names
+  and addresses as written. "Today", "tomorrow", "on Monday" count in the company's time zone. The phone is stored in
+  E.164. Anything not in the text stays empty.
+- The usual Book customer form opens filled in, with the AI-filled fields highlighted. The customer is found by phone,
+  then by name and address; when found, that customer is used and shown (no duplicate). The address is checked with
+  the existing address suggestions (Google Places). Without a date or window the free windows of the next days are
+  offered by the company's window rules ("Now" for today). Only the person's Save stores the booking. When the AI does
+  not answer, a message is shown and the text stays.
+- "Paste from message" in the booking form goes through the same service and model.
+
+#### 7.15.2 AI assistant (PR 2)
+
+- "Assistant" in More: a chat screen like the SMS screen; questions typed or dictated. Owner only for now (Office
+  later). Always `AI_MODEL_ASSISTANT`.
+- Read-only tools, strictly inside the user's company: unpaid and overdue invoices (amounts, days overdue); jobs on a
+  date or period; jobs by status (Need to order parts, Waiting for parts, Overdue, Not completed); customer search by
+  name, phone, address; customer history (jobs, estimates, invoices, payments, including invoices imported from
+  Square); estimates waiting for approval; revenue and payments for a period; free windows on a date.
+- Actions, only after confirmation: SMS payment reminder for an invoice; move a booking to another date or window;
+  create a booking (the text goes to the Quick booking parser and the same filled form opens). Before any action the
+  assistant shows a "what I will do" card with Confirm and Cancel; nothing runs without Confirm. Every action goes to
+  the change log marked "AI assistant". The assistant cannot delete anything.
+
+#### 7.15.3 Import customers and invoice history from Square (PR 3)
+
+- "Import from Square" in the integration settings; Owner only; uses the connected Square account and asks for the
+  missing read permissions (customers, invoices, orders, payments) when pressed. No AI.
+- Customers: first and last name, company, phone (E.164), email, address, notes, Square customer ID. Duplicates by
+  Square ID, phone, email.
+- Review screen before import: new customers, matches with existing ones, customers without phone and email. For each
+  match: merge, skip or create new; "Merge all". The import starts only with Import.
+- Invoice history for all time: number, date, status, items, amounts, taxes, payments, payment method; linked to the
+  customer; marked "Imported from Square", read-only, left out of the tax reserve, shown in the customer's history.
+- Runs in the background with progress on screen. Running it again brings only new and changed records (no
+  duplicates). Imported customers get nothing (no SMS, no email). The whole import can be undone with one button
+  (everything imported goes to Deleted items for 30 days). Each import is written to the change log (who, when, how
+  many customers and invoices).
+
+#### 7.15.4 Find problems (PR 4)
+
+- "Find problems" on the Assistant screen, or asking the assistant "what needs fixing". Owner only. Never on a
+  schedule, never in the background.
+- Collected by code: overdue invoices; jobs in Waiting for parts / Need to order parts longer than N days (company
+  setting, default 7); estimates without an answer longer than M days (default 3); unclosed jobs with a past date;
+  technician schedule overlaps; customers without a phone or address; duplicate customers. Technical, last 7 days:
+  grouped Laravel log errors, failed queue jobs, SMS not sent, Square sync failures, failed backups.
+- One request to `AI_MODEL_ASSISTANT`: problems by importance, each with what to do; business problems link to the
+  job, customer or invoice; technical problems come with a ready task text for Claude Code in one copyable block. "No
+  problems" when there are none. The AI fixes nothing.
+
+#### 7.15.5 App review (PR 5)
+
+- Action log: screen opens, time on screen, button taps, form start / save / abandon, "back", searches and their result
+  (found / not found), errors the user saw; for the main flows (booking, Quick booking, estimate, invoice create and
+  send, customer search, moving a booking) time and taps from start to end. No customer data (names, phones,
+  addresses, amounts): only actions, screens, the user's role and time. Kept 90 days; written in the background.
+- "Inconvenient" button on every screen (header or More), every role: a text field (voice via the keyboard) and Send;
+  stored with the screen and the user's last 20 actions.
+- "App review" on the Assistant screen, Owner only, only by this button: period since the last review (default), 1,
+  3, 7 or 30 days. Code builds the summary (flow times and taps, average and worst; abandoned forms; frequent "back";
+  failed searches; errors; all "Inconvenient" notes) and sends it with the earlier reviews' suggestions and their
+  statuses to `AI_MODEL_REVIEW` in one request. Answer: what is inconvenient and why (with numbers), what to fix by
+  importance, and a final task for Claude Code in one copyable block (direct orders, plain Russian headings). The AI
+  changes nothing.
+- Every review is kept (date, period, text, cost); each suggestion has Done / Not needed / Later; a screen lists the
+  past reviews.
 
 ## 8. Google review requests
 
@@ -400,7 +485,7 @@ Tenant subscription billing (§11) is a separate task scheduled before the Phase
 
 ### Later (not in scope now)
 
-AI features (call answering, plate OCR, estimate drafting), native mobile apps, payroll.
+Other AI features (call answering, plate OCR, estimate drafting), native mobile apps, payroll.
 
 ### Out of scope
 

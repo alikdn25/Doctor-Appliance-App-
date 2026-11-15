@@ -4,32 +4,46 @@ namespace App\Support\Ai;
 
 use App\Enums\ApplianceType;
 use App\Models\Company;
+use App\Models\User;
+use App\Services\AI\AiFeature;
+use App\Services\AI\AiService;
+use App\Services\AI\AiUnavailable;
 use App\Support\PhoneNumber;
 use Illuminate\Support\Facades\Log;
 
 /**
  * "Paste from message": any text (an SMS, an email, a note from a call) split into the booking form's fields —
- * customer (who pays), occupant, phones, address, appliance and the problem. The company's AI provider reads it;
- * without one (or when it fails) a basic parser picks out what it can. The person checks the form and saves it.
+ * customer (who pays), occupant, phones, address, appliance and the problem. The AI reads it (AiService,
+ * AI_MODEL_BOOKING); without a key, over the daily limit or when it fails, a basic parser picks out what it can. The person checks the form and saves it.
  */
 class BookingTextParser
 {
     /** Words that mark the occupant (someone else living at the job address). */
     private const OCCUPANT_WORDS = '/\b(tenant|occupant|resident|renter|lives there|on site|onsite|homeowner|owner of the unit)\b/i';
 
-    public function __construct(private readonly AiProvider $ai) {}
+    public function __construct(private readonly AiService $ai) {}
 
     /**
      * @return array{source: string, fields: array<string, mixed>}
      */
-    public function parse(string $text, Company $company): array
+    public function parse(string $text, Company $company, ?User $user = null): array
     {
         $text = trim($text);
-        $extractor = $this->ai->for($company);
 
-        if ($extractor !== null) {
+        if ($this->ai->configured()) {
             try {
-                return ['source' => 'ai', 'fields' => $this->normalize($extractor->extract($this->instructions($company), $text, self::schema()), $company)];
+                $answer = $this->ai->send(
+                    AiFeature::PasteMessage,
+                    $company,
+                    $user,
+                    $this->instructions($company),
+                    [['role' => 'user', 'content' => $text]],
+                    schema: self::schema(),
+                    maxTokens: 2000,
+                    effort: 'low',
+                )->json();
+
+                return ['source' => 'ai', 'fields' => $this->normalize($answer, $company)];
             } catch (AiUnavailable $e) {
                 Log::warning('AI booking parser unavailable, using the basic parser', ['company' => $company->id, 'error' => $e->getMessage()]);
             }

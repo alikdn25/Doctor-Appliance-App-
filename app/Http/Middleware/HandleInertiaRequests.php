@@ -111,6 +111,8 @@ class HandleInertiaRequests extends Middleware
             'companies' => $user->accessibleCompanies()->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->name])->values(),
             'can' => $company === null ? [] : [
                 'createJobs' => $user->can('create', ServiceJob::class),
+                // Quick booking (AI): Owner and Office.
+                'quickBooking' => $user->can('useQuickBooking'),
                 'createTasks' => $user->can('create', Task::class),
                 'viewCustomers' => $user->can('viewAny', Customer::class),
                 'viewMessageInbox' => $user->can('viewAny', Message::class),
