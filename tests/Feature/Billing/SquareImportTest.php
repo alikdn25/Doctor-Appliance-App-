@@ -256,3 +256,15 @@ test('another company cannot see or run this company\'s import', function () {
     $this->actingAs($other)->post(route('square-import.run', $import))->assertNotFound();
     $this->actingAs($other)->get(route('square-import.status', $import))->assertNotFound();
 });
+
+test('without a Square connection the import screen offers to connect Square first', function () {
+    inCompany($this->company, fn () => PaymentProviderConnection::query()->delete());
+
+    $this->get(route('square-import.show'))->assertOk()
+        ->assertInertia(fn ($page) => $page->component('company/square-import')->where('connected', false)->where('canConnect', true));
+    $this->post(route('square-import.start'))->assertStatus(422);
+
+    // Square not set up on this installation: still shown, without a connect button.
+    config(['services.square.application_id' => '']);
+    $this->get(route('square-import.show'))->assertInertia(fn ($page) => $page->where('connected', false)->where('canConnect', false));
+});

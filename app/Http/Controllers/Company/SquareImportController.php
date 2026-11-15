@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Company;
 use App\Http\Controllers\Controller;
 use App\Models\SquareImport;
 use App\Models\SquareImportCustomer;
+use App\Payments\PaymentProviders;
 use App\Services\SquareImport\SquareImporter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -21,7 +22,7 @@ use Throwable;
  */
 class SquareImportController extends Controller
 {
-    public function show(SquareImporter $importer): Response
+    public function show(SquareImporter $importer, PaymentProviders $providers): Response
     {
         Gate::authorize('managePayments', currentCompany());
 
@@ -41,6 +42,8 @@ class SquareImportController extends Controller
 
         return Inertia::render('company/square-import', [
             'connected' => $connection !== null,
+            // Square is set up on this installation and serves the company's country: offer to connect it here.
+            'canConnect' => array_key_exists('square', $providers->availableFor(currentCompany())),
             'account' => $connection?->account_name,
             'missingScopes' => $missing,
             'checkError' => $error,

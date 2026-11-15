@@ -137,7 +137,7 @@ class ProblemFinder
     /**
      * @return array<string, mixed>
      */
-    private static function schema(): array
+    public static function schema(): array
     {
         return [
             'type' => 'object',
