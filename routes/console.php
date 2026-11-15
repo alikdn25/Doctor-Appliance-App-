@@ -9,6 +9,9 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// The App review action log is kept 90 days (deleting old rows only; no analysis runs on a schedule).
+Schedule::command('usage:prune')->dailyAt('04:41')->withoutOverlapping();
+
 // Square access tokens last 30 days; keep every connected company's token fresh.
 Schedule::command('payments:refresh-square-tokens')->dailyAt('03:17')->withoutOverlapping();
 

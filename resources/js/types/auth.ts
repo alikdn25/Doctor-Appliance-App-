@@ -43,6 +43,7 @@ export type Permissions = {
     createJobs?: boolean;
     quickBooking?: boolean;
     useAssistant?: boolean;
+    runAppReview?: boolean;
     createTasks?: boolean;
     viewInvoices?: boolean;
     viewMyJobs?: boolean;

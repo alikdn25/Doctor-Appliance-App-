@@ -125,6 +125,35 @@ Five PRs, each waits for the owner's "ok" (SPEC §7.15).
   question, Owner only, no schedule), tenant isolation; browser zz-assistant (Find problems button).
 - Next: PR 5 — App review.
 
+## PR 5 — App review (done)
+
+1. **Action log** (`usage_events`), every role: screens opened and time on them, button taps (their `data-test`
+   key), forms started / saved / abandoned, "back" (browser back and ←), searches found / not found (customer search,
+   Book customer phone and name lookup), errors seen (validation, server, network, error toasts). Main flows with
+   time and taps from start to end: booking, quick booking, estimate, invoice created and sent, customer search,
+   moving a booking. No customer data: only the event kind, the page name (e.g. `jobs/show`), a short key, numbers
+   (ms, taps), the role and time; the server drops anything that is not a short key (no spaces, no "@", no runs of
+   3+ digits) and keeps only known flags. Sent in batches every 15 s / when the app is hidden and written by a queued
+   job, so the app never waits. Kept 90 days (`usage:prune`, daily; it only deletes).
+2. **Inconvenient** in More (every role): a text field (the keyboard microphone works) and Send; stored with the
+   screen and the person's last 20 actions (`inconvenience_reports`).
+3. **App review** on the Assistant screen (Owner only, its own gate `runAppReview`): period since the last review
+   (default), 1, 3, 7 or 30 days, only on the button — no schedule, no background analysis. The code builds the summary
+   (flows: average and worst time and taps; abandoned forms; frequent "back"; failed searches; errors; slow screens;
+   every Inconvenient note) and sends it with the earlier suggestions and their statuses to `AI_MODEL_REVIEW` in one
+   request. The answer (in Russian): what is inconvenient and why with the numbers, what to fix by importance, and a
+   task for Claude Code in one block to copy (plain Russian headings, direct orders). The AI changes nothing.
+4. **History**: every review is kept (date, period, text, cost); each suggestion has Done / Not needed / Later; a
+   screen lists past reviews.
+
+- **Migration** `2026_11_15_000500_create_app_review_tables`: new tables `usage_events`, `inconvenience_reports`,
+  `app_reviews`, `app_review_suggestions`.
+- Scheduler: new `usage:prune` daily at 04:41 (the existing `schedule:run` cron runs it).
+- Tests: AppReviewTest (no customer data in the log, Inconvenient keeps the screen and last 20 actions, 90 days,
+  review model, summary numbers, earlier statuses sent, periods, statuses, Owner only, no schedule), tenant
+  isolation, role permissions; browser zz-app-review (390 px).
+- Next: the owner's tasks are done; nothing left from the November 15 task.
+
 # October 24 — Owner's task: Map tab, route, estimates, app update
 
 1. **Map tab** in the bottom bar for every role and menu (Field: Today · Calendar · Map · Invoices; Office: Today ·

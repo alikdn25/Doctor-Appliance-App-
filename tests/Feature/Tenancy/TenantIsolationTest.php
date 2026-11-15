@@ -7,6 +7,8 @@ use App\Enums\PaymentMethod;
 use App\Enums\UserRole;
 use App\Models\AiRequest;
 use App\Models\Appliance;
+use App\Models\AppReview;
+use App\Models\AppReviewSuggestion;
 use App\Models\AssistantAction;
 use App\Models\AssistantMessage;
 use App\Models\AuditLog;
@@ -24,6 +26,7 @@ use App\Models\CustomerPhone;
 use App\Models\Estimate;
 use App\Models\EstimateItem;
 use App\Models\GoogleProfile;
+use App\Models\InconvenienceReport;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoicePaymentLink;
@@ -57,6 +60,7 @@ use App\Models\Task;
 use App\Models\TaxRate;
 use App\Models\TaxReserveTransfer;
 use App\Models\Trip;
+use App\Models\UsageEvent;
 use App\Support\Tenancy\MissingTenantException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -170,6 +174,10 @@ beforeEach(function () {
             AssistantMessage::create(['user_id' => $owner->id, 'conversation' => (string) Str::uuid(), 'role' => 'user', 'content' => [], 'text' => 'Secret question']);
             AssistantAction::create(['user_id' => $owner->id, 'conversation' => (string) Str::uuid(), 'type' => 'booking', 'params' => [], 'summary' => 'Secret']);
             ProblemReport::create(['user_id' => $owner->id, 'findings' => ['business' => [], 'technical' => []], 'report' => ['summary' => 'Secret', 'problems' => []]]);
+            UsageEvent::create(['user_id' => $owner->id, 'type' => 'tap', 'occurred_at' => now()]);
+            InconvenienceReport::create(['user_id' => $owner->id, 'text' => 'Secret note', 'recent_actions' => []]);
+            $review = AppReview::create(['period_from' => now()->subDay(), 'period_to' => now(), 'period' => '1', 'summary' => [], 'report' => []]);
+            $review->suggestions()->create(['position' => 1, 'importance' => 'low', 'title' => 'Secret', 'why' => 'x', 'fix' => 'y']);
             $import = SquareImport::create(['user_id' => $owner->id, 'status' => 'done']);
             $import->rows()->create(['square_id' => 'SQ-'.$company->id, 'data' => ['first_name' => 'Secret'], 'kind' => 'new', 'decision' => 'new']);
             (new SquareInvoice)->forceFill(['customer_id' => $job->customer_id, 'square_import_id' => $import->id, 'square_invoice_id' => 'INV-'.$company->id, 'status' => 'paid', 'currency' => 'CAD', 'items' => [], 'taxes' => [], 'payments' => []])->save();
@@ -236,6 +244,10 @@ dataset('tenant models', [
     'Square import customers' => [SquareImportCustomer::class],
     'Square invoices' => [SquareInvoice::class],
     'problem reports' => [ProblemReport::class],
+    'usage events' => [UsageEvent::class],
+    'inconvenience reports' => [InconvenienceReport::class],
+    'app reviews' => [AppReview::class],
+    'app review suggestions' => [AppReviewSuggestion::class],
 ]);
 
 test('every tenant-owned model is covered by isolation tests', function () {
@@ -257,7 +269,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         JobAppliance::class, JobAssignee::class, JobBringItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
         Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class, TaxReserveTransfer::class, Trip::class, BotToken::class,
-        Task::class, JobNote::class, AiRequest::class, AssistantMessage::class, AssistantAction::class, SquareImport::class, SquareImportCustomer::class, SquareInvoice::class, ProblemReport::class,
+        Task::class, JobNote::class, AiRequest::class, AssistantMessage::class, AssistantAction::class, SquareImport::class, SquareImportCustomer::class, SquareInvoice::class, ProblemReport::class, UsageEvent::class, InconvenienceReport::class, AppReview::class, AppReviewSuggestion::class,
     ])->sort()->values()->all());
 });
 

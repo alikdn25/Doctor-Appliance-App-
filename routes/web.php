@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
 use App\Http\Controllers\Admin\WorkspaceController;
+use App\Http\Controllers\AppReviewController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\Billing\CashController;
@@ -68,6 +69,7 @@ use App\Http\Controllers\SmsInboxController;
 use App\Http\Controllers\SmsWebhookController;
 use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\TrashController;
+use App\Http\Controllers\UsageController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
@@ -116,6 +118,14 @@ Route::middleware(['auth', 'active'])->group(function () {
         // AI assistant (Owner only).
         Route::get('assistant', [AssistantController::class, 'index'])->name('assistant.index');
         Route::post('assistant/ask', [AssistantController::class, 'ask'])->middleware('throttle:assistant')->name('assistant.ask');
+        Route::get('assistant/reviews', [AppReviewController::class, 'index'])->name('app-reviews.index');
+        Route::post('assistant/reviews', [AppReviewController::class, 'store'])->middleware('throttle:assistant')->name('app-reviews.store');
+        Route::get('assistant/reviews/{review}', [AppReviewController::class, 'show'])->name('app-reviews.show');
+        Route::put('assistant/review-suggestions/{suggestion}', [AppReviewController::class, 'status'])->name('app-reviews.suggestion');
+
+        // The action log for App review and "Inconvenient" (every role).
+        Route::post('usage/events', [UsageController::class, 'store'])->middleware('throttle:usage')->name('usage.store');
+        Route::post('usage/inconvenient', [UsageController::class, 'inconvenient'])->middleware('throttle:30,1')->name('usage.inconvenient');
         Route::post('assistant/find-problems', [AssistantController::class, 'findProblems'])->middleware('throttle:assistant')->name('assistant.find-problems');
         Route::post('assistant/new-chat', [AssistantController::class, 'fresh'])->name('assistant.new-chat');
         Route::post('assistant/actions/{action}/confirm', [AssistantController::class, 'confirm'])->name('assistant.actions.confirm');

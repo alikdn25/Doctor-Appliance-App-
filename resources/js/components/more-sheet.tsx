@@ -1,6 +1,14 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Bell, Building2, ChevronRight, LogOut, UserRound } from 'lucide-react';
+import {
+    Bell,
+    Building2,
+    ChevronRight,
+    LogOut,
+    MessageSquareWarning,
+    UserRound,
+} from 'lucide-react';
 import { useState } from 'react';
+import { InconvenientSheet } from '@/components/inconvenient-sheet';
 import { ListRow } from '@/components/ui/list-row';
 import { SearchField } from '@/components/ui/search-field';
 import { SegmentedControl } from '@/components/ui/segmented-control';
@@ -14,6 +22,7 @@ import {
 import { navPath, useAppNavigation } from '@/hooks/use-app-navigation';
 import { useTrans } from '@/lib/i18n';
 import { forgetPushOnThisDevice } from '@/lib/push';
+import { currentScreen } from '@/lib/usage';
 import { cn } from '@/lib/utils';
 import { logout } from '@/routes';
 import { switchMethod } from '@/routes/companies';
@@ -40,6 +49,10 @@ export function MoreSheet({
     const t = useTrans();
     const { groups, bottom, inboxInHeader } = useAppNavigation();
     const [query, setQuery] = useState('');
+    // "Inconvenient": the screen the person was on when they opened the menu.
+    const [inconvenient, setInconvenient] = useState<string | null | false>(
+        false,
+    );
     const isOwner = auth.role?.value === 'owner';
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     const inBottom = new Set(bottom.map((item) => navPath(item.href)));
@@ -68,203 +81,233 @@ export function MoreSheet({
             (key === 'main' || isOwner || (fieldWorker && key === 'money')));
 
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent
-                side="bottom"
-                // Nothing shrinks to fit: the menu scrolls, so every item stays reachable (a card with hidden overflow
-                // used to be squeezed to nothing at the bottom).
-                className="gap-3 px-4 pt-4 *:shrink-0"
-                data-test="more-sheet"
-            >
-                <SheetHeader className="p-0 pr-12">
-                    <SheetTitle>{t('nav.more_title')}</SheetTitle>
-                    <SheetDescription className="sr-only">
-                        {t('nav.search_menu')}
-                    </SheetDescription>
-                </SheetHeader>
-
-                {auth.user?.can_choose_menu && (
-                    <div className="space-y-1.5" data-test="menu-mode">
-                        <p className="text-sm font-semibold">
-                            {t('nav.my_menu')}
-                        </p>
-                        <SegmentedControl
-                            label={t('nav.my_menu')}
-                            className="flex w-full"
-                            value={auth.user.menu_mode}
-                            onChange={(mode) =>
-                                router.put(
-                                    updateMenuMode().url,
-                                    { mode },
-                                    {
-                                        preserveScroll: true,
-                                        preserveState: true,
-                                    },
-                                )
-                            }
-                            options={[
-                                { value: 'field', label: t('nav.menu_field') },
-                                {
-                                    value: 'office',
-                                    label: t('nav.menu_office'),
-                                },
-                            ]}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            {t(
-                                auth.user.menu_mode === 'office'
-                                    ? 'nav.menu_office_hint'
-                                    : 'nav.menu_field_hint',
-                            )}
-                        </p>
-                    </div>
-                )}
-
-                <SearchField
-                    value={query}
-                    onSearch={setQuery}
-                    delay={0}
-                    placeholder={t('nav.search_menu')}
-                />
-
-                <nav aria-label={t('nav.more_title')} className="space-y-2">
-                    {shown.length === 0 && (
-                        <p className="py-4 text-center text-sm text-muted-foreground">
-                            {t('nav.no_matches')}
-                        </p>
-                    )}
-                    {shown.map((group) => (
-                        <section key={group.key}>
-                            <button
-                                type="button"
-                                className="flex min-h-11 w-full items-center gap-2 px-1 text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase"
-                                aria-expanded={isOpen(group.key)}
-                                onClick={() =>
-                                    setOpenGroups((g) => ({
-                                        ...g,
-                                        [group.key]: !isOpen(group.key),
-                                    }))
-                                }
-                            >
-                                <span className="flex-1">{t(group.label)}</span>
-                                <ChevronRight
-                                    aria-hidden="true"
-                                    className={cn(
-                                        'size-4 transition-transform',
-                                        isOpen(group.key) && 'rotate-90',
-                                    )}
-                                />
-                            </button>
-                            {isOpen(group.key) && (
-                                <div className="da-card divide-y overflow-hidden">
-                                    {group.items.map((item) => (
-                                        <div
-                                            key={item.key}
-                                            onClickCapture={close}
-                                        >
-                                            <ListRow
-                                                href={item.href}
-                                                leading={
-                                                    <span className={tile}>
-                                                        <item.icon />
-                                                    </span>
-                                                }
-                                                title={t(item.title)}
-                                                trailing={
-                                                    item.badge ? (
-                                                        <span className="rounded-full bg-danger px-2 text-xs leading-5 font-semibold text-white">
-                                                            {item.badge}
-                                                        </span>
-                                                    ) : undefined
-                                                }
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </section>
-                    ))}
-                </nav>
-
-                <div
-                    className="da-card divide-y overflow-hidden"
-                    data-test="more-person"
+        <>
+            <Sheet open={open} onOpenChange={onOpenChange}>
+                <SheetContent
+                    side="bottom"
+                    // Nothing shrinks to fit: the menu scrolls, so every item stays reachable (a card with hidden overflow
+                    // used to be squeezed to nothing at the bottom).
+                    className="gap-3 px-4 pt-4 *:shrink-0"
+                    data-test="more-sheet"
                 >
-                    <div onClickCapture={close}>
-                        <ListRow
-                            href={profile()}
-                            leading={
-                                <span className={tile}>
-                                    <UserRound />
-                                </span>
-                            }
-                            title={auth.user?.name}
-                            subtitle={[auth.role?.label, auth.company?.name]
-                                .filter(Boolean)
-                                .join(' · ')}
-                            chevron
-                        />
-                    </div>
-                    <div onClickCapture={close}>
-                        <ListRow
-                            href={notifications()}
-                            leading={
-                                <span className={tile}>
-                                    <Bell />
-                                </span>
-                            }
-                            title={t('nav.notifications')}
-                            trailing={
-                                auth.unreadNotifications ? (
-                                    <span className="rounded-full bg-primary px-2 text-xs leading-5 font-semibold text-primary-foreground">
-                                        {auth.unreadNotifications}
+                    <SheetHeader className="p-0 pr-12">
+                        <SheetTitle>{t('nav.more_title')}</SheetTitle>
+                        <SheetDescription className="sr-only">
+                            {t('nav.search_menu')}
+                        </SheetDescription>
+                    </SheetHeader>
+
+                    {auth.user?.can_choose_menu && (
+                        <div className="space-y-1.5" data-test="menu-mode">
+                            <p className="text-sm font-semibold">
+                                {t('nav.my_menu')}
+                            </p>
+                            <SegmentedControl
+                                label={t('nav.my_menu')}
+                                className="flex w-full"
+                                value={auth.user.menu_mode}
+                                onChange={(mode) =>
+                                    router.put(
+                                        updateMenuMode().url,
+                                        { mode },
+                                        {
+                                            preserveScroll: true,
+                                            preserveState: true,
+                                        },
+                                    )
+                                }
+                                options={[
+                                    {
+                                        value: 'field',
+                                        label: t('nav.menu_field'),
+                                    },
+                                    {
+                                        value: 'office',
+                                        label: t('nav.menu_office'),
+                                    },
+                                ]}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                {t(
+                                    auth.user.menu_mode === 'office'
+                                        ? 'nav.menu_office_hint'
+                                        : 'nav.menu_field_hint',
+                                )}
+                            </p>
+                        </div>
+                    )}
+
+                    <SearchField
+                        value={query}
+                        onSearch={setQuery}
+                        delay={0}
+                        placeholder={t('nav.search_menu')}
+                    />
+
+                    <nav aria-label={t('nav.more_title')} className="space-y-2">
+                        {shown.length === 0 && (
+                            <p className="py-4 text-center text-sm text-muted-foreground">
+                                {t('nav.no_matches')}
+                            </p>
+                        )}
+                        {shown.map((group) => (
+                            <section key={group.key}>
+                                <button
+                                    type="button"
+                                    className="flex min-h-11 w-full items-center gap-2 px-1 text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+                                    aria-expanded={isOpen(group.key)}
+                                    onClick={() =>
+                                        setOpenGroups((g) => ({
+                                            ...g,
+                                            [group.key]: !isOpen(group.key),
+                                        }))
+                                    }
+                                >
+                                    <span className="flex-1">
+                                        {t(group.label)}
                                     </span>
-                                ) : undefined
-                            }
-                        />
-                    </div>
-                    {auth.companies.length > 1 &&
-                        auth.companies
-                            .filter(
-                                (company) => company.id !== auth.company?.id,
-                            )
-                            .map((company) => (
+                                    <ChevronRight
+                                        aria-hidden="true"
+                                        className={cn(
+                                            'size-4 transition-transform',
+                                            isOpen(group.key) && 'rotate-90',
+                                        )}
+                                    />
+                                </button>
+                                {isOpen(group.key) && (
+                                    <div className="da-card divide-y overflow-hidden">
+                                        {group.items.map((item) => (
+                                            <div
+                                                key={item.key}
+                                                onClickCapture={close}
+                                            >
+                                                <ListRow
+                                                    href={item.href}
+                                                    leading={
+                                                        <span className={tile}>
+                                                            <item.icon />
+                                                        </span>
+                                                    }
+                                                    title={t(item.title)}
+                                                    trailing={
+                                                        item.badge ? (
+                                                            <span className="rounded-full bg-danger px-2 text-xs leading-5 font-semibold text-white">
+                                                                {item.badge}
+                                                            </span>
+                                                        ) : undefined
+                                                    }
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
+                        ))}
+                    </nav>
+
+                    <div
+                        className="da-card divide-y overflow-hidden"
+                        data-test="more-person"
+                    >
+                        <div onClickCapture={close}>
+                            <ListRow
+                                href={profile()}
+                                leading={
+                                    <span className={tile}>
+                                        <UserRound />
+                                    </span>
+                                }
+                                title={auth.user?.name}
+                                subtitle={[auth.role?.label, auth.company?.name]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                                chevron
+                            />
+                        </div>
+                        {auth.company && (
+                            <div data-test="more-inconvenient">
                                 <ListRow
-                                    key={company.id}
                                     onClick={() => {
+                                        const screen = currentScreen();
                                         close();
-                                        router.post(
-                                            switchMethod(company.id).url,
-                                        );
+                                        setInconvenient(screen);
                                     }}
                                     leading={
                                         <span className={tile}>
-                                            <Building2 />
+                                            <MessageSquareWarning />
                                         </span>
                                     }
-                                    title={company.name}
-                                    subtitle={t('nav.switch_company')}
+                                    title={t('usage.inconvenient.button')}
                                 />
-                            ))}
-                    <Link
-                        href={logout()}
-                        method="post"
-                        as="button"
-                        onClick={() => {
-                            close();
-                            void forgetPushOnThisDevice();
-                            router.flushAll();
-                        }}
-                        className="flex min-h-14 w-full items-center gap-3 px-3 text-left text-base font-semibold text-danger"
-                        data-test="more-logout"
-                    >
-                        <span className={cn(tile, 'text-danger')}>
-                            <LogOut />
-                        </span>
-                        {t('nav.log_out')}
-                    </Link>
-                </div>
-            </SheetContent>
-        </Sheet>
+                            </div>
+                        )}
+                        <div onClickCapture={close}>
+                            <ListRow
+                                href={notifications()}
+                                leading={
+                                    <span className={tile}>
+                                        <Bell />
+                                    </span>
+                                }
+                                title={t('nav.notifications')}
+                                trailing={
+                                    auth.unreadNotifications ? (
+                                        <span className="rounded-full bg-primary px-2 text-xs leading-5 font-semibold text-primary-foreground">
+                                            {auth.unreadNotifications}
+                                        </span>
+                                    ) : undefined
+                                }
+                            />
+                        </div>
+                        {auth.companies.length > 1 &&
+                            auth.companies
+                                .filter(
+                                    (company) =>
+                                        company.id !== auth.company?.id,
+                                )
+                                .map((company) => (
+                                    <ListRow
+                                        key={company.id}
+                                        onClick={() => {
+                                            close();
+                                            router.post(
+                                                switchMethod(company.id).url,
+                                            );
+                                        }}
+                                        leading={
+                                            <span className={tile}>
+                                                <Building2 />
+                                            </span>
+                                        }
+                                        title={company.name}
+                                        subtitle={t('nav.switch_company')}
+                                    />
+                                ))}
+                        <Link
+                            href={logout()}
+                            method="post"
+                            as="button"
+                            onClick={() => {
+                                close();
+                                void forgetPushOnThisDevice();
+                                router.flushAll();
+                            }}
+                            className="flex min-h-14 w-full items-center gap-3 px-3 text-left text-base font-semibold text-danger"
+                            data-test="more-logout"
+                        >
+                            <span className={cn(tile, 'text-danger')}>
+                                <LogOut />
+                            </span>
+                            {t('nav.log_out')}
+                        </Link>
+                    </div>
+                </SheetContent>
+            </Sheet>
+            <InconvenientSheet
+                open={inconvenient !== false}
+                onOpenChange={(value) => !value && setInconvenient(false)}
+                screen={inconvenient === false ? null : inconvenient}
+            />
+        </>
     );
 }
