@@ -22,10 +22,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $company_id
  * @property int $customer_id
  * @property string|null $label
- * @property string $line1
+ * @property string|null $line1
  * @property string|null $line2
  * @property string|null $unit
- * @property string $city
+ * @property string|null $city
  * @property string|null $region State, province, county …
  * @property string|null $postal_code
  * @property string $country
@@ -95,7 +95,7 @@ class Property extends Model
 
         // An address typed by hand gets its map position from the server (when a server key is set).
         static::saved(function (Property $property) {
-            if ($property->latitude === null && Geocoder::enabled()
+            if ($property->latitude === null && Geocoder::enabled() && $property->hasAddress()
                 && ($property->wasRecentlyCreated || $property->wasChanged(['line1', 'unit', 'city', 'region', 'postal_code', 'country']))) {
                 GeocodeProperty::dispatch($property->id)->afterCommit();
             }
@@ -137,10 +137,23 @@ class Property extends Model
     }
 
     /**
+     * Whether a street address is filled in (a booking may be saved without one).
+     */
+    public function hasAddress(): bool
+    {
+        return filled($this->line1);
+    }
+
+    /**
      * One-line address in the order of its country, e.g. "Unit 204, 123 Main St, Surrey, BC V3T 1A1".
      */
     public function fullAddress(): string
     {
+        // A booking saved without an address keeps an empty one: nothing to show (the job says "No address").
+        if (! $this->hasAddress()) {
+            return '';
+        }
+
         $street = collect([$this->unit ? __('properties.unit_prefix', ['unit' => $this->unit]) : null, $this->line1, $this->line2])
             ->filter()
             ->implode(', ');

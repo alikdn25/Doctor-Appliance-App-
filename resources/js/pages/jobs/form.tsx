@@ -42,7 +42,7 @@ import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
 import { duplicates } from '@/routes/customers';
 import { index, lookup, show, store, update } from '@/routes/jobs';
-import { JOB_DRAFT_KEY } from '@/pages/jobs/quick-book';
+import { takeJobDraft } from '@/lib/quick-booking';
 import { warranties as jobWarranties } from '@/routes/jobs';
 import type { Option } from '@/types';
 
@@ -292,18 +292,15 @@ export default function JobForm({
         ) {
             return;
         }
-        try {
-            const draft = JSON.parse(
-                sessionStorage.getItem(JOB_DRAFT_KEY) ?? 'null',
-            ) as {
+        {
+            const draft = takeJobDraft<{
                 customer_id: number | null;
                 phone: string;
                 name: string;
                 description: string;
                 notes: string;
                 appliance_type: string;
-            } | null;
-            sessionStorage.removeItem(JOB_DRAFT_KEY);
+            }>();
             if (!draft) return;
             form.setData((d) => ({
                 ...d,
@@ -330,8 +327,6 @@ export default function JobForm({
                       ]
                     : d.new_appliances,
             }));
-        } catch {
-            // A broken draft is ignored.
         }
         // Only when the form opens.
         // eslint-disable-next-line react-hooks/exhaustive-deps

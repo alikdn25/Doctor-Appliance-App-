@@ -1,4 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
+import { BookingButtons } from '@/components/jobs/booking-buttons';
 import {
     ArrowDownWideNarrow,
     RotateCcw,
@@ -27,7 +28,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { index, restore, show } from '@/routes/jobs';
-import type { BacklogReason } from '@/types/job-backlog';
+import type { BacklogFilter } from '@/types/job-backlog';
 import type { Option } from '@/types';
 
 type Tab = 'open' | 'all' | 'deleted';
@@ -56,10 +57,11 @@ type DeletedJob = {
     restorable_until: string | null;
 };
 
-const REASONS: BacklogReason[] = [
+const REASONS: BacklogFilter[] = [
     'overdue',
     'draft',
     'needs_schedule',
+    'no_address',
     'need_to_order_parts',
     'waiting_for_parts',
     'waiting_for_customer',
@@ -89,6 +91,7 @@ export default function JobsIndex({
     days = 30,
     canViewAll,
     canViewTrash,
+    canCreate,
     deletedCount = 0,
 }: {
     tab: Tab;
@@ -259,6 +262,9 @@ export default function JobsIndex({
             />
 
             <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6 lg:max-w-[1440px]">
+                {canCreate && tab === 'open' && (
+                    <BookingButtons className="sm:max-w-md" />
+                )}
                 {canViewAll && (
                     <SegmentedControl
                         label={t('jobs.title')}

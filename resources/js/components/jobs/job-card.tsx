@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { applianceImageUrl } from '@/components/appliance-image';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { mapsUrl, telUrl } from '@/components/customers/types';
+import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import { isFinishedJob } from '@/components/jobs/types';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,7 @@ export function JobCard({
     overdue = false,
     office = false,
     assignees = [],
+    onAddAddress,
 }: {
     job: JobCardData;
     href: NonNullable<InertiaLinkProps['href']>;
@@ -64,6 +66,8 @@ export function JobCard({
     /** The office list (§7.4): no Navigate, Call as an icon, the assignee's initials on the right. */
     office?: boolean;
     assignees?: string[];
+    /** A job without an address: Navigate opens the address entry instead of the map. */
+    onAddAddress?: () => void;
 }) {
     const t = useTrans();
     const worksAlone = usePage().props.auth.company?.works_alone ?? false;
@@ -82,7 +86,8 @@ export function JobCard({
         .join(' · ');
     const buttons = office
         ? 0
-        : [job.address, job.phone, action].filter(Boolean).length;
+        : [job.address || onAddAddress, job.phone, action].filter(Boolean)
+              .length;
     const initials = (name: string) =>
         name
             .split(/\s+/)
@@ -131,6 +136,7 @@ export function JobCard({
                             label={job.status_label}
                         />
                         {overdue && <OverdueFlag />}
+                        {!job.address && <NoAddressBadge />}
                     </div>
                     <div className="truncate text-base font-semibold">
                         {job.customer}
@@ -204,6 +210,16 @@ export function JobCard({
                               : 'grid-cols-1',
                     )}
                 >
+                    {!job.address && onAddAddress && (
+                        <Button
+                            variant="sky"
+                            className={cardButton}
+                            onClick={onAddAddress}
+                            data-test="card-add-address"
+                        >
+                            <Navigation /> {t('jobs.navigate')}
+                        </Button>
+                    )}
                     {job.address && (
                         <Button asChild variant="sky" className={cardButton}>
                             <a
@@ -238,12 +254,12 @@ export const STATUS_CIRCLES: Record<string, string> = {
     on_hold: 'linear-gradient(135deg,#FCA5A5,#DC2626 60%,#991B1B)',
     in_progress: 'linear-gradient(135deg,#FDBA74,#F97316 60%,#C2410C)',
     need_to_order_parts: 'linear-gradient(135deg,#F9A8D4,#DB2777 60%,#9D174D)',
-    waiting_for_parts: 'linear-gradient(135deg,#D8B4FE,#9333EA 60%,#6B21A8)',
+    waiting_for_parts: 'linear-gradient(135deg,#5EEAD4,#0D9488 60%,#115E59)',
     on_the_way: 'linear-gradient(135deg,#FDE68A,#EAB308 60%,#A16207)',
     waiting_for_customer: 'linear-gradient(135deg,#D6B89C,#9C6B4E 60%,#6B4430)',
     cancelled: 'linear-gradient(135deg,#71717A,#27272A 60%,#09090B)',
     new: 'linear-gradient(135deg,#7DD3FC,#0EA5E9 60%,#0369A1)',
-    scheduled: 'linear-gradient(135deg,#A5B4FC,#4F46E5 60%,#3730A3)',
+    scheduled: 'linear-gradient(135deg,#93C5FD,#2563EB 60%,#1E40AF)',
     completed: 'linear-gradient(135deg,#86EFAC,#22C55E 60%,#15803D)',
     invoiced: 'linear-gradient(135deg,#5EEAD4,#14B8A6 60%,#0F766E)',
     paid: 'linear-gradient(135deg,#6EE7B7,#10B981 60%,#047857)',

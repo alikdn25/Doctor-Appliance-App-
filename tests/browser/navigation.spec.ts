@@ -43,16 +43,15 @@ test('the owner gets Today, Calendar, Map, Jobs, More and the round "+"; Field s
             nav.locator(`[data-test="bottom-nav-${key}"]`),
         ).toBeVisible();
     }
-    // Booking left the bar for the round "+" (owner's task, Oct 24): Job, Expense, Trip, Task from the bottom up.
+    // Booking left the bar for the round "+": the booking pair (Quick booking · Book customer) nearest the thumb,
+    // then Expense, Trip, Task from the bottom up.
     await expect(nav.locator('[data-test="bottom-nav-book"]')).toHaveCount(0);
     await page.locator('[data-test="create-fab"]').click();
     const menu = page.locator('[data-test="create-menu"] button');
-    await expect(menu).toHaveText([
-        'Task',
-        'Trip',
-        'Expense',
+    await expect(menu).toHaveText(['Task', 'Trip', 'Expense']);
+    await expect(page.locator('[data-test="create-menu"] a')).toHaveText([
         'Quick booking',
-        'Job',
+        'Book customer',
     ]);
     await page.keyboard.press('Escape');
     await expect(page.locator('[data-test="create-menu"]')).toHaveCount(0);

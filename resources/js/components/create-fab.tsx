@@ -1,19 +1,12 @@
 import { router, usePage } from '@inertiajs/react';
-import {
-    Car,
-    ClipboardPlus,
-    ListTodo,
-    Plus,
-    Sparkles,
-    Wallet,
-} from 'lucide-react';
+import { Car, ListTodo, Plus, Wallet } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
+import { BookingButtons } from '@/components/jobs/booking-buttons';
 import { TaskSheet } from '@/components/tasks/task-sheet';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { create as createExpense } from '@/routes/expenses';
-import { create as bookCustomer, quickBooking } from '@/routes/jobs';
 import { index as trips } from '@/routes/trips';
 
 type Item = {
@@ -25,8 +18,8 @@ type Item = {
 
 /**
  * The round "+" above the bottom bar on every screen (owner's task, Oct 24), volumetric with the blue glow. A tap
- * opens Job · Quick booking · Expense · Trip · Task, from the bottom up, next to the thumb: Job books a customer (on the day the
- * calendar shows), Expense and Trip open the new expense and the mileage form, Task opens the task sheet here.
+ * opens, from the bottom up next to the thumb, Quick booking and Book customer side by side (Book customer on the day
+ * the calendar shows), then Expense · Trip · Task. Expense and Trip open the new expense and the mileage form, Task opens the task sheet here.
  * Screens with their own pinned actions (forms) hide it, like the bottom bar.
  */
 export function CreateFab() {
@@ -86,29 +79,12 @@ export function CreateFab() {
                 icon: <Wallet />,
                 onSelect: () => router.visit(createExpense()),
             },
-            can.quickBooking && {
-                key: 'quick-booking',
-                label: t('nav.create.quick_booking'),
-                icon: <Sparkles />,
-                onSelect: () => router.visit(quickBooking()),
-            },
-            can.createJobs && {
-                key: 'job',
-                label: t('nav.create.job'),
-                icon: <ClipboardPlus />,
-                onSelect: () =>
-                    router.visit(
-                        bookCustomer({
-                            query: calendarDay
-                                ? { book: 1, date: calendarDay }
-                                : { book: 1 },
-                        }),
-                    ),
-            },
         ] as (Item | false | undefined)[]
     ).filter((item): item is Item => !!item);
+    // A booking starts with two buttons side by side, nearest the "+": Quick booking and Book customer.
+    const booking = can.quickBooking === true || can.createJobs === true;
 
-    if (items.length === 0) return null;
+    if (items.length === 0 && !booking) return null;
 
     return (
         <>
@@ -146,6 +122,15 @@ export function CreateFab() {
                                 </button>
                             </li>
                         ))}
+                        {booking && (
+                            <li className="w-[min(22rem,calc(100vw-2rem))]">
+                                <BookingButtons
+                                    inMenu
+                                    date={calendarDay}
+                                    onPick={() => setOpen(false)}
+                                />
+                            </li>
+                        )}
                     </ul>
                 )}
                 <button

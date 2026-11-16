@@ -1,7 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Sparkles } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
 import { StickyActionBar } from '@/components/ui/sticky-action-bar';
@@ -9,38 +9,36 @@ import { Textarea } from '@/components/ui/textarea';
 import { xsrfToken } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
 import {
-    QUICK_BOOKING_RESULT_KEY,
-    QUICK_BOOKING_TEXT_KEY,
+    clearBooking,
+    handQuickResult,
+    keepQuickBookingText,
+    quickBookingText,
 } from '@/lib/quick-booking';
 import { create } from '@/routes/jobs';
 import { parse } from '@/routes/jobs/quick-booking';
-
-const readText = () => {
-    try {
-        return sessionStorage.getItem(QUICK_BOOKING_TEXT_KEY) ?? '';
-    } catch {
-        return '';
-    }
-};
 
 /**
  * Quick booking (Owner and Office): one big text field — typed, dictated with the phone keyboard's microphone or an
  * SMS pasted in — and Parse. The AI reads it and the usual Book customer form opens filled in; nothing is saved until
  * the person presses Save there. When the AI does not answer, the message is shown and the text stays.
+ *
+ * The text lives in memory only: closing this screen (✕, back, a swipe) empties it; it is kept only on the way to the
+ * filled form, for "Back to the text".
  */
 export default function QuickBooking() {
     const t = useTrans();
-    const [text, setText] = useState(readText);
+    const [text, setText] = useState(quickBookingText);
     const [parsing, setParsing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const toForm = useRef(false);
 
-    useEffect(() => {
-        try {
-            sessionStorage.setItem(QUICK_BOOKING_TEXT_KEY, text);
-        } catch {
-            // Without storage the text simply is not kept.
-        }
-    }, [text]);
+    useEffect(() => keepQuickBookingText(text), [text]);
+    useEffect(
+        () => () => {
+            if (!toForm.current) clearBooking();
+        },
+        [],
+    );
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -65,15 +63,13 @@ export default function QuickBooking() {
                         body?.message ?? t('jobs.quick_booking.failed'),
                     );
                 }
-                try {
-                    sessionStorage.setItem(
-                        QUICK_BOOKING_RESULT_KEY,
-                        JSON.stringify(body),
-                    );
-                } catch {
-                    throw new Error(t('jobs.quick_booking.failed'));
-                }
-                router.visit(create({ query: { book: 1, quick: 1 } }).url);
+                handQuickResult(body);
+                toForm.current = true;
+                router.visit(create({ query: { book: 1, quick: 1 } }).url, {
+                    onCancel: () => {
+                        toForm.current = false;
+                    },
+                });
             })
             .catch((e: Error) => {
                 setError(e.message || t('jobs.quick_booking.failed'));

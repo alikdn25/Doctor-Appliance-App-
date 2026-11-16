@@ -10,14 +10,15 @@ import {
     PackageCheck,
     Play,
     Search,
-    Sparkles,
     UserX,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { formatMoney } from '@/components/billing/money';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { InboxHeaderButton } from '@/components/inbox-header-button';
+import { BookingButtons } from '@/components/jobs/booking-buttons';
 import { cardButton, JobCard } from '@/components/jobs/job-card';
+import { JobAddressSheet } from '@/components/jobs/job-address-sheet';
 import { StrictBadge } from '@/components/jobs/job-outcome';
 import { TechnicianPicker } from '@/components/jobs/technician-picker';
 import { TaskList } from '@/components/tasks/task-list';
@@ -37,7 +38,7 @@ import { useTrans } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
-import { mine, quickBooking, show, technician } from '@/routes/jobs';
+import { mine, show, technician } from '@/routes/jobs';
 import { finishScreen, onMyWay, start } from '@/routes/visits';
 
 type MyVisit = Visit & {
@@ -140,6 +141,8 @@ export default function MyJobs({
     const canAssign =
         (auth.can?.viewCalendar ?? false) && !auth.company?.works_alone;
     const [assigning, setAssigning] = useState<MyVisit | null>(null);
+    // A job booked without an address: Navigate and On my way open the address entry first.
+    const [addressFor, setAddressFor] = useState<number | null>(null);
     // A plain date: formatted as it is, without a time zone.
     const plainDay = (options: Intl.DateTimeFormatOptions) =>
         new Intl.DateTimeFormat(auth.company?.locale ?? 'en-US', {
@@ -217,6 +220,10 @@ export default function MyJobs({
                     {...props}
                     data-test="card-on-my-way"
                     onClick={() => {
+                        if (!visit.job.address) {
+                            setAddressFor(visit.job.id);
+                            return;
+                        }
                         // From the technician's phone: the messages app opens with the text ready.
                         const sms = visit.on_my_way_sms;
                         act(
@@ -289,18 +296,7 @@ export default function MyJobs({
             />
 
             <div className="mx-auto w-full max-w-2xl space-y-3 p-4 pb-24 sm:p-6">
-                {auth.can.quickBooking && (
-                    <Button
-                        asChild
-                        variant="outline"
-                        className="w-full"
-                        data-test="today-quick-booking"
-                    >
-                        <Link href={quickBooking()}>
-                            <Sparkles /> {t('jobs.quick_booking.button')}
-                        </Link>
-                    </Button>
-                )}
+                <BookingButtons date={date} />
 
                 {install && (
                     <Button variant="outline" onClick={() => void install()}>
@@ -461,6 +457,11 @@ export default function MyJobs({
                             accent={visit.id === next?.id}
                             overdue={tab === 'day' && overdue(visit)}
                             action={step(visit)}
+                            onAddAddress={
+                                visit.can_work
+                                    ? () => setAddressFor(visit.job.id)
+                                    : undefined
+                            }
                             below={
                                 visit.assignees.length === 0 &&
                                 !auth.company?.works_alone &&
@@ -550,6 +551,16 @@ export default function MyJobs({
                 onOpenChange={(open) => !open && setEditingTask(null)}
                 task={editingTask}
             />
+
+            {addressFor !== null && (
+                <JobAddressSheet
+                    open
+                    onOpenChange={(open) => !open && setAddressFor(null)}
+                    jobId={addressFor}
+                    current=""
+                    others={[]}
+                />
+            )}
 
             {canAssign && assigning && (
                 <TechnicianPicker

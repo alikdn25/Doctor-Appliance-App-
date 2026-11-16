@@ -10,6 +10,7 @@ import {
     FileText,
     Flag,
     KeyRound,
+    ClipboardPaste,
     MapPinPlus,
     ListChecks,
     MessageSquare,
@@ -54,6 +55,8 @@ import type {
     ClosureReasons,
 } from '@/components/jobs/finish-dialog';
 import { JobAddressSheet } from '@/components/jobs/job-address-sheet';
+import { JobPasteSheet } from '@/components/jobs/job-paste-sheet';
+import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import { JobEditSheet } from '@/components/jobs/job-edit-sheet';
 import type { JobEditCustomer } from '@/components/jobs/job-edit-sheet';
 import { JobApplianceDialog } from '@/components/jobs/job-appliance-dialog';
@@ -449,13 +452,17 @@ export default function JobShow({
     );
     const phone = job.customer.phones[0]?.number;
     const property = job.property;
-    const hasAddress = Boolean(property.line1 && property.city);
+    const hasAddress = Boolean(property.line1);
     const worksAlone = auth.company?.works_alone ?? false;
     const [pickerOpen, setPickerOpen] = useState(false);
     const [tab, setTab] = useState<
         'job' | 'notes' | 'messages' | 'files' | 'history'
     >('job');
     const [addressOpen, setAddressOpen] = useState(false);
+    const [pasteOpen, setPasteOpen] = useState(false);
+    // Booked with missing data: Add address and Paste from message (fills only the empty fields).
+    const missingData =
+        !hasAddress || !phone || !job.customer.display_name || !job.description;
     const [editOpen, setEditOpen] = useState(false);
     const textFromPhone =
         messaging.mode === 'technician_phone' &&
@@ -959,16 +966,13 @@ export default function JobShow({
                                     {job.customer.display_name}
                                 </span>
                             )}
-                            <p className="text-sm leading-relaxed text-muted-foreground">
-                                {property.full_address ||
-                                    t('jobs.quick.address_pending')}
-                            </p>
-                            {property.full_address &&
-                                (!property.line1 || !property.city) && (
-                                    <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
-                                        {t('jobs.quick.address_pending')}
-                                    </p>
-                                )}
+                            {hasAddress ? (
+                                <p className="text-sm leading-relaxed text-muted-foreground">
+                                    {property.full_address}
+                                </p>
+                            ) : (
+                                <NoAddressBadge className="mt-1" />
+                            )}
                             <p
                                 className="mt-1 flex flex-wrap items-center gap-2 text-sm font-semibold"
                                 data-test="job-when"
@@ -1117,12 +1121,44 @@ export default function JobShow({
                             variant="outline"
                             className="px-2"
                             disabled={!canOnMyWay || busy}
-                            onClick={() => myVisit && onMyWayNow(myVisit)}
+                            onClick={() =>
+                                hasAddress
+                                    ? myVisit && onMyWayNow(myVisit)
+                                    : setAddressOpen(true)
+                            }
                             data-test="job-on-my-way"
                         >
                             <Car /> {t('jobs.actions.on_my_way')}
                         </Button>
                     </div>
+                    {can.work && missingData && (
+                        <div
+                            className="grid grid-cols-2 gap-2"
+                            data-test="job-missing-data"
+                        >
+                            {!hasAddress && (
+                                <Button
+                                    variant="outline"
+                                    className="px-2"
+                                    onClick={() => setAddressOpen(true)}
+                                    data-test="job-add-address-button"
+                                >
+                                    <MapPinPlus /> {t('jobs.address.add')}
+                                </Button>
+                            )}
+                            <Button
+                                variant="outline"
+                                className={cn(
+                                    'px-2',
+                                    hasAddress && 'col-span-2',
+                                )}
+                                onClick={() => setPasteOpen(true)}
+                                data-test="job-paste"
+                            >
+                                <ClipboardPaste /> {t('jobs.quick.paste')}
+                            </Button>
+                        </div>
+                    )}
                     {/* With an occupant, Call goes to them; the customer is one small tap away. */}
                     {occupantPhone && phone && (
                         <a
@@ -1788,6 +1824,13 @@ export default function JobShow({
                     removableVisitId={
                         current?.status === 'scheduled' ? current.id : null
                     }
+                />
+            )}
+            {can.work && (
+                <JobPasteSheet
+                    open={pasteOpen}
+                    onOpenChange={setPasteOpen}
+                    jobId={job.id}
                 />
             )}
             {can.work && (

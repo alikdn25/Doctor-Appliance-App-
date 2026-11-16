@@ -182,6 +182,8 @@ class MapController extends Controller
             // A visit belongs to the day it starts on.
             ->where('scheduled_start', '>=', $day->utc())
             ->where('scheduled_start', '<', $day->addDay()->utc())
+            // A job booked without an address is not on the map (it shows "No address" in the lists).
+            ->whereHas('job.property', fn (Builder $q) => $q->whereNotNull('line1')->where('line1', '<>', ''))
             ->with(['assignees', 'job.customer.primaryPhone', 'job.property'])
             ->orderBy('scheduled_start')
             ->orderBy('id');

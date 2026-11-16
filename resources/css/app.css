@@ -179,9 +179,9 @@
     --status-new-from: #f3faff;
     --status-new-to: #b7e0ff;
     --status-new-text: #075985;
-    --status-scheduled-from: #f3f5ff;
-    --status-scheduled-to: #b7c6ff;
-    --status-scheduled-text: #3730a3;
+    --status-scheduled-from: #f2f7ff;
+    --status-scheduled-to: #a9c8ff;
+    --status-scheduled-text: #1e40af;
     --status-on-the-way-from: #ebfdff;
     --status-on-the-way-to: #a5f3fc;
     --status-on-the-way-text: #155e75;
@@ -191,9 +191,10 @@
     --status-need-to-order-parts-from: #fff1f7;
     --status-need-to-order-parts-to: #fbb6d6;
     --status-need-to-order-parts-text: #9d174d;
-    --status-waiting-for-parts-from: #fbf6ff;
-    --status-waiting-for-parts-to: #dfc0ff;
-    --status-waiting-for-parts-text: #6b21a8;
+    /* Teal, not purple: purple belongs to Quick booking only. */
+    --status-waiting-for-parts-from: #f0fdfa;
+    --status-waiting-for-parts-to: #99f6e4;
+    --status-waiting-for-parts-text: #115e59;
     --status-waiting-for-customer-from: #fff8ee;
     --status-waiting-for-customer-to: #ffd3a1;
     --status-waiting-for-customer-text: #9a3412;
@@ -225,9 +226,9 @@
     --status-declined-from: #fff4f5;
     --status-declined-to: #ffbcc1;
     --status-declined-text: #9f1239;
-    --status-refunded-from: #f8f6ff;
-    --status-refunded-to: #cdc0ff;
-    --status-refunded-text: #5b21b6;
+    --status-refunded-from: #f5f8fc;
+    --status-refunded-to: #c9d6e6;
+    --status-refunded-text: #334155;
 }
 
 .dark {
@@ -513,7 +514,32 @@
             0 12px 28px -6px rgb(30 90 220 / 0.55);
     }
 
+    /* Quick booking only: the one purple in the app — violet gradient, raised edges and a soft violet glow. */
+    .da-quick-booking {
+        background:
+            linear-gradient(
+                180deg,
+                rgb(255 255 255 / 0.28) 0%,
+                rgb(255 255 255 / 0) 55%
+            ),
+            linear-gradient(90deg, #a78bfa 0%, #7c3aed 55%, #5b21b6 100%);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.45),
+            inset 0 -2px 4px rgb(46 16 101 / 0.35),
+            0 4px 12px rgb(124 58 237 / 0.4),
+            0 0 18px rgb(167 139 250 / 0.45);
+        color: #fff;
+        text-shadow: 0 1px 1px rgb(0 0 0 / 0.25);
+    }
+
     /* A booking saved as a draft: orange chip and an orange edge on its card or calendar block. */
+    /* A job booked without an address: an orange raised tag ("No address"). */
+    .da-no-address {
+        background: linear-gradient(180deg, #ffb35c, var(--warning));
+        color: #fff;
+        box-shadow: var(--shadow-badge);
+    }
+
     .da-draft-chip {
         background: linear-gradient(
             90deg,
