@@ -8,7 +8,7 @@ import {
     Sparkles,
     X,
 } from 'lucide-react';
-import type { FormEvent, ReactNode } from 'react';
+import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ApplianceTypePicker } from '@/components/appliance-image';
 import {
@@ -141,12 +141,36 @@ type QuickResult = {
         arrival_start: string | null;
         arrival_end: string | null;
         notes: string | null;
+        /** Fields the AI is not sure about (QuickBookingParser::FIELDS). */
+        uncertain_fields: string[];
     };
 };
 
 /** How a field filled by the AI is marked until the person checks the form. */
 const AI_FILLED =
     'rounded-2xl bg-amber-50 p-2 ring-2 ring-amber-300 dark:bg-amber-950/40 dark:ring-amber-700';
+
+/** A field the AI is not sure about: yellow, with a raised "Check" tab (its text comes from --check-label on the form). */
+const AI_UNSURE =
+    'relative rounded-2xl bg-yellow-100 p-2 ring-2 ring-yellow-400 dark:bg-yellow-950/50 dark:ring-yellow-600 after:pointer-events-none after:absolute after:-top-2.5 after:right-3 after:rounded-full after:bg-yellow-400 after:px-2 after:text-[11px] after:leading-5 after:font-semibold after:text-yellow-950 after:shadow-md after:content-(--check-label)';
+
+/** The form key (what hl() marks) for each field name in uncertain_fields. */
+const UNSURE_KEYS: Record<string, string> = {
+    first_name: 'first_name',
+    last_name: 'last_name',
+    phone: 'phone',
+    email: 'email',
+    address: 'address',
+    unit: 'address',
+    buzzer: 'notes',
+    appliance_type: 'appliance',
+    brand: 'brand_model',
+    model: 'brand_model',
+    problem: 'problem',
+    date: 'when',
+    arrival: 'when',
+    notes: 'notes',
+};
 
 const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
@@ -718,6 +742,7 @@ export default function QuickBook({
     // in the book is used (never a duplicate), the address is checked with the address suggestions, and without a
     // day or window the free windows of the next days are offered. Nothing is saved until Save.
     const [aiFilled, setAiFilled] = useState<Set<string>>(new Set());
+    const [aiUnsure, setAiUnsure] = useState<Set<string>>(new Set());
     const [quickInfo, setQuickInfo] = useState<{
         matchedBy: QuickResult['matched_by'];
         customerName: string | null;
@@ -726,7 +751,12 @@ export default function QuickBook({
     } | null>(null);
     const [applianceBrand, setApplianceBrand] = useState('');
     const [applianceModel, setApplianceModel] = useState('');
-    const hl = (key: string) => (aiFilled.has(key) ? AI_FILLED : undefined);
+    const hl = (key: string) =>
+        aiUnsure.has(key)
+            ? AI_UNSURE
+            : aiFilled.has(key)
+              ? AI_FILLED
+              : undefined;
     const mapsKey = auth.company?.google_maps_key ?? null;
 
     const applyQuick = (result: QuickResult) => {
@@ -869,6 +899,21 @@ export default function QuickBook({
         }
 
         setAiFilled(filled);
+        // Without an appliance type, brand and model go into the problem; a found customer stands for name and phone.
+        const unsure = new Set<string>();
+        for (const name of f.uncertain_fields ?? []) {
+            let key = UNSURE_KEYS[name];
+            if (!key) continue;
+            if (key === 'brand_model' && !f.appliance_type) key = 'problem';
+            if (
+                result.customer &&
+                ['first_name', 'last_name', 'phone', 'email'].includes(key)
+            ) {
+                key = 'customer';
+            }
+            unsure.add(key);
+        }
+        setAiUnsure(unsure);
         setQuickInfo({
             matchedBy: result.matched_by,
             customerName: result.customer?.display_name ?? null,
@@ -1182,6 +1227,13 @@ export default function QuickBook({
             <form
                 onSubmit={submit}
                 className="mx-auto w-full max-w-2xl space-y-5 p-4 sm:p-6"
+                style={
+                    {
+                        '--check-label': JSON.stringify(
+                            t('jobs.quick_booking.check'),
+                        ),
+                    } as CSSProperties
+                }
                 data-test="booking-form"
             >
                 {brands.length === 0 && (
