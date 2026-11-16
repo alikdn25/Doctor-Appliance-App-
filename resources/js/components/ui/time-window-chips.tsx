@@ -14,6 +14,7 @@ export function TimeWindowChips({
     onChange,
     nowTime,
     leading,
+    trailing,
     label,
     className,
 }: {
@@ -24,6 +25,8 @@ export function TimeWindowChips({
     /** "HH:MM" now in the company's time zone when the day is today; earlier windows are hidden. */
     nowTime?: string | null;
     leading?: { value: string; label: string };
+    /** An optional last chip (e.g. "No time"). */
+    trailing?: { value: string; label: string };
     label: string;
     className?: string;
 }) {
@@ -37,7 +40,11 @@ export function TimeWindowChips({
             .map((w) => ({ ...w, label: hours.formatRange(at(w.start), at(w.end)) }));
     }, [windows, nowTime, locale]);
 
-    const chips = [...(leading ? [{ start: leading.value, label: leading.label }] : []), ...shown];
+    const chips = [
+        ...(leading ? [{ start: leading.value, label: leading.label }] : []),
+        ...shown,
+        ...(trailing ? [{ start: trailing.value, label: trailing.label }] : []),
+    ];
 
     return (
         <div

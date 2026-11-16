@@ -68,14 +68,12 @@ test('an empty calendar day books a new caller using only name phone and time', 
             info.project.name === 'desktop' ? '+16045550291' : '+16045550292',
         );
     await page.locator('#booking-name').fill(name);
-    // Without the address Book says what is missing.
-    await expect(page.locator('[data-test="booking-status"]')).toContainText(
-        'address',
-    );
+    // Nothing is required: Finish booking is active without an address, and no "To save, add" line is shown.
+    await expect(
+        page.getByRole('button', { name: 'Finish booking', exact: true }),
+    ).toBeEnabled();
+    await expect(page.getByText('To save, add')).toHaveCount(0);
     await fillAddress(page);
-    await expect(page.locator('[data-test="booking-status"]')).toHaveText(
-        'Ready',
-    );
     await page.getByRole('button', { name: 'Custom time' }).click();
     await expect(page.locator('#booking-date')).toHaveValue(date);
     await page.locator('#booking-from').fill('10:00');

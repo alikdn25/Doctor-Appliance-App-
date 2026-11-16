@@ -1,4 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { BookingButtons } from '@/components/jobs/booking-buttons';
+import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import {
     AlertTriangle,
     ChevronDown,
@@ -417,7 +419,7 @@ export default function CalendarPage({
                                         .join(' · ')}
                                 </span>
                                 <span className="block truncate text-muted-foreground">
-                                    {job.address}
+                                    {job.address || <NoAddressBadge />}
                                 </span>
                             </button>
                         </li>
@@ -448,6 +450,7 @@ export default function CalendarPage({
             />
 
             <div className="space-y-3 p-4">
+                <BookingButtons date={date} className="sm:max-w-md" />
                 {/* One line: Day | Week | Map, ‹ Today ›, and the date (tap to pick one). */}
                 <div className="flex flex-wrap items-center gap-2">
                     <SegmentedControl
@@ -712,7 +715,10 @@ export default function CalendarPage({
                                                                 {v.job.customer}
                                                             </span>
                                                             <span className="block text-muted-foreground">
-                                                                {v.job.address}
+                                                                {v.job
+                                                                    .address || (
+                                                                    <NoAddressBadge />
+                                                                )}
                                                             </span>
                                                         </span>
                                                     </li>
@@ -854,11 +860,13 @@ export default function CalendarPage({
                                             ` · ${details.job.appliances.join(', ')}`}
                                     </span>
                                 </div>
-                                {details.job.address && (
+                                {details.job.address ? (
                                     <p className="flex gap-2">
                                         <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                                         {details.job.address}
                                     </p>
+                                ) : (
+                                    <NoAddressBadge />
                                 )}
                                 <p className="text-muted-foreground">
                                     {details.assignees.length > 0

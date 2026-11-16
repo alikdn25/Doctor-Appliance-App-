@@ -12,7 +12,6 @@ return [
         'too_many_requests' => 'Too many requests. Try again in a minute.',
         'too_many_bookings' => 'The booking limit for this hour is reached. The office will call the customer back.',
         'window_taken' => 'This arrival window is no longer free. Ask for another one.',
-        'no_address' => 'The customer has no address. Add one first.',
         'no_brand' => 'The company has no brand to book under yet.',
     ],
     'settings' => [

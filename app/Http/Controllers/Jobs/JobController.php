@@ -111,7 +111,7 @@ class JobController extends Controller
         if ($tab === 'open') {
             $filters = [
                 'search' => trim((string) $request->query('search', '')),
-                'reason' => in_array($request->query('reason'), JobBacklog::REASONS, true) ? $request->query('reason') : '',
+                'reason' => in_array($request->query('reason'), JobBacklog::FILTERS, true) ? $request->query('reason') : '',
                 'sort' => $sort === 'newest' ? 'newest' : 'urgency',
             ];
 
@@ -338,7 +338,7 @@ class JobController extends Controller
             'bookingDate' => $request->input('date'),
             // A tap on an empty calendar slot: its time and person (UX-REDESIGN §9.1).
             'bookingStart' => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $request->query('start')) === 1 ? $request->query('start') : null,
-            // Otherwise a person who goes on calls (Field menu) books to themselves; the office picks.
+            // Otherwise "Me" (the person booking, when they go on calls); My menu = Office starts on Unassigned.
             'bookingTechnician' => $request->integer('technician') ?: $this->selfBooking($request->user()),
             'customer' => $customer ? self::customerOption($customer) : null,
             'today' => CarbonImmutable::now(currentCompany()->timezone)->format('Y-m-d'),
@@ -350,6 +350,8 @@ class JobController extends Controller
                 ->filter(fn ($day) => is_array($day) && ($day['closed'] ?? false))
                 ->keys()->values()->all(),
             ...($quick ? $this->bookingTechnicians() : []),
+            // A company of one person: no technician choice, the job goes to them (SaveJob).
+            'soloCompany' => Membership::query()->where('is_active', true)->count() === 1,
             ...$this->formOptions($request->user()),
         ]);
     }

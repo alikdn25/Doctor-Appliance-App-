@@ -62,11 +62,13 @@ test('a name phone address and time create the customer job and visit together',
         ->and($job->visits->sole()->assignees->pluck('id')->all())->toBe([$this->owner->id]);
 });
 
-test('booking a new customer requires the address', function () {
+test('booking a new customer without an address saves with an empty address marked No address', function () {
     $this->post(route('jobs.store'), quickEntryPayload(['new_customer' => ['property' => ['line1' => '', 'city' => '']]]))
-        ->assertSessionHasErrors(['new_customer.property.line1', 'new_customer.property.city']);
-    expect(inCompany($this->company, fn () => ServiceJob::count()))->toBe(0)
-        ->and(inCompany($this->company, fn () => Property::count()))->toBe(0);
+        ->assertSessionHasNoErrors();
+    $job = inCompany($this->company, fn () => ServiceJob::with('property')->sole());
+    expect($job->property->line1)->toBeNull()
+        ->and($job->property->hasAddress())->toBeFalse()
+        ->and($job->property->fullAddress())->toBe('');
 });
 
 test('a customer from the book without an address gets the typed one in place of the empty one', function () {
@@ -95,11 +97,11 @@ test('a failed booking creates no partial customer job or visit and does not con
         ->and($this->company->fresh()->job_next_number)->toBe($number);
 });
 
-test('quick entry still requires a customer name and valid phone and full entry still requires an address', function () {
-    $this->post(route('jobs.store'), quickEntryPayload(['new_customer' => ['first_name' => '', 'phone' => 'x']]))
-        ->assertSessionHasErrors('new_customer.first_name');
+test('quick booking needs a valid phone only when one is given; full entry still requires a name, phone and address', function () {
     $this->post(route('jobs.store'), quickEntryPayload(['new_customer' => ['phone' => 'x']]))
         ->assertSessionHasErrors('new_customer.phone');
+    $this->post(route('jobs.store'), quickEntryPayload(['quick_booking' => false, 'new_customer' => ['first_name' => '', 'phone' => '']]))
+        ->assertSessionHasErrors(['new_customer.first_name', 'new_customer.phone']);
     $this->post(route('jobs.store'), quickEntryPayload(['quick_booking' => false, 'new_customer' => ['property' => ['line1' => '', 'city' => '']]]))
         ->assertSessionHasErrors(['new_customer.property.line1', 'new_customer.property.city']);
     $this->post(route('jobs.store'), ['brand_id' => $this->brand->id, 'job_type' => 'repair'])

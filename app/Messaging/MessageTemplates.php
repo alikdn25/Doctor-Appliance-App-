@@ -28,8 +28,18 @@ class MessageTemplates
             $replace['{'.$name.'}'] = (string) $value;
         }
 
+        $template = self::template($company, $kind);
+
+        // A job without an address: the line that holds the address is left out ("Address: " with nothing after it).
+        if (array_key_exists('address', $variables) && blank($variables['address'])) {
+            $template = implode("\n", array_filter(
+                preg_split('/\R/u', $template) ?: [],
+                fn (string $line) => ! str_contains($line, '{address}'),
+            ));
+        }
+
         // Collapse spaces left by empty placeholders.
-        return trim((string) preg_replace('/[ \t]{2,}/', ' ', strtr(self::template($company, $kind), $replace)));
+        return trim((string) preg_replace('/[ \t]{2,}/', ' ', strtr($template, $replace)));
     }
 
     /**

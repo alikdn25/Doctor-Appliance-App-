@@ -49,9 +49,10 @@ test('visible menu and booking open the first visit directly from any working sc
     await expect(page.locator('#booking-phone')).toBeVisible();
     await expect(page.locator('[data-slot="date-chips"]')).toBeVisible();
     await expect(page.locator('[data-slot="time-window-chips"]')).toBeVisible();
+    // Nothing is required (owner's update, November 16): Finish booking is always active.
     await expect(
         page.getByRole('button', { name: 'Finish booking', exact: true }),
-    ).toBeDisabled();
+    ).toBeEnabled();
     await page.goto('/calendar?date=2026-10-12');
     await bookShownDay(page, info.project.name === 'mobile');
     await expect(page).toHaveURL(/book=1.*date=2026-10-12/);

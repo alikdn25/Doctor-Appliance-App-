@@ -92,6 +92,18 @@ class QuickBookingParser
         ];
     }
 
+    /**
+     * A model number only when it looks like one: one word of Latin capitals and digits (dashes and slashes allowed),
+     * at least 3 characters with a digit in it ("yg 502 s" -> "YG502S"). Anything else ("YG.Y", "the old one") is
+     * dropped rather than put in the form.
+     */
+    public static function modelNumber(?string $value): ?string
+    {
+        $model = preg_replace('/\s+/u', '', mb_strtoupper((string) $value)) ?? '';
+
+        return preg_match('/^(?=.*\d)[A-Z0-9][A-Z0-9\/-]{2,39}$/', $model) === 1 ? $model : null;
+    }
+
     private function instructions(Company $company): string
     {
         $now = CarbonImmutable::now($company->timezone);
@@ -123,7 +135,8 @@ class QuickBookingParser
               морозилка/морозильник -> freezer, вытяжка -> range_hood, винный холодильник -> wine_cooler. If the appliance is
               not stated, return "unknown".
             - brand: the manufacturer in its usual English spelling ("элджи" -> "LG", "самсунг" -> "Samsung", "вирпул" -> "Whirlpool").
-            - model (model number) and serial numbers: letters said aloud in Russian or English become Latin letters:
+            - model: only when the text clearly says a model number; "" otherwise (never a guess or a fragment).
+              Model and serial numbers: letters said aloud in Russian or English become Latin letters:
               эй/а -> A, би/бэ -> B, си/цэ -> C, ди/дэ -> D, и (as a letter) -> E, эф -> F, джи/гэ/жэ -> G, эйч/аш/ха -> H,
               ай -> I, джей/йот -> J, кей/ка -> K, эл -> L, эм -> M, эн -> N, оу/о -> O, пи/пэ -> P, кью/ку -> Q, ар/эр -> R,
               эс -> S, ти/тэ -> T, ю/у -> U, ви/вэ -> V, дабл ю/дабл в -> W, экс/икс -> X, уай/игрек -> Y, зед/зи/зэт -> Z;
@@ -190,7 +203,7 @@ class QuickBookingParser
             'appliance_type' => ApplianceType::tryFrom((string) ($raw['appliance_type'] ?? ''))?->value,
             'brand' => $string($raw['brand'] ?? null, 100),
             // A model number is one word in capitals ("yg 502 s" -> "YG502S").
-            'model' => $model === null ? null : (preg_replace('/\s+/u', '', mb_strtoupper($model)) ?: null),
+            'model' => self::modelNumber($model),
             'problem' => $string($raw['problem'] ?? null, 5000),
             'date' => $date,
             'arrival_now' => ($raw['arrival_now'] ?? false) === true,

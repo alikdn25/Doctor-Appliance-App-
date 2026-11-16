@@ -1,4 +1,5 @@
 import { MoreHorizontal } from 'lucide-react';
+import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import { useEffect, useRef } from 'react';
 import type { CalendarVisit } from '@/components/calendar/types';
 import { dayLabel } from '@/components/calendar/types';
@@ -112,6 +113,9 @@ export function WeekAgenda({
                                                 ]
                                                     .filter(Boolean)
                                                     .join(' · ')}
+                                                {!visit.job.address && (
+                                                    <NoAddressBadge className="ml-1.5" />
+                                                )}
                                             </span>
                                         </button>
                                         {visit.movable && (

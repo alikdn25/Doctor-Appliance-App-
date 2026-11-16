@@ -46,6 +46,26 @@ class SaveProperty
         });
     }
 
+    /**
+     * The customer's empty address (street and city not filled in) for a job booked without an address: the one the
+     * customer already has, else a new one (primary when the customer has no other address).
+     */
+    public function empty(Customer $customer): Property
+    {
+        $existing = $customer->properties()->where(fn ($q) => $q->whereNull('line1')->orWhere('line1', ''))->orderBy('id')->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $property = new Property(['line1' => null, 'city' => null, 'country' => currentCompany()->country]);
+        $property->customer()->associate($customer);
+        $property->is_primary = ! $customer->properties()->exists();
+        $property->save();
+
+        return $property;
+    }
+
     public static function ensurePrimary(Customer $customer): void
     {
         if (! $customer->properties()->where('is_primary', true)->exists()) {
