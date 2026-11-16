@@ -29,7 +29,7 @@ function bookingAnswer(array $fields = []): array
         'address' => ['line1' => '123 Main St', 'city' => 'Surrey', 'region' => 'BC', 'postal_code' => 'V3T 1A1'],
         'unit' => '4', 'buzzer' => '1234', 'appliance_type' => 'washer', 'brand' => 'LG', 'model' => 'WM3900',
         'problem' => 'Washer not draining', 'date' => null, 'arrival_now' => false, 'arrival_start' => null,
-        'arrival_end' => null, 'notes' => null,
+        'arrival_end' => null, 'notes' => null, 'uncertain_fields' => [],
     ], $fields);
 }
 
@@ -52,6 +52,7 @@ test('the text is parsed into the form fields with the booking model', function 
         ->assertJsonPath('fields.arrival_start', '09:00')
         ->assertJsonPath('fields.arrival_end', '11:00')
         ->assertJsonPath('fields.notes', 'Dog in the yard')
+        ->assertJsonPath('fields.uncertain_fields', [])
         ->assertJsonPath('customer', null);
 
     expect($fake->requests)->toHaveCount(1)
@@ -59,6 +60,62 @@ test('the text is parsed into the form fields with the booking model', function 
         ->and($fake->requests[0]['schema']['additionalProperties'])->toBeFalse()
         ->and($fake->requests[0]['messages'][0]['content'])->toContain('стиралка');
     expect(AiRequest::withoutCompanyScope()->sole())->feature->toBe('quick_booking')->model->toBe('claude-haiku-5-5');
+});
+
+test('a Russian dictation comes back in English, with digits, a Latin model number and the oven type', function () {
+    $fake = FakeAiTransport::install(bookingAnswer([
+        'first_name' => 'Bobby', 'last_name' => 'Chan', 'phone' => '2367885588', 'email' => '',
+        'address' => ['line1' => '', 'city' => '', 'region' => '', 'postal_code' => ''], 'unit' => '', 'buzzer' => '',
+        'appliance_type' => 'oven', 'brand' => '', 'model' => 'yg 502 s', 'problem' => 'Oven repair',
+    ]));
+    $text = 'Смотри значит забронируй бобби чан только на английском пиши бобби чан телефон двести 30 шесть семь восемь '
+        .'восемь пять пять восемь восемь, нужно отремонтировать духовку, номер модели уай джи пять ноль два эс';
+
+    $this->postJson(route('jobs.quick-booking.parse'), ['text' => $text])
+        ->assertOk()
+        ->assertJsonPath('fields.first_name', 'Bobby')
+        ->assertJsonPath('fields.last_name', 'Chan')
+        ->assertJsonPath('fields.phone', '+12367885588')
+        ->assertJsonPath('fields.appliance_type', 'oven')
+        ->assertJsonPath('fields.problem', 'Oven repair')
+        ->assertJsonPath('fields.model', 'YG502S')
+        ->assertJsonPath('fields.address', null)
+        ->assertJsonPath('fields.uncertain_fields', []);
+
+    // The prompt carries the rules and this very example.
+    expect($fake->requests[0]['system'])
+        ->toContain('Write every field value in English')
+        ->toContain('"бобби чан" -> first_name "Bobby"')
+        ->toContain('"двести 30 шесть" -> "236"')
+        ->toContain('уай/игрек -> Y')
+        ->toContain('"уай джи пять ноль два эс" -> "YG502S"')
+        ->toContain('духовка/духовой шкаф -> oven')
+        ->toContain('"забронируй"')
+        ->toContain('model "YG502S"')
+        ->toContain('problem "Oven repair"');
+});
+
+test('the AI says which fields it is not sure about', function () {
+    $fake = FakeAiTransport::install(bookingAnswer(['uncertain_fields' => ['model', 'last_name', 'model', 'toaster', 42, ['x']]]));
+
+    $this->postJson(route('jobs.quick-booking.parse'), ['text' => 'x'])
+        ->assertOk()
+        ->assertJsonPath('fields.uncertain_fields', ['model', 'last_name']);
+
+    $schema = $fake->requests[0]['schema'];
+    expect($schema['required'])->toContain('uncertain_fields')
+        ->and($schema['properties']['uncertain_fields']['type'])->toBe('array')
+        ->and($schema['properties']['uncertain_fields']['items']['enum'])->toContain('model', 'phone', 'arrival');
+});
+
+test('without uncertain_fields in the answer the list is empty', function () {
+    $answer = bookingAnswer();
+    unset($answer['uncertain_fields']);
+    FakeAiTransport::install($answer);
+
+    $this->postJson(route('jobs.quick-booking.parse'), ['text' => 'x'])
+        ->assertOk()
+        ->assertJsonPath('fields.uncertain_fields', []);
 });
 
 test('dates count in the company time zone', function () {

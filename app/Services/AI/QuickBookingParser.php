@@ -10,12 +10,20 @@ use Carbon\CarbonImmutable;
 
 /**
  * Quick booking: a free text (dictated, typed or an SMS from the customer; Russian, English or mixed) read by the AI
- * (AI_MODEL_BOOKING) into the booking form's fields. Field values come back in English, names and addresses as
- * written; "today", "tomorrow", "on Monday" count in the company's time zone; phones in E.164. Anything not in the
- * text stays empty. Nothing is saved here: the person checks the form and presses Save.
+ * (AI_MODEL_BOOKING) into the booking form's fields. Every value comes back in English: names in Cyrillic are written in
+ * Latin letters, numbers said in words become digits, letters of a model or serial number said aloud become Latin
+ * letters; "today", "tomorrow", "on Monday" count in the company's time zone; phones in E.164. Anything not in the
+ * text stays empty. uncertain_fields lists the fields the AI is not sure about (marked "Check" in the form). Nothing is
+ * saved here: the person checks the form and presses Save.
  */
 class QuickBookingParser
 {
+    /** Field names the AI may list in uncertain_fields. */
+    public const FIELDS = [
+        'first_name', 'last_name', 'phone', 'email', 'address', 'unit', 'buzzer', 'appliance_type', 'brand', 'model',
+        'problem', 'date', 'arrival', 'notes',
+    ];
+
     public function __construct(private readonly AiService $ai) {}
 
     /**
@@ -69,6 +77,11 @@ class QuickBookingParser
             'arrival_start' => ['type' => 'string', 'description' => 'HH:MM, 24-hour, or "" when not given'],
             'arrival_end' => ['type' => 'string', 'description' => 'HH:MM, 24-hour, or "" when not given'],
             'notes' => $text,
+            'uncertain_fields' => [
+                'type' => 'array',
+                'items' => ['type' => 'string', 'enum' => self::FIELDS],
+                'description' => 'Fields whose value you are not sure about; [] when sure of all',
+            ],
         ];
 
         return [
@@ -91,21 +104,47 @@ class QuickBookingParser
             or pasted (often an SMS from the customer). The text may be in Russian, English or both.
 
             Rules:
-            - Write field values in English. Keep people's names, street names and city names exactly as written (do not translate
-              or transliterate them).
+            - Write every field value in English, whatever the language of the text (Russian, English or mixed).
+            - Names written in Cyrillic: write them in Latin letters the way the name is spelled in English
+              ("бобби чан" -> first_name "Bobby", last_name "Chan"; "анна ким" -> "Anna" "Kim"). Capitalize names. Street and
+              city names in Cyrillic are written in Latin letters the same way ("мейн стрит" -> "Main St").
+            - Numbers said in words become digits, also when words and digits are mixed ("двести 30 шесть" -> "236",
+              "шесть семь восемь" -> "678", "ноль" -> "0").
             - Use "" (an empty string) for anything that is not in the text. Never guess or invent a value.
-            - phone: the customer's phone as written, with the country code if given (the company is in country {$company->country}).
+            - Ignore filler and command words addressed to you, such as "смотри", "значит", "так", "запиши", "забронируй",
+              "пиши на английском", "только на английском", "okay", "book": they never go into any field.
+            - phone: the customer's phone as digits only (no spaces or dashes), with the country code if given (the company is
+              in country {$company->country}); the app formats it.
             - address: the street address of the job (line1 = house number and street, without the unit). unit = apartment, suite
-              or unit number. buzzer = buzzer, entry or gate code.
-            - appliance_type: one of the listed values. If the appliance is not stated, return "unknown". brand and model as
-              written (model = model number). When there is no address, all address fields are "".
-            - problem: a short description of what is wrong, in English.
+              or unit number. buzzer = buzzer, entry or gate code. When there is no address, all address fields are "".
+            - appliance_type: one of the listed values. Russian words: духовка/духовой шкаф -> oven, плита -> range,
+              холодильник -> refrigerator, посудомойка/посудомоечная машина -> dishwasher, стиралка/стиральная машина -> washer,
+              сушилка/сушильная машина -> dryer, варочная панель -> cooktop, микроволновка/микроволновая печь -> microwave,
+              морозилка/морозильник -> freezer, вытяжка -> range_hood, винный холодильник -> wine_cooler. If the appliance is
+              not stated, return "unknown".
+            - brand: the manufacturer in its usual English spelling ("элджи" -> "LG", "самсунг" -> "Samsung", "вирпул" -> "Whirlpool").
+            - model (model number) and serial numbers: letters said aloud in Russian or English become Latin letters:
+              эй/а -> A, би/бэ -> B, си/цэ -> C, ди/дэ -> D, и (as a letter) -> E, эф -> F, джи/гэ/жэ -> G, эйч/аш/ха -> H,
+              ай -> I, джей/йот -> J, кей/ка -> K, эл -> L, эм -> M, эн -> N, оу/о -> O, пи/пэ -> P, кью/ку -> Q, ар/эр -> R,
+              эс -> S, ти/тэ -> T, ю/у -> U, ви/вэ -> V, дабл ю/дабл в -> W, экс/икс -> X, уай/игрек -> Y, зед/зи/зэт -> Z;
+              digits said in words become digits (ноль -> 0). Write the number as one word in capital letters, no spaces
+              ("уай джи пять ноль два эс" -> "YG502S"). Put a serial number, if given, into notes as "Serial: ...".
+            - problem: a short description of what is wrong, in English ("нужно отремонтировать духовку" -> "Oven repair").
             - Dates: today is {$today}, the time now is {$time} (company time zone {$company->timezone}). Turn "today",
               "tomorrow", "on Monday", "next Friday" into a date (YYYY-MM-DD); a weekday means the next such day after today.
             - Arrival: the company's arrival windows are {$windows}. When the customer's wish fits one window ("morning",
               "after 1"), give that window's start and end; when they name other times, give those times (24-hour HH:MM).
               arrival_now = true only when they want someone right away / as soon as possible today.
             - notes: anything else useful for the visit (parking, pets, best time to call) in English; "" when nothing.
+            - uncertain_fields: the names of the fields whose value you are not sure about (an unclear name spelling, a phone
+              with a wrong number of digits, a letter of the model number that could be heard two ways, a guessed appliance
+              type). "arrival" stands for arrival_now, arrival_start and arrival_end. [] when you are sure of every value.
+
+            Example.
+            Text: "Смотри значит забронируй бобби чан только на английском пиши бобби чан телефон двести 30 шесть семь восемь
+            восемь пять пять восемь восемь, нужно отремонтировать духовку, номер модели уай джи пять ноль два эс"
+            Result: first_name "Bobby", last_name "Chan", phone "2367885588", appliance_type "oven", problem "Oven repair",
+            model "YG502S", every other text field "", arrival_now false, uncertain_fields [].
             TEXT;
     }
 
@@ -127,6 +166,7 @@ class QuickBookingParser
             'postal_code' => $string($raw['address']['postal_code'] ?? null, 20),
         ] : null;
         $date = $string($raw['date'] ?? null, 10);
+        $model = $string($raw['model'] ?? null, 100);
         $time = fn ($value) => is_string($value) && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $value) === 1 ? $value : null;
         $start = $time($raw['arrival_start'] ?? null);
         $end = $time($raw['arrival_end'] ?? null);
@@ -149,13 +189,17 @@ class QuickBookingParser
             'buzzer' => $string($raw['buzzer'] ?? null, 100),
             'appliance_type' => ApplianceType::tryFrom((string) ($raw['appliance_type'] ?? ''))?->value,
             'brand' => $string($raw['brand'] ?? null, 100),
-            'model' => $string($raw['model'] ?? null, 100),
+            // A model number is one word in capitals ("yg 502 s" -> "YG502S").
+            'model' => $model === null ? null : (preg_replace('/\s+/u', '', mb_strtoupper($model)) ?: null),
             'problem' => $string($raw['problem'] ?? null, 5000),
             'date' => $date,
             'arrival_now' => ($raw['arrival_now'] ?? false) === true,
             'arrival_start' => $start,
             'arrival_end' => $end,
             'notes' => $string($raw['notes'] ?? null, 5000),
+            'uncertain_fields' => is_array($raw['uncertain_fields'] ?? null)
+                ? array_values(array_unique(array_intersect(array_filter($raw['uncertain_fields'], 'is_string'), self::FIELDS)))
+                : [],
         ];
     }
 }

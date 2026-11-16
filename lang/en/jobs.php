@@ -20,6 +20,7 @@ return [
         'limit' => 'Today\'s AI limit for your company is used up. Your text is kept: book by hand.',
         'not_set_up' => 'The AI is not set up yet. Book by hand.',
         'filled' => 'Filled from your text. Check the highlighted fields, then save.',
+        'check' => 'Check',
         'existing_by_phone' => 'Existing customer found by phone: :name.',
         'existing_by_name' => 'Existing customer found by name and address: :name.',
         'address_verified' => 'Address checked.',

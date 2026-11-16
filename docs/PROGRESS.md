@@ -1,3 +1,19 @@
+# November 16 — Quick booking understands Russian dictation
+
+1. **Prompt** (`QuickBookingParser`, `AI_MODEL_BOOKING`): every field in English whatever the language (Russian,
+   English, mixed); Cyrillic names written in Latin letters ("бобби чан" → Bobby Chan); numbers in words (also mixed with
+   digits) become digits; the phone as digits (the app turns it into E.164); letters of model/serial numbers said in
+   Russian or English become Latin letters, written as one word in capitals ("уай джи пять ноль два эс" → YG502S);
+   Russian appliance words mapped to the app's types (духовка → Oven, плита → Range, …); filler and command words
+   ("смотри", "значит", "забронируй", "пиши на английском") never go into fields. The Bobby Chan example is in the prompt.
+2. **uncertain_fields**: a new required array in the answer (field names from `QuickBookingParser::FIELDS`); unknown
+   names are dropped, a missing list becomes `[]`. The model number is also upper-cased without spaces on the server.
+3. **Form**: fields the AI is not sure about are yellow with a raised "Check" tab (amber stays for the other filled
+   fields).
+4. Tests: `QuickBookingTest` (the Russian example, uncertain_fields filtering and schema, missing list).
+
+- Next: try real dictation on a phone after deploy; "Paste from message" (`BookingTextParser`) still keeps names as written.
+
 # November 16 — Fix: installed app showed "No connection" with the internet working
 
 1. **Service worker** (`resources/pwa/sw.js`, served by Laravel at `/sw.js` with the running version written in, so
