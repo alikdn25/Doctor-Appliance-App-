@@ -1,3 +1,19 @@
+# November 16 — Fix: installed app showed "No connection" with the internet working
+
+1. **Service worker** (`resources/pwa/sw.js`, served by Laravel at `/sw.js` with the running version written in, so
+   every deploy installs a new worker; `public/sw.js` is gone). Page loads are fetched with `redirect: 'follow'` and
+   `cache: 'no-store'` and never cached; a followed redirect (e.g. `/my-jobs` → `/login`) is handed to the browser as a
+   redirect to the final address. Server answers (redirects, 4xx, 5xx, maintenance) are shown as is; "No connection"
+   only when `navigator.onLine` is false or the request itself failed (a redirect to another site falls back to the
+   browser's own handling). On install: `skipWaiting()`; on activation: every older cache is deleted, then
+   `clients.claim()`. Registered with `updateViaCache: 'none'`; `/sw.js` is sent with `no-store`.
+2. **Try again** on the offline page: `registration.update()`, waits for a new worker if one installs, clears the
+   caches, then reloads.
+3. **Manifest**: `start_url` `/my-jobs`, `scope` `/` checked: signed out → `/login`; Owner, Admin and Technician → 200.
+4. Tests: `ServiceWorkerTest` (version per deploy, headers, update/cleanup code, offline page, start page per role).
+
+- Next: after deploy, phones pick up the new worker on the next app open (or Try again on the offline page).
+
 # November 15 — Fix: AI schemas the API accepts, basic paste parser, saved-customer prompt, Square import message
 
 1. **AI schemas** (`BookingTextParser`, `QuickBookingParser`, `ProblemFinder`): no node combines `enum` with an array
@@ -1418,7 +1434,7 @@ subcontractor (Stage 2), recurring visits (Stage 3).
 ### Task 4 — Technician PWA, photos, checklists, signature ✅
 
 - **Installable app**: web app manifest (`/manifest.webmanifest`, opens on My jobs), icons, service worker
-  (`public/sw.js`) caching built assets, and an offline page when there is no connection. "Install app" button on
+  (`resources/pwa/sw.js`, served at `/sw.js`) caching built assets, and an offline page when there is no connection. "Install app" button on
   My jobs (Android/Chrome; on iPhone: Share → Add to Home Screen).
 - **Photos before/after**: one tap opens the camera, several photos at once. Photos are shrunk on the phone
   (max 1600 px JPEG), saved in the phone's storage (IndexedDB) and uploaded by a queue that retries with growing

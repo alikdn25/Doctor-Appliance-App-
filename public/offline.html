@@ -65,7 +65,50 @@
                 took are saved on this phone and will upload when the signal is
                 back.
             </p>
-            <button type="button" onclick="location.reload()">Try again</button>
+            <button type="button" id="retry">Try again</button>
         </main>
+        <script>
+            // Try again: fetch the newest service worker, drop old caches, then load this page again from the network.
+            document
+                .getElementById('retry')
+                .addEventListener('click', async (event) => {
+                    event.currentTarget.disabled = true;
+                    try {
+                        const registration =
+                            'serviceWorker' in navigator
+                                ? await navigator.serviceWorker.getRegistration(
+                                      '/',
+                                  )
+                                : undefined;
+                        if (registration) {
+                            await registration.update();
+                            const next =
+                                registration.installing || registration.waiting;
+                            // A new worker takes over by itself; give it a moment so the reload goes through it.
+                            if (next) {
+                                await new Promise((resolve) => {
+                                    navigator.serviceWorker.addEventListener(
+                                        'controllerchange',
+                                        resolve,
+                                        { once: true },
+                                    );
+                                    setTimeout(resolve, 3000);
+                                });
+                            }
+                        }
+                    } catch {
+                        // The reload below still tries the network.
+                    }
+                    try {
+                        const keys = await caches.keys();
+                        await Promise.all(
+                            keys.map((key) => caches.delete(key)),
+                        );
+                    } catch {
+                        // No cache storage: nothing to clear.
+                    }
+                    window.location.reload();
+                });
+        </script>
     </body>
 </html>

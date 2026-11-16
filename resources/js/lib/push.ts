@@ -1,5 +1,5 @@
 /**
- * Push notifications on this phone or browser (Web Push). The service worker (public/sw.js) shows them.
+ * Push notifications on this phone or browser (Web Push). The service worker (resources/pwa/sw.js, served at /sw.js) shows them.
  */
 
 export type PushState = 'unsupported' | 'blocked' | 'off' | 'on';
@@ -25,7 +25,10 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
 
     return (
         (await navigator.serviceWorker.getRegistration('/')) ??
-        (await navigator.serviceWorker.register('/sw.js'))
+        (await navigator.serviceWorker.register('/sw.js', {
+            scope: '/',
+            updateViaCache: 'none',
+        }))
     );
 }
 

@@ -45,9 +45,12 @@ void createInertiaApp({
 initializeTheme();
 
 // Installable app (PWA). Not in development, where Vite serves the files.
+// The worker file is never taken from the HTTP cache, so a deploy reaches the phone on its next check.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        void navigator.serviceWorker.register('/sw.js');
+        void navigator.serviceWorker
+            .register('/sw.js', { scope: '/', updateViaCache: 'none' })
+            .catch(() => undefined);
     });
 }
 

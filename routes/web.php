@@ -64,6 +64,7 @@ use App\Http\Controllers\Onboarding\CompanyController as OnboardingCompanyContro
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\Reports\ReportController;
+use App\Http\Controllers\ServiceWorkerController;
 use App\Http\Controllers\Settings\MenuModeController;
 use App\Http\Controllers\SmsInboxController;
 use App\Http\Controllers\SmsWebhookController;
@@ -73,6 +74,8 @@ use App\Http\Controllers\UsageController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
+// The service worker carries the running version, so each deploy installs a fresh one.
+Route::get('sw.js', ServiceWorkerController::class)->name('service-worker');
 // The running version: the app compares it with the one it loaded to offer "Update" after a deploy.
 Route::get('app-version', AppVersionController::class)->middleware('throttle:app-version')->name('app-version');
 
