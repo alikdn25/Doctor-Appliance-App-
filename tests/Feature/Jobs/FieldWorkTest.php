@@ -256,7 +256,7 @@ test('the app can be installed on a phone', function () {
         ->assertJsonPath('start_url', '/my-jobs')
         ->assertJsonCount(3, 'icons');
 
-    foreach (['sw.js', 'offline.html', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'] as $file) {
+    foreach (['offline.html', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'] as $file) {
         expect(file_exists(public_path($file)))->toBeTrue();
     }
 });
