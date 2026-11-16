@@ -131,6 +131,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('usage/inconvenient', [UsageController::class, 'inconvenient'])->middleware('throttle:30,1')->name('usage.inconvenient');
         Route::post('assistant/find-problems', [AssistantController::class, 'findProblems'])->middleware('throttle:assistant')->name('assistant.find-problems');
         Route::post('assistant/new-chat', [AssistantController::class, 'fresh'])->name('assistant.new-chat');
+        Route::get('assistant/photos/{message}/{index}', [AssistantController::class, 'photo'])->whereNumber('index')->name('assistant.photo');
         Route::post('assistant/actions/{action}/confirm', [AssistantController::class, 'confirm'])->name('assistant.actions.confirm');
         Route::post('assistant/actions/{action}/cancel', [AssistantController::class, 'cancel'])->name('assistant.actions.cancel');
 
@@ -222,6 +223,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('jobs/{job}/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
         Route::get('invoices/{invoice}/edit', [InvoiceController::class, 'edit'])->name('invoices.edit');
+        Route::get('invoices/{invoice}/attachments/{attachment}', [InvoiceController::class, 'attachment'])->name('invoices.attachment');
         Route::put('invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
         Route::post('invoices/{invoice}/void', [InvoiceController::class, 'void'])->name('invoices.void');
         Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('payments.store');

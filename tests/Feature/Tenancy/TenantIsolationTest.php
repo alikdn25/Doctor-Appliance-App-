@@ -28,6 +28,7 @@ use App\Models\EstimateItem;
 use App\Models\GoogleProfile;
 use App\Models\InconvenienceReport;
 use App\Models\Invoice;
+use App\Models\InvoiceAttachment;
 use App\Models\InvoiceItem;
 use App\Models\InvoicePaymentLink;
 use App\Models\JobAppliance;
@@ -136,6 +137,7 @@ beforeEach(function () {
             ]);
             $link->invoice_id = $invoice->id;
             $link->save();
+            InvoiceAttachment::create(['invoice_id' => $invoice->id, 'user_id' => $owner->id, 'path' => 'invoice-attachments/secret-'.$invoice->id.'.jpg', 'mime_type' => 'image/jpeg', 'size' => 10]);
             $cost = new JobCostItem(['description' => 'Secret part', 'quantity' => 1, 'unit_cost' => 1234]);
             $cost->service_job_id = $job->id;
             $cost->currency = $invoice->currency;
@@ -230,6 +232,7 @@ dataset('tenant models', [
     'services' => [Service::class],
     'payment provider connections' => [PaymentProviderConnection::class],
     'invoice payment links' => [InvoicePaymentLink::class],
+    'invoice attachments' => [InvoiceAttachment::class],
     'sms accounts' => [SmsAccount::class],
     'sms registrations' => [SmsRegistration::class],
     'messages' => [Message::class],
@@ -264,7 +267,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
 
     expect($tenantModels)->toBe(collect([
         Appliance::class, Brand::class, BrandAddress::class, BusinessExpense::class, BusinessExpenseCategory::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, MessageRead::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class,
-        CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceItem::class, InvoicePaymentLink::class, Payment::class,
+        CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceAttachment::class, InvoiceItem::class, InvoicePaymentLink::class, Payment::class,
         PaymentProviderConnection::class,
         JobAppliance::class, JobAssignee::class, JobBringItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,

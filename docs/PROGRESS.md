@@ -1,3 +1,36 @@
+# November 16 — Assistant: composer on the keyboard, microphone, invoice from photos
+
+1. **Composer right on the keyboard** (assistant, SMS chat, Quick booking): `interactive-widget=resizes-content` in the
+   viewport meta; `useViewportKeyboard` (layout) writes `--app-vvh` (visualViewport height, used instead of 100vh),
+   `--app-kb-inset` (keyboard over the page, iOS) and `data-keyboard="open"` on `<html>` while a text field is focused
+   and the screen has shrunk. `ChatDock` sits right above the bottom bar (`--app-tabbar-h`); while the keyboard is open
+   the bar and "+" hide and the composer sits on the keyboard; opening the keyboard scrolls to the last message.
+2. **Microphone** next to Send (assistant, SMS chat, Quick booking): browser speech recognition
+   (`SpeechRecognition` / `webkitSpeechRecognition`), no paid service. Tap = record (red, pulsing), tap again = stop;
+   `continuous`, restarted when the browser stops by itself; words are added to the typed text, words in progress show
+   at once; nothing is sent by itself. EN / RU switch, remembered per user on the device (English by default). Hidden
+   without browser support; a blocked microphone shows how to allow it (Chrome and the installed app).
+3. **Invoice from photos** in the assistant: paperclip, up to 5 photos or screenshots (gallery or camera), shrunk on
+   the phone to 1600 px, thumbnails with a remove cross. Sent to `AI_MODEL_ASSISTANT` as images with the text (stored as
+   private files; the chat keeps their paths). New tool `create_invoice` (tools version 3): the AI passes name, phone,
+   email, address, work lines with amounts and "amounts include tax"; code (`InvoiceDraft`) checks the phone (E.164)
+   and amounts (missing → the AI must ask), finds the customer by phone then email, takes the company's default taxes
+   (e.g. GST/PST) and calculates taxes and total with `DocumentTotals`; amounts with tax on a company without tax in its
+   prices are turned into amounts without tax from the total (the total stays as given). Nothing is stored before a
+   button: a preview card (customer, phone, email, address, lines, taxes, total) with **Confirm & send**, **Edit**,
+   **Cancel**. Confirm & send (`AssistantInvoice`): customer found or created, invoice on the customer's open job, else a
+   job for today (finished visit, Completed); photos saved as invoice attachments (shown on the invoice page); link texted
+   from the company number (Automatic SMS mode) and emailed when mail is set up. Edit: same, nothing sent, the invoice
+   editor opens. Requests count in `AI_DAILY_LIMIT_PER_COMPANY`; change log "AI assistant".
+
+- **Migration** `2026_11_16_000100_create_invoice_attachments` (new table only; nothing existing changes).
+- Tests: `AssistantInvoiceTest` (customer by phone / email, other company never matched, GST/PST with and without tax,
+  company with tax in prices, nothing created or sent before Confirm, Cancel, missing phone/amount, Confirm & send to an
+  open job with SMS and email, new customer with a Completed job for today, Edit, photos to the AI as images and to the
+  attachments, daily limit, max 5 photos), tenant isolation (invoice attachments); browser `zz-assistant-composer`
+  (composer on the bottom bar and on the keyboard, photo thumbnails, EN / RU).
+- Next: check on a real Android phone in Chrome and in the installed app (keyboard, microphone permission, camera).
+
 # November 16 — Quick booking understands Russian dictation
 
 1. **Prompt** (`QuickBookingParser`, `AI_MODEL_BOOKING`): every field in English whatever the language (Russian,

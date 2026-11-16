@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The assistant's actions: a payment reminder by SMS, moving a booking, a new booking. The AI only proposes one (a
+ * The assistant's actions: a payment reminder by SMS, moving a booking, a new booking, an invoice read from photos. The AI only proposes one (a
  * pending "what I will do" card); it runs when the person presses Confirm, as that person, marked "AI assistant" in
  * the change log. Cancel drops it. The assistant can delete nothing.
  */
@@ -45,6 +45,7 @@ class AssistantActions
             AssistantAction::PAYMENT_REMINDER => $this->reminderProposal($input),
             AssistantAction::RESCHEDULE => $this->rescheduleProposal($input, $user),
             AssistantAction::BOOKING => $this->bookingProposal($input),
+            AssistantAction::INVOICE => $this->invoiceProposal($input, $conversation),
         };
 
         $action = AssistantAction::create([
@@ -57,22 +58,26 @@ class AssistantActions
             'proposed' => true,
             'action_id' => $action->id,
             'what_i_will_do' => $summary,
-            'note' => 'Shown to the user with Confirm and Cancel. Nothing is done until they press Confirm. Do not propose it again; tell them briefly to confirm.',
+            ...($type === AssistantAction::INVOICE ? ['preview' => self::invoiceForAi($params['draft'])] : []),
+            'note' => $type === AssistantAction::INVOICE
+                ? 'Shown to the user as a preview card with Confirm & send, Edit and Cancel; taxes and the total were calculated by the app. Nothing is saved or sent until they press a button. Do not propose it again; tell them briefly to check the card. If they want changes, call create_invoice again with the corrected data.'
+                : 'Shown to the user with Confirm and Cancel. Nothing is done until they press Confirm. Do not propose it again; tell them briefly to confirm.',
         ];
     }
 
     /**
      * Runs a confirmed action. Returns what the chat shows and, for a booking, the filled form's data.
      *
-     * @return array{message: string, booking?: array<string, mixed>}
+     * @return array{message: string, booking?: array<string, mixed>, redirect?: string}
      */
-    public function confirm(AssistantAction $action, User $user, QuickBookingParser $parser, CustomerFinder $finder): array
+    public function confirm(AssistantAction $action, User $user, QuickBookingParser $parser, CustomerFinder $finder, bool $send = true): array
     {
-        return app(ActionSource::class)->as(self::SOURCE, function () use ($action, $user, $parser, $finder) {
+        return app(ActionSource::class)->as(self::SOURCE, function () use ($action, $user, $parser, $finder, $send) {
             $result = match ($action->type) {
                 AssistantAction::PAYMENT_REMINDER => $this->sendReminder($action, $user),
                 AssistantAction::RESCHEDULE => $this->reschedule($action, $user),
                 AssistantAction::BOOKING => $this->booking($action, $user, $parser, $finder),
+                AssistantAction::INVOICE => $this->invoice($action, $user, $send),
             };
 
             app(AuditLogger::class)->record('assistant.'.$action->type, $action, ['label' => $action->summary, 'result' => $result['message']]);
@@ -150,6 +155,51 @@ class AssistantActions
         }
 
         return [['text' => mb_substr($text, 0, 5000)], __('assistant.actions.booking', ['text' => mb_substr($text, 0, 300)])];
+    }
+
+    /**
+     * The invoice read from photos or text: checked and priced by code (InvoiceDraft); nothing is stored but the
+     * proposal. The photos of the latest question with photos go with it, to become the invoice's attachments.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array{0: array<string, mixed>, 1: string}
+     */
+    private function invoiceProposal(array $input, string $conversation): array
+    {
+        $draft = InvoiceDraft::build($input, currentCompany());
+
+        return [['draft' => $draft, 'photos' => AssistantPhotos::latest($conversation)], InvoiceDraft::summary($draft, currentCompany())];
+    }
+
+    /**
+     * The invoice preview as the AI is told it (amounts formatted).
+     *
+     * @param  array<string, mixed>  $draft
+     * @return array<string, mixed>
+     */
+    private static function invoiceForAi(array $draft): array
+    {
+        $money = fn (int $minor) => Money::format($minor, $draft['currency'], currentCompany()->locale);
+
+        return [
+            'customer' => $draft['customer']['name'],
+            'existing_customer' => $draft['customer']['id'] !== null,
+            'job' => $draft['job_number'],
+            'lines' => array_map(fn (array $line) => ['description' => $line['description'], 'amount' => $money($line['total'])], $draft['lines']),
+            'taxes' => array_map(fn (array $tax) => ['name' => $tax['name'], 'rate' => $tax['rate'].'%', 'amount' => $money($tax['amount'])], $draft['taxes']),
+            'total' => $money($draft['total']),
+        ];
+    }
+
+    /**
+     * @return array{message: string, redirect?: string}
+     */
+    private function invoice(AssistantAction $action, User $user, bool $send): array
+    {
+        Gate::forUser($user)->authorize('viewAny', Invoice::class);
+        $result = app(AssistantInvoice::class)->confirm($action, $user, $send);
+
+        return ['message' => $result['message'], ...(isset($result['redirect']) ? ['redirect' => $result['redirect']] : [])];
     }
 
     private function start(string $date, string $time): CarbonImmutable

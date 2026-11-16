@@ -12,6 +12,7 @@ import { ScreenHeaderSlot } from '@/components/screen-header';
 import { UnfinishedJobsBar } from '@/components/unfinished-jobs-bar';
 import { UploadStatusBar } from '@/components/upload-status-bar';
 import { useDetectTimezone } from '@/hooks/use-detect-timezone';
+import { useViewportKeyboard } from '@/hooks/use-viewport-keyboard';
 import type { AppLayoutProps } from '@/types';
 import { useState } from 'react';
 
@@ -20,6 +21,7 @@ export default function AppSidebarLayout({
     breadcrumbs = [],
 }: AppLayoutProps) {
     useDetectTimezone();
+    useViewportKeyboard();
     const [slot, setSlot] = useState<HTMLDivElement | null>(null);
 
     return (
@@ -45,7 +47,7 @@ export default function AppSidebarLayout({
                             {/* Room for the fixed bottom bar and the "+" above it on a phone, so the last row can be
                                 scrolled clear of both. */}
                             <div
-                                className="h-40 md:hidden"
+                                className="da-bottom-spacer h-40 md:hidden"
                                 aria-hidden="true"
                             />
                         </div>

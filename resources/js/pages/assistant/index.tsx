@@ -5,19 +5,26 @@ import {
     Copy,
     ExternalLink,
     MessageSquarePlus,
+    Paperclip,
+    Pencil,
     Search,
     Send,
     Sparkles,
     X,
 } from 'lucide-react';
-import type { FormEvent } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { useMoney } from '@/components/billing/money';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
+import { ChatDock } from '@/components/ui/chat-dock';
 import { IconButton } from '@/components/ui/icon-button';
 import { Label } from '@/components/ui/label';
+import { MicButton } from '@/components/ui/mic-button';
 import { Textarea } from '@/components/ui/textarea';
+import { scrollToPageEnd } from '@/hooks/use-viewport-keyboard';
 import { xsrfToken } from '@/lib/http';
+import { compressImage } from '@/lib/image';
 import { useTrans } from '@/lib/i18n';
 import { QUICK_BOOKING_RESULT_KEY } from '@/lib/quick-booking';
 import { cn } from '@/lib/utils';
@@ -31,7 +38,35 @@ type Message = {
     id: string;
     from: 'user' | 'assistant';
     text: string;
+    photos?: string[];
     at: string;
+};
+type InvoicePreview = {
+    customer: {
+        id: number | null;
+        matched_by: 'phone' | 'email' | null;
+        name: string;
+        phone: string;
+        email: string | null;
+        address: {
+            line1: string;
+            unit?: string;
+            city?: string;
+            region?: string;
+            postal_code?: string;
+        } | null;
+    };
+    job_number: number | null;
+    lines: { description: string; unit_price: number; total: number }[];
+    taxes: { name: string; rate: string; amount: number }[];
+    subtotal: number;
+    tax_total: number;
+    total: number;
+    currency: string;
+    prices_include_tax: boolean;
+    amounts_include_tax: boolean;
+    notes: string | null;
+    photos: number;
 };
 type Action = {
     kind: 'action';
@@ -41,6 +76,7 @@ type Action = {
     summary: string;
     status: 'pending' | 'running' | 'confirmed' | 'cancelled' | 'failed';
     result: string | null;
+    invoice?: InvoicePreview | null;
     at: string;
 };
 type Problem = {
@@ -180,6 +216,217 @@ const post = (url: string, body: Record<string, unknown> = {}) =>
         body: JSON.stringify(body),
     });
 
+/** The decided card's result line. */
+function ActionResult({ item }: { item: Action }) {
+    const t = useTrans();
+
+    return (
+        <p
+            className={cn(
+                'text-sm font-medium',
+                item.status === 'confirmed' && 'text-success',
+                item.status === 'failed' && 'text-danger',
+                item.status === 'cancelled' && 'text-muted-foreground',
+            )}
+        >
+            {item.result ?? t(`assistant.statuses.${item.status}`)}
+        </p>
+    );
+}
+
+/**
+ * The invoice the assistant read (create_invoice), before anything is saved: customer, phone, email, address, lines,
+ * taxes and total as calculated by the app. Confirm & send saves and sends it; Edit saves it and opens the editor;
+ * Cancel drops it.
+ */
+function InvoiceCard({
+    item,
+    invoice,
+    onDecided,
+}: {
+    item: Action;
+    invoice: InvoicePreview;
+    onDecided: (action: Action) => void;
+}) {
+    const t = useTrans();
+    const money = useMoney(invoice.currency);
+    const [busy, setBusy] = useState<'send' | 'edit' | 'cancel' | null>(null);
+    const address = invoice.customer.address
+        ? [
+              [invoice.customer.address.line1, invoice.customer.address.unit]
+                  .filter(Boolean)
+                  .join(', '),
+              invoice.customer.address.city,
+              [
+                  invoice.customer.address.region,
+                  invoice.customer.address.postal_code,
+              ]
+                  .filter(Boolean)
+                  .join(' '),
+          ]
+              .filter(Boolean)
+              .join(', ')
+        : null;
+
+    const decide = (which: 'send' | 'edit' | 'cancel') => {
+        if (busy) return;
+        setBusy(which);
+        post(
+            (which === 'cancel' ? cancel : confirm)(item.action_id).url,
+            which === 'cancel' ? {} : { mode: which },
+        )
+            .then((response) => response.json())
+            .then((body: { action?: Action; redirect?: string | null }) => {
+                if (body.action) onDecided(body.action);
+                if (body.redirect) router.visit(body.redirect);
+            })
+            .catch(() => undefined)
+            .finally(() => setBusy(null));
+    };
+
+    return (
+        <div
+            className="da-card space-y-3 border-amber-300 p-4"
+            data-test="assistant-invoice"
+            data-status={item.status}
+        >
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t('assistant.invoice.title')}
+            </p>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                <dt className="text-muted-foreground">
+                    {t('assistant.invoice.customer')}
+                </dt>
+                <dd className="font-semibold">
+                    {invoice.customer.name}{' '}
+                    <span className="text-xs font-normal text-muted-foreground">
+                        (
+                        {invoice.customer.id
+                            ? t('assistant.invoice.existing')
+                            : t('assistant.invoice.new_customer')}
+                        )
+                    </span>
+                </dd>
+                <dt className="text-muted-foreground">
+                    {t('assistant.invoice.phone')}
+                </dt>
+                <dd>{invoice.customer.phone}</dd>
+                {invoice.customer.email && (
+                    <>
+                        <dt className="text-muted-foreground">
+                            {t('assistant.invoice.email')}
+                        </dt>
+                        <dd className="[overflow-wrap:anywhere]">
+                            {invoice.customer.email}
+                        </dd>
+                    </>
+                )}
+                {address && (
+                    <>
+                        <dt className="text-muted-foreground">
+                            {t('assistant.invoice.address')}
+                        </dt>
+                        <dd>{address}</dd>
+                    </>
+                )}
+            </dl>
+            <ul className="divide-y border-y text-sm" data-test="invoice-lines">
+                {invoice.lines.map((line, index) => (
+                    <li key={index} className="flex justify-between gap-3 py-2">
+                        <span>{line.description}</span>
+                        <span className="font-medium tabular-nums">
+                            {money(line.total)}
+                        </span>
+                    </li>
+                ))}
+            </ul>
+            <dl className="space-y-1 text-sm">
+                <div className="flex justify-between gap-3">
+                    <dt className="text-muted-foreground">
+                        {t('assistant.invoice.subtotal')}
+                    </dt>
+                    <dd className="tabular-nums">{money(invoice.subtotal)}</dd>
+                </div>
+                {invoice.taxes.map((tax) => (
+                    <div key={tax.name} className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">
+                            {tax.name} {tax.rate}%
+                        </dt>
+                        <dd className="tabular-nums">{money(tax.amount)}</dd>
+                    </div>
+                ))}
+                <div className="flex justify-between gap-3 text-base font-bold">
+                    <dt>{t('assistant.invoice.total')}</dt>
+                    <dd className="tabular-nums" data-test="invoice-total">
+                        {money(invoice.total)}
+                    </dd>
+                </div>
+            </dl>
+            <div className="space-y-1 text-xs text-muted-foreground">
+                {invoice.prices_include_tax && (
+                    <p>{t('assistant.invoice.tax_included')}</p>
+                )}
+                {invoice.amounts_include_tax && !invoice.prices_include_tax && (
+                    <p>{t('assistant.invoice.from_total_with_tax')}</p>
+                )}
+                <p>
+                    {invoice.job_number
+                        ? t('assistant.invoice.job', {
+                              number: invoice.job_number,
+                          })
+                        : t('assistant.invoice.new_job')}
+                </p>
+                {invoice.photos > 0 && (
+                    <p>
+                        {t('assistant.invoice.photos', {
+                            count: invoice.photos,
+                        })}
+                    </p>
+                )}
+                {invoice.notes && <p>{invoice.notes}</p>}
+            </div>
+            {item.status === 'pending' ? (
+                <div className="space-y-2">
+                    <Button
+                        size="lg"
+                        className="w-full"
+                        loading={busy === 'send'}
+                        disabled={busy !== null}
+                        onClick={() => decide('send')}
+                        data-test="invoice-confirm-send"
+                    >
+                        <Send /> {t('assistant.invoice.confirm_send')}
+                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            loading={busy === 'edit'}
+                            disabled={busy !== null}
+                            onClick={() => decide('edit')}
+                            data-test="invoice-edit"
+                        >
+                            <Pencil /> {t('assistant.invoice.edit')}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            loading={busy === 'cancel'}
+                            disabled={busy !== null}
+                            onClick={() => decide('cancel')}
+                            data-test="invoice-cancel"
+                        >
+                            <X /> {t('assistant.cancel')}
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+                <ActionResult item={item} />
+            )}
+        </div>
+    );
+}
+
 /** A proposed action: what will happen, then Confirm / Cancel. Nothing runs without Confirm. */
 function ActionCard({
     item,
@@ -255,25 +502,39 @@ function ActionCard({
                     </Button>
                 </div>
             ) : (
-                <p
-                    className={cn(
-                        'text-sm font-medium',
-                        item.status === 'confirmed' && 'text-success',
-                        item.status === 'failed' && 'text-danger',
-                        item.status === 'cancelled' && 'text-muted-foreground',
-                    )}
-                >
-                    {item.result ?? t(`assistant.statuses.${item.status}`)}
-                </p>
+                <ActionResult item={item} />
             )}
+        </div>
+    );
+}
+
+const MAX_PHOTOS = 5;
+
+/** Photos sent with a question, small, in the bubble. */
+function PhotoStrip({ urls }: { urls: string[] }) {
+    const t = useTrans();
+
+    return (
+        <div className="mb-1.5 flex flex-wrap gap-1.5">
+            {urls.map((url, index) => (
+                <a key={url} href={url} target="_blank" rel="noreferrer">
+                    <img
+                        src={url}
+                        alt={t('assistant.photo', { number: index + 1 })}
+                        className="size-20 rounded-lg object-cover"
+                        loading="lazy"
+                    />
+                </a>
+            ))}
         </div>
     );
 }
 
 /**
  * The AI assistant (More → Assistant, Owner only), laid out like the SMS chat: questions on the right, answers on the
- * left, the composer pinned at the bottom (the keyboard microphone dictates). Actions come as cards with Confirm and
- * Cancel.
+ * left, the composer docked at the bottom: right above the bottom bar, or right on top of the keyboard while typing.
+ * The microphone dictates (EN / RU), the paperclip attaches up to 5 photos (e.g. an invoice to read). Actions come as
+ * cards with Confirm and Cancel; an invoice comes as a preview with Confirm & send, Edit and Cancel.
  */
 export default function AssistantIndex({
     conversation: initialConversation,
@@ -293,11 +554,56 @@ export default function AssistantIndex({
     const [error, setError] = useState<string | null>(
         configured ? null : t('assistant.not_set_up'),
     );
-    const end = useRef<HTMLDivElement>(null);
+    // Photos to send with the question (shrunk on the phone to 1600 px), with their previews.
+    const [photos, setPhotos] = useState<
+        { id: string; blob: Blob; filename: string; preview: string }[]
+    >([]);
+    const [sentPhotos, setSentPhotos] = useState<string[]>([]);
+    const picker = useRef<HTMLInputElement>(null);
+    const latestPhotos = useRef(photos);
+    latestPhotos.current = photos;
 
     useEffect(() => {
-        end.current?.scrollIntoView({ block: 'end' });
+        scrollToPageEnd();
     }, [items, pending]);
+
+    // Previews are freed when the screen goes.
+    useEffect(
+        () => () =>
+            latestPhotos.current.forEach((photo) =>
+                URL.revokeObjectURL(photo.preview),
+            ),
+        [],
+    );
+
+    const addPhotos = async (event: ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files ?? []);
+        event.target.value = '';
+        const room = MAX_PHOTOS - photos.length;
+        if (files.length > room) {
+            setError(t('assistant.attach_limit', { count: MAX_PHOTOS }));
+        }
+        const added = await Promise.all(
+            files.slice(0, Math.max(0, room)).map(async (file) => {
+                const { blob, filename } = await compressImage(file, 1600);
+
+                return {
+                    id: `${Date.now()}-${Math.random()}`,
+                    blob,
+                    filename,
+                    preview: URL.createObjectURL(blob),
+                };
+            }),
+        );
+        setPhotos((list) => [...list, ...added].slice(0, MAX_PHOTOS));
+    };
+    const removePhoto = (id: string) =>
+        setPhotos((list) => {
+            const photo = list.find((p) => p.id === id);
+            if (photo) URL.revokeObjectURL(photo.preview);
+
+            return list.filter((p) => p.id !== id);
+        });
 
     const [checking, setChecking] = useState(false);
     const runFindProblems = () => {
@@ -318,24 +624,66 @@ export default function AssistantIndex({
     };
     const send = (text: string) => {
         const value = text.trim();
-        if (value === '' || pending !== null || checking) return;
+        const attached = photos;
+        if (
+            (value === '' && attached.length === 0) ||
+            pending !== null ||
+            checking
+        ) {
+            return;
+        }
         setPending(value);
+        setSentPhotos(attached.map((photo) => photo.preview));
         setQuestion('');
+        setPhotos([]);
         setError(null);
-        post(ask().url, { question: value, conversation })
+
+        const body = new FormData();
+        body.append('question', value);
+        body.append('conversation', conversation);
+        attached.forEach((photo) =>
+            body.append('photos[]', photo.blob, photo.filename),
+        );
+
+        fetch(ask().url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': xsrfToken(),
+            },
+            body,
+        })
             .then(async (response) => {
-                const body = await response.json().catch(() => null);
-                if (body?.conversation) setConversation(body.conversation);
-                if (body?.items) setItems(body.items);
+                const result = await response.json().catch(() => null);
+                if (result?.conversation) setConversation(result.conversation);
+                if (result?.items) setItems(result.items);
                 if (!response.ok) {
-                    setError(body?.message ?? t('assistant.failed'));
+                    setError(
+                        response.status === 422
+                            ? t('assistant.photo_failed')
+                            : (result?.message ?? t('assistant.failed')),
+                    );
+                    if (response.status === 422) {
+                        setQuestion(value);
+                        setPhotos(attached);
+                    }
+                } else {
+                    attached.forEach((photo) =>
+                        URL.revokeObjectURL(photo.preview),
+                    );
                 }
             })
             .catch(() => {
                 setError(t('assistant.failed'));
                 setQuestion(value);
+                setPhotos(attached);
             })
-            .finally(() => setPending(null));
+            .finally(() => {
+                setPending(null);
+                setSentPhotos([]);
+            });
     };
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -381,7 +729,7 @@ export default function AssistantIndex({
 
             <section
                 aria-label={t('assistant.title')}
-                className="mx-auto flex min-h-[calc(100dvh-9rem)] w-full max-w-3xl flex-col px-4 pt-3 sm:px-6"
+                className="mx-auto flex min-h-[calc(var(--app-vvh,100dvh)-9rem)] w-full max-w-3xl flex-col px-4 pt-3 sm:px-6"
             >
                 <div className="flex flex-wrap gap-2 pb-3">
                     <Button
@@ -433,6 +781,13 @@ export default function AssistantIndex({
                     {items.map((item) =>
                         item.kind === 'problems' ? (
                             <ProblemsCard key={item.id} item={item} />
+                        ) : item.kind === 'action' && item.invoice ? (
+                            <InvoiceCard
+                                key={item.id}
+                                item={item}
+                                invoice={item.invoice}
+                                onDecided={decided}
+                            />
                         ) : item.kind === 'action' ? (
                             <ActionCard
                                 key={item.id}
@@ -458,6 +813,9 @@ export default function AssistantIndex({
                                             : 'rounded-bl-md border bg-card',
                                     )}
                                 >
+                                    {item.photos && item.photos.length > 0 && (
+                                        <PhotoStrip urls={item.photos} />
+                                    )}
                                     {item.text}
                                 </div>
                             </div>
@@ -467,6 +825,9 @@ export default function AssistantIndex({
                         <>
                             <div className="flex justify-end">
                                 <div className="da-primary max-w-[85%] rounded-2xl rounded-br-md px-3.5 py-2 text-[15px] leading-snug whitespace-pre-line">
+                                    {sentPhotos.length > 0 && (
+                                        <PhotoStrip urls={sentPhotos} />
+                                    )}
                                     {pending}
                                 </div>
                             </div>
@@ -498,50 +859,115 @@ export default function AssistantIndex({
                         </p>
                     )}
                 </div>
-                <div className="h-3" ref={end} />
-                <form
-                    onSubmit={submit}
-                    className="da-pinned da-action-bar sticky bottom-0 z-30 -mx-4 border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-mx-6 md:mx-0 md:rounded-2xl md:border"
-                >
-                    <div className="flex items-end gap-2">
-                        <Label htmlFor="assistant-question" className="sr-only">
-                            {t('assistant.placeholder')}
-                        </Label>
-                        <Textarea
-                            id="assistant-question"
-                            value={question}
-                            onChange={(event) =>
-                                setQuestion(event.target.value)
-                            }
-                            onKeyDown={(event) => {
-                                if (
-                                    event.key === 'Enter' &&
-                                    !event.shiftKey &&
-                                    window.matchMedia('(pointer: fine)').matches
-                                ) {
-                                    event.preventDefault();
-                                    send(question);
+                <div className="h-3" />
+                <ChatDock>
+                    <form onSubmit={submit} className="space-y-2">
+                        {photos.length > 0 && (
+                            <div
+                                className="flex gap-2 overflow-x-auto pt-1"
+                                data-test="assistant-photos"
+                            >
+                                {photos.map((photo, index) => (
+                                    <div
+                                        key={photo.id}
+                                        className="relative size-16 shrink-0"
+                                    >
+                                        <img
+                                            src={photo.preview}
+                                            alt={t('assistant.photo', {
+                                                number: index + 1,
+                                            })}
+                                            className="size-16 rounded-xl border object-cover"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                removePhoto(photo.id)
+                                            }
+                                            className="absolute -top-1.5 -right-1.5 inline-flex size-7 items-center justify-center rounded-full bg-slate-900 text-white shadow"
+                                            aria-label={t(
+                                                'assistant.remove_photo',
+                                            )}
+                                            data-test="assistant-photo-remove"
+                                        >
+                                            <X className="size-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <div className="flex items-end gap-2">
+                            <input
+                                ref={picker}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={(event) => void addPhotos(event)}
+                                data-test="assistant-photo-input"
+                            />
+                            <IconButton
+                                label={t('assistant.attach')}
+                                variant="plain"
+                                disabled={
+                                    photos.length >= MAX_PHOTOS ||
+                                    pending !== null
                                 }
-                            }}
-                            maxLength={2000}
-                            rows={1}
-                            placeholder={t('assistant.placeholder')}
-                            className="[field-sizing:content] max-h-40 min-h-11 flex-1 resize-none"
-                            data-test="assistant-question"
-                        />
-                        <IconButton
-                            type="submit"
-                            label={t('assistant.send')}
-                            variant="primary"
-                            disabled={
-                                question.trim() === '' || pending !== null
-                            }
-                            data-test="assistant-send"
-                        >
-                            <Send />
-                        </IconButton>
-                    </div>
-                </form>
+                                onClick={() => picker.current?.click()}
+                                data-test="assistant-attach"
+                            >
+                                <Paperclip />
+                            </IconButton>
+                            <Label
+                                htmlFor="assistant-question"
+                                className="sr-only"
+                            >
+                                {t('assistant.placeholder')}
+                            </Label>
+                            <Textarea
+                                id="assistant-question"
+                                value={question}
+                                onChange={(event) =>
+                                    setQuestion(event.target.value)
+                                }
+                                onKeyDown={(event) => {
+                                    if (
+                                        event.key === 'Enter' &&
+                                        !event.shiftKey &&
+                                        window.matchMedia('(pointer: fine)')
+                                            .matches
+                                    ) {
+                                        event.preventDefault();
+                                        send(question);
+                                    }
+                                }}
+                                maxLength={2000}
+                                rows={1}
+                                placeholder={t('assistant.placeholder')}
+                                className="[field-sizing:content] max-h-40 min-h-11 min-w-0 flex-1 resize-none"
+                                data-test="assistant-question"
+                            />
+                            <MicButton
+                                value={question}
+                                onChange={setQuestion}
+                                disabled={pending !== null}
+                            />
+                            <IconButton
+                                type="submit"
+                                label={t('assistant.send')}
+                                variant="primary"
+                                disabled={
+                                    (question.trim() === '' &&
+                                        photos.length === 0) ||
+                                    pending !== null
+                                }
+                                data-test="assistant-send"
+                            >
+                                <Send />
+                            </IconButton>
+                        </div>
+                    </form>
+                </ChatDock>
             </section>
         </>
     );

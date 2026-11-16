@@ -124,6 +124,16 @@ class Invoice extends Model
     }
 
     /**
+     * Photos or screenshots the invoice was made from.
+     *
+     * @return HasMany<InvoiceAttachment, $this>
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(InvoiceAttachment::class)->orderBy('id');
+    }
+
+    /**
      * @return HasMany<InvoicePaymentLink, $this>
      */
     public function paymentLinks(): HasMany

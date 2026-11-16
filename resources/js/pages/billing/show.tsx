@@ -106,6 +106,7 @@ export default function BillingShow({
     reviewPrompt = null,
     signature = null,
     diagnosisUrl = null,
+    attachments = [],
 }: {
     document: BillingDocument;
     can: Can;
@@ -123,6 +124,8 @@ export default function BillingShow({
     } | null;
     /** "Invoice diagnosis only" on a declined estimate, when a diagnostic fee is set. */
     diagnosisUrl?: string | null;
+    /** Photos or screenshots the invoice was made from (assistant). */
+    attachments?: { id: number; url: string }[];
 }) {
     const canViewHistory = Boolean(usePage().props.auth.can?.viewChangeLog);
     const t = useTrans();
@@ -906,6 +909,37 @@ export default function BillingShow({
                                 reason: doc.decline_reason,
                             })}
                         </p>
+                    )}
+
+                    {attachments.length > 0 && (
+                        <section
+                            className="space-y-2"
+                            data-test="invoice-attachments"
+                        >
+                            <h2 className="text-base font-medium">
+                                {t('invoices.attachments')}
+                            </h2>
+                            <div className="flex flex-wrap gap-2">
+                                {attachments.map((attachment, index) => (
+                                    <a
+                                        key={attachment.id}
+                                        href={attachment.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="da-press block"
+                                    >
+                                        <img
+                                            src={attachment.url}
+                                            alt={t('invoices.attachment', {
+                                                number: index + 1,
+                                            })}
+                                            loading="lazy"
+                                            className="size-24 rounded-xl border object-cover"
+                                        />
+                                    </a>
+                                ))}
+                            </div>
+                        </section>
                     )}
 
                     {/* Customer signature: taken when the work is done and invoiced */}

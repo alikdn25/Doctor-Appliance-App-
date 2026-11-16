@@ -32,7 +32,7 @@ class AssistantTools
     private const LIMIT = 50;
 
     /** Raised whenever the tool list changes: a conversation keeps the tools it started with. */
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     public function __construct(
         private readonly AssistantActions $actions,
@@ -93,6 +93,11 @@ class AssistantTools
             $tool('propose_booking', 'Propose creating a new booking: pass everything the user said about it (customer, phone, address, appliance, problem, time) as text. After Confirm the booking form opens filled in; the user saves it.', [
                 'text' => ['type' => 'string'],
             ], ['text']),
+            [
+                'name' => 'create_invoice',
+                'description' => 'Propose an invoice read from the photos/screenshots or the text the user sent: customer name, phone, email, address, work lines with their amounts and whether the amounts include tax. The app finds or creates the customer, calculates the company\'s taxes and the total itself and shows a preview card with Confirm & send, Edit and Cancel. Nothing is saved or sent until the user presses a button. Never invent a phone number or an amount: if one is missing, ask the user instead of calling this tool.',
+                'inputSchema' => InvoiceDraft::schema(),
+            ],
         ];
     }
 
@@ -117,6 +122,7 @@ class AssistantTools
                 'propose_payment_reminder' => $this->actions->propose(AssistantAction::PAYMENT_REMINDER, $input, $user, $conversation),
                 'propose_reschedule' => $this->actions->propose(AssistantAction::RESCHEDULE, $input, $user, $conversation),
                 'propose_booking' => $this->actions->propose(AssistantAction::BOOKING, $input, $user, $conversation),
+                'create_invoice' => $this->actions->propose(AssistantAction::INVOICE, $input, $user, $conversation),
                 default => ['error' => 'Unknown tool.'],
             };
         } catch (AssistantError $e) {

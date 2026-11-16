@@ -675,6 +675,42 @@ body:has(.da-pinned) .da-create-fab {
     display: none;
 }
 
+/* The phone keyboard is open (useViewportKeyboard): the tab bar and the "+" give their place to it. */
+html[data-keyboard='open'] .da-tabbar,
+html[data-keyboard='open'] .da-create-fab,
+html[data-keyboard='open'] .da-bottom-spacer {
+    display: none;
+}
+
+/* A chat composer docked at the bottom (ChatDock): right above the tab bar, or right on top of the keyboard while
+   it is open (with interactive-widget=resizes-content the window ends at the keyboard; on iOS --app-kb-inset lifts
+   it). The "+" and the layout's bottom room are not needed on these screens. */
+body:has(.da-chat-dock) .da-create-fab,
+body:has(.da-chat-dock) .da-bottom-spacer {
+    display: none;
+}
+
+@media (max-width: 767.98px) {
+    .da-chat-dock {
+        position: fixed;
+        inset-inline: 0;
+        bottom: calc(var(--app-tabbar-h, 0px) + var(--app-kb-inset, 0px));
+        z-index: 40;
+        padding-bottom: max(
+            0.75rem,
+            calc(env(safe-area-inset-bottom) - var(--app-tabbar-h, 0px))
+        );
+    }
+
+    html[data-keyboard='open'] .da-chat-dock {
+        padding-bottom: 0.5rem;
+    }
+
+    .da-chat-spacer {
+        height: calc(var(--chat-dock-h, 4.5rem) + var(--app-tabbar-h, 0px));
+    }
+}
+
 /* A screen with its own header (ScreenHeader) replaces the default header content. The unfinished-jobs bar
    stays on every screen (SPEC §6). */
 .da-header:has(.da-header-slot > *) .da-header-default {

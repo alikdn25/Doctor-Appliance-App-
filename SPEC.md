@@ -390,6 +390,16 @@ time. A daily request limit per company is set in `.env` (`AI_DAILY_LIMIT_PER_CO
   create a booking (the text goes to the Quick booking parser and the same filled form opens). Before any action the
   assistant shows a "what I will do" card with Confirm and Cancel; nothing runs without Confirm. Every action goes to
   the change log marked "AI assistant". The assistant cannot delete anything.
+- The composer sits right above the bottom bar, and right on top of the keyboard while typing (the bar hides). A
+  microphone next to Send dictates with the browser's speech recognition (EN / RU, remembered per user); nothing is
+  sent by itself. The same composer and microphone are used in the SMS chat and Quick booking.
+- Invoice from photos: up to 5 photos or screenshots (shrunk on the phone to 1600 px) go to `AI_MODEL_ASSISTANT` with
+  the text. Tool `create_invoice`: the AI passes the customer (name, phone, email, address), work lines with amounts
+  and whether the amounts include tax; code calculates the company's taxes and the total. A preview card (Confirm &
+  send, Edit, Cancel); nothing is stored before a button. Confirm & send: customer found by phone or email (else
+  created), invoice on the customer's open job (else a Completed job for today), photos saved as invoice attachments,
+  link by SMS and by email when mail is set up. Edit: saved, not sent, the invoice editor opens. Without a phone or an
+  amount the assistant asks; it never invents them.
 
 #### 7.15.3 Import customers and invoice history from Square (PR 3)
 

@@ -9,9 +9,11 @@ use App\Services\AI\AiService;
 use App\Services\AI\AiUnavailable;
 use App\Services\AI\Assistant\AssistantActions;
 use App\Services\AI\Assistant\AssistantChat;
+use App\Services\AI\Assistant\AssistantPhotos;
 use App\Services\AI\Problems\ProblemFinder;
 use App\Services\AI\QuickBookingParser;
 use App\Support\Customers\CustomerFinder;
+use App\Support\PrivateMedia;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -19,6 +21,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 /**
@@ -45,8 +48,11 @@ class AssistantController extends Controller
         Gate::authorize('useAssistant');
 
         $data = $request->validate([
-            'question' => ['required', 'string', 'max:2000'],
+            'question' => ['required_without:photos', 'nullable', 'string', 'max:2000'],
             'conversation' => ['required', 'uuid'],
+            // Photos or screenshots (an invoice to read), already shrunk on the phone.
+            'photos' => ['nullable', 'array', 'max:'.AssistantPhotos::MAX],
+            'photos.*' => ['image', 'mimes:jpg,jpeg,png,webp,gif', 'max:6144'],
         ]);
         $user = $request->user();
         $conversation = $data['conversation'];
@@ -59,8 +65,10 @@ class AssistantController extends Controller
             $conversation = (string) Str::uuid();
         }
 
+        $photos = AssistantPhotos::store(array_values($request->file('photos', [])), currentCompany()->id, $user->id);
+
         try {
-            $chat->ask($user, $conversation, trim($data['question']));
+            $chat->ask($user, $conversation, trim((string) ($data['question'] ?? '')), $photos);
             $error = null;
             $status = 200;
         } catch (AiLimitReached) {
@@ -95,6 +103,20 @@ class AssistantController extends Controller
         return response()->json(['conversation' => $conversation, 'items' => $chat->items($user, $conversation), 'message' => $error], $status);
     }
 
+    /**
+     * A photo sent with a question, only to the person who sent it.
+     */
+    public function photo(Request $request, AssistantMessage $message, int $index): StreamedResponse
+    {
+        Gate::authorize('useAssistant');
+        abort_unless($message->user_id === $request->user()->id, 403);
+
+        $photo = AssistantPhotos::of($message)[$index] ?? null;
+        abort_if($photo === null, 404);
+
+        return PrivateMedia::response($photo['path']);
+    }
+
     public function fresh(): JsonResponse
     {
         Gate::authorize('useAssistant');
@@ -115,8 +137,11 @@ class AssistantController extends Controller
         $taken = AssistantAction::query()->whereKey($action->id)->where('status', 'pending')->update(['status' => 'running']);
         abort_if($taken === 0, 409);
 
+        // An invoice: "Confirm & send" (send = true) or "Edit" (saved as a draft to edit, nothing sent).
+        $send = $request->input('mode', 'send') !== 'edit';
+
         try {
-            $result = $actions->confirm($action, $request->user(), $parser, $finder);
+            $result = $actions->confirm($action, $request->user(), $parser, $finder, $send);
             $action->forceFill(['status' => 'confirmed', 'result' => $result['message'], 'decided_at' => now()])->save();
         } catch (ValidationException $e) {
             $action->forceFill(['status' => 'failed', 'result' => collect($e->errors())->flatten()->first(), 'decided_at' => now()])->save();
@@ -127,7 +152,7 @@ class AssistantController extends Controller
             $action->forceFill(['status' => 'failed', 'result' => __('assistant.actions.not_possible'), 'decided_at' => now()])->save();
         }
 
-        return response()->json(['action' => AssistantChat::action($action), 'booking' => $result['booking'] ?? null]);
+        return response()->json(['action' => AssistantChat::action($action), 'booking' => $result['booking'] ?? null, 'redirect' => $result['redirect'] ?? null]);
     }
 
     public function cancel(Request $request, AssistantAction $action): JsonResponse

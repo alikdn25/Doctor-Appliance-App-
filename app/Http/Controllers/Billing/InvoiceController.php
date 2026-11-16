@@ -16,6 +16,7 @@ use App\Messaging\ReviewRequests;
 use App\Models\Customer;
 use App\Models\Estimate;
 use App\Models\Invoice;
+use App\Models\InvoiceAttachment;
 use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Payments\PaymentProviders;
@@ -23,6 +24,7 @@ use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\Warranties;
 use App\Support\Jobs\JobPresenter;
+use App\Support\PrivateMedia;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +32,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvoiceController extends Controller
 {
@@ -288,6 +291,11 @@ class InvoiceController extends Controller
             'today' => $this->today(),
             'online' => $this->online($invoice, $providers, $links),
             'delivery' => BillingPresenter::delivery($invoice),
+            // Photos or screenshots the invoice was made from (assistant).
+            'attachments' => $invoice->attachments()->get()->map(fn (InvoiceAttachment $a) => [
+                'id' => $a->id,
+                'url' => route('invoices.attachment', [$invoice, $a]),
+            ])->values(),
             'sms' => $invoice->isVoid() ? null : app(MessagingPresenter::class)->forDocument($invoice),
             // "Send Google Review request?" asked after every invoice send (SPEC §8).
             'reviewPrompt' => $invoice->isVoid() ? null : app(ReviewRequests::class)->prompt($invoice),
@@ -322,6 +330,17 @@ class InvoiceController extends Controller
                 ? ['url' => $link->url, 'amount' => $link->amount, 'currency' => $link->currency]
                 : null,
         ];
+    }
+
+    /**
+     * A photo or screenshot attached to the invoice, to whoever can see the invoice.
+     */
+    public function attachment(Invoice $invoice, InvoiceAttachment $attachment): StreamedResponse
+    {
+        Gate::authorize('view', $invoice);
+        abort_unless($attachment->invoice_id === $invoice->id, 404);
+
+        return PrivateMedia::response($attachment->path);
     }
 
     public function edit(Invoice $invoice): Response

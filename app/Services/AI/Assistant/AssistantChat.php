@@ -58,11 +58,15 @@ class AssistantChat
      *
      * @throws AiUnavailable
      */
-    public function ask(User $user, string $conversation, string $question): void
+    /**
+     * @param  list<array{type: 'image', path: string, media_type: string}>  $photos  Stored photos sent with the question.
+     */
+    public function ask(User $user, string $conversation, string $question, array $photos = []): void
     {
         $company = currentCompany();
         $now = CarbonImmutable::now($company->timezone);
-        $this->append($user, $conversation, 'user', [['type' => 'text', 'text' => "[Now: {$now->format('Y-m-d H:i, l')}]\n{$question}"]], $question);
+        $prefix = $photos === [] ? '' : '[Photos attached: '.count($photos)."]\n";
+        $this->append($user, $conversation, 'user', [...$photos, ['type' => 'text', 'text' => "[Now: {$now->format('Y-m-d H:i, l')}]\n{$prefix}{$question}"]], $question);
 
         for ($round = 0; $round < self::MAX_ROUNDS; $round++) {
             $response = $this->ai->send(
@@ -107,7 +111,7 @@ class AssistantChat
         $messages = AssistantMessage::query()
             ->where('user_id', $user->id)->where('conversation', $conversation)->whereNotNull('text')
             ->orderBy('id')->get()
-            ->map(fn (AssistantMessage $m) => ['kind' => 'message', 'id' => 'm'.$m->id, 'from' => $m->role, 'text' => $m->text, 'at' => $m->created_at->toIso8601String(), 'sort' => [$m->id, 0, 0]]);
+            ->map(fn (AssistantMessage $m) => ['kind' => 'message', 'id' => 'm'.$m->id, 'from' => $m->role, 'text' => $m->text, 'photos' => self::photoUrls($m), 'at' => $m->created_at->toIso8601String(), 'sort' => [$m->id, 0, 0]]);
 
         $actions = AssistantAction::query()
             ->where('user_id', $user->id)->where('conversation', $conversation)
@@ -127,7 +131,32 @@ class AssistantChat
      */
     public static function action(AssistantAction $a): array
     {
-        return ['kind' => 'action', 'id' => 'a'.$a->id, 'action_id' => $a->id, 'type' => $a->type, 'summary' => $a->summary, 'status' => $a->status, 'result' => $a->result, 'at' => $a->created_at->toIso8601String()];
+        return [
+            'kind' => 'action', 'id' => 'a'.$a->id, 'action_id' => $a->id, 'type' => $a->type, 'summary' => $a->summary,
+            'status' => $a->status, 'result' => $a->result, 'at' => $a->created_at->toIso8601String(),
+            // The invoice preview card: customer, lines, taxes and total as calculated by the app.
+            'invoice' => $a->type === AssistantAction::INVOICE ? [
+                ...collect($a->params['draft'])->only(['customer', 'job_number', 'lines', 'taxes', 'subtotal', 'tax_total', 'total', 'currency', 'prices_include_tax', 'amounts_include_tax', 'notes'])->all(),
+                'photos' => count((array) ($a->params['photos'] ?? [])),
+            ] : null,
+        ];
+    }
+
+    /**
+     * Links to the photos sent with a question (served after an access check).
+     *
+     * @return list<string>
+     */
+    private static function photoUrls(AssistantMessage $message): array
+    {
+        if ($message->role !== 'user') {
+            return [];
+        }
+
+        return array_map(
+            fn (int $index) => route('assistant.photo', ['message' => $message->id, 'index' => $index]),
+            array_keys(AssistantPhotos::of($message)),
+        );
     }
 
     /**
@@ -174,9 +203,13 @@ class AssistantChat
               items. Mention job, invoice and estimate numbers so they can be found.
             - Look up data with the tools; never guess numbers. Tools only read data of this company.
             - You can only propose actions: an SMS payment reminder for an invoice, moving a booking to another date or window,
-              or opening a new booking. Use the propose_* tools; the owner sees a card with Confirm and Cancel. Never say an
-              action is done: it is done only after they press Confirm. You cannot delete or change anything else; say so if
-              asked.
+              opening a new booking, or an invoice (create_invoice). Use those tools; the owner sees a card with buttons.
+              Never say an action is done: it is done only after they press Confirm. You cannot delete or change anything
+              else; say so if asked.
+            - Invoices from photos or screenshots (a work order, a note, a message): read the customer's name, phone, email,
+              address and the work lines with their amounts, and whether the amounts include tax, then call create_invoice.
+              Never add tax lines or a total yourself: the app calculates the company's taxes and the total. If the phone
+              number or an amount is missing or unreadable, ask the owner for it; never invent or guess one.
             - "Today", "tomorrow", "this week" count from the current date in the company time zone.
             TEXT;
     }

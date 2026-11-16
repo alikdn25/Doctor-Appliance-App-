@@ -4,6 +4,7 @@ namespace App\Services\AI;
 
 use Anthropic\Client;
 use Anthropic\Core\Exceptions\AnthropicException;
+use App\Services\AI\Assistant\AssistantPhotos;
 
 /**
  * The Messages API through the official PHP SDK. No fallbacks: a feature always runs on its own model.
@@ -59,19 +60,21 @@ class AnthropicTransport implements AiTransport
 
     /**
      * Stored messages back into the request: a tool call without arguments must stay a JSON object ({}), which
-     * decoding turned into an empty list.
+     * decoding turned into an empty list; a stored photo (image block with a path) goes as a base64 image.
      *
      * @param  list<array<string, mixed>>  $messages
      * @return list<array<string, mixed>>
      */
-    private static function messages(array $messages): array
+    public static function messages(array $messages): array
     {
         return array_map(function (array $message) {
             if (is_array($message['content'] ?? null)) {
                 $message['content'] = array_map(
-                    fn ($block) => is_array($block) && ($block['type'] ?? null) === 'tool_use' && ($block['input'] ?? []) === []
-                        ? [...$block, 'input' => new \stdClass]
-                        : $block,
+                    fn ($block) => match (true) {
+                        is_array($block) && ($block['type'] ?? null) === 'tool_use' && ($block['input'] ?? []) === [] => [...$block, 'input' => new \stdClass],
+                        is_array($block) && ($block['type'] ?? null) === 'image' && isset($block['path']) => AssistantPhotos::toApi($block),
+                        default => $block,
+                    },
                     $message['content'],
                 );
             }

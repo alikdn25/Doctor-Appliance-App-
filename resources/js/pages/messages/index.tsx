@@ -33,13 +33,16 @@ import type { Paginated } from '@/components/pagination-links';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
 import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
+import { ChatDock } from '@/components/ui/chat-dock';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FilterChips } from '@/components/ui/filter-chips';
 import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MicButton } from '@/components/ui/mic-button';
 import { SearchField } from '@/components/ui/search-field';
 import { Textarea } from '@/components/ui/textarea';
+import { scrollToPageEnd } from '@/hooks/use-viewport-keyboard';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
@@ -99,87 +102,95 @@ function Composer({ conversation }: { conversation: Conversation }) {
     };
 
     return (
-        <form
-            onSubmit={submit}
-            className="da-pinned da-action-bar sticky bottom-0 z-30 -mx-4 space-y-2 border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-mx-6 md:mx-0 md:rounded-2xl md:border"
-        >
-            {(blocked || fromPhone) && (
-                <p role="status" className="text-xs text-muted-foreground">
-                    {blocked ??
-                        (conversation.sms_mode === 'technician_phone'
-                            ? t('messages.chat.replies_to_phone')
-                            : t('messages.inbox.phone_mode_hint'))}
-                </p>
-            )}
-            <div className="flex items-end gap-2">
-                {conversation.templates.length > 0 && blocked === null && (
-                    <ActionSheet
-                        title={t('messages.chat.templates')}
-                        description={t('messages.chat.template_hint')}
-                        trigger={(open) => (
-                            <IconButton
-                                label={t('messages.chat.templates')}
-                                onClick={open}
-                                data-test="chat-templates"
-                            >
-                                <Zap />
-                            </IconButton>
-                        )}
-                        items={conversation.templates.map((template) => ({
-                            key: template.key,
-                            label: template.label,
-                            onSelect: () => form.setData('body', template.text),
-                        }))}
-                    />
+        <ChatDock>
+            <form onSubmit={submit} className="space-y-2">
+                {(blocked || fromPhone) && (
+                    <p role="status" className="text-xs text-muted-foreground">
+                        {blocked ??
+                            (conversation.sms_mode === 'technician_phone'
+                                ? t('messages.chat.replies_to_phone')
+                                : t('messages.inbox.phone_mode_hint'))}
+                    </p>
                 )}
-                <Label htmlFor="sms-reply" className="sr-only">
-                    {t('messages.chat.message')}
-                </Label>
-                <Textarea
-                    id="sms-reply"
-                    value={form.data.body}
-                    onChange={(event) =>
-                        form.setData('body', event.target.value)
-                    }
-                    maxLength={1600}
-                    rows={1}
-                    disabled={blocked !== null}
-                    placeholder={t('messages.inbox.reply_placeholder')}
-                    className="[field-sizing:content] max-h-40 min-h-11 flex-1 resize-none"
-                />
-                {fromPhone ? (
-                    <IconButton
-                        label={t('messages.inbox.from_my_phone')}
-                        variant="primary"
-                        asChild={body !== ''}
-                        disabled={body === ''}
-                    >
-                        {body !== '' ? (
-                            <a
-                                href={smsUrl(conversation.phone, body)}
-                                onClick={() => form.reset('body')}
-                            >
-                                <Smartphone />
-                            </a>
-                        ) : (
-                            <Smartphone />
-                        )}
-                    </IconButton>
-                ) : (
-                    <IconButton
-                        type="submit"
-                        label={t('messages.send_sms')}
-                        variant="primary"
-                        disabled={
-                            form.processing || blocked !== null || body === ''
+                <div className="flex items-end gap-2">
+                    {conversation.templates.length > 0 && blocked === null && (
+                        <ActionSheet
+                            title={t('messages.chat.templates')}
+                            description={t('messages.chat.template_hint')}
+                            trigger={(open) => (
+                                <IconButton
+                                    label={t('messages.chat.templates')}
+                                    onClick={open}
+                                    data-test="chat-templates"
+                                >
+                                    <Zap />
+                                </IconButton>
+                            )}
+                            items={conversation.templates.map((template) => ({
+                                key: template.key,
+                                label: template.label,
+                                onSelect: () =>
+                                    form.setData('body', template.text),
+                            }))}
+                        />
+                    )}
+                    <Label htmlFor="sms-reply" className="sr-only">
+                        {t('messages.chat.message')}
+                    </Label>
+                    <Textarea
+                        id="sms-reply"
+                        value={form.data.body}
+                        onChange={(event) =>
+                            form.setData('body', event.target.value)
                         }
-                    >
-                        <Send />
-                    </IconButton>
-                )}
-            </div>
-            <InputError message={form.errors.body ?? form.errors.phone} />
-        </form>
+                        maxLength={1600}
+                        rows={1}
+                        disabled={blocked !== null}
+                        placeholder={t('messages.inbox.reply_placeholder')}
+                        className="[field-sizing:content] max-h-40 min-h-11 min-w-0 flex-1 resize-none"
+                    />
+                    {blocked === null && (
+                        <MicButton
+                            value={form.data.body}
+                            onChange={(value) => form.setData('body', value)}
+                        />
+                    )}
+                    {fromPhone ? (
+                        <IconButton
+                            label={t('messages.inbox.from_my_phone')}
+                            variant="primary"
+                            asChild={body !== ''}
+                            disabled={body === ''}
+                        >
+                            {body !== '' ? (
+                                <a
+                                    href={smsUrl(conversation.phone, body)}
+                                    onClick={() => form.reset('body')}
+                                >
+                                    <Smartphone />
+                                </a>
+                            ) : (
+                                <Smartphone />
+                            )}
+                        </IconButton>
+                    ) : (
+                        <IconButton
+                            type="submit"
+                            label={t('messages.send_sms')}
+                            variant="primary"
+                            disabled={
+                                form.processing ||
+                                blocked !== null ||
+                                body === ''
+                            }
+                        >
+                            <Send />
+                        </IconButton>
+                    )}
+                </div>
+                <InputError message={form.errors.body ?? form.errors.phone} />
+            </form>
+        </ChatDock>
     );
 }
 
@@ -201,14 +212,13 @@ function Chat({
         conversation.messages.total > conversation.messages.data.length,
     );
     const [loading, setLoading] = useState(false);
-    const end = useRef<HTMLDivElement>(null);
     const top = useRef<HTMLDivElement>(null);
     const newestId = conversation.messages.data[0]?.id;
     const messages = [...conversation.messages.data, ...earlier];
     const oldestId = messages[messages.length - 1]?.id;
 
     useEffect(() => {
-        end.current?.scrollIntoView({ block: 'end' });
+        scrollToPageEnd();
     }, [newestId]);
 
     const loadEarlier = async () => {
@@ -338,7 +348,7 @@ function Chat({
 
             <section
                 aria-label={t('messages.inbox.conversation')}
-                className="mx-auto flex min-h-[calc(100dvh-9rem)] w-full max-w-3xl flex-col px-4 pt-3 sm:px-6"
+                className="mx-auto flex min-h-[calc(var(--app-vvh,100dvh)-9rem)] w-full max-w-3xl flex-col px-4 pt-3 sm:px-6"
             >
                 <div ref={top} />
                 {hasMore && (
@@ -362,7 +372,7 @@ function Chat({
                         <ChatThread messages={messages} showJobLinks />
                     )}
                 </div>
-                <div className="h-3" ref={end} />
+                <div className="h-3" />
                 <Composer
                     key={conversation.phone}
                     conversation={conversation}
