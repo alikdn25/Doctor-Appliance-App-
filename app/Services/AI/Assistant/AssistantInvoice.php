@@ -151,10 +151,10 @@ class AssistantInvoice
      */
     private function newJob(Customer $customer, array $draft, User $user): ServiceJob
     {
-        $property = $customer->primaryProperty()->first() ?? $customer->properties()->orderBy('id')->first();
-        if ($property === null) {
-            throw ValidationException::withMessages(['address' => __('assistant.invoice.no_address')]);
-        }
+        // Without an address the job keeps the customer's empty one, filled in later (as in Book customer).
+        $property = $customer->primaryProperty()->first()
+            ?? $customer->properties()->orderBy('id')->first()
+            ?? $this->saveProperty->empty($customer);
 
         $limited = $user->limitedBrandIds();
         $brand = Brand::query()->where('is_active', true)

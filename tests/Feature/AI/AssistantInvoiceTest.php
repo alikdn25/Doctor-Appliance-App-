@@ -321,3 +321,17 @@ test('more than 5 photos are refused', function () {
         'photos' => array_map(fn ($i) => UploadedFile::fake()->image("p{$i}.jpg", 50, 50), range(1, 6)),
     ], ['Accept' => 'application/json'])->assertStatus(422);
 });
+
+test('a new customer without an address still gets the invoice on a job with an empty address', function () {
+    proposeInvoice(invoiceInput(['customer_name' => 'No Address', 'phone' => '778-555-0177']));
+    $action = inCompany($this->company, fn () => AssistantAction::query()->sole());
+
+    $this->postJson(route('assistant.actions.confirm', $action))->assertOk()->assertJsonPath('action.status', 'confirmed');
+
+    inCompany($this->company, function () {
+        $customer = Customer::query()->where('first_name', 'No')->sole();
+        $job = ServiceJob::query()->where('customer_id', $customer->id)->sole();
+        expect($job->property->line1)->toBeNull()
+            ->and(Invoice::query()->sole()->service_job_id)->toBe($job->id);
+    });
+});

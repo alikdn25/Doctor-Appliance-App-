@@ -17,6 +17,9 @@ class JobBacklog
 {
     public const REASONS = ['draft', 'overdue', 'needs_schedule', 'need_to_order_parts', 'waiting_for_parts', 'waiting_for_customer', 'on_hold', 'scheduled'];
 
+    /** Filters of the strip and the Open list: the reasons, plus jobs booked without an address (in any reason). */
+    public const FILTERS = [...self::REASONS, 'no_address'];
+
     private const REASON_SQL = "CASE
         WHEN status = 'booking_draft' THEN 'draft'
         WHEN status = 'need_to_order_parts' THEN 'need_to_order_parts'
@@ -41,6 +44,7 @@ class JobBacklog
             ->whereNull('outcome')
             ->whereNull('closed_at')
             ->select('service_jobs.*')
+            ->selectRaw("exists (select 1 from properties p where p.id = service_jobs.property_id and coalesce(p.line1, '') <> '') as has_address")
             ->withExists([
                 'visits as has_open_visit' => $open,
                 'visits as has_overdue_visit' => fn (Builder $visits) => $open($visits)->where('scheduled_end', '<', $now),
@@ -59,7 +63,7 @@ class JobBacklog
     /**
      * One aggregate query; never loads the entire queue into memory.
      *
-     * @return array{total: int, counts: array<string, int>}
+     * @return array{total: int, counts: array<string, int>, no_address: int}
      */
     public static function summary(User $user): array
     {
@@ -74,6 +78,9 @@ class JobBacklog
             $counts[$group->backlog_reason] = (int) $group->job_count;
         }
 
-        return ['total' => array_sum($counts), 'counts' => $counts];
+        // Jobs booked without an address, counted apart (they also sit in one of the reasons).
+        $counts['no_address'] = self::query($user)->where('has_address', false)->count();
+
+        return ['total' => array_sum(array_intersect_key($counts, array_flip(self::REASONS))), 'counts' => $counts, 'no_address' => $counts['no_address']];
     }
 }

@@ -1,4 +1,5 @@
 import { AlarmClock, AlertTriangle, ArrowRightLeft, Check } from 'lucide-react';
+import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import type { DragEvent, TouchEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { statusLook } from '@/lib/status';
@@ -467,7 +468,9 @@ export function DayGrid({
                                                         · #{visit.job.number}
                                                     </span>
                                                     <span className="block truncate text-muted-foreground">
-                                                        {visit.job.address}
+                                                        {visit.job.address || (
+                                                            <NoAddressBadge />
+                                                        )}
                                                     </span>
                                                 </button>
                                                 {onSitePx > windowPx && (

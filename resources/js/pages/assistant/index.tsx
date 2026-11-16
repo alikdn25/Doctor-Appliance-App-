@@ -26,7 +26,7 @@ import { scrollToPageEnd } from '@/hooks/use-viewport-keyboard';
 import { xsrfToken } from '@/lib/http';
 import { compressImage } from '@/lib/image';
 import { useTrans } from '@/lib/i18n';
-import { QUICK_BOOKING_RESULT_KEY } from '@/lib/quick-booking';
+import { handQuickResult } from '@/lib/quick-booking';
 import { cn } from '@/lib/utils';
 import { ask, findProblems, newChat } from '@/routes/assistant';
 import { cancel, confirm } from '@/routes/assistant/actions';
@@ -451,17 +451,10 @@ function ActionCard({
                     if (body.action) onDecided(body.action);
                     // A new booking: the same filled form as Quick booking.
                     if (body.booking) {
-                        try {
-                            sessionStorage.setItem(
-                                QUICK_BOOKING_RESULT_KEY,
-                                JSON.stringify(body.booking),
-                            );
-                            router.visit(
-                                create({ query: { book: 1, quick: 1 } }).url,
-                            );
-                        } catch {
-                            // Without storage the form cannot be filled; the card says what happened.
-                        }
+                        handQuickResult(body.booking);
+                        router.visit(
+                            create({ query: { book: 1, quick: 1 } }).url,
+                        );
                     }
                 },
             )

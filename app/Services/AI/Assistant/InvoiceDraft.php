@@ -71,8 +71,8 @@ class InvoiceDraft
     }
 
     /**
-     * Checks the AI's input and prices it. Anything missing that cannot be guessed (phone, an amount, an address when
-     * a job has to be made) comes back as an error telling the AI what to ask.
+     * Checks the AI's input and prices it. Anything missing that cannot be guessed (the phone, an amount) comes back
+     * as an error telling the AI what to ask. An address is optional: a job without one keeps an empty address.
      *
      * @param  array<string, mixed>  $input
      * @return array<string, mixed> The preview: customer, lines (minor units, in the invoice's price mode), taxes, totals.
@@ -123,9 +123,6 @@ class InvoiceDraft
         }
 
         $job = $customer === null ? null : self::openJob($customer);
-        if ($job === null && ! $hasAddress && ($customer === null || ! $customer->properties()->exists())) {
-            throw new AssistantError('The service address is missing (a job is created for the invoice and needs one). Ask the user for the address.');
-        }
 
         $includeTax = (bool) ($input['amounts_include_tax'] ?? false);
         $taxes = self::taxes();

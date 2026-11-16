@@ -23,13 +23,47 @@
    from the company number (Automatic SMS mode) and emailed when mail is set up. Edit: same, nothing sent, the invoice
    editor opens. Requests count in `AI_DAILY_LIMIT_PER_COMPANY`; change log "AI assistant".
 
-- **Migration** `2026_11_16_000100_create_invoice_attachments` (new table only; nothing existing changes).
+- **Migration** `2026_11_16_000200_create_invoice_attachments` (new table only; nothing existing changes).
 - Tests: `AssistantInvoiceTest` (customer by phone / email, other company never matched, GST/PST with and without tax,
   company with tax in prices, nothing created or sent before Confirm, Cancel, missing phone/amount, Confirm & send to an
   open job with SMS and email, new customer with a Completed job for today, Edit, photos to the AI as images and to the
   attachments, daily limit, max 5 photos), tenant isolation (invoice attachments); browser `zz-assistant-composer`
   (composer on the bottom bar and on the keyboard, photo thumbnails, EN / RU).
 - Next: check on a real Android phone in Chrome and in the installed app (keyboard, microphone permission, camera).
+
+# November 16 — Booking saves with any data, two booking buttons, new technician choice
+
+1. **Book customer saves with any data** (`JobRequest` with `quick_booking`): no required field; Finish booking is
+   always active and the "To save, add: …" line is gone. No customer chosen = a new one (name and phone optional; a
+   phone, when given, must be a real number). Brand and job type fall back to the company's first active brand and
+   Repair. The full job form ("⋯", New job) keeps its old rules.
+2. **No address**: migration `2026_11_16_000100_allow_bookings_without_address` makes `properties.line1` and `city`
+   nullable. A job without an address keeps its customer's empty address (`SaveProperty::empty`), filled later in
+   place. `Property::hasAddress()`; `fullAddress()` is "" then. Orange "No address" tag (`NoAddressBadge`) on My Jobs
+   cards, in the calendar (day, week, list, details) and on the job page; Navigate and On my way open the address entry;
+   the Map leaves such jobs out; the strip and the Open list have a "No address" counter/filter (`JobBacklog::FILTERS`).
+3. **No time**: a "No time" chip in When saves the job without a visit; the "Needs scheduling" counter is now "No time".
+4. **Job page**: Add address and Paste from message (`jobs.fill-from-message`: fills only empty name, phone, email,
+   address and problem).
+5. **Confirmation**: the Address line is left out when there is no address (`MessageTemplates::render`); without a phone
+   (and email) nothing goes and no error is shown.
+6. **AI model number**: only when it looks like one (`QuickBookingParser::modelNumber`: capitals and digits, ≥ 3
+   characters, a digit); "YG.Y" is dropped. Website booking bot: name, address and problem optional (phone, date and
+   window stay required). The assistant uses the same form.
+7. **Two booking buttons** (`BookingButtons`) in "+", My Jobs, Jobs (Open) and the calendar: Quick booking (violet
+   gradient, ✨, glow — the only violet in the app; Waiting for parts is now teal, Refunded slate) and Book customer
+   (white raised, pen).
+8. **Nothing kept after closing**: Quick booking text and the AI result live in memory only (`lib/quick-booking.ts`), no
+   sessionStorage/localStorage; ✕, back, save and draft clear them; no "Discard?" prompt; "Back to the text" keeps it.
+9. **Technician** (`TechnicianCards`) above When: horizontal raised cards (initials + name), "Me" first with a gold
+   ring and a star (default unless My menu = Office → Unassigned), the team by name, Unassigned last; green/red dot =
+   free/busy in the chosen window; free windows follow the chosen technician. Hidden in a one-person company, where
+   the job goes to that person (`SaveJob`).
+10. Tests: `BookingAnyDataTest` (no address, only phone, no data, no time, default technician, one-person company,
+    confirmation, map, paste on job page, model filter); browser `zz-quick-booking.spec.ts` (two buttons, text and
+    form empty after closing, technician row); older specs updated.
+
+- Next: owner checks the new booking flow on the phone after deploy.
 
 # November 16 — Quick booking understands Russian dictation
 

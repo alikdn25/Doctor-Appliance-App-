@@ -42,7 +42,8 @@ class JobBacklogController extends Controller
 
         return JobBacklog::query($user)
             ->search($filters['search'])
-            ->when($filters['reason'] !== '', fn ($query) => $query->where('backlog_reason', $filters['reason']))
+            ->when($filters['reason'] === 'no_address', fn ($query) => $query->where('has_address', false))
+            ->when(! in_array($filters['reason'], ['', 'no_address'], true), fn ($query) => $query->where('backlog_reason', $filters['reason']))
             ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
             ->when(Gate::forUser($user)->allows('viewAny', Invoice::class), fn ($q) => $q->with('invoices'))
             ->when(

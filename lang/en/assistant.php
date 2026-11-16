@@ -104,7 +104,6 @@ return [
         'sms_off' => 'Not texted: SMS from the company number is off.',
         'email_sent' => 'Emailed to :email.',
         'email_failed' => 'The email could not be sent.',
-        'no_address' => 'The customer has no address. Add one and try again.',
         'no_brand' => 'There is no active brand to put the job under.',
     ],
 ];

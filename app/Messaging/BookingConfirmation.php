@@ -72,6 +72,11 @@ class BookingConfirmation
 
         $email = $customer->primaryEmail()->value('email');
 
+        // A booking saved without a phone: nothing goes and no error is shown (owner's update, November 16).
+        if ($phone === null && $email === null) {
+            return ['channel' => null, 'to' => null, 'reason' => null];
+        }
+
         return $email === null
             ? ['channel' => null, 'to' => null, 'reason' => $reason]
             : ['channel' => self::EMAIL, 'to' => $email, 'reason' => $reason];

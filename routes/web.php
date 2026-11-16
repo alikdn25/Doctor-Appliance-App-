@@ -50,6 +50,7 @@ use App\Http\Controllers\Jobs\JobCostController;
 use App\Http\Controllers\Jobs\JobDetailsController;
 use App\Http\Controllers\Jobs\JobFieldController;
 use App\Http\Controllers\Jobs\JobMessageController;
+use App\Http\Controllers\Jobs\JobMessageFillController;
 use App\Http\Controllers\Jobs\JobNoteController;
 use App\Http\Controllers\Jobs\JobStatusController;
 use App\Http\Controllers\Jobs\JobWarrantyController;
@@ -198,6 +199,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('technicians/load', [AssignmentController::class, 'load'])->name('technicians.load');
         Route::get('team/{membership}/open-visits', [AssignmentController::class, 'openVisits'])->name('technicians.open-visits');
         Route::put('jobs/{job}/address', JobAddressController::class)->name('jobs.address');
+        Route::post('jobs/{job}/fill-from-message', JobMessageFillController::class)->middleware('throttle:30,1')->name('jobs.fill-from-message');
         Route::put('jobs/{job}/details', JobDetailsController::class)->name('jobs.details');
         Route::put('jobs/{job}/technician', [AssignmentController::class, 'assign'])->name('jobs.technician');
         Route::post('visits/transfer', [AssignmentController::class, 'transfer'])->name('visits.transfer');

@@ -10,6 +10,7 @@ const REASONS = [
     'overdue',
     'draft',
     'needs_schedule',
+    'no_address',
     'need_to_order_parts',
     'waiting_for_parts',
     'waiting_for_customer',
@@ -19,7 +20,7 @@ const REASONS = [
 
 /**
  * The persistent strip above the header on every screen (SPEC §6, UX-REDESIGN §5.2): the number of unfinished
- * jobs and a counter per category (zeros hidden; Overdue in red, Drafts in orange). A tap opens the unfinished jobs with that filter.
+ * jobs and a counter per category (zeros hidden; Overdue in red, Drafts and No address in orange). A tap opens the unfinished jobs with that filter.
  */
 export function UnfinishedJobsBar() {
     const { unfinishedJobs } = usePage().props;
@@ -58,6 +59,7 @@ export function UnfinishedJobsBar() {
                             'inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-background px-3 text-xs font-medium',
                             reason === 'overdue' && 'bg-danger text-white',
                             reason === 'draft' && 'da-draft-chip',
+                            reason === 'no_address' && 'da-no-address',
                         )}
                     >
                         {t(`jobs.backlog.reasons.${reason}`)}

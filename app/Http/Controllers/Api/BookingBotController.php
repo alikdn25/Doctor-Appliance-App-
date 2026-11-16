@@ -50,14 +50,16 @@ class BookingBotController extends Controller
     public function storeCustomer(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'first_name' => ['required', 'string', 'max:100'],
+            // A booking saves with any data (owner's update, November 16); the phone stays: it is how the bot finds
+            // the customer again and the only way to reach them.
+            'first_name' => ['nullable', 'string', 'max:100'],
             'last_name' => ['nullable', 'string', 'max:100'],
             'phone' => ['required', 'string', 'max:40'],
             'email' => ['nullable', 'email', 'max:255'],
-            'address' => ['required', 'array'],
-            'address.line1' => ['required', 'string', 'max:255'],
+            'address' => ['nullable', 'array'],
+            'address.line1' => ['nullable', 'string', 'max:255'],
             'address.unit' => ['nullable', 'string', 'max:50'],
-            'address.city' => ['required', 'string', 'max:100'],
+            'address.city' => ['nullable', 'string', 'max:100'],
             'address.region' => ['nullable', 'string', 'max:100'],
             'address.postal_code' => ['nullable', 'string', 'max:20'],
             'address.access_notes' => ['nullable', 'string', 'max:500'],
@@ -77,7 +79,7 @@ class BookingBotController extends Controller
             'address_id' => ['nullable', 'integer'],
             'date' => ['required', 'date_format:Y-m-d'],
             'start' => ['required', 'date_format:H:i'],
-            'problem' => ['required', 'string', 'max:1000'],
+            'problem' => ['nullable', 'string', 'max:1000'],
             'appliance' => ['nullable', 'string', 'max:100'],
         ]);
 

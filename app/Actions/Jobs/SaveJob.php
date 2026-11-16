@@ -9,6 +9,7 @@ use App\Models\Appliance;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\JobBringItem;
+use App\Models\Membership;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\User;
@@ -31,7 +32,7 @@ class SaveJob
      * @param  array<string, mixed>  $attributes  Job fields (brand_id, property_id, job_type, ...).
      * @param  list<int>  $applianceIds  Existing appliances at the property.
      * @param  list<array<string, mixed>>  $newAppliances  Appliances to add at the property.
-     * @param  array{customer: array<string, mixed>, phones: list<array<string, mixed>>, emails: list<array<string, mixed>>, property: array<string, mixed>}|null  $newCustomer
+     * @param  array{customer: array<string, mixed>, phones: list<array<string, mixed>>, emails: list<array<string, mixed>>, property: array<string, mixed>|null}|null  $newCustomer
      * @param  array{attributes: array<string, mixed>, assignee_ids: list<int>}|null  $visit
      * @param  list<array{description: string, quantity: string}>|null  $bringItems
      * @param  array<string, mixed>|null  $newProperty  Address typed for an existing customer.
@@ -69,6 +70,11 @@ class SaveJob
             }
 
             /** @var Customer $customer */
+            // Booked without an address: the customer's empty address until one is added (the job shows "No address").
+            if (blank($attributes['property_id'] ?? null)) {
+                $attributes['property_id'] = $this->saveProperty->empty($customer)->id;
+            }
+
             if ($billing !== null) {
                 $customer->fill($billing)->save();
             }
@@ -92,7 +98,7 @@ class SaveJob
             $this->changeStatus->created($job, $user);
 
             if ($visit !== null) {
-                $this->saveVisit->handle($job, null, $visit['attributes'], $visit['assignee_ids'], $user);
+                $this->saveVisit->handle($job, null, $visit['attributes'], $visit['assignee_ids'] ?: $this->onlyMember(), $user);
             }
 
             return $job;
@@ -153,6 +159,20 @@ class SaveJob
         foreach ($newAppliances as $attributes) {
             $this->addAppliance($job, $attributes);
         }
+    }
+
+    /**
+     * A company of one person: an unassigned visit goes to them.
+     *
+     * @return list<int>
+     */
+    private function onlyMember(): array
+    {
+        $members = Membership::query()->where('is_active', true)->limit(2)->get();
+
+        return $members->count() === 1 && Membership::query()->assignable()->whereKey($members->first()->id)->exists()
+            ? [(int) $members->first()->user_id]
+            : [];
     }
 
     /**

@@ -130,7 +130,7 @@ class BookingBot
      * A new customer with a phone, an optional email and the address of the visit. A phone that is already a
      * customer's returns that customer unchanged (the bot never edits customers).
      *
-     * @param  array{first_name: string, last_name?: string|null, phone: string, email?: string|null, address: array<string, mixed>}  $data
+     * @param  array{first_name?: string|null, last_name?: string|null, phone: string, email?: string|null, address?: array<string, mixed>|null}  $data
      * @return array{customer_id: int, address_id: int|null, existing: bool}
      */
     public function createCustomer(array $data): array
@@ -145,13 +145,14 @@ class BookingBot
             null,
             [
                 'type' => 'residential',
-                'first_name' => trim($data['first_name']),
+                'first_name' => filled($data['first_name'] ?? null) ? trim((string) $data['first_name']) : null,
                 'last_name' => filled($data['last_name'] ?? null) ? trim((string) $data['last_name']) : null,
                 'lead_source' => LeadSource::Website->value,
             ],
             [['label' => 'mobile', 'number' => $data['phone'], 'is_primary' => true]],
             filled($data['email'] ?? null) ? [['label' => 'personal', 'email' => mb_strtolower((string) $data['email']), 'is_primary' => true]] : [],
-            [...$data['address'], 'is_primary' => true],
+            // Without a street the job gets an empty address and shows "No address".
+            filled($data['address']['line1'] ?? null) ? [...$data['address'], 'is_primary' => true] : null,
         );
 
         return ['customer_id' => $customer->id, 'address_id' => $customer->primaryProperty()->value('id'), 'existing' => false];
@@ -160,19 +161,16 @@ class BookingBot
     /**
      * Books a job in a free window. The window must be one freeWindows() offers right now.
      *
-     * @param  array{customer_id: int, address_id?: int|null, date: string, start: string, problem: string, appliance?: string|null}  $data
+     * @param  array{customer_id: int, address_id?: int|null, date: string, start: string, problem?: string|null, appliance?: string|null}  $data
      */
     public function book(BotToken $token, array $data): ServiceJob
     {
         $company = $token->company;
         $customer = Customer::query()->findOrFail($data['customer_id']);
+        // No address: SaveJob gives the job the customer's empty address ("No address").
         $property = filled($data['address_id'] ?? null)
             ? $customer->properties()->findOrFail($data['address_id'])
             : $customer->primaryProperty()->first();
-
-        if ($property === null) {
-            throw ValidationException::withMessages(['address_id' => __('bot.errors.no_address')]);
-        }
 
         $date = CarbonImmutable::createFromFormat('Y-m-d', $data['date'], $company->timezone);
         $window = collect($this->freeWindows($company, $date->startOfDay(), 1))
@@ -189,16 +187,16 @@ class BookingBot
         }
 
         $at = fn (string $time) => CarbonImmutable::createFromFormat('Y-m-d H:i', "{$window['date']} {$time}", $company->timezone)->utc();
-        $description = trim(implode(' • ', array_filter([$data['appliance'] ?? null, $data['problem']])));
+        $description = trim(implode(' • ', array_filter([$data['appliance'] ?? null, $data['problem'] ?? null])));
 
         return $this->saveJob->create(
             $customer,
             [
                 'brand_id' => $brandId,
-                'property_id' => $property->id,
+                'property_id' => $property?->id,
                 'job_type' => JobType::Repair->value,
                 'lead_source' => LeadSource::Website->value,
-                'description' => mb_substr($description, 0, 1000),
+                'description' => $description === '' ? null : mb_substr($description, 0, 1000),
             ],
             [],
             [],

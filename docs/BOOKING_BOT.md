@@ -57,6 +57,9 @@ Only the first name and the street of each address, so the bot can confirm "Is i
 }
 ```
 
+Only `phone` is required; name, email and address may be left out. Without `address.line1` the customer gets an empty
+address and the job shows "No address" until the office adds one (`address_id` is then that empty address).
+
 `201` `{"customer_id": 40, "address_id": 51, "existing": false}`. A phone that already belongs to a customer returns
 `200` with that customer and `"existing": true` (nothing is changed).
 
@@ -72,6 +75,9 @@ Only the first name and the street of each address, so the bot can confirm "Is i
     "problem": "Does not drain"
 }
 ```
+
+`customer_id`, `date` and `start` are required; `address_id`, `appliance` and `problem` are optional (no address: the
+customer's main address, or an empty one marked "No address").
 
 `201` `{"job_number": 1042, "date": "2026-10-19", "start": "11:00", "end": "13:00"}`. The job is created as a repair
 from the website, with a visit in that window and nobody assigned yet. A window taken in the meantime returns `422`

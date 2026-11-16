@@ -13,7 +13,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ApplianceTypePicker } from '@/components/appliance-image';
 import {
     AddressEntry,
-    addressComplete,
     emptyAddress,
 } from '@/components/customers/address-entry';
 import { verifyAddress } from '@/components/customers/address-autocomplete';
@@ -21,6 +20,8 @@ import { CustomerNotes } from '@/components/customers/customer-notes';
 import { FormField } from '@/components/form-field';
 import InputError from '@/components/input-error';
 import type { Assignable } from '@/components/jobs/types';
+import { TechnicianCards } from '@/components/jobs/technician-cards';
+import type { TechnicianCard } from '@/components/jobs/technician-cards';
 import { ScreenHeader } from '@/components/screen-header';
 import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
@@ -39,7 +40,11 @@ import { cn } from '@/lib/utils';
 import { index as brandsPage } from '@/routes/brands';
 import { create, index, lookup, parseMessage, store } from '@/routes/jobs';
 import { quickBooking } from '@/routes/jobs';
-import { QUICK_BOOKING_RESULT_KEY } from '@/lib/quick-booking';
+import {
+    clearBooking,
+    handJobDraft,
+    takeQuickResult as takeHandedResult,
+} from '@/lib/quick-booking';
 import { trackSearch } from '@/lib/usage';
 import { xsrfToken } from '@/lib/http';
 import {
@@ -174,20 +179,14 @@ const UNSURE_KEYS: Record<string, string> = {
 
 const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
-/** Reads (and removes) the Quick booking result once; null on a normal visit. */
+/** Takes the Quick booking result once (in memory); null on a normal visit. */
 const takeQuickResult = (): QuickResult | null => {
     if (typeof window === 'undefined') return null;
     if (new URLSearchParams(window.location.search).get('quick') !== '1') {
         return null;
     }
-    try {
-        const raw = sessionStorage.getItem(QUICK_BOOKING_RESULT_KEY);
-        sessionStorage.removeItem(QUICK_BOOKING_RESULT_KEY);
 
-        return raw ? (JSON.parse(raw) as QuickResult) : null;
-    } catch {
-        return null;
-    }
+    return takeHandedResult<QuickResult>();
 };
 
 /** An on/off switch as a whole raised row (one tap). */
@@ -236,10 +235,9 @@ type Busy = { date: string; start: string; end: string };
 type Slot =
     | { kind: 'now' }
     | ({ kind: 'window' } & Window)
-    | { kind: 'custom' };
-
-/** Where the full job form picks up what was typed here ("Open full job form"). */
-export const JOB_DRAFT_KEY = 'job-draft';
+    | { kind: 'custom' }
+    // "No time": the job is saved without a visit and shows under No time in Not completed jobs.
+    | { kind: 'none' };
 
 const toMinutes = (hhmm: string) =>
     Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
@@ -370,7 +368,7 @@ function Step({
  * Book customer (UX-REDESIGN §7.1, §25) on one page, in the order of a phone call: Phone (a caller already in the
  * book is offered after 3 digits), Name (the magnifier searches by name), Appliance, Problem, When (day chips and
  * the company's arrival windows; "Now" first for today), Technician (free / busy in that window), Address
- * (optional) and More details. Book is pinned at the bottom with what is still missing; ✕ cancels and "⋯" opens
+ * (optional) and More details. Finish booking is pinned at the bottom and always active; ✕ closes and "⋯" opens
  * the full job form with what was typed.
  */
 export default function QuickBook({
@@ -389,6 +387,7 @@ export default function QuickBook({
     bookingTechnicians = [],
     busy = {},
     closedDays = [],
+    soloCompany = false,
     customer: initialCustomer,
 }: {
     booking: boolean;
@@ -407,6 +406,8 @@ export default function QuickBook({
     bookingTechnicians?: { id: number; name: string }[];
     busy?: Record<number, Busy[]>;
     closedDays?: string[];
+    /** One person in the company: no technician choice, the job goes to them. */
+    soloCompany?: boolean;
     customer: CustomerChoice | null;
 }) {
     const t = useTrans();
@@ -972,12 +973,24 @@ export default function QuickBook({
         // Once, on opening from Quick booking.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+    // Closing the form (✕, back, saved, saved as a draft) keeps nothing; only "Back to the text" keeps the text.
+    const toText = useRef(false);
+    useEffect(
+        () => () => {
+            if (!toText.current) clearBooking();
+        },
+        [],
+    );
 
     // Free windows of the next days (company windows not taken by every technician; "Now" first for today),
     // offered when the text named no day or window.
     const freeWindows = useMemo(() => {
         const options: { date: string; slot: Slot; label: string }[] = [];
-        const people = bookingTechnicians.map((p) => p.id);
+        // For the chosen technician; Unassigned: free for anyone.
+        const people =
+            technicianId !== null
+                ? [technicianId]
+                : bookingTechnicians.map((p) => p.id);
         const free = (date: string, w: Window) =>
             people.length === 0 ||
             people.some(
@@ -1010,7 +1023,15 @@ export default function QuickBook({
         }
 
         return options.slice(0, 6);
-    }, [arrivalWindows, bookingTechnicians, busy, closedDays, nowTime, today]);
+    }, [
+        arrivalWindows,
+        bookingTechnicians,
+        busy,
+        closedDays,
+        nowTime,
+        technicianId,
+        today,
+    ]);
 
     const phoneValid =
         existing || isPossiblePhone(data.new_customer.phone, country);
@@ -1019,33 +1040,6 @@ export default function QuickBook({
         (phoneTouched && data.new_customer.phone.trim() && !phoneValid
             ? t('jobs.quick.phone_invalid')
             : undefined);
-    // What is still missing, said next to Book.
-    const missing = [
-        !existing &&
-            !data.new_customer.phone.trim() &&
-            t('jobs.quick.missing.phone'),
-        !existing &&
-            !!data.new_customer.phone.trim() &&
-            !phoneValid &&
-            t('jobs.quick.missing.valid_phone'),
-        !existing && !nameTerm && t('jobs.quick.missing.name'),
-        ((!existing && !addressComplete(data.new_customer.property)) ||
-            (needsAddress && !addressComplete(data.new_property)) ||
-            (existing && !needsAddress && !data.property_id)) &&
-            t('jobs.quick.missing.address'),
-        !data.brand_id && t('jobs.quick.missing.brand'),
-        booking &&
-            (!data.visit.date || !times.start || times.end <= times.start) &&
-            t('jobs.quick.missing.time'),
-    ].filter((item): item is string => !!item);
-    const ready = missing.length === 0;
-    const dirty =
-        data.new_customer.phone !== '' ||
-        nameTerm !== '' ||
-        data.new_customer.property.line1 !== '' ||
-        data.description !== '' ||
-        applianceType !== '';
-
     const sending = useRef(false);
     const [saveMode, setSaveMode] = useState<'finish' | 'draft'>('finish');
     const submit = (event: FormEvent) => {
@@ -1054,7 +1048,8 @@ export default function QuickBook({
     };
     const submitAs = (mode: 'finish' | 'draft') => {
         // A double tap fires twice before `processing` re-renders: the ref stops the second job.
-        if (!ready || form.processing || sending.current) return;
+        // Every field is optional (owner's update, November 16): Finish booking is always active.
+        if (form.processing || sending.current) return;
         sending.current = true;
         lookupAbort.current?.abort();
         // An appliance of that type already at the address is linked instead of added twice.
@@ -1068,6 +1063,7 @@ export default function QuickBook({
             ...(needsAddress ? { new_property, property_id: null } : {}),
             // The billing address goes with the switch: off = the job address is the customer's own.
             ...(occupantOn ? { billing } : {}),
+            add_visit: booking && slot.kind !== 'none',
             visit: { ...d.visit, start_time: times.start, end_time: times.end },
             ...(applianceType === ''
                 ? {}
@@ -1090,8 +1086,9 @@ export default function QuickBook({
         });
     };
 
+    // ✕ closes without asking; nothing typed is kept (a new booking always opens empty).
     const cancel = () => {
-        if (dirty && !confirm(t('jobs.quick.discard'))) return;
+        clearBooking();
         if (window.history.length > 1) {
             window.history.back();
         } else {
@@ -1099,21 +1096,14 @@ export default function QuickBook({
         }
     };
     const openFullForm = () => {
-        try {
-            sessionStorage.setItem(
-                JOB_DRAFT_KEY,
-                JSON.stringify({
-                    customer_id: data.customer_id,
-                    phone: data.new_customer.phone,
-                    name: nameTerm,
-                    description: data.description,
-                    notes: data.notes,
-                    appliance_type: applianceType,
-                }),
-            );
-        } catch {
-            // Without storage the full form simply opens empty.
-        }
+        handJobDraft({
+            customer_id: data.customer_id,
+            phone: data.new_customer.phone,
+            name: nameTerm,
+            description: data.description,
+            notes: data.notes,
+            appliance_type: applianceType,
+        });
         router.visit(
             create({
                 query: data.customer_id
@@ -1146,8 +1136,8 @@ export default function QuickBook({
         }
     };
     const pickWindow = (start: string) => {
-        if (start === 'now') {
-            setSlot({ kind: 'now' });
+        if (start === 'now' || start === 'none') {
+            setSlot({ kind: start });
             return;
         }
         const window = arrivalWindows.find((w) => w.start === start);
@@ -1167,20 +1157,46 @@ export default function QuickBook({
             new Date(`1970-01-01T${w.start}:00Z`),
             new Date(`1970-01-01T${w.end}:00Z`),
         );
-    // "free" or "busy 9–11" for each technician in the chosen day and time.
-    const availability = (userId: number) => {
+    // The technician's visit that clashes with the chosen day and time, if any.
+    const clashFor = (userId: number) => {
         const slotTimes = slot.kind === 'now' ? nowRange(userId) : times;
-        const clash = (busy[userId] ?? []).find(
+
+        return (busy[userId] ?? []).find(
             (b) =>
                 b.date === data.visit.date &&
                 b.start < slotTimes.end &&
                 b.end > slotTimes.start,
         );
-
-        return clash
-            ? t('jobs.quick.busy', { time: range(clash) })
-            : t('jobs.quick.free');
     };
+    // Who goes: "Me" first, the team by name, Unassigned last; a dot says free or busy in the chosen window.
+    // A company of one person has no choice: the job goes to them.
+    const meId = auth.user?.id ?? null;
+    const showTechnicians =
+        !soloCompany &&
+        bookingTechnicians.length > 0 &&
+        !auth.company?.works_alone;
+    const technicianCards: TechnicianCard[] = [
+        ...[...bookingTechnicians]
+            .sort((a, b) => (a.id === meId ? -1 : b.id === meId ? 1 : 0))
+            .map((user) => {
+                const clash =
+                    slot.kind === 'none' ? undefined : clashFor(user.id);
+
+                return {
+                    id: user.id as number | null,
+                    name: user.name,
+                    me: user.id === meId,
+                    free: slot.kind === 'none' ? undefined : !clash,
+                    hint:
+                        slot.kind === 'none'
+                            ? undefined
+                            : clash
+                              ? t('jobs.quick.busy', { time: range(clash) })
+                              : t('jobs.quick.free'),
+                };
+            }),
+        { id: null, name: t('calendar.unassigned') },
+    ];
     const pickedOutsideChips =
         data.visit.date > addDays(today, 6) || data.visit.date < today;
     const pickedLabel = new Intl.DateTimeFormat(locale, {
@@ -1290,6 +1306,9 @@ export default function QuickBook({
                         <Link
                             href={quickBooking()}
                             className="inline-flex min-h-11 items-center font-medium text-link"
+                            onClick={() => {
+                                toText.current = true;
+                            }}
                         >
                             {t('jobs.quick_booking.back_to_text')}
                         </Link>
@@ -1734,6 +1753,22 @@ export default function QuickBook({
                     />
                 </FormField>
 
+                {booking && showTechnicians && (
+                    <Step title={t('jobs.quick.technician')}>
+                        <TechnicianCards
+                            label={t('jobs.quick.technician')}
+                            cards={technicianCards}
+                            value={technicianId}
+                            onChange={(id) =>
+                                setVisit({
+                                    assignee_ids: id === null ? [] : [id],
+                                })
+                            }
+                        />
+                        <InputError message={assigneeError} />
+                    </Step>
+                )}
+
                 {booking && (
                     <Step title={t('jobs.quick.when')} className={hl('when')}>
                         {quickInfo?.needsTime && freeWindows.length > 0 && (
@@ -1852,15 +1887,26 @@ export default function QuickBook({
                                       }
                                     : undefined
                             }
+                            trailing={{
+                                value: 'none',
+                                label: t('jobs.quick.no_time'),
+                            }}
                             value={
                                 slot.kind === 'now'
                                     ? 'now'
-                                    : slot.kind === 'window'
-                                      ? slot.start
-                                      : null
+                                    : slot.kind === 'none'
+                                      ? 'none'
+                                      : slot.kind === 'window'
+                                        ? slot.start
+                                        : null
                             }
                             onChange={pickWindow}
                         />
+                        {slot.kind === 'none' && (
+                            <p className="text-xs text-muted-foreground">
+                                {t('jobs.quick.no_time_hint')}
+                            </p>
+                        )}
                         {slot.kind === 'now' && (
                             <p className="text-xs text-muted-foreground">
                                 {t('jobs.quick.now_hint', {
@@ -1924,19 +1970,21 @@ export default function QuickBook({
                                 </FormField>
                             </div>
                         ) : (
-                            <button
-                                type="button"
-                                className="min-h-11 text-sm font-medium text-link"
-                                onClick={() => {
-                                    setVisit({
-                                        start_time: times.start,
-                                        end_time: times.end,
-                                    });
-                                    setSlot({ kind: 'custom' });
-                                }}
-                            >
-                                {t('jobs.quick.custom_time')}
-                            </button>
+                            slot.kind !== 'none' && (
+                                <button
+                                    type="button"
+                                    className="min-h-11 text-sm font-medium text-link"
+                                    onClick={() => {
+                                        setVisit({
+                                            start_time: times.start,
+                                            end_time: times.end,
+                                        });
+                                        setSlot({ kind: 'custom' });
+                                    }}
+                                >
+                                    {t('jobs.quick.custom_time')}
+                                </button>
+                            )
                         )}
                         <InputError
                             message={
@@ -1947,59 +1995,6 @@ export default function QuickBook({
                         />
                     </Step>
                 )}
-
-                {booking &&
-                    bookingTechnicians.length > 0 &&
-                    !auth.company?.works_alone && (
-                        <Step title={t('jobs.quick.technician')}>
-                            <div
-                                role="radiogroup"
-                                aria-label={t('jobs.quick.technician')}
-                                className="flex flex-wrap gap-2"
-                            >
-                                {[
-                                    ...bookingTechnicians.map((user) => ({
-                                        id: user.id as number | null,
-                                        name: user.name,
-                                        hint: availability(user.id),
-                                    })),
-                                    {
-                                        id: null,
-                                        name: t('calendar.unassigned'),
-                                        hint: '',
-                                    },
-                                ].map((choice) => (
-                                    <button
-                                        key={choice.id ?? 'none'}
-                                        type="button"
-                                        role="radio"
-                                        aria-checked={
-                                            technicianId === choice.id
-                                        }
-                                        onClick={() =>
-                                            setVisit({
-                                                assignee_ids:
-                                                    choice.id === null
-                                                        ? []
-                                                        : [choice.id],
-                                            })
-                                        }
-                                        className="da-chip da-press flex min-h-12 flex-col items-start justify-center rounded-2xl px-4 text-left"
-                                    >
-                                        <span className="text-sm font-semibold">
-                                            {choice.name}
-                                        </span>
-                                        {choice.hint && (
-                                            <span className="text-xs opacity-80">
-                                                {choice.hint}
-                                            </span>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                            <InputError message={assigneeError} />
-                        </Step>
-                    )}
 
                 {/* More details, folded: about the customer, brand, source, notes for the team. */}
                 <details
@@ -2147,22 +2142,6 @@ export default function QuickBook({
 
                 <StickyActionBar>
                     <div className="flex w-full flex-col gap-2">
-                        <p
-                            role="status"
-                            data-test="booking-status"
-                            className={cn(
-                                'min-w-0 text-sm',
-                                ready
-                                    ? 'font-semibold text-success'
-                                    : 'text-muted-foreground',
-                            )}
-                        >
-                            {ready
-                                ? t('jobs.quick.ready')
-                                : t('jobs.quick.missing.intro', {
-                                      items: missing.join(', '),
-                                  })}
-                        </p>
                         {booking ? (
                             // Finish booking sends the confirmation by itself; Save as draft sends nothing yet.
                             <div className="grid grid-cols-[2fr_3fr] gap-2">
@@ -2170,7 +2149,6 @@ export default function QuickBook({
                                     type="button"
                                     size="lg"
                                     variant="outline"
-                                    disabled={!ready}
                                     loading={
                                         form.processing && saveMode === 'draft'
                                     }
@@ -2182,7 +2160,6 @@ export default function QuickBook({
                                 <Button
                                     type="submit"
                                     size="lg"
-                                    disabled={!ready}
                                     loading={
                                         form.processing && saveMode === 'finish'
                                     }
@@ -2196,7 +2173,6 @@ export default function QuickBook({
                                 type="submit"
                                 size="lg"
                                 className="w-full"
-                                disabled={!ready}
                                 loading={form.processing}
                             >
                                 {t('jobs.quick.continue_invoice')}
