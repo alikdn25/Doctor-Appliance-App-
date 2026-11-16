@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import type { InertiaLinkProps } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
+import { usePublishedHeight } from '@/hooks/use-published-height';
 import { cn } from '@/lib/utils';
 
 export type BottomNavItem = {
@@ -32,8 +33,14 @@ export function BottomNav({
     inline?: boolean;
     className?: string;
 }) {
+    // Its height (0 while hidden), so a docked chat composer sits right above it.
+    const bar = usePublishedHeight<HTMLElement>(
+        inline ? '--app-tabbar-inline-h' : '--app-tabbar-h',
+    );
+
     return (
         <nav
+            ref={bar}
             aria-label={label}
             data-slot="bottom-nav"
             className={cn(
@@ -54,7 +61,8 @@ export function BottomNav({
                         <span
                             className={cn(
                                 'relative inline-flex h-8 w-12 items-center justify-center rounded-xl [&_svg]:size-5',
-                                item.primary && 'da-primary h-10 w-12 rounded-[14px]',
+                                item.primary &&
+                                    'da-primary h-10 w-12 rounded-[14px]',
                                 item.active && !item.primary && 'da-soft',
                             )}
                         >

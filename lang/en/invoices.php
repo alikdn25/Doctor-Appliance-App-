@@ -86,4 +86,6 @@ return [
         'has_payments' => 'Void the payments of this invoice first.',
         'total_below_paid' => 'The total cannot be less than what has already been paid.',
     ],
+    'attachments' => 'Attachments',
+    'attachment' => 'Attachment :number',
 ];

@@ -4,7 +4,8 @@ import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
-import { StickyActionBar } from '@/components/ui/sticky-action-bar';
+import { ChatDock } from '@/components/ui/chat-dock';
+import { MicButton } from '@/components/ui/mic-button';
 import { Textarea } from '@/components/ui/textarea';
 import { xsrfToken } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
@@ -18,8 +19,8 @@ import { create } from '@/routes/jobs';
 import { parse } from '@/routes/jobs/quick-booking';
 
 /**
- * Quick booking (Owner and Office): one big text field — typed, dictated with the phone keyboard's microphone or an
- * SMS pasted in — and Parse. The AI reads it and the usual Book customer form opens filled in; nothing is saved until
+ * Quick booking (Owner and Office): one big text field — typed, dictated (the microphone next to Parse, EN / RU, or
+ * the keyboard's) or an SMS pasted in — and Parse, docked right on top of the keyboard while typing. The AI reads it and the usual Book customer form opens filled in; nothing is saved until
  * the person presses Save there. When the AI does not answer, the message is shown and the text stays.
  *
  * The text lives in memory only: closing this screen (✕, back, a swipe) empties it; it is kept only on the way to the
@@ -97,7 +98,7 @@ export default function QuickBooking() {
                     autoFocus
                     rows={12}
                     maxLength={5000}
-                    className="min-h-[50vh] text-base"
+                    className="min-h-[calc(var(--app-vvh,100dvh)*0.4)] text-base"
                     placeholder={t('jobs.quick_booking.placeholder')}
                     value={text}
                     onChange={(event) => {
@@ -115,18 +116,28 @@ export default function QuickBooking() {
                         {error}
                     </p>
                 )}
-                <StickyActionBar>
-                    <Button
-                        type="submit"
-                        size="lg"
-                        className="w-full"
-                        disabled={text.trim() === ''}
-                        loading={parsing}
-                        data-test="quick-booking-parse"
-                    >
-                        <Sparkles /> {t('jobs.quick_booking.parse')}
-                    </Button>
-                </StickyActionBar>
+                <ChatDock scrollOnKeyboard={false}>
+                    <div className="flex items-end gap-2">
+                        <MicButton
+                            value={text}
+                            onChange={(value) => {
+                                setText(value);
+                                setError(null);
+                            }}
+                            disabled={parsing}
+                        />
+                        <Button
+                            type="submit"
+                            size="lg"
+                            className="min-w-0 flex-1"
+                            disabled={text.trim() === ''}
+                            loading={parsing}
+                            data-test="quick-booking-parse"
+                        >
+                            <Sparkles /> {t('jobs.quick_booking.parse')}
+                        </Button>
+                    </div>
+                </ChatDock>
             </form>
         </>
     );

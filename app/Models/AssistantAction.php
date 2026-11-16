@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 /**
- * An action the assistant proposed ("what I will do"): a payment reminder, moving a booking or a new booking. It runs
+ * An action the assistant proposed ("what I will do"): a payment reminder, moving a booking, a new booking or an
+ * invoice read from photos or text. It runs
  * only when the person presses Confirm; Cancel drops it.
  *
  * @property int $id
@@ -31,6 +32,8 @@ class AssistantAction extends Model
     public const RESCHEDULE = 'reschedule';
 
     public const BOOKING = 'booking';
+
+    public const INVOICE = 'invoice';
 
     protected $fillable = ['user_id', 'conversation', 'after_message_id', 'type', 'params', 'summary', 'status', 'result', 'decided_at'];
 
