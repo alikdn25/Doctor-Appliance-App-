@@ -30,4 +30,14 @@ return [
     'opt_in_keywords' => ['START', 'UNSTOP', 'YES'],
     'help_keywords' => ['HELP', 'INFO'],
 
+    /*
+    | Missed-call text (Settings → Auto messages): needs calls to the company number to go through Telnyx (a Call
+    | Control / TeXML application on the number whose webhook is /webhooks/voice/telnyx). Off until that is set up.
+    */
+    'missed_calls' => [
+        'enabled' => (bool) env('TELNYX_VOICE_ENABLED', false),
+        // Telnyx hangup causes that mean nobody answered.
+        'causes' => ['originator_cancel', 'timeout', 'no_answer', 'busy', 'user_busy', 'call_rejected', 'unanswered'],
+    ],
+
 ];

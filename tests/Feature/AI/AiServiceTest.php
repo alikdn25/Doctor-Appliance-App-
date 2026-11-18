@@ -25,7 +25,7 @@ beforeEach(function () {
 });
 
 test('each feature always uses its own model', function () {
-    config(['ai.daily_limit' => 10]);
+    config(['ai.daily_limit' => 50]);
     $fake = FakeAiTransport::install('ok');
     $ai = app(AiService::class);
 
@@ -33,9 +33,12 @@ test('each feature always uses its own model', function () {
         $ai->send($feature, $this->company, $this->user, 'system', [['role' => 'user', 'content' => 'hi']]);
     }
 
-    expect(array_column($fake->requests, 'model'))->toBe([
+    $models = ['booking' => 'claude-haiku-5-5', 'assistant' => 'claude-sonnet-5-5', 'review' => 'claude-opus-5-5'];
+    expect(array_slice(array_column($fake->requests, 'model'), 0, 5))->toBe([
         'claude-haiku-5-5', 'claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5',
-    ]);
+    ])->and(array_column($fake->requests, 'model'))->toBe(array_map(fn (AiFeature $f) => $models[$f->modelKey()], AiFeature::cases()));
+    // Reading a text and quick edits use the booking model; photos, voice and receipts the assistant model.
+    expect(AiFeature::SmsTriage->modelKey())->toBe('booking')->and(AiFeature::SmsPhoto->modelKey())->toBe('assistant');
 });
 
 test('every request is logged with company, user, model, tokens, cost and time', function () {

@@ -98,7 +98,7 @@ class Messenger
      * An SMS to a number that belongs to no customer yet (the office texting a new lead from the inbox), or a
      * "not sent" record saying why. Only the office sees it: it has no customer and no job.
      */
-    public function smsToNumber(string $number, string $body, User $user): Message
+    public function smsToNumber(string $number, string $body, ?User $user, MessageKind $kind = MessageKind::General): Message
     {
         $company = currentCompany();
         $account = SmsAccount::query()->first();
@@ -107,14 +107,14 @@ class Messenger
         $message = Message::query()->create([
             'direction' => Message::OUTBOUND,
             'channel' => Message::SMS,
-            'kind' => MessageKind::General,
+            'kind' => $kind,
             'to' => $number,
             'from' => $account?->phone_number,
             'body' => $body,
             'status' => $reason === null ? 'scheduled' : 'blocked',
             'status_reason' => $reason,
             'send_after' => $reason === null ? QuietHours::nextAllowed($company) : null,
-            'user_id' => $user->id,
+            'user_id' => $user?->id,
         ]);
 
         if ($reason === null) {

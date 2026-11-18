@@ -6,6 +6,7 @@ use App\Enums\JobStatus;
 use App\Enums\VisitStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Tasks\TaskController;
+use App\Messaging\SmsThreads;
 use App\Models\Appliance;
 use App\Models\Company;
 use App\Models\JobVisit;
@@ -52,6 +53,7 @@ class CalendarController extends Controller
             ->get();
 
         $conflicts = DispatchConflicts::find($visits, $company->travel_buffer_minutes);
+        $unread = SmsThreads::unreadByCustomer($user, $visits->pluck('job.customer_id')->filter()->unique()->values()->all());
         $brandIds = $user->limitedBrandIds();
 
         return Inertia::render('calendar/index', [
@@ -71,7 +73,7 @@ class CalendarController extends Controller
             // Tasks ("+ → Task") of the shown days, in their own colour.
             'tasks' => TaskController::between($user, $from, $to),
             'visits' => $visits->map(fn (JobVisit $visit) => [
-                ...$this->visit($visit, $timezone),
+                ...$this->visit($visit, $timezone, $unread),
                 'conflict' => in_array($visit->id, $conflicts, true),
                 'movable' => $visit->status === VisitStatus::Scheduled
                     && $visit->job->status->allowsVisitWork()
@@ -89,7 +91,10 @@ class CalendarController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function visit(JobVisit $visit, string $timezone): array
+    /**
+     * @param  array<int, int>  $unread  Unread texts per customer (new-message badge).
+     */
+    private function visit(JobVisit $visit, string $timezone, array $unread = []): array
     {
         $job = $visit->job;
         $start = $visit->scheduled_start->setTimezone($timezone);
@@ -117,6 +122,7 @@ class CalendarController extends Controller
                     ? ['lat' => (float) $job->property->latitude, 'lng' => (float) $job->property->longitude]
                     : null,
                 'appliances' => $job->appliances->map(fn (Appliance $a) => $a->label())->values(),
+                'new_messages' => JobPresenter::isOpen($job) ? ($unread[$job->customer_id] ?? 0) : 0,
             ],
         ];
     }

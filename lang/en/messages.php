@@ -84,6 +84,7 @@ return [
         'review_request' => 'Review request',
         'general' => 'Text from the job',
         'reply' => 'Reply',
+        'auto_reply' => 'Auto reply',
     ],
 
     // Default texts (English). Companies edit their own in Messaging settings. Placeholders in {braces}.

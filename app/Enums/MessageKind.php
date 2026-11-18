@@ -16,6 +16,8 @@ enum MessageKind: string
     case ReviewRequest = 'review_request';
     case General = 'general';
     case Reply = 'reply';
+    /** Sent by the app itself (Auto messages): an auto reply to a text or a missed call. */
+    case AutoReply = 'auto_reply';
 
     public function label(): string
     {

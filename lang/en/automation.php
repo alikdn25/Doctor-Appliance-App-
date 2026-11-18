@@ -1,0 +1,85 @@
+<?php
+
+// Owner's task of November 18: the AI reads texts, reminders, auto replies, "Possible warranty".
+return [
+    'inbox' => [
+        'urgent' => 'Urgent',
+        'ai_title' => 'AI suggests',
+        'preview' => 'Preview',
+        'confirm' => 'Confirm',
+        'dismiss' => 'Dismiss',
+        'done' => 'Done',
+        'done_hint' => 'Handled without a reply: reminders stop.',
+        'done_saved' => 'Marked as done. Reminders stopped.',
+        'awaiting' => 'Waiting for a reply',
+        'use_draft' => 'Use reply draft',
+        'draft_label' => 'Reply draft',
+        'draft_inserted' => 'AI draft in the reply box — check it and press Send.',
+        'actions' => [
+            'book' => 'Book a visit',
+            'reschedule' => 'Move to another day',
+            'change_time' => 'Change the time',
+            'cancel' => 'Cancel the job',
+        ],
+        'preview_book' => 'Opens Book customer filled in from this text. Nothing is saved until you press Save.',
+        'preview_cancel' => 'Job :job (:customer) will be cancelled. The customer is not texted.',
+        'preview_move' => 'Job :job: :from → :to. The customer is not texted; reply in the chat.',
+        'preview_gone' => 'This visit no longer exists.',
+        'plate_title' => 'Rating plate in the photo',
+        'plate_preview' => 'Brand :brand, model :model, serial :serial → job :job',
+        'plate_attach' => 'Attach to job',
+        'plate_saved' => 'Brand, model and serial saved on job :job.',
+        'no_open_job' => '(no open job)',
+        'moved' => 'Job :job moved.',
+        'cancelled' => 'Job :job cancelled.',
+        'cancel_note' => 'The customer cancelled by text.',
+        'failed' => 'Something went wrong. Try again.',
+        'already_decided' => 'This was already confirmed or dismissed.',
+        'status' => [
+            'done' => 'Done',
+            'dismissed' => 'Dismissed',
+        ],
+        'photo' => 'Photo :n',
+        'new_messages' => ':count new messages from the customer',
+    ],
+
+    'warranty' => [
+        'label' => 'Possible warranty',
+        'body' => 'Job #:number was finished on :date.',
+        'work' => 'Done: :work',
+        'parts' => 'Parts: :parts',
+        'open' => 'Open job #:number',
+    ],
+
+    'reminders' => [
+        'title' => 'Unanswered text from :name',
+        'body' => '":text" — reply or press Done in the chat.',
+    ],
+
+    'auto' => [
+        'default_text' => 'Thanks for your message! We will get back to you shortly. — :company',
+        'default_missed_call' => 'Sorry we missed your call! Text us here what you need, or we will call you back shortly. — :company',
+    ],
+
+    'settings' => [
+        'title' => 'Auto messages',
+        'description' => 'Automatic texts and reminders. They go only during business hours and never to your own staff.',
+        'needs_automatic' => 'Auto replies need SMS mode "Automatic" (Messaging settings).',
+        'auto_reply' => 'Auto reply to texts',
+        'auto_reply_hint' => 'Sent when nobody replied within the delay. At most once per 24 hours to one number.',
+        'text' => 'Text',
+        'delay' => 'Delay',
+        'minutes' => ':n min',
+        'immediately' => 'At once',
+        'missed_call' => 'Text after a missed call',
+        'missed_call_hint' => 'When a call to the company number is not answered. At most once per 24 hours to one number.',
+        'missed_call_unavailable' => 'Needs calls to your company number to go through Telnyx. Not set up yet: this text is not sent.',
+        'reminders' => 'Reminders about unanswered texts',
+        'reminders_hint' => 'Push and a notification when a text is not answered and the chat is not marked Done. At most 3 times; a text that came after hours gets one reminder when you open.',
+        'every_hours' => 'Every (hours)',
+        'warranty' => 'Possible warranty',
+        'warranty_hint' => 'Mark a customer who had a job finished within this many days (0 = off).',
+        'warranty_days' => 'Days',
+        'saved' => 'Auto messages saved.',
+    ],
+];

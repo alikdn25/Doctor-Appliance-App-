@@ -6,6 +6,7 @@ import {
     Clock,
     Smartphone,
 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { MessageItem } from '@/components/messaging/types';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
@@ -20,10 +21,13 @@ import { show as showJob } from '@/routes/jobs';
 export function ChatThread({
     messages,
     showJobLinks = false,
+    renderAfter,
 }: {
     /** Newest first, as the server sends them. */
     messages: MessageItem[];
     showJobLinks?: boolean;
+    /** Something under a message (the AI card under an incoming text). */
+    renderAfter?: (message: MessageItem) => ReactNode;
 }) {
     const t = useTrans();
     const time = useCompanyTime();
@@ -74,6 +78,28 @@ export function ChatThread({
                                             'opacity-80',
                                     )}
                                 >
+                                    {m.photos && m.photos.length > 0 && (
+                                        <div className="mb-1 flex flex-wrap gap-1.5">
+                                            {m.photos.map((url, n) => (
+                                                <a
+                                                    key={url}
+                                                    href={url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    <img
+                                                        src={url}
+                                                        alt={t(
+                                                            'automation.inbox.photo',
+                                                            { n: n + 1 },
+                                                        )}
+                                                        className="size-24 rounded-lg object-cover"
+                                                        loading="lazy"
+                                                    />
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
                                     {m.body}
                                 </div>
                                 <div
@@ -103,6 +129,7 @@ export function ChatThread({
                                             {m.status_reason}
                                         </p>
                                     )}
+                                {renderAfter?.(m)}
                             </div>
                         </div>
                     </li>

@@ -1,4 +1,5 @@
 import { AlarmClock, AlertTriangle, ArrowRightLeft, Check } from 'lucide-react';
+import { NewMessagesBadge } from '@/components/jobs/new-messages-badge';
 import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import type { DragEvent, TouchEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -450,6 +451,13 @@ export function DayGrid({
                                                         {isDraftJob(
                                                             visit.job.status,
                                                         ) && <DraftChip />}
+                                                        <NewMessagesBadge
+                                                            count={
+                                                                visit.job
+                                                                    .new_messages
+                                                            }
+                                                            className="h-4 px-1"
+                                                        />
                                                         <span className="truncate">
                                                             {shortRange(
                                                                 visit.start_time,

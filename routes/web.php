@@ -19,6 +19,7 @@ use App\Http\Controllers\Billing\InvoiceReviewRequestController;
 use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Billing\PaymentLinkController;
 use App\Http\Controllers\Billing\PriceBookController;
+use App\Http\Controllers\Company\AutoMessagesController;
 use App\Http\Controllers\Company\BotTokenController;
 use App\Http\Controllers\Company\BrandController;
 use App\Http\Controllers\Company\CompanySettingsController;
@@ -67,11 +68,13 @@ use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\ServiceWorkerController;
 use App\Http\Controllers\Settings\MenuModeController;
+use App\Http\Controllers\SmsAssistController;
 use App\Http\Controllers\SmsInboxController;
 use App\Http\Controllers\SmsWebhookController;
 use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UsageController;
+use App\Http\Controllers\VoiceWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
@@ -94,6 +97,7 @@ Route::middleware('throttle:60,1')->group(function () {
 Route::middleware('throttle:300,1')->group(function () {
     Route::post('webhooks/sms/{provider}', [SmsWebhookController::class, 'inbound'])->name('webhooks.sms.inbound');
     Route::post('webhooks/sms/{provider}/status', [SmsWebhookController::class, 'status'])->name('webhooks.sms.status');
+    Route::post('webhooks/voice/telnyx', VoiceWebhookController::class)->name('webhooks.voice.telnyx');
 });
 
 // Online payment provider webhooks (signature checked by the provider; no session, no CSRF).
@@ -140,6 +144,11 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('messages/older', [SmsInboxController::class, 'older'])->name('messages.older');
         Route::post('messages/read', [SmsInboxController::class, 'read'])->name('messages.read');
         Route::post('messages/send', [SmsInboxController::class, 'send'])->middleware('throttle:30,1')->name('messages.send');
+        Route::post('messages/done', [SmsAssistController::class, 'done'])->name('messages.done');
+        Route::post('messages/{message}/ai-actions/{index}/confirm', [SmsAssistController::class, 'confirm'])->whereNumber('index')->middleware('throttle:30,1')->name('messages.ai.confirm');
+        Route::post('messages/{message}/ai-actions/{index}/dismiss', [SmsAssistController::class, 'dismiss'])->whereNumber('index')->name('messages.ai.dismiss');
+        Route::post('messages/{message}/plate', [SmsAssistController::class, 'plate'])->name('messages.ai.plate');
+        Route::get('messages/{message}/media/{index}', [SmsAssistController::class, 'media'])->whereNumber('index')->name('messages.media');
 
         Route::post('companies/{company}/switch', SwitchCompanyController::class)->name('companies.switch');
 
@@ -322,6 +331,8 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::put('messaging', [MessagingSettingsController::class, 'update'])->name('company.messaging.update');
             Route::post('messaging/number', [MessagingSettingsController::class, 'provision'])->middleware('throttle:5,1')->name('company.messaging.provision');
             Route::put('messaging/registration', [MessagingSettingsController::class, 'registration'])->name('company.messaging.registration');
+            Route::get('auto-messages', [AutoMessagesController::class, 'edit'])->name('company.auto-messages.edit');
+            Route::put('auto-messages', [AutoMessagesController::class, 'update'])->name('company.auto-messages.update');
             Route::get('google-reviews', [GoogleProfileController::class, 'edit'])->name('company.google-profiles.edit');
             Route::put('google-reviews', [GoogleProfileController::class, 'update'])->name('company.google-profiles.update');
             Route::get('services', [ServiceController::class, 'edit'])->name('company.services.edit');

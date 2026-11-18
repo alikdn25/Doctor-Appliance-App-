@@ -1,4 +1,5 @@
 import { MoreHorizontal } from 'lucide-react';
+import { NewMessagesBadge } from '@/components/jobs/new-messages-badge';
 import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import { useEffect, useRef } from 'react';
 import type { CalendarVisit } from '@/components/calendar/types';
@@ -95,6 +96,11 @@ export function WeekAgenda({
                                                     status={visit.job.status}
                                                     label={
                                                         visit.job.status_label
+                                                    }
+                                                />
+                                                <NewMessagesBadge
+                                                    count={
+                                                        visit.job.new_messages
                                                     }
                                                 />
                                             </span>

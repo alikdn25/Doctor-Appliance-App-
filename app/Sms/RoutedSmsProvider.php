@@ -55,6 +55,11 @@ class RoutedSmsProvider implements SmsProvider
         return $this->providers->default()->inbound($request);
     }
 
+    public function fetchMedia(SmsAccount $account, string $url): string
+    {
+        return $this->providers->get($account->provider)->fetchMedia($account, $url);
+    }
+
     public function statusUpdate(Request $request): array
     {
         return $this->providers->default()->statusUpdate($request);

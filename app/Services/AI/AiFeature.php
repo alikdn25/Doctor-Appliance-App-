@@ -13,13 +13,17 @@ enum AiFeature: string
     case Assistant = 'assistant';
     case FindProblems = 'find_problems';
     case AppReview = 'app_review';
+    /** An incoming SMS: urgency, proposed actions, a reply draft. */
+    case SmsTriage = 'sms_triage';
+    /** A photo in an incoming MMS (rating plate). */
+    case SmsPhoto = 'sms_photo';
 
     /** The key in config('ai.models'). */
     public function modelKey(): string
     {
         return match ($this) {
-            self::QuickBooking, self::PasteMessage => 'booking',
-            self::Assistant, self::FindProblems => 'assistant',
+            self::QuickBooking, self::PasteMessage, self::SmsTriage => 'booking',
+            self::Assistant, self::FindProblems, self::SmsPhoto => 'assistant',
             self::AppReview => 'review',
         };
     }

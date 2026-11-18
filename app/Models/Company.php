@@ -75,6 +75,13 @@ use Illuminate\Support\Carbon;
  * @property string $tax_reserve_basis paid or issued
  * @property int|null $tax_reserve_reminder_day
  * @property string|null $tax_reserve_reminded_month
+ * @property bool $auto_reply_enabled Auto reply to incoming texts (Auto messages)
+ * @property string|null $auto_reply_text
+ * @property int $auto_reply_delay_minutes
+ * @property bool $missed_call_reply_enabled Text back after a missed call to the company number (Telnyx voice)
+ * @property string|null $missed_call_reply_text
+ * @property int $sms_reminder_hours Reminder about an unanswered text every N hours (max 3)
+ * @property int $warranty_lookback_days "Possible warranty" when the customer had a job finished within this many days
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -140,6 +147,13 @@ class Company extends Model
         'tax_reserve_deduct_expense_tax',
         'tax_reserve_basis',
         'tax_reserve_reminder_day',
+        'auto_reply_enabled',
+        'auto_reply_text',
+        'auto_reply_delay_minutes',
+        'missed_call_reply_enabled',
+        'missed_call_reply_text',
+        'sms_reminder_hours',
+        'warranty_lookback_days',
     ];
 
     protected $attributes = [
@@ -160,6 +174,11 @@ class Company extends Model
         'quiet_hours_start' => '21:00',
         'quiet_hours_end' => '08:00',
         'message_templates' => '{}',
+        'auto_reply_enabled' => false,
+        'auto_reply_delay_minutes' => 15,
+        'missed_call_reply_enabled' => false,
+        'sms_reminder_hours' => 3,
+        'warranty_lookback_days' => 90,
     ];
 
     protected static function booted(): void
@@ -217,6 +236,11 @@ class Company extends Model
             'tax_reserve_rate' => 'decimal:2',
             'tax_reserve_deduct_expense_tax' => 'boolean',
             'tax_reserve_reminder_day' => 'integer',
+            'auto_reply_enabled' => 'boolean',
+            'auto_reply_delay_minutes' => 'integer',
+            'missed_call_reply_enabled' => 'boolean',
+            'sms_reminder_hours' => 'integer',
+            'warranty_lookback_days' => 'integer',
         ];
     }
 

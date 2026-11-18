@@ -8,6 +8,8 @@ use App\Services\AI\Assistant\AssistantTools;
 use App\Services\AI\Problems\ProblemFinder;
 use App\Services\AI\QuickBookingParser;
 use App\Services\AI\Review\AppReviewer;
+use App\Services\AI\Sms\PlateReader;
+use App\Services\AI\Sms\SmsTriage;
 use App\Support\Ai\BookingTextParser;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -67,6 +69,8 @@ class AiSchemaSmokeCommand extends Command
             AiFeature::Assistant->value => [null, AssistantTools::definitions(), 'Say hi in one word.'],
             AiFeature::FindProblems->value => [ProblemFinder::schema(), [], '{"business": [], "technical": []}'],
             AiFeature::AppReview->value => [AppReviewer::schema(), [], '{"summary": {}, "previous_suggestions": []}'],
+            AiFeature::SmsTriage->value => [SmsTriage::schema(), [], 'New message from the customer: Can you come tomorrow instead?'],
+            AiFeature::SmsPhoto->value => [PlateReader::schema(), [], 'No photo: answer that it is not a rating plate.'],
         ];
     }
 }

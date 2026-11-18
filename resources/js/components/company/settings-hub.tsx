@@ -1,5 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import {
+    BellRing,
     BookOpen,
     Building,
     CalendarClock,
@@ -21,6 +22,7 @@ import { ListRow } from '@/components/ui/list-row';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { useTrans } from '@/lib/i18n';
 import { index as brands } from '@/routes/brands';
+import { edit as autoMessages } from '@/routes/company/auto-messages';
 import { edit as googleProfiles } from '@/routes/company/google-profiles';
 import { edit as messaging } from '@/routes/company/messaging';
 import { edit as services } from '@/routes/company/services';
@@ -243,6 +245,13 @@ export function SettingsHub({
                   icon: <MessageSquare />,
                   title: t('nav.messaging'),
                   subtitle: hub.sms_mode,
+              },
+              {
+                  key: 'auto-messages',
+                  href: autoMessages(),
+                  icon: <BellRing />,
+                  title: t('automation.settings.title'),
+                  subtitle: t('automation.settings.description'),
               },
               {
                   key: 'google',

@@ -7,6 +7,8 @@ use App\Services\AI\Assistant\AssistantTools;
 use App\Services\AI\Problems\ProblemFinder;
 use App\Services\AI\QuickBookingParser;
 use App\Services\AI\Review\AppReviewer;
+use App\Services\AI\Sms\PlateReader;
+use App\Services\AI\Sms\SmsTriage;
 use App\Support\Ai\BookingTextParser;
 use Tests\Fakes\FakeAiTransport;
 
@@ -48,6 +50,8 @@ dataset('ai schemas', fn () => [
     'quick booking parser' => [QuickBookingParser::schema()],
     'problem finder' => [ProblemFinder::schema()],
     'app review' => [AppReviewer::schema()],
+    'sms triage' => [SmsTriage::schema()],
+    'rating plate' => [PlateReader::schema()],
     'assistant tools' => [array_map(fn (array $tool) => $tool['inputSchema'], AssistantTools::definitions())],
 ]);
 
