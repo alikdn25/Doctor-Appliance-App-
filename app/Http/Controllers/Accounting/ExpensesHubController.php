@@ -32,7 +32,7 @@ class ExpensesHubController extends Controller
             ->whereBetween('spent_on', [$from, $to])
             ->where('currency', $company->currency)
             ->sum(DB::raw('amount + tax_amount'));
-        $kilometres = (float) Trip::query()->whereBetween('trip_date', [$from, $to])->sum('distance_km');
+        $kilometres = (float) Trip::query()->where('is_draft', false)->whereBetween('trip_date', [$from, $to])->sum('distance_km');
         $cash = collect(CashLedger::balances())->sum(fn (array $byCurrency) => $byCurrency[$company->currency] ?? 0);
 
         return Inertia::render('expenses/hub', [

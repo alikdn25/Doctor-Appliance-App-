@@ -44,7 +44,7 @@ class ProfitReport
         $cost = $hidden ? null : (int) $rows->sum('cost');
         $fees = (int) $rows->sum('fees');
         $expenses = self::expenses($from, $to, $company->currency);
-        $km = (float) Trip::query()->whereBetween('trip_date', [$from->toDateString(), $to->toDateString()])->sum('distance_km');
+        $km = (float) Trip::query()->where('is_draft', false)->whereBetween('trip_date', [$from->toDateString(), $to->toDateString()])->sum('distance_km');
         $mileage = TripController::totals($km);
         $profit = $hidden ? null : $revenue - $cost - $fees - $expenses - (int) ($mileage['amount'] ?? 0);
 

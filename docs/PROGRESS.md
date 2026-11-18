@@ -2,6 +2,27 @@
 
 Three PRs (SPEC §7.16).
 
+## PR 3 — receipt from a photo, morning summary, mileage of the day (done)
+
+1. **Receipt from a photo** (`ReceiptReader`, `AI_MODEL_ASSISTANT`, `POST business-expenses/read-receipt`): camera in
+   Expenses / My expenses (`ReceiptCameraButton`) and "Read receipt" on a new expense. The form is filled and
+   highlighted (merchant, date, category, description, amount before tax, GST / PST by the company's tax names, other
+   taxes into the tax total); the photo becomes the receipt; Save stores it. Nothing saved before Save.
+2. **Morning summary** (`summary:morning` every 5 min, `MorningSummary`, `TodayController`, page `today`): per person
+   and company (`company_user.morning_summary_*`, Settings → Notifications: on/off and time, default 07:00): push + bell
+   "4 jobs today · 1 unanswered text · 2 unpaid invoices ($…) · 1 part to receive" opening **Today**: jobs in order,
+   no address, unanswered texts, unpaid invoices, parts. Code only.
+3. **Mileage of the day** (`mileage:day-routes` hourly, acts from 20:00 company time): start address → the person's own
+   started jobs in order → start, Google Distance Matrix, a **draft** trip (`trips.is_draft`). Drafts show "Draft" in
+   the log and are left out of totals, CSV, profit and the expenses hub until the Owner / Admin confirms (button) or
+   corrects (Save) them.
+
+- **Migration** `2026_11_18_000300_add_morning_summary_and_day_route_drafts`: new columns with defaults on
+  `company_user` and `trips`. Nothing existing changes.
+- Tests: `ReceiptSummaryMileageTest` (receipt fields, GST / PST and totals by code, unknown tax and category, My
+  expenses, nothing saved, photo saved with the expense, daily AI limit; Today for office and technician; morning
+  summary time, once, off, setting; day route draft, only own jobs, not counted until confirmed, roles), AI schemas.
+
 ## PR 2 — On my way with ETA, review request after payment, close by voice, quick edit by voice, parts (done)
 
 1. **On my way with the drive time** (`VisitActionController`, `DistanceMatrix::minutes`, `lib/geo.ts`): the phone's
@@ -65,7 +86,7 @@ Three PRs (SPEC §7.16).
   interval, max 3, next morning, setting, Done, reply; badge appears and goes; nothing moved, cancelled, booked or sent
   before Confirm; plate only after Confirm; tomorrow / weekday dates; daily AI limit; roles; another company; Possible
   warranty inside and outside 90 days; settings), tenant isolation (`sms_threads`), AI schemas.
-- Next: PR 3 (receipt photo, morning summary, mileage of the day).
+- Next: owner checks texts, voice and receipts on a phone after deploy; Telnyx voice for the missed-call text.
 
 # November 16 — Assistant: composer on the keyboard, microphone, invoice from photos
 

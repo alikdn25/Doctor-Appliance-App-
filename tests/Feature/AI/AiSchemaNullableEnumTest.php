@@ -8,6 +8,7 @@ use App\Services\AI\BookingEditor;
 use App\Services\AI\PartFinder;
 use App\Services\AI\Problems\ProblemFinder;
 use App\Services\AI\QuickBookingParser;
+use App\Services\AI\ReceiptReader;
 use App\Services\AI\Review\AppReviewer;
 use App\Services\AI\Sms\PlateReader;
 use App\Services\AI\Sms\SmsTriage;
@@ -58,6 +59,7 @@ dataset('ai schemas', fn () => [
     'booking quick edit' => [BookingEditor::schema()],
     'close by voice' => [VoiceCloser::schema()],
     'part number' => [PartFinder::schema()],
+    'receipt' => [ReceiptReader::schema()],
     'assistant tools' => [array_map(fn (array $tool) => $tool['inputSchema'], AssistantTools::definitions())],
 ]);
 

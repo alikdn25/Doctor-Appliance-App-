@@ -10,12 +10,17 @@ use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseCategory;
 use App\Models\Membership;
 use App\Models\ServiceJob;
+use App\Services\AI\AiLimitReached;
+use App\Services\AI\AiService;
+use App\Services\AI\AiUnavailable;
+use App\Services\AI\ReceiptReader;
 use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Locale\Currencies;
 use App\Support\PrivateMedia;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -81,6 +86,28 @@ class BusinessExpenseController extends Controller
         Gate::authorize('update', $expense);
 
         return $this->form($request, $expense);
+    }
+
+    /**
+     * "Read receipt" (owner's task of November 18): the photo goes to the AI and the form fields come back. Nothing is
+     * saved: the form is filled, checked and saved by the person (with the photo as the receipt).
+     */
+    public function readReceipt(Request $request, ReceiptReader $reader): JsonResponse
+    {
+        Gate::authorize('create', BusinessExpense::class);
+        $photo = $request->validate(['photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:15360']])['photo'];
+
+        if (! app(AiService::class)->configured()) {
+            return response()->json(['message' => __('jobs.quick_booking.not_set_up')], 503);
+        }
+
+        try {
+            return response()->json(['fields' => $reader->read($photo, $request->user(), $request->user()->hasRole(UserRole::Owner, UserRole::Admin))]);
+        } catch (AiLimitReached) {
+            return response()->json(['message' => __('jobs.quick_booking.limit')], 429);
+        } catch (AiUnavailable) {
+            return response()->json(['message' => __('automation.receipt.failed')], 503);
+        }
     }
 
     public function store(BusinessExpenseRequest $request, SaveBusinessExpense $save, AuditLogger $audit): RedirectResponse

@@ -534,6 +534,29 @@ Google Maps key) is built, stays off, and says what is missing.
 - In Waiting for parts the office has "Part arrived": a text to the customer with the three nearest free arrival
   windows (from tomorrow, business days), editable, sent only on Send. The answer comes into the SMS chat (§7.16.1).
 
+#### 7.16.10 Receipt from a photo (PR 3)
+
+- A camera button in Expenses and My expenses (and "Read receipt" at the top of a new expense): the photo (shrunk to
+  1600 px on the phone) goes to `AI_MODEL_ASSISTANT`, which reads the merchant, the date, the total, the taxes printed
+  (GST, PST, …) and a category. Code fills the form: printed taxes matched to the company's tax names, the amount
+  before tax = total − taxes (taxes not matched go into the tax total); an unknown category becomes a new one. My
+  expenses gets only the amount paid. The filled form is the preview; Save stores the expense with the photo as its
+  receipt.
+
+#### 7.16.11 Morning summary (PR 3)
+
+- Every day at each person's time (07:00 by default; Settings → Notifications, on/off, per company): a push and a
+  notification opening **Today**: the day's jobs in order, open jobs without an address, unanswered texts (night ones
+  too), unpaid invoices (count and sum per currency) and parts to receive. The office sees the company; a technician
+  their own jobs. Code only, no AI. More than three hours late it is skipped.
+
+#### 7.16.12 Mileage of the day (PR 3)
+
+- At 20:00 company time, for each person with a start address (Mileage → Start address, e.g. home) and jobs of their
+  own started that day: start → the jobs in the order they were started → start, by road through the app's map
+  service, saved as a **draft** trip in the mileage log. Drafts are not in the totals, CSV, profit or the expenses hub
+  until the Owner (or an Admin) confirms or corrects them. Without a route the draft has no distance to fill in.
+
 #### 7.16.13 Possible warranty (PR 1)
 
 - When the customer had a job finished within the last 90 days (setting) and texts in, or a new job is created for

@@ -22,6 +22,10 @@ use Illuminate\Support\Carbon;
  * @property bool $shows_in_calendar
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property bool $morning_summary_enabled
+ * @property string $morning_summary_time HH:MM, company time
+ * @property Carbon|null $morning_summary_sent_on
+ * @property Carbon|null $day_route_drafted_on
  * @property-read User $user
  * @property-read Company $company
  */
@@ -34,7 +38,7 @@ class Membership extends Model
 
     protected $table = 'company_user';
 
-    protected $fillable = ['company_id', 'user_id', 'role', 'is_active', 'trip_start_address', 'shows_in_calendar'];
+    protected $fillable = ['company_id', 'user_id', 'role', 'is_active', 'trip_start_address', 'shows_in_calendar', 'morning_summary_enabled', 'morning_summary_time'];
 
     protected $attributes = [
         'is_active' => true,
@@ -49,6 +53,9 @@ class Membership extends Model
             'role' => UserRole::class,
             'is_active' => 'boolean',
             'shows_in_calendar' => 'boolean',
+            'morning_summary_enabled' => 'boolean',
+            'morning_summary_sent_on' => 'date:Y-m-d',
+            'day_route_drafted_on' => 'date:Y-m-d',
         ];
     }
 

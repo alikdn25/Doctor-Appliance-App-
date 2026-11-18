@@ -30,6 +30,7 @@ import { useTrans } from '@/lib/i18n';
 import { edit as companySettings } from '@/routes/company/settings';
 import { show as showJob } from '@/routes/jobs';
 import {
+    confirm as confirmTrip,
     destroy,
     exportMethod,
     index,
@@ -50,6 +51,8 @@ type TripRow = {
     driver: string | null;
     job: { id: number; number: number } | null;
     auto: boolean;
+    /** The day's route measured at the end of the day: counts once confirmed. */
+    draft: boolean;
 };
 
 type Totals = { distance: number; amount: number | null };
@@ -89,6 +92,7 @@ export default function Trips({
     today,
     recentStops = [],
     openManual = false,
+    canConfirmDrafts = false,
 }: {
     month: string;
     person: string | null;
@@ -103,6 +107,7 @@ export default function Trips({
     today: string;
     recentStops?: string[];
     openManual?: boolean;
+    canConfirmDrafts?: boolean;
 }) {
     const t = useTrans();
     const time = useCompanyTime();
@@ -432,6 +437,21 @@ export default function Trips({
                                                 {trip.purpose}
                                             </p>
                                         )}
+                                        {trip.draft && (
+                                            <p
+                                                className="text-xs text-amber-800"
+                                                data-test="trip-draft"
+                                            >
+                                                <span className="mr-1 rounded bg-amber-200 px-1 font-bold uppercase">
+                                                    {t(
+                                                        'automation.mileage.draft',
+                                                    )}
+                                                </span>
+                                                {t(
+                                                    'automation.mileage.draft_hint',
+                                                )}
+                                            </p>
+                                        )}
                                     </div>
                                     {trip.distance === null ? (
                                         <span className="da-chip da-chip-danger inline-flex h-9 shrink-0 items-center rounded-full px-3 text-xs font-semibold">
@@ -443,6 +463,24 @@ export default function Trips({
                                         </span>
                                     )}
                                 </button>
+                                {trip.draft && canConfirmDrafts && (
+                                    <div className="px-3 pb-3">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() =>
+                                                router.post(
+                                                    confirmTrip(trip.id).url,
+                                                    {},
+                                                    { preserveScroll: true },
+                                                )
+                                            }
+                                            data-test="trip-confirm"
+                                        >
+                                            {t('automation.mileage.confirm')}
+                                        </Button>
+                                    </div>
+                                )}
                             </li>
                         ))}
                     </ul>
