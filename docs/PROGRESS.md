@@ -1,3 +1,48 @@
+# November 19 — Owner's task: reminders, morning SMS, Drive backup, debtors, actions from notifications, translation, self-booking, nearby windows
+
+Several PRs (SPEC §7.17).
+
+## PR 1 — fixes, "customer is quiet", morning SMS, Google Drive backup, buttons on notifications, shortcuts (done)
+
+1. **Fixes**: "Edit by voice" on My Jobs for everyone who may edit the job (`can_edit`, also when working alone);
+   `summary:morning` now runs every minute (was every 5), as does the new `summary:morning-sms`.
+2. **I did not answer**: default 2 hours (migration moves companies still on 3 to 2); reminders carry buttons (main
+   action, Draft, Later).
+3. **Customer is quiet** (`SmsThreads::waitForCustomer`, `remindQuiet`, `sms_threads.silent_*`): a person's text
+   (General / Reply) without an answer in N hours (Auto messages → Customer is quiet, 2 by default) → one reminder to its
+   author with Text again (`NudgeWriter`, `AI_MODEL_BOOKING`, chat `?nudge=1`), Call (`?call=1` opens the dialer), Not
+   waiting. Not for auto replies, On my way, review requests, "Not waiting for a reply" (`messages.no_reply_expected`,
+   `POST messages/{message}/not-waiting`, a link under each of our texts). Ends when the customer texts. Business hours
+   only. Still quiet the next morning → a line in the morning SMS (once).
+4. **Morning SMS** (`summary:morning-sms` every minute, `MorningSms`, Company → Morning SMS & backup): personal number,
+   time (06:30), on/off; sent from the company number straight through the SMS provider (not stored in customer chats);
+   replaces the Owners' morning push. Jobs in order with time, name, phone, address, what is broken; no address;
+   unanswered texts; quiet customers; unpaid (count, sum); Completed without invoice; parts; "Backup failed".
+5. **Google Drive backup** (`backup:drive` every 5 min, acts from 03:00 company time; `GoogleDrive`, `DriveBackups`,
+   table `drive_backups`): Connect Google Drive (scope `drive.file`), folder "{company} Backup", customers CSV and next
+   7 days jobs CSV, 30 newest copies kept (older files deleted from Drive), failure → notification + morning SMS line.
+   Off until `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` are set.
+6. **Buttons on push notifications** (`PushActions`, `PushOperations`, table `push_actions`, `POST push-actions/{token}/{action}`,
+   service worker `notificationclick`): every incoming SMS → push to Owners/Admins with the AI's one line
+   (`summary` in `SmsTriage`), main action (move / change time / cancel / book a known customer with an address, a day
+   and a window — done on tap, the text says what will happen), Draft, Later (`push:resend` every minute, 1 hour).
+   The notification list in the app shows the same buttons.
+7. **Shortcuts** in the manifest: By voice (`/assistant?mic=1`) and Quick booking (`/jobs/quick-booking?mic=1`); the
+   microphone starts by itself (`MicButton autoStart`).
+
+- **Migration** `2026_11_19_000100_add_reminders_morning_sms_and_drive_backup`: new company columns with defaults,
+  `sms_reminder_hours` default 3 → 2 (rows with 3 become 2), `sms_threads.silent_*`, `messages.no_reply_expected`, new
+  tables `push_actions`, `drive_backups`. Nothing deleted.
+- Tests: `QuietMorningBackupTest` (Edit by voice when alone; schedules every minute; I did not answer 2 h / repeat / max
+  3 / Done; quiet reminder 2 h, once, buttons; not for auto reply / On my way / review / Not waiting; ends on answer;
+  after-hours → next opening; in the morning SMS once; Text again draft, nothing sent; incoming push with the AI line and
+  main action, tap moves the visit, once, other person 404, customer not texted; Book from push; Later after 1 h; Not
+  waiting from push; other company token; morning SMS time / once / replaces push / not in chats; content; Backup
+  failed; settings; Drive 03:00, two CSV, 30 copies kept; failure alert; CSV formula safety; Connect / callback;
+  manifest shortcuts), tenant isolation (`push_actions`, `drive_backups`), updated `SmsAutomationTest`.
+- Owner: fill Company → Morning SMS & backup (personal number) and press Connect Google Drive after the server has
+  the Google OAuth client.
+
 # November 18 — Owner's task: texts with AI, auto replies, voice, photos, booking edits, morning summary
 
 Three PRs (SPEC §7.16).

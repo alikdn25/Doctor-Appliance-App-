@@ -11,9 +11,10 @@ use App\Models\Message;
 use App\Models\MessageRead;
 use App\Models\SmsThread;
 use App\Models\User;
-use App\Notifications\AppAlert;
+use App\Services\AI\Sms\SmsActions;
 use App\Support\Locale\BusinessHours;
 use App\Support\PhoneNumber;
+use App\Support\Push\PushActions;
 use App\Support\Tenancy\CurrentCompany;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
@@ -30,6 +31,11 @@ use Throwable;
  *   business hours, at most once per 24 hours per number; never to the company's own staff. A missed call to the
  *   company number (Telnyx voice) gets its own text by the same rules.
  *
+ * - "Customer is quiet" (owner's task of November 19): a text a person typed (a reply, a new text, a payment reminder)
+ *   that got no answer within N hours (company setting, 2 by default) gives that person one reminder with buttons
+ *   (Text again, Call, Not waiting), only during business hours; one still unanswered the next morning is a line in the
+ *   morning SMS. Auto replies, On my way, review requests and texts marked "Not waiting for a reply" never count.
+ *
  * Must run in a tenant context, except the scheduled sweeps, which visit each company in turn.
  */
 class SmsThreads
@@ -39,6 +45,9 @@ class SmsThreads
     public const TEXT = 'text';
 
     public const MISSED_CALL = 'missed_call';
+
+    /** Texts that expect an answer: typed by a person (General, Reply) or a payment reminder. */
+    public const AWAITS_ANSWER = [MessageKind::General, MessageKind::Reply];
 
     public function __construct(private readonly Messenger $messenger) {}
 
@@ -55,6 +64,9 @@ class SmsThreads
         $company = currentCompany();
         $thread = self::for((string) $message->from);
         $at = CarbonImmutable::instance($message->created_at ?? now());
+
+        // The customer answered: they are no longer quiet.
+        $thread->fill(self::NOT_SILENT);
 
         if ($thread->awaiting_since === null) {
             $open = BusinessHours::isOpen($company, $at);
@@ -96,6 +108,50 @@ class SmsThreads
             'awaiting_since' => null, 'urgent' => false, 'next_reminder_at' => null, 'auto_reply_due_at' => null,
             'auto_reply_kind' => null, 'updated_at' => now(),
         ]);
+    }
+
+    private const NOT_SILENT = [
+        'silent_since' => null, 'silent_message_id' => null, 'silent_remind_at' => null, 'silent_reminded_at' => null,
+        'silent_reported_on' => null, 'silent_draft' => null,
+    ];
+
+    /**
+     * A person texted the customer (Message created): wait for the answer. One reminder after N hours, in business
+     * hours (one due after closing comes at the next opening).
+     */
+    public static function waitForCustomer(Message $message): void
+    {
+        if ($message->channel !== Message::SMS || $message->status === 'blocked' || $message->no_reply_expected
+            || ! in_array($message->kind, self::AWAITS_ANSWER, true)) {
+            return;
+        }
+
+        $company = Company::query()->find($message->company_id);
+        if ($company === null) {
+            return;
+        }
+
+        $at = CarbonImmutable::instance($message->created_at ?? now());
+        $thread = SmsThread::withoutCompanyScope()->firstOrCreate(['company_id' => $company->id, 'phone' => $message->to]);
+        $thread->fill([
+            'silent_since' => $at,
+            'silent_message_id' => $message->id,
+            'silent_remind_at' => BusinessHours::nextOpen($company, $at->addHours(max(1, $company->silence_reminder_hours))),
+            'silent_reminded_at' => null,
+            'silent_reported_on' => null,
+            'silent_draft' => null,
+        ])->save();
+    }
+
+    /**
+     * "Not waiting for a reply" on one of our texts: it no longer counts, and the wait it started ends.
+     */
+    public static function notWaiting(Message $message): void
+    {
+        $message->forceFill(['no_reply_expected' => true])->save();
+
+        SmsThread::query()->where('phone', (string) $message->to)->whereNotNull('silent_since')
+            ->where('silent_message_id', '<=', $message->id)->update([...self::NOT_SILENT, 'updated_at' => now()]);
     }
 
     /**
@@ -219,13 +275,14 @@ class SmsThreads
     /**
      * Every minute: due auto replies and reminders, company by company.
      *
-     * @return array{auto_replies: int, reminders: int}
+     * @return array{auto_replies: int, reminders: int, quiet: int}
      */
     public function sweep(): array
     {
-        $counts = ['auto_replies' => 0, 'reminders' => 0];
+        $counts = ['auto_replies' => 0, 'reminders' => 0, 'quiet' => 0];
         $companyIds = SmsThread::withoutCompanyScope()
-            ->where(fn ($q) => $q->where('auto_reply_due_at', '<=', now())->orWhere('next_reminder_at', '<=', now()))
+            ->where(fn ($q) => $q->where('auto_reply_due_at', '<=', now())->orWhere('next_reminder_at', '<=', now())
+                ->orWhere('silent_remind_at', '<=', now()))
             ->distinct()->pluck('company_id');
 
         foreach (Company::query()->whereIn('id', $companyIds)->get() as $company) {
@@ -240,6 +297,10 @@ class SmsThreads
 
                 foreach (SmsThread::query()->whereNotNull('awaiting_since')->where('next_reminder_at', '<=', now())->get() as $thread) {
                     $counts['reminders'] += $this->remind($company, $thread) ? 1 : 0;
+                }
+
+                foreach (SmsThread::query()->whereNotNull('silent_since')->whereNull('silent_reminded_at')->where('silent_remind_at', '<=', now())->get() as $thread) {
+                    $counts['quiet'] += $this->remindQuiet($company, $thread) ? 1 : 0;
                 }
             });
         }
@@ -272,23 +333,111 @@ class SmsThreads
         $latest = Message::query()->with('customer')->where('direction', Message::INBOUND)
             ->where('from', $thread->phone)->latest('id')->first();
         $name = $latest?->customer?->display_name ?? PhoneNumber::display($thread->phone, $company->country);
-        $alert = new AppAlert(
-            'sms_unanswered',
-            __('automation.reminders.title', ['name' => $name]),
-            __('automation.reminders.body', ['text' => mb_substr((string) $latest?->body, 0, 120)]),
-            route('messages.index', ['phone' => $thread->phone]),
-            mail: false,
-        );
+        $title = __('automation.reminders.title', ['name' => $name]);
+        $body = __('automation.reminders.body', ['text' => mb_substr((string) $latest?->body, 0, 120)]);
+        $buttons = self::replyButtons($latest, $thread->phone);
+        if (isset($buttons['main'])) {
+            $body .= "\n".__('push.main_will', ['action' => $buttons['main']['does']]);
+        }
 
         foreach ($this->office() as $user) {
             try {
-                $user->notify($alert);
+                PushActions::notify($user, 'sms_unanswered', $title, $body, route('messages.index', ['phone' => $thread->phone]), $buttons);
             } catch (Throwable $e) {
                 Log::warning('Reminder delivery failed', ['error' => $e->getMessage()]);
             }
         }
 
         return true;
+    }
+
+    /**
+     * Buttons for a text that waits for our answer: the AI's main action (done on tap), Draft (the chat with the
+     * reply draft in the box) and Later.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function replyButtons(?Message $latest, string $phone): array
+    {
+        $main = $latest !== null ? SmsActions::main($latest) : null;
+
+        return array_filter([
+            'main' => $main === null ? null : ['title' => $main['title'], 'does' => $main['does'], 'op' => 'sms_action', 'message_id' => $latest->id, 'index' => $main['index']],
+            'draft' => ['title' => __('push.draft'), 'url' => route('messages.index', ['phone' => $phone])],
+            PushActions::LATER => PushActions::later(),
+        ]);
+    }
+
+    /**
+     * The one "customer is quiet" reminder, to the person who wrote (else the office), with Text again, Call and
+     * Not waiting.
+     */
+    public function remindQuiet(Company $company, SmsThread $thread): bool
+    {
+        $now = CarbonImmutable::now();
+
+        if (! BusinessHours::isOpen($company, $now)) {
+            $thread->update(['silent_remind_at' => BusinessHours::nextOpen($company, $now)]);
+
+            return false;
+        }
+
+        $thread->update(['silent_reminded_at' => $now, 'silent_remind_at' => null]);
+        $ours = Message::query()->with(['customer', 'user'])->find($thread->silent_message_id);
+
+        if ($ours === null || $ours->no_reply_expected) {
+            return false;
+        }
+
+        $name = $ours->customer?->display_name ?? PhoneNumber::display($thread->phone, $company->country);
+        $hours = max(1, (int) round($thread->silent_since->diffInMinutes($now) / 60));
+        $title = trans_choice('automation.quiet.title', $hours, ['name' => $name, 'hours' => $hours]);
+        $body = mb_strimwidth($ours->body, 0, 90, '…');
+        $chat = fn (array $query) => route('messages.index', ['phone' => $thread->phone, ...$query]);
+        $buttons = [
+            'again' => ['title' => __('automation.quiet.again'), 'url' => $chat(['nudge' => 1])],
+            'call' => ['title' => __('automation.quiet.call'), 'url' => $chat(['call' => 1])],
+            'not_waiting' => ['title' => __('automation.quiet.not_waiting'), 'op' => 'not_waiting', 'message_id' => $ours->id],
+        ];
+        $people = $ours->user !== null && $ours->user->is_active ? [$ours->user] : $this->office();
+
+        foreach ($people as $user) {
+            try {
+                PushActions::notify($user, 'sms_quiet', $title, $body, $chat([]), $buttons);
+            } catch (Throwable $e) {
+                Log::warning('Quiet reminder failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Customers still quiet after their reminder on an earlier day, for the morning SMS (each listed once).
+     *
+     * @return list<array{phone: string, name: string, since: CarbonImmutable}>
+     */
+    public static function quietForMorning(Company $company, CarbonImmutable $todayStart, bool $markReported): array
+    {
+        $threads = SmsThread::query()->whereNotNull('silent_since')->whereNotNull('silent_reminded_at')
+            ->where('silent_reminded_at', '<', $todayStart->utc())->whereNull('silent_reported_on')
+            ->orderBy('silent_since')->limit(20)->get();
+
+        $rows = $threads->map(function (SmsThread $thread) use ($company) {
+            $ours = Message::query()->with('customer')->find($thread->silent_message_id);
+
+            return [
+                'phone' => $thread->phone,
+                'name' => $ours?->customer?->display_name ?? PhoneNumber::display($thread->phone, $company->country),
+                'since' => CarbonImmutable::instance($thread->silent_since),
+            ];
+        })->values()->all();
+
+        if ($markReported && $threads->isNotEmpty()) {
+            SmsThread::query()->whereKey($threads->modelKeys())->update(['silent_reported_on' => $todayStart->toDateString()]);
+        }
+
+        return $rows;
     }
 
     /**

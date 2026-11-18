@@ -24,6 +24,10 @@ class AppAlert extends Notification
         public readonly ?string $url = null,
         // Off when the same news already goes by its own email (an estimate decision).
         public readonly bool $mail = true,
+        // Buttons under the push notification (PushActions): [{action, title, url}], and where a tap that runs on the
+        // server is sent ("__action__" is replaced by the button's key).
+        public readonly array $actions = [],
+        public readonly ?string $actionUrl = null,
     ) {}
 
     /**
@@ -43,19 +47,29 @@ class AppAlert extends Notification
     }
 
     /**
-     * @return array{kind: string, title: string, body: string, url: string|null}
+     * @return array<string, mixed>
      */
     public function toArray(object $notifiable): array
     {
-        return ['kind' => $this->kind, 'title' => $this->title, 'body' => $this->body, 'url' => $this->url];
+        return array_filter([
+            'kind' => $this->kind, 'title' => $this->title, 'body' => $this->body, 'url' => $this->url,
+            'actions' => $this->actions !== [] ? $this->actions : null,
+            'action_url' => $this->actionUrl,
+        ], fn ($value, $key) => $value !== null || in_array($key, ['url'], true), ARRAY_FILTER_USE_BOTH);
     }
 
     /**
-     * @return array{title: string, body: string, url: string|null, tag: string}
+     * @return array<string, mixed>
      */
     public function toWebPush(object $notifiable): array
     {
-        return ['title' => $this->title, 'body' => $this->body, 'url' => $this->url, 'tag' => $this->kind];
+        return array_filter([
+            'title' => $this->title, 'body' => $this->body, 'url' => $this->url,
+            // A notification with buttons gets its own tag, so two of them do not replace each other.
+            'tag' => $this->actions !== [] ? $this->kind.':'.md5((string) $this->actionUrl) : $this->kind,
+            'actions' => $this->actions !== [] ? $this->actions : null,
+            'action_url' => $this->actionUrl,
+        ], fn ($value, $key) => $value !== null || $key === 'url', ARRAY_FILTER_USE_BOTH);
     }
 
     public function toMail(object $notifiable): MailMessage

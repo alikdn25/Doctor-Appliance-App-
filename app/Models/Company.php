@@ -82,6 +82,15 @@ use Illuminate\Support\Carbon;
  * @property string|null $missed_call_reply_text
  * @property int $sms_reminder_hours Reminder about an unanswered text every N hours (max 3)
  * @property int $warranty_lookback_days "Possible warranty" when the customer had a job finished within this many days
+ * @property int $silence_reminder_hours "Customer is quiet": one reminder this many hours after our text got no answer
+ * @property bool $morning_sms_enabled The morning SMS to the owner's own phone
+ * @property string|null $morning_sms_phone E.164
+ * @property string $morning_sms_time HH:MM, company time
+ * @property Carbon|null $morning_sms_sent_on
+ * @property string|null $google_drive_token Encrypted refresh token (Google Drive backup)
+ * @property string|null $google_drive_email
+ * @property string|null $google_drive_folder_id
+ * @property Carbon|null $drive_backup_ran_on
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -154,7 +163,13 @@ class Company extends Model
         'missed_call_reply_text',
         'sms_reminder_hours',
         'warranty_lookback_days',
+        'silence_reminder_hours',
+        'morning_sms_enabled',
+        'morning_sms_phone',
+        'morning_sms_time',
     ];
+
+    protected $hidden = ['google_drive_token'];
 
     protected $attributes = [
         'status' => 'active',
@@ -177,8 +192,11 @@ class Company extends Model
         'auto_reply_enabled' => false,
         'auto_reply_delay_minutes' => 15,
         'missed_call_reply_enabled' => false,
-        'sms_reminder_hours' => 3,
+        'sms_reminder_hours' => 2,
         'warranty_lookback_days' => 90,
+        'silence_reminder_hours' => 2,
+        'morning_sms_enabled' => false,
+        'morning_sms_time' => '06:30',
     ];
 
     protected static function booted(): void
@@ -241,6 +259,11 @@ class Company extends Model
             'missed_call_reply_enabled' => 'boolean',
             'sms_reminder_hours' => 'integer',
             'warranty_lookback_days' => 'integer',
+            'silence_reminder_hours' => 'integer',
+            'morning_sms_enabled' => 'boolean',
+            'morning_sms_sent_on' => 'date',
+            'google_drive_token' => 'encrypted',
+            'drive_backup_ran_on' => 'date',
         ];
     }
 

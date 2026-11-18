@@ -45,6 +45,7 @@ import { finishScreen, onMyWay, start } from '@/routes/visits';
 
 type MyVisit = Visit & {
     can_work?: boolean;
+    can_edit?: boolean;
     on_my_way_sms?: { to: string; body: string } | null;
     job: {
         id: number;
@@ -472,7 +473,7 @@ export default function MyJobs({
                             }
                             below={
                                 <>
-                                    {canAssign && tab === 'day' && (
+                                    {visit.can_edit && (
                                         <Link
                                             href={show(visit.job.id, {
                                                 query: { voice_edit: 1 },

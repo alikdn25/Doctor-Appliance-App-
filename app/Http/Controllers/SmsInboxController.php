@@ -8,6 +8,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Jobs\JobMessageController;
 use App\Messaging\Messenger;
 use App\Messaging\SmsInbox;
+use App\Messaging\SmsThreads;
 use App\Models\Message;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -27,6 +28,7 @@ class SmsInboxController extends Controller
         $data = $request->validate([
             'phone' => ['nullable', 'string', self::PHONE_RULE],
             'search' => ['nullable', 'string', 'max:100'], 'unread' => ['nullable', 'boolean'],
+            'nudge' => ['nullable', 'boolean'], 'call' => ['nullable', 'boolean'],
         ]);
         $search = trim($data['search'] ?? '');
         $unread = $request->boolean('unread');
@@ -34,7 +36,9 @@ class SmsInboxController extends Controller
 
         return Inertia::render('messages/index', [
             'threads' => $inbox->threads($request->user(), $search, $unread),
-            'conversation' => $phone ? $inbox->conversation($request->user(), $phone) : null,
+            'conversation' => $phone ? $inbox->conversation($request->user(), $phone, $request->boolean('nudge')) : null,
+            // "Call" on a push notification opens the chat and the phone's dialer.
+            'call' => $phone !== null && $request->boolean('call'),
             'filters' => ['search' => $search, 'unread' => $unread],
             // The empty list says why it is empty (UX-REDESIGN §10.5); the Owner gets a link to the settings.
             'smsMode' => currentCompany()->sms_mode->value,
@@ -65,6 +69,20 @@ class SmsInboxController extends Controller
             'message_ids.*' => ['required', 'integer', 'distinct'],
         ]);
         $inbox->markRead($request->user(), $data['phone'], $data['message_ids']);
+
+        return back();
+    }
+
+    /**
+     * "Not waiting for a reply" on one of our texts: it no longer starts a "customer is quiet" reminder.
+     */
+    public function notWaiting(Message $message): RedirectResponse
+    {
+        Gate::authorize('viewAny', Message::class);
+        abort_unless($message->direction === Message::OUTBOUND, 404);
+        abort_if(SmsInbox::hiddenFrom(request()->user(), (string) $message->to), 404);
+        SmsThreads::notWaiting($message);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('automation.quiet.not_waiting_done')]);
 
         return back();
     }

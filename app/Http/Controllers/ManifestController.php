@@ -22,6 +22,14 @@ class ManifestController extends Controller
             'orientation' => 'portrait',
             'background_color' => '#ffffff',
             'theme_color' => '#0E7490',
+            // Long press on the app icon (owner's task of November 19): the assistant or Quick booking with the
+            // microphone already on.
+            'shortcuts' => [
+                ['name' => __('pwa.shortcuts.voice'), 'short_name' => __('pwa.shortcuts.voice'), 'url' => '/assistant?mic=1',
+                    'icons' => [['src' => '/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png']]],
+                ['name' => __('pwa.shortcuts.quick_booking'), 'short_name' => __('pwa.shortcuts.quick_booking'), 'url' => '/jobs/quick-booking?mic=1',
+                    'icons' => [['src' => '/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png']]],
+            ],
             'icons' => [
                 ['src' => '/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png'],
                 ['src' => '/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png'],

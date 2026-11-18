@@ -471,7 +471,7 @@ Google Maps key) is built, stays off, and says what is missing.
 #### 7.16.2 Reminders about unanswered texts (PR 1)
 
 - An incoming text nobody answered and not marked Done: a reminder (push + the notification list) to the Owners and
-  Admins after N hours (Settings → Auto messages, 3 by default), repeated every N hours, at most 3 times, only during
+  Admins after N hours (Settings → Auto messages, 2 by default since §7.17.2), repeated every N hours, at most 3 times, only during
   business hours (a reminder due after closing waits for the next opening). A text that came outside business hours
   gets one reminder at the start of the next business day.
 - "Done" in the chat (no reply) stops the reminders; a reply from a person stops them too.
@@ -561,6 +561,125 @@ Google Maps key) is built, stays off, and says what is missing.
 
 - When the customer had a job finished within the last 90 days (setting) and texts in, or a new job is created for
   them, the job page and the chat show "Possible warranty" with a link to the earlier job: date, what was done, parts.
+
+### 7.17 Reminders, morning SMS, Drive backup, debtors, actions from notifications, translation, self-booking, nearby windows (owner's task of November 19)
+
+Built in several PRs. Common rules as in §7.16: the AI sends nothing to customers by itself and deletes nothing (the
+only exceptions are written below); taxes and totals are calculated by code; every AI call counts in
+`AI_DAILY_LIMIT_PER_COMPANY`; dates and times are in the company's time zone. A function whose key or service is not
+set up is built, stays off and says what is missing.
+
+#### 7.17.1 Fixes (PR 1)
+
+- "Edit by voice" on My Jobs cards is shown to everyone who may edit the job, also in a one-person company
+  (`works_alone`).
+- The morning push (§7.16.11) and the morning SMS are checked every minute, so they arrive at the set time (at most
+  one minute late).
+
+#### 7.17.2 Reminders: I did not answer / the customer is quiet (PR 1)
+
+- **I did not answer** (§7.16.2): a reminder 2 hours after an unanswered incoming text that is not marked Done (Settings →
+  Auto messages, 2 hours by default; companies that kept the old default of 3 move to 2), repeated every 2 hours, at
+  most 3 times.
+- **The customer is quiet**: a text a person typed (a reply, a new text, later a payment reminder) that got no answer
+  within N hours (Settings → Auto messages → Customer is quiet, 2 by default) gives the person who wrote it (else the
+  Owners and Admins) one reminder "{name} has not answered for 2 hours" with the beginning of the text and the buttons
+  **Text again** (the chat opens with a short follow-up written by `AI_MODEL_BOOKING` in the reply box; one tap on Send),
+  **Call** (the chat and the phone's dialer) and **Not waiting**. Still unanswered the next morning: a line in the
+  morning SMS (once). Never for auto replies, On my way, review requests or texts marked **Not waiting for a reply**
+  (an action under each of our texts in the chat). A text from the customer ends the wait.
+- All reminders: push + the notification list, only in business hours; a reminder due outside them comes once at the
+  start of the next business day.
+
+#### 7.17.3 Morning SMS instead of the morning push (PR 1)
+
+- Company → Morning SMS & backup (Owner): **My personal number**, time (06:30 by default), on/off. The SMS goes from the
+  company number (Telnyx or Twilio, whichever the company uses) to that number, once a day at the set time; it is not
+  stored in any customer chat and replaces the morning push for Owners (other people keep their push).
+- Content (code only): the day's jobs in order — time, name, phone, address, what is broken; jobs without an address;
+  unanswered texts (night ones too); quiet customers; unpaid invoices (count and sum); Completed jobs without an
+  invoice; parts to receive; "Backup failed" when the night's Drive backup did not go through. The page shows today's
+  text as a preview. The **Today** screen is unchanged.
+
+#### 7.17.4 Nightly backup to Google Drive (PR 1)
+
+- Company → Morning SMS & backup → **Connect Google Drive** (OAuth, scope `drive.file`: the app sees only the files it
+  creates). Needs `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` (redirect `{APP_URL}/settings/google-drive/callback`);
+  without them the button says it is not set up.
+- Every night at 03:00 company time two CSV files go to the folder "{company} Backup" ("Doctor Appliance Backup"):
+  all customers (name, phones, email, address, date of the last job, appliances, balance) and the jobs of the next 7
+  days (date, window, customer, phone, address, problem, technician). The 30 newest copies are kept; older files are
+  deleted from that folder (code, not the AI). A failed upload: a notification to the Owners and a line in the
+  morning SMS.
+
+#### 7.17.5 Actions right from a notification (PR 1)
+
+- Every incoming SMS gives the Owners and Admins a push: one line from the AI (who writes and what they want) and the
+  Android buttons: the **main proposed action** (e.g. "Book Thu 10:00–12:00", "Move to Thu 10:00–12:00", "Cancel #1005"),
+  **Draft**, **Later**. The text of the notification says what the main button will do; the tap is the confirmation
+  and it is done at once (a booking needs a known customer with an address, a day and a window, and sends the usual
+  booking confirmation; moving and cancelling never text the customer). **Draft** opens the chat with the reply draft in
+  the box. **Later** shows the same notification again an hour later. The reminders of §7.17.2 come with buttons too.
+  Android shows two buttons under a notification; all of them are in the app's notification list.
+- A button's token belongs to one person and works once (3 days at most).
+
+#### 7.17.6 Home-screen shortcuts (PR 1)
+
+- The PWA manifest has two shortcuts (long press on the icon): **By voice** (the assistant with the microphone on) and
+  **Quick booking** (with the microphone on).
+
+#### 7.17.7 Debtors and invoices not sent yet (PR 2)
+
+- Import page (Owner only): a CSV with the columns name, phone, email, address, date, work, amount (optional), note.
+  Preview of the list → Confirm. Confirm finds the customer by phone or email (else creates one) and creates a
+  Completed job on that date and an invoice "open, not sent". Without an amount the invoice line is marked "amount
+  needed".
+- **Unpaid** screen: all open invoices with the filter "not reminded yet / reminded / answered". **Soft reminder** for
+  one or several chosen invoices: preview → Confirm. The template is in the settings, by default "Hi {first_name}, this
+  is Alex from Doctor Appliance. Just a quick note: our records show the invoice for your {appliance} repair from
+  {month} is still open. Could you take a look when you get a chance?" — no amount and no link in it.
+- When the customer answers such an SMS, the AI prepares a reply draft with the amount and the invoice link; one tap
+  sends it. No answer: the "customer is quiet" reminder (§7.17.2); nothing is texted again automatically.
+- Completed jobs without an invoice: a counter in the "Not completed jobs" bar and in the morning SMS.
+
+#### 7.17.8 Russian in, English out (PR 2)
+
+- In the SMS chat and in reply drafts: Russian text in the reply box is turned by `AI_MODEL_ASSISTANT` into a short,
+  polite English SMS and shown in the box before sending; the person sends it. English text is left as it is. A switch
+  in the settings, on by default.
+
+#### 7.17.9 Prices and answers; clarifying questions; a photo of the sticker (PR 2)
+
+- Settings → **Prices and answers**: the diagnostic fee, service areas, business hours (text), free notes. The AI uses
+  them in reply drafts and never names a price that is not there.
+- A text about a breakdown with few details: the draft has at most 2 short questions (what exactly happens, since when,
+  any error code). When the customer's appliance has no model number: always ask for a photo of the sticker with the
+  model number (not to type it), with where to find it (fridge — inside on a side wall; washer — on the door rim;
+  dryer — on the door frame; dishwasher — on the edge of the door; range — behind the oven door or in the bottom
+  drawer).
+- Switch "Send clarifying questions automatically" (off by default = a draft). Automatic only in business hours and at
+  most once per 24 hours to one number.
+
+#### 7.17.10 Hand a job to a technician (PR 2)
+
+- "Hand to technician" on the job: a technician of the app or an outside technician (name, phone — a list in the
+  settings). Preview of two texts: to the technician (customer, phone, address, window, problem, model, link to the
+  photos) and to the customer ("Your technician {name} will arrive {window}."). Confirm sends both. The job shows
+  "Handed to: {name}".
+
+#### 7.17.11 Self-booking by link (PR 3)
+
+- A public page `/book/{token}` without sign-in. A link lives 7 days and books once. Free windows of the next 7 days
+  (the company's arrival windows minus busy ones), name and phone (filled when known), address, what is broken, a photo
+  of the sticker with the model number. After sending: the booking is created, marked "Self-booked" in its own colour
+  in the calendar, and the Owner gets a push. The AI adds the link to a reply draft when the customer asks about times
+  or asks to come.
+
+#### 7.17.12 Windows by area (PR 3)
+
+- Addresses of jobs and customers are geocoded by the app's map service. When a window is picked (Book customer, Quick
+  booking, the AI's proposals from texts, the self-booking page), windows on days that already have a job near the
+  customer's address come first, labelled "Nearby: job in {city}, {N} km". Without a known address: the usual order.
 
 ## 8. Google review requests
 

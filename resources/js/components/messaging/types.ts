@@ -18,6 +18,9 @@ export type MessageItem = {
     /** SMS Inbox only: what the AI read from an incoming text, and the MMS photos. */
     ai?: AiCard | null;
     photos?: string[];
+    /** Our text that expects an answer, and "Not waiting for a reply" on it. */
+    awaits_answer?: boolean;
+    no_reply_expected?: boolean;
 };
 
 export type AiCard = {

@@ -89,10 +89,11 @@ class SmsTriage
             'type' => 'object',
             'properties' => [
                 'urgency' => ['type' => 'string', 'enum' => ['urgent', 'normal']],
+                'summary' => ['type' => 'string', 'description' => 'One short line in English: who writes and what they want'],
                 'actions' => ['type' => 'array', 'items' => $action],
                 'reply_draft' => $text,
             ],
-            'required' => ['urgency', 'actions', 'reply_draft'],
+            'required' => ['urgency', 'summary', 'actions', 'reply_draft'],
             'additionalProperties' => false,
         ];
     }
@@ -119,6 +120,8 @@ class SmsTriage
               Today is {$today}, company time zone {$company->timezone}.
               Arrival windows of the company: {$windows}. Give arrival_start and arrival_end (HH:MM) when the customer
               names a time or a part of the day; arrival_now = true only for "right now / ASAP today".
+            - summary: one line in English, max 80 characters, for a phone notification: who writes and what they want
+              (e.g. "Wants the washer visit moved to Thursday morning").
             - reply_draft: a short, polite reply in the customer's language, signed as nobody, max 300 characters. Never
               promise a time that is not confirmed; say the office will confirm. Never invent prices.
             TEXT;
@@ -206,6 +209,7 @@ class SmsTriage
 
         return [
             'urgency' => ($raw['urgency'] ?? null) === 'urgent' ? 'urgent' : 'normal',
+            'summary' => mb_substr(trim((string) ($raw['summary'] ?? '')), 0, 120) ?: null,
             'actions' => $actions,
             'reply_draft' => mb_substr(trim((string) ($raw['reply_draft'] ?? '')), 0, 600) ?: null,
         ];

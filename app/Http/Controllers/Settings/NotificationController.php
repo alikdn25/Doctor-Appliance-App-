@@ -29,6 +29,9 @@ class NotificationController extends Controller
                 'title' => $n->data['title'] ?? '',
                 'body' => $n->data['body'] ?? '',
                 'url' => $n->data['url'] ?? null,
+                // Buttons of a push notification with actions (owner's task of November 19).
+                'actions' => $n->data['actions'] ?? [],
+                'action_url' => $n->data['action_url'] ?? null,
                 'read' => $n->read_at !== null,
                 'at' => JobPresenter::iso($n->created_at),
             ])->values(),

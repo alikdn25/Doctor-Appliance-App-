@@ -60,7 +60,7 @@ import {
     show as customerShow,
 } from '@/routes/customers';
 import { show as showJob } from '@/routes/jobs';
-import { done, index, older, read, send } from '@/routes/messages';
+import { done, index, notWaiting, older, read, send } from '@/routes/messages';
 
 type SmsMode = 'automatic' | 'technician_phone' | 'off';
 type Thread = {
@@ -84,6 +84,7 @@ type Conversation = {
     awaiting: boolean;
     urgent: boolean;
     draft: string | null;
+    quiet_since: string | null;
     warranty: PossibleWarranty;
 };
 type Filters = { search: string; unread: boolean };
@@ -422,6 +423,15 @@ function Chat({
                 {conversation.warranty && (
                     <WarrantyNotice warranty={conversation.warranty} />
                 )}
+                {conversation.quiet_since && (
+                    <p
+                        className="mb-2 rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900"
+                        role="status"
+                        data-test="quiet-banner"
+                    >
+                        {t('automation.quiet.waiting')}
+                    </p>
+                )}
                 <div ref={top} />
                 {hasMore && (
                     <div className="flex justify-center pb-2">
@@ -457,6 +467,31 @@ function Chat({
                                             }))
                                         }
                                     />
+                                ) : m.awaits_answer ? (
+                                    m.no_reply_expected ? (
+                                        <p className="px-1 text-xs text-muted-foreground">
+                                            {t(
+                                                'automation.quiet.not_waiting_mark',
+                                            )}
+                                        </p>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className="min-h-8 px-1 text-xs font-semibold text-muted-foreground underline-offset-4 hover:underline"
+                                            onClick={() =>
+                                                router.post(
+                                                    notWaiting(m.id).url,
+                                                    {},
+                                                    { preserveScroll: true },
+                                                )
+                                            }
+                                            data-test="not-waiting"
+                                        >
+                                            {t(
+                                                'automation.quiet.not_waiting_long',
+                                            )}
+                                        </button>
+                                    )
                                 ) : null
                             }
                         />
@@ -537,14 +572,24 @@ export default function SmsInbox({
     filters,
     smsMode,
     canSetUpMessaging = false,
+    call = false,
 }: {
     threads: Paginated<Thread>;
     conversation: Conversation | null;
     filters: Filters;
     smsMode: SmsMode;
     canSetUpMessaging?: boolean;
+    /** "Call" on a push notification: the chat opens and the phone's dialer with it. */
+    call?: boolean;
 }) {
     const t = useTrans();
+    const calledFor = useRef('');
+    useEffect(() => {
+        if (call && conversation && calledFor.current !== conversation.phone) {
+            calledFor.current = conversation.phone;
+            window.location.href = `tel:${conversation.phone}`;
+        }
+    }, [call, conversation]);
     const time = useCompanyTime();
     const phoneText = usePhone();
     const [composing, setComposing] = useState(false);

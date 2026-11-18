@@ -187,6 +187,7 @@ test('the missed-call text follows the same rules and is off without Telnyx voic
 // ——— Reminders ———
 
 test('reminders every 3 hours, only in business hours, at most 3', function () {
+    $this->company->update(['sms_reminder_hours' => 3]);
     incomingSms('Can you call me?');
 
     at('2026-10-14 14:59');
@@ -489,13 +490,13 @@ test('the Owner sets up auto messages; auto replies are off by default', functio
 
     $this->put(route('company.auto-messages.update'), [
         'auto_reply_enabled' => true, 'auto_reply_text' => 'Got it!', 'auto_reply_delay_minutes' => 30,
-        'missed_call_reply_enabled' => false, 'missed_call_reply_text' => '', 'sms_reminder_hours' => 2, 'warranty_lookback_days' => 60,
+        'missed_call_reply_enabled' => false, 'missed_call_reply_text' => '', 'sms_reminder_hours' => 2, 'silence_reminder_hours' => 4, 'warranty_lookback_days' => 60,
     ])->assertRedirect();
 
     expect($this->company->fresh())->auto_reply_enabled->toBeTrue()->auto_reply_text->toBe('Got it!')
         ->auto_reply_delay_minutes->toBe(30)->sms_reminder_hours->toBe(2)->warranty_lookback_days->toBe(60);
 
-    $this->put(route('company.auto-messages.update'), ['auto_reply_enabled' => true, 'auto_reply_delay_minutes' => 7, 'missed_call_reply_enabled' => false, 'sms_reminder_hours' => 2, 'warranty_lookback_days' => 60])
+    $this->put(route('company.auto-messages.update'), ['auto_reply_enabled' => true, 'auto_reply_delay_minutes' => 7, 'missed_call_reply_enabled' => false, 'sms_reminder_hours' => 2, 'silence_reminder_hours' => 2, 'warranty_lookback_days' => 60])
         ->assertSessionHasErrors('auto_reply_delay_minutes');
     $this->actingAs(memberOf($this->company, UserRole::Admin))->get(route('company.auto-messages.edit'))->assertForbidden();
 });

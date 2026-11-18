@@ -23,6 +23,7 @@ use App\Models\Concerns\BelongsToCompany;
 use App\Models\Customer;
 use App\Models\CustomerEmail;
 use App\Models\CustomerPhone;
+use App\Models\DriveBackup;
 use App\Models\Estimate;
 use App\Models\EstimateItem;
 use App\Models\GoogleProfile;
@@ -47,6 +48,7 @@ use App\Models\Payment;
 use App\Models\PaymentProviderConnection;
 use App\Models\ProblemReport;
 use App\Models\Property;
+use App\Models\PushAction;
 use App\Models\ReviewRequest;
 use App\Models\Service;
 use App\Models\ServiceJob;
@@ -139,6 +141,8 @@ beforeEach(function () {
             $link->invoice_id = $invoice->id;
             $link->save();
             SmsThread::create(['phone' => '+1604555'.str_pad((string) currentCompany()->id, 4, '0', STR_PAD_LEFT), 'urgent' => true]);
+            PushAction::create(['user_id' => $owner->id, 'token' => Str::random(48), 'kind' => 'sms_incoming', 'title' => 'Secret', 'body' => 'Secret', 'actions' => [], 'expires_at' => now()->addDay()]);
+            DriveBackup::create(['status' => DriveBackup::OK, 'files' => [['id' => 'secret-'.currentCompany()->id, 'name' => 'customers.csv']]]);
             InvoiceAttachment::create(['invoice_id' => $invoice->id, 'user_id' => $owner->id, 'path' => 'invoice-attachments/secret-'.$invoice->id.'.jpg', 'mime_type' => 'image/jpeg', 'size' => 10]);
             $cost = new JobCostItem(['description' => 'Secret part', 'quantity' => 1, 'unit_cost' => 1234]);
             $cost->service_job_id = $job->id;
@@ -239,6 +243,8 @@ dataset('tenant models', [
     'sms registrations' => [SmsRegistration::class],
     'messages' => [Message::class],
     'SMS threads' => [SmsThread::class],
+    'push actions' => [PushAction::class],
+    'Drive backups' => [DriveBackup::class],
     'message reads' => [MessageRead::class],
     'google profiles' => [GoogleProfile::class],
     'review requests' => [ReviewRequest::class],
@@ -269,7 +275,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         ->all();
 
     expect($tenantModels)->toBe(collect([
-        Appliance::class, Brand::class, BrandAddress::class, BusinessExpense::class, BusinessExpenseCategory::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, MessageRead::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class, SmsThread::class,
+        Appliance::class, Brand::class, BrandAddress::class, BusinessExpense::class, BusinessExpenseCategory::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, MessageRead::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class, SmsThread::class, PushAction::class, DriveBackup::class,
         CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceAttachment::class, InvoiceItem::class, InvoicePaymentLink::class, Payment::class,
         PaymentProviderConnection::class,
         JobAppliance::class, JobAssignee::class, JobBringItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,

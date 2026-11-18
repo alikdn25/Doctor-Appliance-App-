@@ -1,20 +1,30 @@
-import { usePage } from '@inertiajs/react';
-import { Mic, Square, X } from 'lucide-react';
-import { useState } from 'react';
-import type { DictationLanguage } from '@/hooks/use-dictation';
-import { useDictation } from '@/hooks/use-dictation';
-import { useTrans } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
+import { usePage } from "@inertiajs/react";
+import { Mic, Square, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import type { DictationLanguage } from "@/hooks/use-dictation";
+import { useDictation } from "@/hooks/use-dictation";
+import { useTrans } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 const storageKey = (userId: number | undefined) =>
-    `dictation-language:${userId ?? 'guest'}`;
+    `dictation-language:${userId ?? "guest"}`;
 
 function readLanguage(userId: number | undefined): DictationLanguage {
     try {
-        return localStorage.getItem(storageKey(userId)) === 'ru' ? 'ru' : 'en';
+        return localStorage.getItem(storageKey(userId)) === "ru" ? "ru" : "en";
     } catch {
-        return 'en';
+        return "en";
     }
+}
+
+/**
+ * A home-screen shortcut ("By voice", "Quick booking") opens its page with ?mic=1: the microphone starts by itself.
+ */
+export function micFromShortcut(): boolean {
+    return (
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).get("mic") === "1"
+    );
 }
 
 /**
@@ -27,11 +37,14 @@ export function MicButton({
     onChange,
     disabled = false,
     className,
+    autoStart = false,
 }: {
     value: string;
     onChange: (value: string) => void;
     disabled?: boolean;
     className?: string;
+    /** Start listening at once (a home-screen shortcut opened the page with ?mic=1). */
+    autoStart?: boolean;
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -40,11 +53,18 @@ export function MicButton({
         readLanguage(userId),
     );
     const dictation = useDictation({ value, onChange, language });
+    const started = useRef(false);
+    useEffect(() => {
+        if (autoStart && dictation.supported && !started.current) {
+            started.current = true;
+            dictation.start();
+        }
+    }, [autoStart, dictation]);
 
     if (!dictation.supported) return null;
 
     const switchLanguage = () => {
-        const next: DictationLanguage = language === 'en' ? 'ru' : 'en';
+        const next: DictationLanguage = language === "en" ? "ru" : "en";
         if (dictation.listening) dictation.stop();
         setLanguage(next);
         try {
@@ -56,7 +76,7 @@ export function MicButton({
 
     return (
         <div
-            className={cn('relative flex shrink-0 items-end gap-1', className)}
+            className={cn("relative flex shrink-0 items-end gap-1", className)}
         >
             {dictation.error && (
                 <div
@@ -65,14 +85,14 @@ export function MicButton({
                     data-test="mic-error"
                 >
                     <p className="flex-1">
-                        {dictation.error === 'denied'
-                            ? t('ui.dictation.denied')
-                            : t('ui.dictation.failed')}
+                        {dictation.error === "denied"
+                            ? t("ui.dictation.denied")
+                            : t("ui.dictation.failed")}
                     </p>
                     <button
                         type="button"
                         className="-m-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full"
-                        aria-label={t('ui.dictation.close')}
+                        aria-label={t("ui.dictation.close")}
                         onClick={dictation.clearError}
                     >
                         <X className="size-4" />
@@ -83,10 +103,10 @@ export function MicButton({
                 type="button"
                 onClick={switchLanguage}
                 className="da-press inline-flex h-11 min-w-9 items-center justify-center rounded-xl px-1.5 text-xs font-bold text-muted-foreground"
-                aria-label={t('ui.dictation.language', {
+                aria-label={t("ui.dictation.language", {
                     language: language.toUpperCase(),
                 })}
-                title={t('ui.dictation.language', {
+                title={t("ui.dictation.language", {
                     language: language.toUpperCase(),
                 })}
                 data-test="mic-language"
@@ -100,22 +120,22 @@ export function MicButton({
                 aria-pressed={dictation.listening}
                 aria-label={
                     dictation.listening
-                        ? t('ui.dictation.stop')
-                        : t('ui.dictation.start')
+                        ? t("ui.dictation.stop")
+                        : t("ui.dictation.start")
                 }
                 title={
                     dictation.listening
-                        ? t('ui.dictation.stop')
-                        : t('ui.dictation.start')
+                        ? t("ui.dictation.stop")
+                        : t("ui.dictation.start")
                 }
                 className={cn(
-                    'da-press relative inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-5',
+                    "da-press relative inline-flex size-11 shrink-0 items-center justify-center rounded-[14px] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-5",
                     dictation.listening
-                        ? 'bg-red-600 text-white shadow-[0_0_0_4px_rgb(220_38_38/0.25)]'
-                        : 'da-soft text-navy',
+                        ? "bg-red-600 text-white shadow-[0_0_0_4px_rgb(220_38_38/0.25)]"
+                        : "da-soft text-navy",
                 )}
                 data-test="mic-button"
-                data-listening={dictation.listening ? 'true' : undefined}
+                data-listening={dictation.listening ? "true" : undefined}
             >
                 {dictation.listening && (
                     <span

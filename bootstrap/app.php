@@ -27,7 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         // Payment provider webhooks are signed by the provider instead of a CSRF token.
-        $middleware->preventRequestForgery(except: ['webhooks/*']);
+        $middleware->preventRequestForgery(except: ['webhooks/*', 'push-actions/*']);
 
         // Signed-in people opening the sign-in pages go home (Jobs).
         $middleware->redirectUsersTo('/');

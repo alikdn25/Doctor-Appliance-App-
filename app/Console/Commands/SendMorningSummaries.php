@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\UserRole;
 use App\Models\Company;
 use App\Models\Membership;
 use App\Notifications\AppAlert;
@@ -35,7 +36,13 @@ class SendMorningSummaries extends Command
                 $members = Membership::query()->with('user')->where('is_active', true)->where('morning_summary_enabled', true)
                     ->where(fn ($q) => $q->whereNull('morning_summary_sent_on')->orWhere('morning_summary_sent_on', '<', $today))->get();
 
+                // The morning SMS to the owner's own phone replaces the Owners' morning push.
+                $bySms = currentCompany()->morning_sms_enabled && filled(currentCompany()->morning_sms_phone);
+
                 foreach ($members as $member) {
+                    if ($bySms && $member->role === UserRole::Owner) {
+                        continue;
+                    }
                     $at = $now->setTimeFromTimeString($member->morning_summary_time ?: '07:00');
                     if ($member->user === null || ! $member->user->is_active || $now->lessThan($at)) {
                         continue;
