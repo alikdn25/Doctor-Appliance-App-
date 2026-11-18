@@ -498,6 +498,14 @@ class JobController extends Controller
                 'description' => $job->description,
                 'notes' => $job->notes,
                 'tech_notes' => $job->tech_notes,
+                // The part the job waits for and the AI's possible number ("check").
+                'part' => in_array($job->status, [JobStatus::NeedToOrderParts, JobStatus::WaitingForParts], true) || filled($job->part_number) ? [
+                    'name' => $job->part_name,
+                    'number' => $job->part_number,
+                    'supplier' => $job->part_supplier,
+                    'ordered_on' => $job->part_ordered_on?->toDateString(),
+                    'suggestion' => $job->part_suggestion,
+                ] : null,
                 'created_at' => JobPresenter::iso($job->created_at),
                 'completed_at' => JobPresenter::iso($job->completed_at),
                 'allows_visit_work' => $job->status->allowsVisitWork(),
@@ -512,6 +520,7 @@ class JobController extends Controller
                     'avatar_icon' => $job->customer->avatarIcon(),
                     'avatar_style' => $job->customer->avatar_style,
                     'notes' => $job->customer->notes,
+                    'email' => $job->customer->primaryEmail()->value('email'),
                     'phones' => $job->customer->phones->map(fn ($p) => [
                         'id' => $p->id,
                         'number' => $p->number,

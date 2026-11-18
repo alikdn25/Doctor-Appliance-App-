@@ -299,6 +299,8 @@ class InvoiceController extends Controller
             'sms' => $invoice->isVoid() ? null : app(MessagingPresenter::class)->forDocument($invoice),
             // "Send Google Review request?" asked after every invoice send (SPEC §8).
             'reviewPrompt' => $invoice->isVoid() ? null : app(ReviewRequests::class)->prompt($invoice),
+            // From the "Send a review request?" notification: the request opens at once (sent only by Send).
+            'openReview' => request()->boolean('review') && ! $invoice->isVoid(),
             // The customer signs when the work is done and the invoice is made, not earlier on the job.
             'signature' => [
                 'job_id' => $invoice->service_job_id,

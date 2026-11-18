@@ -104,6 +104,7 @@ export default function BillingShow({
     delivery,
     sms = null,
     reviewPrompt = null,
+    openReview = false,
     signature = null,
     diagnosisUrl = null,
     attachments = [],
@@ -116,6 +117,7 @@ export default function BillingShow({
     delivery?: Delivery;
     sms?: DocumentSms;
     reviewPrompt?: ReviewPrompt;
+    openReview?: boolean;
     signature?: {
         job_id: number;
         customer_name: string;
@@ -162,6 +164,7 @@ export default function BillingShow({
         number: doc.number,
         sms,
         reviewPrompt,
+        openReview,
     });
     // An estimate saved but not sent is a draft; once it went out it waits for the customer ("Sent").
     const stage =

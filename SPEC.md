@@ -488,6 +488,52 @@ Google Maps key) is built, stays off, and says what is missing.
 - The company's own staff (their profile phone numbers) never get auto messages.
 - The "Possible warranty" window (§7.16.13) is set on the same page.
 
+#### 7.16.4 On my way with the drive time (PR 2)
+
+- On my way (Automatic SMS mode) texts the customer at once. The phone's position (when the browser gives it within a
+  few seconds) and the job's address go to Google Distance Matrix (the app's server maps key, with traffic); the text
+  is the company's "On my way (with ETA)" template: "… On my way, ETA about {eta_minutes} min." Without an address, a
+  position or a route, the usual On my way text goes (arrival window, no ETA). From technician's phone mode is
+  unchanged (the phone's messages app opens with the usual text).
+
+#### 7.16.5 Review request after payment (PR 2)
+
+- Two hours after an invoice is marked paid: a notification "Send a review request?" (push + list) to the person who
+  took the payment (else the Owners). It opens the invoice with the review request ready; the text can be edited and
+  nothing goes before Send. Never sent automatically; skipped when the job already had a request, the company has no
+  Google profile or texts are Off.
+
+#### 7.16.6 Invoice from photos in the assistant
+
+- Already built in §7.15.2 (November 16).
+
+#### 7.16.7 Close by voice (PR 2)
+
+- "Close by voice" on the job page (work in progress): a text field with the microphone (browser speech, EN / RU).
+  `AI_MODEL_ASSISTANT` fills the note about the work, invoice lines (work / part, amounts as said, never invented),
+  whether the amounts include tax, the payment (card / cash / e-transfer / not paid) and the status (Completed, or Need
+  to order parts with the part). Code calculates taxes and the total. Preview → Confirm: the note is added to Work done,
+  the invoice is created, the payment recorded (card terminal / cash / bank transfer), the visit finished and the job
+  closed as repaired (or moved to Need to order parts).
+
+#### 7.16.8 Quick edit of a booking by voice (PR 2)
+
+- The job's edit sheet (pencil on the job page) starts with "Quick edit": text + microphone (EN / RU). The booking as
+  it is and the text go to `AI_MODEL_BOOKING`; only the fields named come back (date, window or "Now", technician,
+  name, phone, email, address, problem, notes). They are filled in and highlighted; nothing is saved until Save. When
+  the AI cannot tell what to change, a short message and the form stays as it was. The sheet now also edits phone,
+  email, problem and notes.
+- "Edit by voice" on job cards in My Jobs and in the calendar's job details opens the job with the sheet open and the
+  cursor in Quick edit (office).
+
+#### 7.16.9 Parts (PR 2)
+
+- When a job moves to Need to order parts, `AI_MODEL_ASSISTANT` suggests a possible part number from the appliance,
+  the part and the problem; it is shown marked "check" with Use (fills the field; Save stores it). The job page has the
+  part: name, number, supplier, order date.
+- In Waiting for parts the office has "Part arrived": a text to the customer with the three nearest free arrival
+  windows (from tomorrow, business days), editable, sent only on Send. The answer comes into the SMS chat (§7.16.1).
+
 #### 7.16.13 Possible warranty (PR 1)
 
 - When the customer had a job finished within the last 90 days (setting) and texts in, or a new job is created for

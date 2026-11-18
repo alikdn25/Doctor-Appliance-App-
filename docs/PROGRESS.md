@@ -2,6 +2,33 @@
 
 Three PRs (SPEC §7.16).
 
+## PR 2 — On my way with ETA, review request after payment, close by voice, quick edit by voice, parts (done)
+
+1. **On my way with the drive time** (`VisitActionController`, `DistanceMatrix::minutes`, `lib/geo.ts`): the phone's
+   position (4 s at most) and the job address → Google Distance Matrix with traffic → template **On my way (with ETA)**
+   (`MessageKind::OnMyWayEta`, placeholder `{eta_minutes}`, editable in Messaging). No address / position / route → the
+   usual On my way text. Sent at once in Automatic mode.
+2. **"Send a review request?"** (`invoices:paid-followup`, every 5 min): 2 h after an invoice is paid, a notification to
+   the person who took the payment (else Owners), once per invoice (`invoices.review_offered_at`). It opens the invoice
+   with the review request open (`?review=1`); nothing is sent before Send.
+3. **Close by voice** (`VoiceCloser`, `JobVoiceController`, `VoiceCloseSheet`): microphone + text → `AI_MODEL_ASSISTANT`
+   → note, lines, tax included or not, payment, status / part. Taxes and total by code (`InvoiceDraft::prices`,
+   `DocumentTotals`). Preview → Confirm: Work done note, invoice, payment, visit finished, job closed (or Need to order
+   parts with the part name).
+4. **Quick edit by voice** (`BookingEditor`, `AI_MODEL_BOOKING`): at the top of the job's edit sheet; only named fields
+   come back (`changed_fields`), are filled and highlighted, saved by Save. "Thursday", "tomorrow", "Now" by code in the
+   company time zone; a technician by name; phone in E.164. The sheet also edits phone, email, problem, notes.
+   **Edit by voice** on My Jobs cards (office) and in the calendar job details opens it (`?voice_edit=1`).
+5. **Parts** (`JobPartsController`, `PartCard`): part name, number, supplier, order date on the job; moving to Need to
+   order parts runs `SuggestPartNumber` (`PartFinder`, `AI_MODEL_ASSISTANT`) → "Possible part number … CHECK" with Use.
+   **Part arrived** (Waiting for parts, office): text with the 3 nearest free windows, editable, sent on Send.
+
+- **Migration** `2026_11_18_000200_add_parts_and_review_offer`: nullable columns on `service_jobs` and `invoices` only.
+- Tests: `VoiceAndPartsTest` (ETA text, no position, editable template; review offer after 2 h, once, nothing sent;
+  close by voice preview creates nothing, Confirm saves all, taxes with / without tax, parts status; quick edit only
+  named fields, nothing saved, not understood, technician / phone / Now; edit sheet saves contacts; part suggestion only
+  as a suggestion; Part arrived windows and Send; roles and another company), AI schemas.
+
 ## PR 1 — texts read by the AI, reminders, auto replies, Done, new-message badge, Possible warranty (done)
 
 1. **The AI reads every incoming text** (`TriageIncomingSms` queue job → `SmsTriage`, `AI_MODEL_BOOKING`): the text, the
@@ -38,8 +65,7 @@ Three PRs (SPEC §7.16).
   interval, max 3, next morning, setting, Done, reply; badge appears and goes; nothing moved, cancelled, booked or sent
   before Confirm; plate only after Confirm; tomorrow / weekday dates; daily AI limit; roles; another company; Possible
   warranty inside and outside 90 days; settings), tenant isolation (`sms_threads`), AI schemas.
-- Next: PR 2 (On my way with ETA, review request after payment, close by voice, quick edit by voice, parts), PR 3
-  (receipt photo, morning summary, mileage of the day).
+- Next: PR 3 (receipt photo, morning summary, mileage of the day).
 
 # November 16 — Assistant: composer on the keyboard, microphone, invoice from photos
 

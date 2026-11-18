@@ -5,11 +5,14 @@ namespace App\Console\Commands;
 use App\Services\AI\AiFeature;
 use App\Services\AI\AiTransport;
 use App\Services\AI\Assistant\AssistantTools;
+use App\Services\AI\BookingEditor;
+use App\Services\AI\PartFinder;
 use App\Services\AI\Problems\ProblemFinder;
 use App\Services\AI\QuickBookingParser;
 use App\Services\AI\Review\AppReviewer;
 use App\Services\AI\Sms\PlateReader;
 use App\Services\AI\Sms\SmsTriage;
+use App\Services\AI\VoiceCloser;
 use App\Support\Ai\BookingTextParser;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -71,6 +74,9 @@ class AiSchemaSmokeCommand extends Command
             AiFeature::AppReview->value => [AppReviewer::schema(), [], '{"summary": {}, "previous_suggestions": []}'],
             AiFeature::SmsTriage->value => [SmsTriage::schema(), [], 'New message from the customer: Can you come tomorrow instead?'],
             AiFeature::SmsPhoto->value => [PlateReader::schema(), [], 'No photo: answer that it is not a rating plate.'],
+            AiFeature::BookingEdit->value => [BookingEditor::schema(), [], 'Booking now: {"date": "2026-11-20"}. Change: move to tomorrow'],
+            AiFeature::VoiceClose->value => [VoiceCloser::schema(), [], 'Replaced the drain pump, 180 dollars, paid by card.'],
+            AiFeature::PartLookup->value => [PartFinder::schema(), [], 'Appliance: LG washer model WM3400CW. Part needed: drain pump.'],
         ];
     }
 }

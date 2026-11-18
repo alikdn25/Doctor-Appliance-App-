@@ -53,7 +53,9 @@ use App\Http\Controllers\Jobs\JobFieldController;
 use App\Http\Controllers\Jobs\JobMessageController;
 use App\Http\Controllers\Jobs\JobMessageFillController;
 use App\Http\Controllers\Jobs\JobNoteController;
+use App\Http\Controllers\Jobs\JobPartsController;
 use App\Http\Controllers\Jobs\JobStatusController;
+use App\Http\Controllers\Jobs\JobVoiceController;
 use App\Http\Controllers\Jobs\JobWarrantyController;
 use App\Http\Controllers\Jobs\JobWorkController;
 use App\Http\Controllers\Jobs\MapController;
@@ -210,6 +212,14 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('jobs/{job}/address', JobAddressController::class)->name('jobs.address');
         Route::post('jobs/{job}/fill-from-message', JobMessageFillController::class)->middleware('throttle:30,1')->name('jobs.fill-from-message');
         Route::put('jobs/{job}/details', JobDetailsController::class)->name('jobs.details');
+        // Voice (owner's task of November 18): quick edit of a booking, close by voice. Nothing saved without Save / Confirm.
+        Route::post('jobs/{job}/quick-edit', [JobVoiceController::class, 'quickEdit'])->middleware('throttle:assistant')->name('jobs.quick-edit');
+        Route::post('jobs/{job}/voice-close/read', [JobVoiceController::class, 'readClose'])->middleware('throttle:assistant')->name('jobs.voice-close.read');
+        Route::post('jobs/{job}/voice-close', [JobVoiceController::class, 'confirmClose'])->name('jobs.voice-close');
+        // The part a job waits for, and "Part arrived" (text with free windows, sent on Confirm).
+        Route::put('jobs/{job}/part', [JobPartsController::class, 'update'])->name('jobs.part');
+        Route::get('jobs/{job}/part-arrived', [JobPartsController::class, 'arrived'])->name('jobs.part-arrived');
+        Route::post('jobs/{job}/part-arrived', [JobPartsController::class, 'sendArrived'])->middleware('throttle:30,1')->name('jobs.part-arrived.send');
         Route::put('jobs/{job}/technician', [AssignmentController::class, 'assign'])->name('jobs.technician');
         Route::post('visits/transfer', [AssignmentController::class, 'transfer'])->name('visits.transfer');
         Route::post('visits/{visit}/on-my-way', [VisitActionController::class, 'onMyWay'])->name('visits.on-my-way');

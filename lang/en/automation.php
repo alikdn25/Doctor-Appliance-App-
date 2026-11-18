@@ -51,6 +51,72 @@ return [
         'open' => 'Open job #:number',
     ],
 
+    'review' => [
+        'title' => 'Send a review request to :customer?',
+        'body' => 'Invoice :number was paid. Open it to check the text and send the request.',
+    ],
+
+    'quick_edit' => [
+        'label' => 'Quick edit',
+        'placeholder' => 'Say or type what to change, e.g. "move to Thursday after 1, phone 604 555 0199"',
+        'apply' => 'Fill in',
+        'not_understood' => 'Could not tell what to change. Nothing was changed.',
+        'filled' => 'Changed fields are highlighted. Check them and press Save.',
+        'bad_phone' => 'This phone number does not look right.',
+        'open' => 'Edit by voice',
+    ],
+
+    'voice_close' => [
+        'open' => 'Close by voice',
+        'title' => 'Close by voice',
+        'hint' => 'Say what you found and did, the prices, how the customer paid, and whether a part is needed.',
+        'read' => 'Read',
+        'preview' => 'Check before saving',
+        'note' => 'Note',
+        'lines' => 'Invoice',
+        'no_lines' => 'No invoice lines (no amount was said).',
+        'subtotal' => 'Subtotal',
+        'total' => 'Total',
+        'with_tax' => 'Amounts said include tax',
+        'payment' => 'Payment',
+        'payments' => [
+            'card' => 'Card',
+            'cash' => 'Cash',
+            'e_transfer' => 'E-transfer',
+            'unpaid' => 'Not paid',
+        ],
+        'status' => 'Status',
+        'statuses' => [
+            'completed' => 'Completed',
+            'need_to_order_parts' => 'Need to order parts',
+        ],
+        'part' => 'Part: :part',
+        'confirm' => 'Confirm',
+        'back' => 'Back to the text',
+        'saved' => 'Job #:number closed: note, invoice, payment and status saved.',
+        'no_amount' => 'There is nothing to be paid: add the amounts or choose "Not paid".',
+    ],
+
+    'parts' => [
+        'title' => 'Part',
+        'name' => 'Part',
+        'number' => 'Part number',
+        'supplier' => 'Supplier',
+        'ordered_on' => 'Order date',
+        'suggestion' => 'Possible part number: :number',
+        'check' => 'check',
+        'use' => 'Use',
+        'saved' => 'Part saved.',
+        'arrived' => 'Part arrived',
+        'arrived_title' => 'Text the customer',
+        'arrived_hint' => 'The three nearest free windows. Edit the text if you like; it goes only when you press Send.',
+        'send' => 'Send',
+        'arrived_text' => 'Hi :name, your part has arrived! When can :brand come to install it?
+:windows
+Reply with the number that suits you.',
+        'no_windows' => 'Reply with a day and time that suits you.',
+    ],
+
     'reminders' => [
         'title' => 'Unanswered text from :name',
         'body' => '":text" — reply or press Done in the chat.',

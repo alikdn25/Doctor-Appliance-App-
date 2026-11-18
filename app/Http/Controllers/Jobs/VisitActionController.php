@@ -20,6 +20,7 @@ use App\Models\Appliance;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
 use App\Support\Jobs\JobPresenter;
+use App\Support\Maps\DistanceMatrix;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,18 +34,23 @@ use Inertia\Response;
 class VisitActionController extends Controller
 {
     /**
-     * Automatic: the customer gets an SMS with the arrival window. Off: the same text by email.
+     * Automatic: the customer gets an SMS at once, with the drive time ("ETA about 18 min") when the phone's position
+     * and the job's address are known, else with the arrival window. Off: the same text by email.
      * From technician's phone: the page opens the phone's messages app itself (and records it).
      */
-    public function onMyWay(Request $request, JobVisit $visit, VisitWorkflow $workflow, Messenger $messenger): RedirectResponse
+    public function onMyWay(Request $request, JobVisit $visit, VisitWorkflow $workflow, Messenger $messenger, DistanceMatrix $maps): RedirectResponse
     {
         Gate::authorize('work', $visit);
 
-        $phoneText = $request->validate([
+        $input = $request->validate([
             'phone_sms' => ['nullable', 'array'],
             'phone_sms.to' => ['required_with:phone_sms', 'string', 'max:32'],
             'phone_sms.body' => ['required_with:phone_sms', 'string', 'max:1600'],
-        ])['phone_sms'] ?? null;
+            // The phone's position, for the drive time in the text.
+            'lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180'],
+        ]);
+        $phoneText = $input['phone_sms'] ?? null;
 
         $workflow->onMyWay($visit, $request->user());
 
@@ -56,9 +62,18 @@ class VisitActionController extends Controller
                 $messenger->openedOnPhone(MessageKind::OnMyWay, $job->customer, $job, $phoneText['to'], $phoneText['body'], $request->user());
             }
         } else {
-            $job = $visit->job()->with(['customer', 'brand'])->firstOrFail();
-            $body = MessageTemplates::render(currentCompany(), MessageKind::OnMyWay, MessageContext::for($job->customer, $job, $visit, $request->user()));
-            $messenger->send(MessageKind::OnMyWay, $job->customer, $job, $body, $request->user(),
+            $job = $visit->job()->with(['customer', 'brand', 'property'])->firstOrFail();
+            $context = MessageContext::for($job->customer, $job, $visit, $request->user());
+            // The drive time from where the technician is now to the job (Google, the app's maps key); without an
+            // address or a position the text goes without it.
+            $address = $job->property?->hasAddress() ? $job->property->fullAddress() : '';
+            $minutes = isset($input['lat'], $input['lng']) && $address !== ''
+                ? $maps->minutes(round((float) $input['lat'], 6).','.round((float) $input['lng'], 6), $address)
+                : null;
+            $body = $minutes !== null
+                ? MessageTemplates::render(currentCompany(), MessageKind::OnMyWayEta, [...$context, 'eta_minutes' => (string) $minutes])
+                : MessageTemplates::render(currentCompany(), MessageKind::OnMyWay, $context);
+            $messenger->send($minutes !== null ? MessageKind::OnMyWayEta : MessageKind::OnMyWay, $job->customer, $job, $body, $request->user(),
                 __('messages.email_subject.on_my_way', ['brand' => $job->brand?->name ?? currentCompany()->name]));
         }
 

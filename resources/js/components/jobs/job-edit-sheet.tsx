@@ -1,6 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
-import { Check, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Check, Sparkles, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
     AddressEntry,
@@ -13,6 +13,7 @@ import type { Assignable } from '@/components/jobs/types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { MicButton } from '@/components/ui/mic-button';
 import { NativeSelect } from '@/components/ui/native-select';
 import {
     Sheet,
@@ -21,8 +22,10 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
+import { Textarea } from '@/components/ui/textarea';
+import { sendJson } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
-import { details } from '@/routes/jobs';
+import { details, quickEdit } from '@/routes/jobs';
 import { destroy as destroyVisit } from '@/routes/visits';
 
 export type JobEditCustomer = {
@@ -36,6 +39,10 @@ type Form = {
     first_name: string;
     last_name: string;
     company_name: string;
+    phone: string;
+    email: string;
+    description: string;
+    notes: string;
     /** The customer's address the job is at, or "new". */
     address: string;
     date: string;
@@ -65,6 +72,8 @@ export function JobEditSheet({
     technicians,
     canNotify,
     removableVisitId = null,
+    contact,
+    focusQuickEdit = false,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -85,6 +94,15 @@ export function JobEditSheet({
     canNotify: boolean;
     /** The booked time that has not started yet: "Remove time" takes it off the schedule. */
     removableVisitId?: number | null;
+    /** Phone, email, problem and notes, also changed by Quick edit. */
+    contact: {
+        phone: string;
+        email: string;
+        description: string;
+        notes: string;
+    };
+    /** Opened by "Edit by voice": the cursor goes to Quick edit. */
+    focusQuickEdit?: boolean;
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
@@ -94,6 +112,10 @@ export function JobEditSheet({
         first_name: customer.first_name ?? '',
         last_name: customer.last_name ?? '',
         company_name: customer.company_name ?? '',
+        phone: contact.phone,
+        email: contact.email,
+        description: contact.description,
+        notes: contact.notes,
         address: currentAddress ? String(propertyId) : 'new',
         date: when?.date ?? '',
         start_time: when?.start_time ?? '',
@@ -105,19 +127,109 @@ export function JobEditSheet({
     const [address, setAddress] = useState<AddressData>(emptyAddress(country));
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [busy, setBusy] = useState(false);
+    const [quick, setQuick] = useState('');
+    const [quickBusy, setQuickBusy] = useState(false);
+    const [quickNote, setQuickNote] = useState<string | null>(null);
+    // Fields Quick edit filled in: highlighted until the person saves.
+    const [changed, setChanged] = useState<string[]>([]);
+    const quickRef = useRef<HTMLTextAreaElement>(null);
     const set = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }));
+    const mark = (field: string) =>
+        changed.includes(field)
+            ? 'bg-amber-50 ring-2 ring-amber-400'
+            : undefined;
 
     useEffect(() => {
         if (open) {
             setForm(initial());
             setAddress(emptyAddress(country));
             setErrors({});
+            setQuick('');
+            setQuickNote(null);
+            setChanged([]);
+            if (focusQuickEdit) {
+                window.setTimeout(() => quickRef.current?.focus(), 150);
+            }
         }
         // Reset only when the sheet opens.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 
     const newAddress = form.address === 'new';
+
+    // Quick edit: the AI returns only the fields named in the text; they are filled in and highlighted. Nothing is
+    // saved until Save.
+    const applyQuick = async () => {
+        if (quick.trim() === '' || quickBusy) return;
+        setQuickBusy(true);
+        setQuickNote(null);
+        try {
+            const response = await sendJson(quickEdit(jobId).url, 'POST', {
+                text: quick,
+                current: {
+                    date: form.date,
+                    start_time: form.start_time,
+                    end_time: form.end_time,
+                    technician:
+                        technicians?.find(
+                            (p) => String(p.id) === form.technician_id,
+                        )?.name ?? '',
+                    first_name: form.first_name,
+                    last_name: form.last_name,
+                    phone: form.phone,
+                    email: form.email,
+                    address: currentAddress,
+                    problem: form.description,
+                    notes: form.notes,
+                },
+            });
+            const body = (await response.json()) as {
+                changes?: Record<string, string | boolean>;
+                message?: string;
+            };
+            const changes = body.changes ?? {};
+            if (!response.ok || Object.keys(changes).length === 0) {
+                setQuickNote(
+                    body.message ?? t('automation.quick_edit.not_understood'),
+                );
+
+                return;
+            }
+            const patch: Partial<Form> = {};
+            const touched: string[] = [];
+            const put = (key: keyof Form, value: unknown) => {
+                if (typeof value === 'string') {
+                    (patch as Record<string, string>)[key] = value;
+                    touched.push(key);
+                }
+            };
+            put('date', changes.date);
+            put('start_time', changes.start_time);
+            put('end_time', changes.end_time);
+            if (technicians !== null)
+                put('technician_id', changes.technician_id);
+            if (canRename) {
+                put('first_name', changes.first_name);
+                put('last_name', changes.last_name);
+                put('phone', changes.phone);
+                put('email', changes.email);
+            }
+            put('description', changes.problem);
+            put('notes', changes.notes);
+            if (typeof changes.address === 'string') {
+                patch.address = 'new';
+                setAddress((a) => ({ ...a, line1: changes.address as string }));
+                touched.push('address');
+            }
+            set(patch);
+            setChanged(touched);
+            setQuickNote(t('automation.quick_edit.filled'));
+        } catch {
+            setQuickNote(t('automation.inbox.failed'));
+        } finally {
+            setQuickBusy(false);
+        }
+    };
     const removeTime = () => {
         if (
             removableVisitId === null ||
@@ -141,7 +253,13 @@ export function JobEditSheet({
                 data.first_name = form.first_name;
                 data.last_name = form.last_name;
             }
+            if (form.phone !== contact.phone) data.phone = form.phone;
+            if (form.email !== contact.email) data.email = form.email;
         }
+        if (form.description !== contact.description) {
+            data.description = form.description;
+        }
+        if (form.notes !== contact.notes) data.notes = form.notes;
         if (newAddress) {
             if (addressComplete(address)) {
                 Object.assign(data, address, { address: 'new' });
@@ -186,6 +304,51 @@ export function JobEditSheet({
                     </SheetDescription>
                 </SheetHeader>
                 <form onSubmit={submit} className="space-y-4">
+                    <div
+                        className="space-y-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-3"
+                        data-test="quick-edit"
+                    >
+                        <label
+                            htmlFor="quick-edit"
+                            className="text-sm font-semibold"
+                        >
+                            {t('automation.quick_edit.label')}
+                        </label>
+                        <div className="flex items-end gap-2">
+                            <Textarea
+                                ref={quickRef}
+                                id="quick-edit"
+                                value={quick}
+                                rows={2}
+                                maxLength={2000}
+                                placeholder={t(
+                                    'automation.quick_edit.placeholder',
+                                )}
+                                onChange={(e) => setQuick(e.target.value)}
+                                className="min-w-0 flex-1 bg-white"
+                            />
+                            <MicButton value={quick} onChange={setQuick} />
+                        </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full"
+                            loading={quickBusy}
+                            disabled={quick.trim() === ''}
+                            onClick={() => void applyQuick()}
+                            data-test="quick-edit-apply"
+                        >
+                            <Sparkles /> {t('automation.quick_edit.apply')}
+                        </Button>
+                        {quickNote && (
+                            <p
+                                role="status"
+                                className="text-sm text-violet-800"
+                            >
+                                {quickNote}
+                            </p>
+                        )}
+                    </div>
                     {canRename &&
                         (business ? (
                             <FormField
@@ -211,6 +374,7 @@ export function JobEditSheet({
                                 >
                                     <Input
                                         id="edit-first-name"
+                                        className={mark('first_name')}
                                         value={form.first_name}
                                         maxLength={100}
                                         autoComplete="off"
@@ -226,6 +390,7 @@ export function JobEditSheet({
                                 >
                                     <Input
                                         id="edit-last-name"
+                                        className={mark('last_name')}
                                         value={form.last_name}
                                         maxLength={100}
                                         autoComplete="off"
@@ -237,6 +402,44 @@ export function JobEditSheet({
                             </div>
                         ))}
 
+                    {canRename && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <FormField
+                                id="edit-phone"
+                                label={t('customers.fields.phone')}
+                                error={errors.phone}
+                            >
+                                <Input
+                                    id="edit-phone"
+                                    type="tel"
+                                    inputMode="tel"
+                                    className={mark('phone')}
+                                    value={form.phone}
+                                    maxLength={32}
+                                    onChange={(e) =>
+                                        set({ phone: e.target.value })
+                                    }
+                                />
+                            </FormField>
+                            <FormField
+                                id="edit-email"
+                                label={t('customers.fields.email')}
+                                error={errors.email}
+                            >
+                                <Input
+                                    id="edit-email"
+                                    type="email"
+                                    className={mark('email')}
+                                    value={form.email}
+                                    maxLength={255}
+                                    onChange={(e) =>
+                                        set({ email: e.target.value })
+                                    }
+                                />
+                            </FormField>
+                        </div>
+                    )}
+
                     <FormField
                         id="edit-address"
                         label={t('jobs.details.address')}
@@ -244,6 +447,7 @@ export function JobEditSheet({
                     >
                         <NativeSelect
                             id="edit-address"
+                            className={mark('address')}
                             value={form.address}
                             onChange={(e) => set({ address: e.target.value })}
                         >
@@ -285,6 +489,7 @@ export function JobEditSheet({
                             >
                                 <Input
                                     id="edit-date"
+                                    className={mark('date')}
                                     type="date"
                                     min={when ? undefined : today}
                                     value={form.date}
@@ -300,6 +505,7 @@ export function JobEditSheet({
                             >
                                 <Input
                                     id="edit-start"
+                                    className={mark('start_time')}
                                     type="time"
                                     step={900}
                                     value={form.start_time}
@@ -315,6 +521,7 @@ export function JobEditSheet({
                             >
                                 <Input
                                     id="edit-end"
+                                    className={mark('end_time')}
                                     type="time"
                                     step={900}
                                     value={form.end_time}
@@ -334,6 +541,7 @@ export function JobEditSheet({
                         >
                             <NativeSelect
                                 id="edit-technician"
+                                className={mark('technician_id')}
                                 value={form.technician_id}
                                 onChange={(e) =>
                                     set({ technician_id: e.target.value })
@@ -350,6 +558,37 @@ export function JobEditSheet({
                             </NativeSelect>
                         </FormField>
                     )}
+
+                    <FormField
+                        id="edit-problem"
+                        label={t('jobs.fields.description')}
+                        error={errors.description}
+                    >
+                        <Textarea
+                            id="edit-problem"
+                            rows={2}
+                            className={mark('description')}
+                            value={form.description}
+                            maxLength={5000}
+                            onChange={(e) =>
+                                set({ description: e.target.value })
+                            }
+                        />
+                    </FormField>
+                    <FormField
+                        id="edit-notes"
+                        label={t('jobs.fields.notes')}
+                        error={errors.notes}
+                    >
+                        <Textarea
+                            id="edit-notes"
+                            rows={2}
+                            className={mark('notes')}
+                            value={form.notes}
+                            maxLength={5000}
+                            onChange={(e) => set({ notes: e.target.value })}
+                        />
+                    </FormField>
 
                     {canNotify && (
                         <NotifyClientBox

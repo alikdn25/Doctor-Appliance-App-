@@ -14,6 +14,7 @@ import {
     MapPinPlus,
     ListChecks,
     MessageSquare,
+    Mic,
     Navigation,
     Package,
     Pencil,
@@ -57,6 +58,9 @@ import type {
 import { JobAddressSheet } from '@/components/jobs/job-address-sheet';
 import { JobPasteSheet } from '@/components/jobs/job-paste-sheet';
 import { NoAddressBadge } from '@/components/jobs/no-address-badge';
+import { PartCard } from '@/components/jobs/part-card';
+import type { JobPart } from '@/components/jobs/part-card';
+import { VoiceCloseSheet } from '@/components/jobs/voice-close-sheet';
 import type { PossibleWarranty } from '@/components/messaging/types';
 import { WarrantyNotice } from '@/components/messaging/warranty-notice';
 import { JobEditSheet } from '@/components/jobs/job-edit-sheet';
@@ -102,6 +106,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAutosave } from '@/hooks/use-autosave';
 import type { AutosaveState } from '@/hooks/use-autosave';
 import { formatMinutes, useCompanyTime } from '@/lib/datetime';
+import { currentPosition } from '@/lib/geo';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
 import { smsUrl } from '@/lib/sms';
@@ -154,6 +159,7 @@ type Job = {
     description: string | null;
     notes: string | null;
     tech_notes: string | null;
+    part: JobPart | null;
     created_at: string | null;
     completed_at: string | null;
     allows_visit_work: boolean;
@@ -163,6 +169,7 @@ type Job = {
         avatar_icon: AvatarIcon;
         avatar_style: AvatarStyle;
         notes: string | null;
+        email: string | null;
         phones: {
             id: number;
             number: string;
@@ -467,7 +474,16 @@ export default function JobShow({
     // Booked with missing data: Add address and Paste from message (fills only the empty fields).
     const missingData =
         !hasAddress || !phone || !job.customer.display_name || !job.description;
-    const [editOpen, setEditOpen] = useState(false);
+    // "Edit by voice" on a job card opens the edit sheet with the cursor in Quick edit.
+    const voiceEdit =
+        typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('voice_edit') === '1';
+    const [editOpen, setEditOpen] = useState(voiceEdit && can.update);
+    const [voiceCloseOpen, setVoiceCloseOpen] = useState(false);
+    const canVoiceClose =
+        can.work &&
+        job.allows_visit_work &&
+        !['completed', 'invoiced', 'paid', 'cancelled'].includes(job.status);
     const textFromPhone =
         messaging.mode === 'technician_phone' &&
         messaging.phone &&
@@ -570,10 +586,17 @@ export default function JobShow({
         const sms = textFromPhone
             ? { to: messaging.phone!, body: messaging.texts.on_my_way }
             : null;
-        act(onMyWay(visit.id).url, sms ? { phone_sms: sms } : {});
         if (sms) {
+            act(onMyWay(visit.id).url, { phone_sms: sms });
             openSmsApp(sms.to, sms.body);
+
+            return;
         }
+        // The app texts the customer: with the drive time from here when the phone knows where it is.
+        setBusy(true);
+        void currentPosition().then((position) =>
+            act(onMyWay(visit.id).url, position ?? {}),
+        );
     };
 
     // Start / Complete of the person's own visit: in the main block, always in view (owner's update, October 24).
@@ -887,6 +910,27 @@ export default function JobShow({
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 sm:p-6">
                 {possibleWarranty && (
                     <WarrantyNotice warranty={possibleWarranty} />
+                )}
+                {canVoiceClose && (
+                    <Button
+                        variant="outline"
+                        size="lg"
+                        className="w-full border-violet-300"
+                        onClick={() => setVoiceCloseOpen(true)}
+                        data-test="voice-close"
+                    >
+                        <Mic /> {t('automation.voice_close.open')}
+                    </Button>
+                )}
+                {job.part && (
+                    <PartCard
+                        jobId={job.id}
+                        part={job.part}
+                        canEdit={can.work}
+                        canTextArrived={
+                            can.update && job.status === 'waiting_for_parts'
+                        }
+                    />
                 )}
                 {draft && (
                     <section
@@ -1828,9 +1872,23 @@ export default function JobShow({
                         can.assign && !worksAlone ? assignableUsers : null
                     }
                     canNotify={!draft}
+                    contact={{
+                        phone: phone ?? '',
+                        email: job.customer.email ?? '',
+                        description: job.description ?? '',
+                        notes: job.notes ?? '',
+                    }}
+                    focusQuickEdit={voiceEdit}
                     removableVisitId={
                         current?.status === 'scheduled' ? current.id : null
                     }
+                />
+            )}
+            {canVoiceClose && (
+                <VoiceCloseSheet
+                    open={voiceCloseOpen}
+                    onOpenChange={setVoiceCloseOpen}
+                    jobId={job.id}
                 />
             )}
             {can.work && (
