@@ -4,6 +4,7 @@ namespace App\Support\Jobs;
 
 use App\Enums\JobStatus;
 use App\Enums\VisitStatus;
+use App\Models\Invoice;
 use App\Models\ServiceJob;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -80,6 +81,10 @@ class JobBacklog
 
         // Jobs booked without an address, counted apart (they also sit in one of the reasons).
         $counts['no_address'] = self::query($user)->where('has_address', false)->count();
+
+        // Completed jobs that still have no invoice (owner's task of November 19): their own counter, not in the total.
+        $counts['no_invoice'] = $user->can('viewAny', Invoice::class)
+            ? MorningSms::completedWithoutInvoice()->visibleTo($user)->count() : 0;
 
         return ['total' => array_sum(array_intersect_key($counts, array_flip(self::REASONS))), 'counts' => $counts, 'no_address' => $counts['no_address']];
     }

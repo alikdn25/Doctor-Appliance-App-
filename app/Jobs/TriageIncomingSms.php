@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\PhotoKind;
+use App\Messaging\Clarifier;
 use App\Messaging\IncomingSmsPush;
 use App\Messaging\SmsThreads;
 use App\Models\Company;
@@ -90,6 +91,8 @@ class TriageIncomingSms implements ShouldQueue
             if ($result !== null) {
                 $message->forceFill(['ai_triage' => $result])->save();
                 SmsThreads::markUrgent((string) $message->from, $result['urgency'] === 'urgent');
+                // Clarifying questions by themselves, when the company turned that on.
+                app(Clarifier::class)->maybeSend($message, $result);
             }
 
             // A push to the office for every incoming text: one line from the AI and its buttons.

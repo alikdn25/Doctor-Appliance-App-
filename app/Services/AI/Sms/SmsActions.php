@@ -8,8 +8,10 @@ use App\Actions\Jobs\DirectBooking;
 use App\Actions\Jobs\SaveVisit;
 use App\Enums\ApplianceType;
 use App\Enums\JobOutcome;
+use App\Enums\MessageKind;
 use App\Http\Controllers\Jobs\JobController;
 use App\Messaging\BookingConfirmation;
+use App\Messaging\Messenger;
 use App\Models\Appliance;
 use App\Models\Customer;
 use App\Models\JobVisit;
@@ -172,6 +174,12 @@ class SmsActions
      */
     public static function main(Message $message): ?array
     {
+        // An answer to a payment reminder: the main button sends the reply with the amount and the link.
+        $draft = $message->ai_triage['reply_draft'] ?? null;
+        if (! empty($message->ai_triage['invoice_id']) && is_string($draft) && $draft !== '' && empty($message->ai_triage['draft_sent'])) {
+            return ['index' => -1, 'title' => __('push.send_reply'), 'does' => __('push.send_reply_does', ['text' => mb_strimwidth($draft, 0, 120, '…')])];
+        }
+
         foreach ((array) ($message->ai_triage['actions'] ?? []) as $index => $action) {
             if (! is_array($action) || ($action['status'] ?? 'pending') !== 'pending') {
                 continue;
@@ -247,6 +255,10 @@ class SmsActions
     public function runFromPush(Message $message, int $index, User $user): string
     {
         $triage = (array) $message->ai_triage;
+
+        if ($index === -1) {
+            return $this->sendDraft($message, $user);
+        }
         $action = $triage['actions'][$index] ?? null;
 
         if (! is_array($action) || ($action['status'] ?? 'pending') !== 'pending') {
@@ -273,6 +285,30 @@ class SmsActions
         $message->forceFill(['ai_triage' => $triage])->save();
 
         return __('push.booked', ['job' => '#'.$job->number, 'when' => self::shortWhen($plan['start'], $plan['end'])]);
+    }
+
+    /**
+     * Sends the AI's reply draft as it is, as the person who tapped (one tap: the notification showed the text).
+     */
+    public function sendDraft(Message $message, User $user): string
+    {
+        $triage = (array) $message->ai_triage;
+        $draft = trim((string) ($triage['reply_draft'] ?? ''));
+        if ($draft === '' || ! empty($triage['draft_sent'])) {
+            throw ValidationException::withMessages(['action' => __('automation.inbox.already_decided')]);
+        }
+        Gate::forUser($user)->authorize('create', Message::class);
+
+        $messenger = app(Messenger::class);
+        $recipient = $message->customer?->phones()->where('number_normalized', $message->from)->first();
+        $sent = $recipient !== null
+            ? $messenger->sms(MessageKind::Reply, $message->customer, $message->job, $draft, $user, recipient: $recipient)
+            : $messenger->smsToNumber((string) $message->from, $draft, $user, MessageKind::Reply);
+
+        $triage['draft_sent'] = true;
+        $message->forceFill(['ai_triage' => $triage])->save();
+
+        return $sent->status === 'blocked' ? (string) $sent->status_reason : __('push.reply_sent');
     }
 
     public function dismiss(Message $message, int $index): void

@@ -86,6 +86,9 @@ return [
         'general' => 'Text from the job',
         'reply' => 'Reply',
         'auto_reply' => 'Auto reply',
+        'payment_reminder' => 'Payment reminder',
+        'clarifying' => 'Clarifying questions',
+        'handoff' => 'Handed to technician',
     ],
 
     // Default texts (English). Companies edit their own in Messaging settings. Placeholders in {braces}.

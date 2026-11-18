@@ -47,7 +47,7 @@ class SmsThreads
     public const MISSED_CALL = 'missed_call';
 
     /** Texts that expect an answer: typed by a person (General, Reply) or a payment reminder. */
-    public const AWAITS_ANSWER = [MessageKind::General, MessageKind::Reply];
+    public const AWAITS_ANSWER = [MessageKind::General, MessageKind::Reply, MessageKind::PaymentReminder];
 
     public function __construct(private readonly Messenger $messenger) {}
 
@@ -362,7 +362,7 @@ class SmsThreads
         $main = $latest !== null ? SmsActions::main($latest) : null;
 
         return array_filter([
-            'main' => $main === null ? null : ['title' => $main['title'], 'does' => $main['does'], 'op' => 'sms_action', 'message_id' => $latest->id, 'index' => $main['index']],
+            'main' => $main === null ? null : ['title' => $main['title'], 'does' => $main['does'], 'op' => 'sms_action', 'message_id' => $latest?->id, 'index' => $main['index']],
             'draft' => ['title' => __('push.draft'), 'url' => route('messages.index', ['phone' => $phone])],
             PushActions::LATER => PushActions::later(),
         ]);

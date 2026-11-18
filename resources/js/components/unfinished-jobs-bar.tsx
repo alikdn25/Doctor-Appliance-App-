@@ -3,6 +3,7 @@ import { ListTodo } from 'lucide-react';
 import { usePublishedHeight } from '@/hooks/use-published-height';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { unpaid } from '@/routes/invoices';
 import { index as jobs } from '@/routes/jobs';
 
 /** Order of the counters: what needs action first; future scheduled work last. */
@@ -66,6 +67,16 @@ export function UnfinishedJobsBar() {
                         <span className="tabular-nums">{counts[reason]}</span>
                     </Link>
                 ),
+            )}
+            {(counts.no_invoice ?? 0) > 0 && (
+                <Link
+                    href={unpaid({ query: { filter: 'no_invoice' } })}
+                    data-test="unfinished-no_invoice"
+                    className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-background px-3 text-xs font-medium text-amber-800"
+                >
+                    {t('debtors.no_invoice')}
+                    <span className="tabular-nums">{counts.no_invoice}</span>
+                </Link>
             )}
         </nav>
     );

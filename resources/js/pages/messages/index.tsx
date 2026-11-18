@@ -50,6 +50,7 @@ import { SearchField } from '@/components/ui/search-field';
 import { Textarea } from '@/components/ui/textarea';
 import { scrollToPageEnd } from '@/hooks/use-viewport-keyboard';
 import { useCompanyTime } from '@/lib/datetime';
+import { xsrfToken } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
 import { smsUrl } from '@/lib/sms';
@@ -60,7 +61,15 @@ import {
     show as customerShow,
 } from '@/routes/customers';
 import { show as showJob } from '@/routes/jobs';
-import { done, index, notWaiting, older, read, send } from '@/routes/messages';
+import {
+    done,
+    index,
+    notWaiting,
+    older,
+    read,
+    send,
+    translate as translateRoute,
+} from '@/routes/messages';
 
 type SmsMode = 'automatic' | 'technician_phone' | 'off';
 type Thread = {
@@ -85,6 +94,7 @@ type Conversation = {
     urgent: boolean;
     draft: string | null;
     quiet_since: string | null;
+    translate: boolean;
     warranty: PossibleWarranty;
 };
 type Filters = { search: string; unread: boolean };
@@ -117,10 +127,50 @@ function Composer({
     const fromPhone = conversation.sms_mode !== 'automatic';
     const blocked = fromPhone ? null : conversation.blocked;
     const body = form.data.body.trim();
-    const submit = (event: FormEvent) => {
+    // Russian in the box becomes a short English SMS first (Prices and answers); the person then presses Send.
+    const [translating, setTranslating] = useState(false);
+    const [translated, setTranslated] = useState<string | null>(null);
+    const [translateError, setTranslateError] = useState<string | null>(null);
+    const submit = async (event: FormEvent) => {
         event.preventDefault();
 
         if (fromPhone || body === '') {
+            return;
+        }
+
+        if (conversation.translate && isRussian(body)) {
+            setTranslating(true);
+            setTranslateError(null);
+            try {
+                const response = await fetch(translateRoute().url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': xsrfToken(),
+                    },
+                    body: JSON.stringify({ text: body }),
+                });
+                const data = (await response.json()) as {
+                    text?: string;
+                    message?: string;
+                };
+                if (!response.ok || !data.text) {
+                    throw new Error(data.message ?? '');
+                }
+                form.setData('body', data.text);
+                setTranslated(data.text);
+            } catch (e) {
+                setTranslateError(
+                    e instanceof Error && e.message
+                        ? e.message
+                        : t('answers.translate.failed'),
+                );
+            } finally {
+                setTranslating(false);
+            }
+
             return;
         }
 
@@ -132,7 +182,24 @@ function Composer({
 
     return (
         <ChatDock>
-            <form onSubmit={submit} className="space-y-2">
+            <form
+                onSubmit={(event) => void submit(event)}
+                className="space-y-2"
+                aria-busy={translating}
+            >
+                {translated !== null && form.data.body === translated && (
+                    <p
+                        className="text-xs text-violet-700"
+                        data-test="translated-hint"
+                    >
+                        {t('answers.translate.done')}
+                    </p>
+                )}
+                {translateError && (
+                    <p className="text-xs text-red-700" role="alert">
+                        {translateError}
+                    </p>
+                )}
                 {conversation.draft !== null &&
                     form.data.body === conversation.draft && (
                         <p
@@ -807,3 +874,11 @@ export default function SmsInbox({
 SmsInbox.layout = {
     breadcrumbs: [{ title: 'messages.inbox.title', href: index() }],
 };
+
+/** Mostly Cyrillic letters: the text is in Russian. */
+function isRussian(text: string): boolean {
+    const letters = text.match(/\p{L}/gu)?.length ?? 0;
+    const cyrillic = text.match(/\p{Script=Cyrillic}/gu)?.length ?? 0;
+
+    return letters > 0 && cyrillic / letters >= 0.3;
+}

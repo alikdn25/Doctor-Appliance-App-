@@ -164,6 +164,8 @@ class SmsInbox
                 // "Text again" on a "customer is quiet" reminder: a short follow-up in the box (one tap to send).
                 : ($nudge && $thread?->silent_since !== null ? app(NudgeWriter::class)->draft($thread, currentCompany(), $user) : null),
             // Our text that waits for the customer's answer ("customer is quiet").
+            // Russian in the box becomes English before sending (Prices and answers).
+            'translate' => currentCompany()->translate_to_english,
             'quiet_since' => $thread?->silent_since ? JobPresenter::iso($thread->silent_since) : null,
             'warranty' => $recipient ? PossibleWarranty::for($recipient->customer_id, currentCompany()) : null,
         ];

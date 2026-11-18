@@ -14,6 +14,7 @@ use App\Services\AI\Review\AppReviewer;
 use App\Services\AI\Sms\NudgeWriter;
 use App\Services\AI\Sms\PlateReader;
 use App\Services\AI\Sms\SmsTriage;
+use App\Services\AI\Sms\Translator;
 use App\Services\AI\VoiceCloser;
 use App\Support\Ai\BookingTextParser;
 use Illuminate\Console\Attributes\Description;
@@ -80,6 +81,7 @@ class AiSchemaSmokeCommand extends Command
             AiFeature::VoiceClose->value => [VoiceCloser::schema(), [], 'Replaced the drain pump, 180 dollars, paid by card.'],
             AiFeature::Receipt->value => [ReceiptReader::schema(), [], 'No photo: return an empty receipt.'],
             AiFeature::PartLookup->value => [PartFinder::schema(), [], 'Appliance: LG washer model WM3400CW. Part needed: drain pump.'],
+            AiFeature::Translate->value => [Translator::schema(), [], 'Можем приехать в четверг с 10 до 12'],
             AiFeature::SmsNudge->value => [NudgeWriter::schema(), [], "Conversation:\nCompany: Can we come Thursday 10-12?\n\nCustomer's first name: Jane"],
         ];
     }

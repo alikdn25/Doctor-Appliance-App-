@@ -635,9 +635,13 @@ set up is built, stays off and says what is missing.
   Completed job on that date and an invoice "open, not sent". Without an amount the invoice line is marked "amount
   needed".
 - **Unpaid** screen: all open invoices with the filter "not reminded yet / reminded / answered". **Soft reminder** for
-  one or several chosen invoices: preview → Confirm. The template is in the settings, by default "Hi {first_name}, this
+  one or several chosen invoices: preview → Confirm. The template is in Prices and answers (placeholders
+  {first_name}, {my_name} = the sender's first name, {company} = the brand, {appliance}, {month}), by default "Hi
+  {first_name}, this is {my_name} from {company}." — for Alex at Doctor Appliance: "Hi {first_name}, this
   is Alex from Doctor Appliance. Just a quick note: our records show the invoice for your {appliance} repair from
   {month} is still open. Could you take a look when you get a chance?" — no amount and no link in it.
+- The imported amount is what the customer owes (no tax is added). The job is completed on that date (outcome
+  Repaired, a finished visit); its billing status then follows the invoice like any other job (Invoiced).
 - When the customer answers such an SMS, the AI prepares a reply draft with the amount and the invoice link; one tap
   sends it. No answer: the "customer is quiet" reminder (§7.17.2); nothing is texted again automatically.
 - Completed jobs without an invoice: a counter in the "Not completed jobs" bar and in the morning SMS.

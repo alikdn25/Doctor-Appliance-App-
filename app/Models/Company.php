@@ -91,6 +91,14 @@ use Illuminate\Support\Carbon;
  * @property string|null $google_drive_email
  * @property string|null $google_drive_folder_id
  * @property Carbon|null $drive_backup_ran_on
+ * @property string|null $payment_reminder_template Soft payment reminder ({first_name}, {my_name}, {company}, {appliance}, {month})
+ * @property bool $translate_to_english Russian in the reply box becomes English before sending
+ * @property int|null $diagnostic_fee Minor units of the company currency (Prices and answers)
+ * @property string|null $service_areas
+ * @property string|null $hours_text
+ * @property string|null $answer_notes
+ * @property bool $auto_clarify Send clarifying questions automatically
+ * @property list<array{name: string, phone: string}>|null $outside_technicians
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -167,6 +175,14 @@ class Company extends Model
         'morning_sms_enabled',
         'morning_sms_phone',
         'morning_sms_time',
+        'payment_reminder_template',
+        'translate_to_english',
+        'diagnostic_fee',
+        'service_areas',
+        'hours_text',
+        'answer_notes',
+        'auto_clarify',
+        'outside_technicians',
     ];
 
     protected $hidden = ['google_drive_token'];
@@ -197,6 +213,8 @@ class Company extends Model
         'silence_reminder_hours' => 2,
         'morning_sms_enabled' => false,
         'morning_sms_time' => '06:30',
+        'translate_to_english' => true,
+        'auto_clarify' => false,
     ];
 
     protected static function booted(): void
@@ -264,6 +282,10 @@ class Company extends Model
             'morning_sms_sent_on' => 'date',
             'google_drive_token' => 'encrypted',
             'drive_backup_ran_on' => 'date',
+            'translate_to_english' => 'boolean',
+            'diagnostic_fee' => 'integer',
+            'auto_clarify' => 'boolean',
+            'outside_technicians' => 'array',
         ];
     }
 

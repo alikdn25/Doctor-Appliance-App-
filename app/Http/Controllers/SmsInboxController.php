@@ -10,6 +10,8 @@ use App\Messaging\Messenger;
 use App\Messaging\SmsInbox;
 use App\Messaging\SmsThreads;
 use App\Models\Message;
+use App\Services\AI\AiUnavailable;
+use App\Services\AI\Sms\Translator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -85,6 +87,27 @@ class SmsInboxController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('automation.quiet.not_waiting_done')]);
 
         return back();
+    }
+
+    /**
+     * Russian in the reply box → a short, polite English SMS put back into the box (owner's task of November 19). The
+     * person sends it; English text comes back unchanged without an AI call.
+     */
+    public function translate(Request $request, Translator $translator): JsonResponse
+    {
+        Gate::authorize('create', Message::class);
+        $data = $request->validate(['text' => ['required', 'string', 'max:1600']]);
+        $company = currentCompany();
+
+        if (! $company->translate_to_english || ! Translator::isRussian($data['text'])) {
+            return response()->json(['text' => $data['text'], 'translated' => false]);
+        }
+
+        try {
+            return response()->json(['text' => $translator->toEnglish($data['text'], $company, $request->user()), 'translated' => true]);
+        } catch (AiUnavailable) {
+            return response()->json(['message' => __('answers.translate.failed')], 422);
+        }
     }
 
     public function send(Request $request, SmsInbox $inbox, Messenger $messenger): RedirectResponse

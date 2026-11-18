@@ -72,6 +72,8 @@ class AppServiceProvider extends ServiceProvider
         // App review: Owner only (stays so when Office gets the assistant).
         Gate::define('runAppReview', fn (User $user) => $user->hasRole(UserRole::Owner));
         Gate::define('useAssistant', fn (User $user) => $user->hasRole(UserRole::Owner));
+        // Debtors import (owner's task of November 19): Owner only.
+        Gate::define('importDebtors', fn (User $user) => $user->hasRole(UserRole::Owner));
         Gate::define('useQuickBooking', fn (User $user) => $user->hasRole(UserRole::Owner, UserRole::Admin));
 
         // Own counters: a plain "throttle:N,1" shares one counter per person across routes, so the version check
