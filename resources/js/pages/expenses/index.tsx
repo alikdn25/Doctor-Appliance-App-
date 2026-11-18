@@ -37,6 +37,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useCompanyTime } from '@/lib/datetime';
+import { ReceiptCameraButton } from '@/components/expenses/receipt-camera-button';
 import { useTrans } from '@/lib/i18n';
 import {
     store as storeCategory,
@@ -174,21 +175,24 @@ export default function BusinessExpenses({
                 title={t('expenses.title')}
                 subtitle={formatRange(filters.from, filters.to, today, locale)}
                 actions={
-                    <ActionSheet
-                        title={t('expenses.title')}
-                        items={[
-                            {
-                                key: 'export',
-                                label: t('expenses.export'),
-                                icon: <Download />,
-                                onSelect: () => {
-                                    window.location.href = download({
-                                        query: filterParams(filters),
-                                    }).url;
+                    <>
+                        <ReceiptCameraButton />
+                        <ActionSheet
+                            title={t('expenses.title')}
+                            items={[
+                                {
+                                    key: 'export',
+                                    label: t('expenses.export'),
+                                    icon: <Download />,
+                                    onSelect: () => {
+                                        window.location.href = download({
+                                            query: filterParams(filters),
+                                        }).url;
+                                    },
                                 },
-                            },
-                        ]}
-                    />
+                            ]}
+                        />
+                    </>
                 }
             />
             <div className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:p-6">

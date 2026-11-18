@@ -117,6 +117,48 @@ Reply with the number that suits you.',
         'no_windows' => 'Reply with a day and time that suits you.',
     ],
 
+    'receipt' => [
+        'scan' => 'Read receipt',
+        'scan_hint' => 'Take a photo of the receipt: the AI fills in the form, you check it and press Save.',
+        'reading' => 'Reading the receipt…',
+        'filled' => 'Filled in from the receipt. Check the highlighted fields and press Save.',
+        'failed' => 'Could not read the receipt. Fill it in by hand.',
+    ],
+
+    'mileage' => [
+        'purpose' => 'Day route: start → :jobs → start',
+        'draft' => 'Draft',
+        'draft_hint' => 'Measured at the end of the day. Counts once you confirm or correct it.',
+        'confirm' => 'Confirm',
+        'confirmed' => 'Trip confirmed.',
+    ],
+
+    'today' => [
+        'title' => 'Today',
+        'push_title' => 'Good morning! Your day',
+        'jobs' => 'Jobs today',
+        'no_jobs' => 'No jobs today.',
+        'no_address' => 'Jobs without an address',
+        'texts' => 'Unanswered texts',
+        'unpaid' => 'Unpaid invoices',
+        'unpaid_line' => ':count unpaid · :total',
+        'parts' => 'Parts to receive',
+        'nothing' => 'Nothing here.',
+        'open_invoices' => 'Open invoices',
+        'settings_title' => 'Morning summary',
+        'settings_hint' => 'A push and the "Today" screen every morning: jobs, texts, unpaid invoices, parts.',
+        'enabled' => 'Send the morning summary',
+        'time' => 'Time',
+        'saved' => 'Morning summary saved.',
+        'line' => [
+            'jobs' => '{0} No jobs today|{1} 1 job today|[2,*] :count jobs today',
+            'no_address' => '{1} 1 without an address|[2,*] :count without an address',
+            'texts' => '{1} 1 unanswered text|[2,*] :count unanswered texts',
+            'unpaid' => '{1} 1 unpaid invoice (:total)|[2,*] :count unpaid invoices (:total)',
+            'parts' => '{1} 1 part to receive|[2,*] :count parts to receive',
+        ],
+    ],
+
     'reminders' => [
         'title' => 'Unanswered text from :name',
         'body' => '":text" — reply or press Done in the chat.',

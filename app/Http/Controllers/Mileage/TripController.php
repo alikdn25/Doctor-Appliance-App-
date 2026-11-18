@@ -39,10 +39,11 @@ class TripController extends Controller
             ->with(['user', 'job'])
             ->orderByDesc('trip_date')->orderByDesc('id')
             ->get();
-        $yearKm = (float) $this->query($request, $person)
+        // Drafts (the day's route measured at the end of the day) count once the Owner confirms them.
+        $yearKm = (float) $this->query($request, $person)->where('is_draft', false)
             ->whereBetween('trip_date', [$month->startOfYear()->toDateString(), $month->endOfYear()->toDateString()])
             ->sum('distance_km');
-        $monthKm = (float) $trips->sum('distance_km');
+        $monthKm = (float) $trips->where('is_draft', false)->sum('distance_km');
         $office = $request->user()->hasRole(UserRole::Owner, UserRole::Admin);
 
         return Inertia::render('trips/index', [
@@ -62,7 +63,9 @@ class TripController extends Controller
                 'driver' => $office ? $trip->user?->name : null,
                 'job' => $trip->job ? ['id' => $trip->job->id, 'number' => $trip->job->number] : null,
                 'auto' => $trip->job_visit_id !== null,
+                'draft' => $trip->is_draft,
             ])->values(),
+            'canConfirmDrafts' => $office,
             'totals' => [
                 'month' => self::totals($monthKm),
                 'year' => self::totals($yearKm),
@@ -117,8 +120,24 @@ class TripController extends Controller
         Gate::authorize('update', $trip);
 
         $data = $this->validated($request);
-        $trip->update([...$data, 'distance_edited' => $trip->distance_edited || (string) $trip->distance_km !== (string) $data['distance_km']]);
+        $trip->update([...$data, 'distance_edited' => $trip->distance_edited || (string) $trip->distance_km !== (string) $data['distance_km'],
+            // A draft corrected by the Owner (or an Admin) is confirmed by Save.
+            'is_draft' => $trip->is_draft && ! $request->user()->hasRole(UserRole::Owner, UserRole::Admin)]);
         Inertia::flash('toast', ['type' => 'success', 'message' => __('trips.saved')]);
+
+        return back();
+    }
+
+    /**
+     * The Owner (or an Admin) confirms the day's route draft as it is: from now on it counts.
+     */
+    public function confirm(Request $request, Trip $trip): RedirectResponse
+    {
+        Gate::authorize('update', $trip);
+        abort_unless($request->user()->hasRole(UserRole::Owner, UserRole::Admin), 403);
+
+        $trip->update(['is_draft' => false]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('automation.mileage.confirmed')]);
 
         return back();
     }
@@ -208,7 +227,7 @@ class TripController extends Controller
         [$from, $to] = $wholeYear
             ? [$month->startOfYear(), $month->endOfYear()]
             : [$month->startOfMonth(), $month->endOfMonth()];
-        $query = $this->query($request, $this->person($request))->with(['user', 'job'])
+        $query = $this->query($request, $this->person($request))->where('is_draft', false)->with(['user', 'job'])
             ->whereBetween('trip_date', [$from->toDateString(), $to->toDateString()])
             ->orderBy('trip_date')->orderBy('id');
         $unit = $company->distance_unit;

@@ -74,6 +74,7 @@ use App\Http\Controllers\SmsAssistController;
 use App\Http\Controllers\SmsInboxController;
 use App\Http\Controllers\SmsWebhookController;
 use App\Http\Controllers\Tasks\TaskController;
+use App\Http\Controllers\TodayController;
 use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UsageController;
 use App\Http\Controllers\VoiceWebhookController;
@@ -124,6 +125,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Tenant area: everything here runs inside the current company.
     Route::middleware(['verified', 'tenant'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
+        Route::get('today', TodayController::class)->name('today');
 
         // AI assistant (Owner only).
         Route::get('assistant', [AssistantController::class, 'index'])->name('assistant.index');
@@ -253,6 +255,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('business-expenses/export.csv', [BusinessExpenseController::class, 'export'])->name('expenses.download');
+        Route::post('business-expenses/read-receipt', [BusinessExpenseController::class, 'readReceipt'])->middleware('throttle:assistant')->name('expenses.read-receipt');
         Route::get('business-expenses/{expense}/receipt', [BusinessExpenseController::class, 'receipt'])->name('expenses.receipt');
         Route::resource('business-expenses', BusinessExpenseController::class)->parameters(['business-expenses' => 'expense'])->names('expenses')->except('show');
         Route::post('business-expense-categories', [BusinessExpenseCategoryController::class, 'store'])->name('expense-categories.store');
@@ -265,6 +268,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('trips/quick', [TripController::class, 'quick'])->name('trips.quick');
         Route::put('trips/start-address', [TripController::class, 'startAddress'])->name('trips.start-address');
         Route::put('trips/{trip}', [TripController::class, 'update'])->name('trips.update');
+        Route::post('trips/{trip}/confirm', [TripController::class, 'confirm'])->name('trips.confirm');
         Route::delete('trips/{trip}', [TripController::class, 'destroy'])->name('trips.destroy');
         Route::get('tasks/people', [TaskController::class, 'people'])->name('tasks.people');
         Route::post('tasks', [TaskController::class, 'store'])->name('tasks.store');

@@ -27,12 +27,15 @@ enum AiFeature: string
     /** A possible part number when a job needs a part. */
     case PartLookup = 'part_lookup';
 
+    /** A receipt photo in Expenses. */
+    case Receipt = 'receipt';
+
     /** The key in config('ai.models'). */
     public function modelKey(): string
     {
         return match ($this) {
             self::QuickBooking, self::PasteMessage, self::SmsTriage, self::BookingEdit => 'booking',
-            self::Assistant, self::FindProblems, self::SmsPhoto, self::VoiceClose, self::PartLookup => 'assistant',
+            self::Assistant, self::FindProblems, self::SmsPhoto, self::VoiceClose, self::PartLookup, self::Receipt => 'assistant',
             self::AppReview => 'review',
         };
     }

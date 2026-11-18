@@ -26,6 +26,7 @@ Route::middleware(['auth', 'active', 'tenant:optional'])->group(function () {
 
     // Notifications: the in-app list and push on this phone or browser.
     Route::get('settings/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::put('settings/notifications/morning', [NotificationController::class, 'morning'])->name('notifications.morning');
     Route::post('settings/notifications/read', [NotificationController::class, 'read'])->name('notifications.read');
     Route::post('settings/notifications/push', [NotificationController::class, 'subscribe'])->middleware('throttle:20,1')->name('notifications.push.subscribe');
     Route::delete('settings/notifications/push', [NotificationController::class, 'unsubscribe'])->name('notifications.push.unsubscribe');

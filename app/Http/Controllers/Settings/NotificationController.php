@@ -32,12 +32,26 @@ class NotificationController extends Controller
                 'read' => $n->read_at !== null,
                 'at' => JobPresenter::iso($n->created_at),
             ])->values(),
+            // The morning summary of this company (owner's task of November 18).
+            'morning' => [
+                'enabled' => (bool) ($user->currentMembership()?->morning_summary_enabled ?? true),
+                'time' => $user->currentMembership()?->morning_summary_time ?? '07:00',
+            ],
             'push' => [
                 'available' => WebPushChannel::configured(),
                 'publicKey' => config('webpush.public_key'),
                 'devices' => PushSubscription::query()->where('user_id', $user->id)->count(),
             ],
         ]);
+    }
+
+    public function morning(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['enabled' => ['required', 'boolean'], 'time' => ['required', 'date_format:H:i']]);
+        $request->user()->currentMembership()?->update(['morning_summary_enabled' => $data['enabled'], 'morning_summary_time' => $data['time']]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('automation.today.saved')]);
+
+        return back();
     }
 
     public function read(Request $request): RedirectResponse

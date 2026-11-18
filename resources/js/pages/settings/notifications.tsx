@@ -1,14 +1,18 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Bell, BellOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { disablePush, enablePush, pushState } from '@/lib/push';
 import type { PushState } from '@/lib/push';
 import { cn } from '@/lib/utils';
-import { index, read } from '@/routes/notifications';
+import { today as todayRoute } from '@/routes';
+import { index, morning as morningRoute, read } from '@/routes/notifications';
 import { subscribe } from '@/routes/notifications/push';
 
 type Item = {
@@ -27,9 +31,11 @@ type Item = {
 export default function Notifications({
     notifications,
     push,
+    morning = { enabled: true, time: '07:00' },
 }: {
     notifications: Item[];
     push: { available: boolean; publicKey: string | null; devices: number };
+    morning?: { enabled: boolean; time: string };
 }) {
     const t = useTrans();
     const time = useCompanyTime();
@@ -64,6 +70,8 @@ export default function Notifications({
                     title={t('notifications.page.title')}
                     description={t('notifications.page.description')}
                 />
+
+                <MorningSettings morning={morning} />
 
                 <section
                     className="space-y-2 rounded-xl border bg-card p-3 shadow-sm"
@@ -162,3 +170,62 @@ export default function Notifications({
 Notifications.layout = {
     breadcrumbs: [{ title: 'notifications.page.title', href: index() }],
 };
+
+/** The morning summary (owner's task of November 18): on/off and the time, for this company. */
+function MorningSettings({
+    morning,
+}: {
+    morning: { enabled: boolean; time: string };
+}) {
+    const t = useTrans();
+    const form = useForm(morning);
+
+    return (
+        <form
+            className="space-y-3 rounded-xl border bg-card p-3 shadow-sm"
+            data-test="morning-settings"
+            onSubmit={(event) => {
+                event.preventDefault();
+                form.put(morningRoute().url, { preserveScroll: true });
+            }}
+        >
+            <div>
+                <p className="font-medium">
+                    {t('automation.today.settings_title')}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                    {t('automation.today.settings_hint')}
+                </p>
+            </div>
+            <label className="flex min-h-11 items-center gap-3 text-sm">
+                <Checkbox
+                    checked={form.data.enabled}
+                    onCheckedChange={(c) => form.setData('enabled', c === true)}
+                />
+                {t('automation.today.enabled')}
+            </label>
+            <div className="flex items-end gap-3">
+                <div className="space-y-1">
+                    <Label htmlFor="morning-time">
+                        {t('automation.today.time')}
+                    </Label>
+                    <Input
+                        id="morning-time"
+                        type="time"
+                        step={300}
+                        value={form.data.time}
+                        onChange={(e) => form.setData('time', e.target.value)}
+                    />
+                </div>
+                <Button type="submit" loading={form.processing}>
+                    {t('common.save')}
+                </Button>
+                <Button variant="ghost" asChild>
+                    <Link href={todayRoute()}>
+                        {t('automation.today.title')}
+                    </Link>
+                </Button>
+            </div>
+        </form>
+    );
+}

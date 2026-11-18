@@ -1,5 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import { Camera } from 'lucide-react';
 import type { FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     currencyDecimals,
     computeTotals,
@@ -17,8 +19,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
+import { xsrfToken } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
-import { index, store, update } from '@/routes/expenses';
+import { compressImage } from '@/lib/image';
+import { takeReceipt } from '@/lib/receipt-scan';
+import {
+    index,
+    readReceipt as readReceiptRoute,
+    store,
+    update,
+} from '@/routes/expenses';
 import type { ExpenseCategory, ExpenseJob, ExpenseRow } from './types';
 
 type ExpenseForm = {
@@ -99,6 +109,92 @@ export default function BusinessExpenseForm({
         notes: expense?.notes ?? '',
         receipt: null,
     });
+    // "Read receipt" (owner's task of November 18): the photo goes to the AI, the form is filled and highlighted, the
+    // photo becomes the receipt; nothing is saved until Save.
+    const [scanning, setScanning] = useState(false);
+    const [scanNote, setScanNote] = useState<string | null>(null);
+    const [scanned, setScanned] = useState<string[]>([]);
+    const cameraInput = useRef<HTMLInputElement>(null);
+    const lit = (field: string) =>
+        scanned.includes(field)
+            ? 'bg-amber-50 ring-2 ring-amber-400'
+            : undefined;
+    const readReceipt = async (file: File) => {
+        setScanning(true);
+        setScanNote(t('automation.receipt.reading'));
+        try {
+            const { blob, filename } = await compressImage(file);
+            const photo = new File([blob], filename, { type: blob.type });
+            form.setData('receipt', photo);
+            const body = new FormData();
+            body.append('photo', photo);
+            const response = await fetch(readReceiptRoute().url, {
+                method: 'POST',
+                body,
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': xsrfToken(),
+                },
+            });
+            const result = (await response.json()) as {
+                fields?: Record<string, unknown>;
+                message?: string;
+            };
+            if (!response.ok || !result.fields) {
+                setScanNote(result.message ?? t('automation.receipt.failed'));
+
+                return;
+            }
+            const f = result.fields;
+            const touched: string[] = [];
+            const patch: Partial<ExpenseForm> = {};
+            const text = (key: keyof ExpenseForm) => {
+                if (typeof f[key] === 'string' && f[key] !== '') {
+                    (patch as Record<string, unknown>)[key] = f[key];
+                    touched.push(key);
+                }
+            };
+            text('merchant');
+            text('spent_on');
+            text('description');
+            text('amount');
+            if (typeof f.category_id === 'number') {
+                patch.category_id = String(f.category_id);
+                patch.new_category = '';
+                touched.push('category_id');
+            } else if (typeof f.new_category === 'string') {
+                patch.category_id = '';
+                patch.new_category = f.new_category;
+                touched.push('category_id');
+            }
+            if (withTaxes) {
+                patch.use_named_taxes = f.use_named_taxes === true;
+                patch.tax_rate_ids = (f.tax_rate_ids as number[]) ?? [];
+                patch.tax_amounts =
+                    (f.tax_amounts as Record<string, string>) ?? {};
+                patch.tax_amount =
+                    typeof f.tax_amount === 'string' ? f.tax_amount : '0';
+                touched.push('taxes');
+            }
+            form.setData((data) => ({ ...data, ...patch, receipt: photo }));
+            setScanned(touched);
+            setScanNote(t('automation.receipt.filled'));
+        } catch {
+            setScanNote(t('automation.receipt.failed'));
+        } finally {
+            setScanning(false);
+        }
+    };
+
+    // A photo taken with the camera on the Expenses list.
+    useEffect(() => {
+        const file = expense ? null : takeReceipt();
+        if (file) void readReceipt(file);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const decimals = currencyDecimals(currency);
     const step = decimals === 0 ? '1' : (1 / 10 ** decimals).toFixed(decimals);
     const selectedTaxes = taxRates
@@ -211,6 +307,41 @@ export default function BusinessExpenseForm({
             <ScreenHeader title={title} back={index()} />
             <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">
                 <form onSubmit={submit} className="space-y-5">
+                    {!expense && (
+                        <div
+                            className="space-y-2 rounded-2xl border border-violet-200 bg-violet-50/60 p-3"
+                            data-test="read-receipt"
+                        >
+                            <Button
+                                type="button"
+                                size="lg"
+                                variant="outline"
+                                className="w-full bg-white"
+                                loading={scanning}
+                                onClick={() => cameraInput.current?.click()}
+                            >
+                                <Camera /> {t('automation.receipt.scan')}
+                            </Button>
+                            <input
+                                ref={cameraInput}
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                className="hidden"
+                                onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    event.target.value = '';
+                                    if (file) void readReceipt(file);
+                                }}
+                            />
+                            <p
+                                role="status"
+                                className="text-sm text-violet-800"
+                            >
+                                {scanNote ?? t('automation.receipt.scan_hint')}
+                            </p>
+                        </div>
+                    )}
                     {/* Receipt first: snap it, then fill in the rest (UX-REDESIGN §11.2). */}
                     {!expense && receiptField}
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -221,6 +352,7 @@ export default function BusinessExpenseForm({
                         >
                             <Input
                                 id="spent_on"
+                                className={lit('spent_on')}
                                 type="date"
                                 required
                                 value={form.data.spent_on}
@@ -264,6 +396,7 @@ export default function BusinessExpenseForm({
                         >
                             <NativeSelect
                                 id="category_id"
+                                className={lit('category_id')}
                                 value={form.data.category_id}
                                 onChange={(event) => {
                                     form.setData(
@@ -319,6 +452,7 @@ export default function BusinessExpenseForm({
                         >
                             <Input
                                 id="description"
+                                className={lit('description')}
                                 required
                                 maxLength={255}
                                 value={form.data.description}
@@ -338,6 +472,7 @@ export default function BusinessExpenseForm({
                         >
                             <Input
                                 id="merchant"
+                                className={lit('merchant')}
                                 maxLength={150}
                                 value={form.data.merchant}
                                 onChange={(event) =>
@@ -385,6 +520,7 @@ export default function BusinessExpenseForm({
                         >
                             <Input
                                 id="amount"
+                                className={lit('amount')}
                                 type="number"
                                 inputMode="decimal"
                                 min="0"

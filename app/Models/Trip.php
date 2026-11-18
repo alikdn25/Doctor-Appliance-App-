@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $service_job_id
  * @property int|null $job_visit_id
  * @property bool $distance_edited
+ * @property bool $is_draft The day's route measured at the end of the day; counted once the Owner confirms it
  * @property-read User|null $user
  * @property-read ServiceJob|null $job
  */
@@ -35,7 +36,7 @@ class Trip extends Model
 
     protected $fillable = [
         'user_id', 'trip_date', 'type', 'from_address', 'to_address', 'distance_km', 'purpose',
-        'service_job_id', 'job_visit_id', 'distance_edited',
+        'service_job_id', 'job_visit_id', 'distance_edited', 'is_draft',
     ];
 
     /**
@@ -43,7 +44,7 @@ class Trip extends Model
      */
     protected function casts(): array
     {
-        return ['trip_date' => 'date:Y-m-d', 'distance_km' => 'decimal:1', 'distance_edited' => 'boolean'];
+        return ['trip_date' => 'date:Y-m-d', 'distance_km' => 'decimal:1', 'distance_edited' => 'boolean', 'is_draft' => 'boolean'];
     }
 
     /**
