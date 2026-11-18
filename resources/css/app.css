@@ -558,6 +558,15 @@
         background-color: var(--status-booking-draft-from);
     }
 
+    /* Booked by the customer from a self-booking link: a teal edge and tint (owner's task of November 19). */
+    .da-self-booked {
+        border-color: #14b8a6;
+        box-shadow:
+            0 0 0 2px #14b8a6,
+            var(--shadow-badge);
+        background-color: #e6fffb;
+    }
+
     .da-avatar {
         border: 2px solid #fff;
         box-shadow: 0 4px 10px rgb(16 42 79 / 0.2);

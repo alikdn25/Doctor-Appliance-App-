@@ -63,6 +63,7 @@ use App\Http\Controllers\Jobs\JobVoiceController;
 use App\Http\Controllers\Jobs\JobWarrantyController;
 use App\Http\Controllers\Jobs\JobWorkController;
 use App\Http\Controllers\Jobs\MapController;
+use App\Http\Controllers\Jobs\NearbyController;
 use App\Http\Controllers\Jobs\QuickBookingController;
 use App\Http\Controllers\Jobs\VisitActionController;
 use App\Http\Controllers\Jobs\VisitController;
@@ -73,6 +74,7 @@ use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\PushActionController;
 use App\Http\Controllers\Reports\ReportController;
+use App\Http\Controllers\SelfBookingController;
 use App\Http\Controllers\ServiceWorkerController;
 use App\Http\Controllers\Settings\MenuModeController;
 use App\Http\Controllers\SmsAssistController;
@@ -93,6 +95,10 @@ Route::get('app-version', AppVersionController::class)->middleware('throttle:app
 
 // Customer's online page of an estimate or invoice (link in the email; the token is the key).
 Route::middleware('throttle:60,1')->group(function () {
+    // Self-booking by link (no sign-in): 7 days, one booking.
+    Route::get('book/{token}', [SelfBookingController::class, 'show'])->name('self-booking.show');
+    Route::post('book/{token}/nearby', [SelfBookingController::class, 'nearby'])->middleware('throttle:20,1')->name('self-booking.nearby');
+    Route::post('book/{token}', [SelfBookingController::class, 'store'])->middleware('throttle:10,1')->name('self-booking.store');
     // "Hand to technician": the job's photos for an outside technician (signed link, no sign-in).
     Route::get('shared/jobs/{job}/photos', [JobHandoffController::class, 'photos'])->whereNumber('job')->name('shared.job-photos');
     Route::get('shared/jobs/{job}/photos/{photo}', [JobHandoffController::class, 'photo'])->whereNumber('job')->whereNumber('photo')->name('shared.job-photo');
@@ -210,6 +216,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('jobs/{job}/appliances', [JobWorkController::class, 'storeAppliance'])->name('jobs.appliances.store');
         Route::put('jobs/{job}/appliances/{appliance}', [JobWorkController::class, 'updateAppliance'])->name('jobs.appliances.update');
         Route::post('jobs/{job}/photos', [JobFieldController::class, 'storePhoto'])->name('jobs.photos.store');
+        // Windows by area: days with a job near this address.
+        Route::get('booking/nearby', [NearbyController::class, 'show'])->name('booking.nearby');
         Route::post('jobs/{job}/handoff/preview', [JobHandoffController::class, 'preview'])->name('jobs.handoff.preview');
         Route::post('jobs/{job}/handoff', [JobHandoffController::class, 'store'])->middleware('throttle:10,1')->name('jobs.handoff.store');
         Route::get('jobs/{job}/photos/{photo}', [JobFieldController::class, 'showPhoto'])->name('jobs.photos.show');

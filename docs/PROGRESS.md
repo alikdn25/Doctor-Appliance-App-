@@ -2,6 +2,26 @@
 
 Several PRs (SPEC §7.17).
 
+## PR 3 — self-booking by link, windows by area (done)
+
+1. **Self-booking** (`SelfBookingController`, table `booking_links`, public page `public/self-booking` at `/book/{token}`):
+   no sign-in, 7 days, one booking (locked row, `used_at`). Free windows of the next 7 days (`NearbyWindows::freeWindows`
+   = company windows minus busy, closed days skipped), name / phone / address filled when known, what is broken, photo of
+   the sticker (saved as a job photo). Sending: the window is checked again, the job is made (`DirectBooking`, existing
+   or new customer), `service_jobs.self_booked = true` (teal edge and a "Self-booked" chip in the calendar day and week),
+   push + bell to the Owners. The AI adds the link to its draft when `wants_time` (new triage field).
+2. **Windows by area** (`NearbyWindows`, `GET booking/nearby`): geocoded addresses (existing `GeocodeProperty`, Places
+   coordinates) → days with a job within 15 km come first with "Nearby: job in {city}, {N} km" — on the self-booking
+   page (also re-ranked for an address typed there), in Book customer / Quick booking (free window chips), and in the
+   SMS triage prompt ("Nearby days"). No position: the usual order.
+
+- **Migration** `2026_11_19_000300_add_self_booking_links`: new table, one defaulted column.
+- Tests: `SelfBookingNearbyTest` (nearby first with label, busy windows hidden, no address = usual order, booking form
+  endpoint, AI context, link in the draft and nothing sent, page prefill without sign-in, booking marked Self-booked with
+  photo and push, once only, expires after 7 days, busy window refused and new customer, calendar flag, other company),
+  tenant isolation (`booking_links`).
+- Next: owner checks the morning SMS, Drive backup, notification buttons and the new screens on a phone.
+
 ## PR 2 — debtors and soft reminders, Russian → English, prices and answers, clarifying questions, hand to technician (done)
 
 1. **Debtors import** (`DebtorImport`, `DebtorsController`, page `invoices/import-debtors`, Owner only, gate

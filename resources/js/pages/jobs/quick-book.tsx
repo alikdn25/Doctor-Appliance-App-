@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { index as brandsPage } from '@/routes/brands';
 import { create, index, lookup, parseMessage, store } from '@/routes/jobs';
 import { quickBooking } from '@/routes/jobs';
+import { nearby as nearbyRoute } from '@/routes/booking';
 import {
     clearBooking,
     handJobDraft,
@@ -982,6 +983,47 @@ export default function QuickBook({
         [],
     );
 
+    // Windows by area (owner's task of November 19): days with a job near the chosen address come first.
+    const [nearby, setNearby] = useState<
+        Record<string, { label: string; km: number }>
+    >({});
+    const typedAddress = data.customer_id
+        ? data.new_property
+        : data.new_customer.property;
+    const nearbyQuery = data.property_id
+        ? `property_id=${data.property_id}`
+        : typedAddress.latitude && typedAddress.longitude
+          ? `lat=${typedAddress.latitude}&lng=${typedAddress.longitude}`
+          : typedAddress.line1.trim().length > 4
+            ? `address=${encodeURIComponent(
+                  [typedAddress.line1, typedAddress.city]
+                      .filter(Boolean)
+                      .join(', '),
+              )}`
+            : '';
+    useEffect(() => {
+        if (!nearbyQuery) {
+            setNearby({});
+            return;
+        }
+        const timer = setTimeout(() => {
+            fetch(`${nearbyRoute().url}?${nearbyQuery}`, {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
+            })
+                .then((r) => (r.ok ? r.json() : { days: {} }))
+                .then(
+                    (r: {
+                        days:
+                            | Record<string, { label: string; km: number }>
+                            | [];
+                    }) => setNearby(Array.isArray(r.days) ? {} : r.days),
+                )
+                .catch(() => setNearby({}));
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [nearbyQuery]);
+
     // Free windows of the next days (company windows not taken by every technician; "Now" first for today),
     // offered when the text named no day or window.
     const freeWindows = useMemo(() => {
@@ -1002,7 +1044,7 @@ export default function QuickBook({
                             b.end > w.start,
                     ),
             );
-        for (let i = 0; i < 7 && options.length < 6; i++) {
+        for (let i = 0; i < 7; i++) {
             const date = addDays(today, i);
             const weekday =
                 WEEKDAY_KEYS[new Date(`${date}T00:00:00Z`).getUTCDay()];
@@ -1022,8 +1064,26 @@ export default function QuickBook({
             }
         }
 
-        return options.slice(0, 6);
+        // Nearby days first (nearest first), the rest in their order.
+        const ranked = options
+            .map((option, i) => ({ option, i, km: nearby[option.date]?.km }))
+            .sort((a, b) =>
+                a.km === undefined && b.km === undefined
+                    ? a.i - b.i
+                    : a.km === undefined
+                      ? 1
+                      : b.km === undefined
+                        ? -1
+                        : a.km - b.km || a.i - b.i,
+            )
+            .map(({ option }) => ({
+                ...option,
+                label: nearby[option.date]?.label ?? '',
+            }));
+
+        return ranked.slice(0, 6);
     }, [
+        nearby,
         arrivalWindows,
         bookingTechnicians,
         busy,
@@ -1827,6 +1887,14 @@ export default function QuickBook({
                                                 {option.slot.kind === 'window'
                                                     ? range(option.slot)
                                                     : t('jobs.quick.now')}
+                                                {option.label && (
+                                                    <span
+                                                        className="ml-1 text-xs font-medium text-emerald-700"
+                                                        data-test="nearby-label"
+                                                    >
+                                                        · {option.label}
+                                                    </span>
+                                                )}
                                             </button>
                                         );
                                     })}
