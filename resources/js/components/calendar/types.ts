@@ -19,6 +19,8 @@ export type CalendarVisit = Visit & {
         coordinates: { lat: number; lng: number } | null;
         appliances: string[];
         new_messages?: number;
+        /** Booked by the customer from a self-booking link. */
+        self_booked?: boolean;
     };
 };
 

@@ -12,6 +12,7 @@ use App\Models\AppReviewSuggestion;
 use App\Models\AssistantAction;
 use App\Models\AssistantMessage;
 use App\Models\AuditLog;
+use App\Models\BookingLink;
 use App\Models\BotToken;
 use App\Models\Brand;
 use App\Models\BrandAddress;
@@ -142,6 +143,7 @@ beforeEach(function () {
             $link->save();
             SmsThread::create(['phone' => '+1604555'.str_pad((string) currentCompany()->id, 4, '0', STR_PAD_LEFT), 'urgent' => true]);
             PushAction::create(['user_id' => $owner->id, 'token' => Str::random(48), 'kind' => 'sms_incoming', 'title' => 'Secret', 'body' => 'Secret', 'actions' => [], 'expires_at' => now()->addDay()]);
+            BookingLink::create(['token' => Str::random(40), 'phone' => '+16045550199', 'name' => 'Secret', 'expires_at' => now()->addDays(7)]);
             DriveBackup::create(['status' => DriveBackup::OK, 'files' => [['id' => 'secret-'.currentCompany()->id, 'name' => 'customers.csv']]]);
             InvoiceAttachment::create(['invoice_id' => $invoice->id, 'user_id' => $owner->id, 'path' => 'invoice-attachments/secret-'.$invoice->id.'.jpg', 'mime_type' => 'image/jpeg', 'size' => 10]);
             $cost = new JobCostItem(['description' => 'Secret part', 'quantity' => 1, 'unit_cost' => 1234]);
@@ -245,6 +247,7 @@ dataset('tenant models', [
     'SMS threads' => [SmsThread::class],
     'push actions' => [PushAction::class],
     'Drive backups' => [DriveBackup::class],
+    'booking links' => [BookingLink::class],
     'message reads' => [MessageRead::class],
     'google profiles' => [GoogleProfile::class],
     'review requests' => [ReviewRequest::class],
@@ -275,7 +278,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         ->all();
 
     expect($tenantModels)->toBe(collect([
-        Appliance::class, Brand::class, BrandAddress::class, BusinessExpense::class, BusinessExpenseCategory::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, MessageRead::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class, SmsThread::class, PushAction::class, DriveBackup::class,
+        Appliance::class, Brand::class, BrandAddress::class, BusinessExpense::class, BusinessExpenseCategory::class, Customer::class, CustomerEmail::class, GoogleProfile::class, Message::class, MessageRead::class, ReviewRequest::class, SmsAccount::class, SmsRegistration::class, SmsThread::class, PushAction::class, DriveBackup::class, BookingLink::class,
         CustomerPhone::class, Estimate::class, EstimateItem::class, Invoice::class, InvoiceAttachment::class, InvoiceItem::class, InvoicePaymentLink::class, Payment::class,
         PaymentProviderConnection::class,
         JobAppliance::class, JobAssignee::class, JobBringItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,

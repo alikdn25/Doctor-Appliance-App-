@@ -123,6 +123,8 @@ class CalendarController extends Controller
                     : null,
                 'appliances' => $job->appliances->map(fn (Appliance $a) => $a->label())->values(),
                 'new_messages' => JobPresenter::isOpen($job) ? ($unread[$job->customer_id] ?? 0) : 0,
+                // Booked by the customer from a self-booking link: its own colour.
+                'self_booked' => (bool) $job->self_booked,
             ],
         ];
     }

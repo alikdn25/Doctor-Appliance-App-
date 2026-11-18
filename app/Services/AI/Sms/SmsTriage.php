@@ -4,6 +4,7 @@ namespace App\Services\AI\Sms;
 
 use App\Enums\JobStatus;
 use App\Enums\VisitStatus;
+use App\Http\Controllers\SelfBookingController;
 use App\Models\Company;
 use App\Models\JobVisit;
 use App\Models\Message;
@@ -12,6 +13,7 @@ use App\Services\AI\AiFeature;
 use App\Services\AI\AiService;
 use App\Services\AI\AiUnavailable;
 use App\Support\Billing\PaymentReminders;
+use App\Support\Jobs\NearbyWindows;
 use App\Support\Locale\RelativeDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
@@ -54,9 +56,16 @@ class SmsTriage
             effort: 'low',
         )->json();
 
-        $result = self::normalize($raw, $message, $jobs, $company);
+        $result = [...self::normalize($raw, $message, $jobs, $company), ...ReplyGuide::compose($raw, $message, $invoice), 'invoice_id' => $invoice?->id];
 
-        return [...$result, ...ReplyGuide::compose($raw, $message, $invoice), 'invoice_id' => $invoice?->id];
+        // The customer asks about a time or asks to come: a self-booking link in the draft (7 days, one booking).
+        if (($raw['wants_time'] ?? false) === true) {
+            $link = SelfBookingController::link($message->customer, (string) $message->from);
+            $result['reply_draft'] = trim(($result['reply_draft'] ?? '').' '.__('booking.link_line', ['link' => $link]));
+            $result['booking_link'] = $link;
+        }
+
+        return $result;
     }
 
     /**
@@ -103,8 +112,9 @@ class SmsTriage
                 'about_breakdown' => ['type' => 'boolean'],
                 'questions' => ['type' => 'array', 'items' => $text],
                 'appliance_type' => ['type' => 'string', 'description' => 'refrigerator, freezer, washer, dryer, dishwasher, range, oven, cooktop, other, or "" when not named'],
+                'wants_time' => ['type' => 'boolean'],
             ],
-            'required' => ['urgency', 'summary', 'actions', 'reply_draft', 'about_breakdown', 'questions', 'appliance_type'],
+            'required' => ['urgency', 'summary', 'actions', 'reply_draft', 'about_breakdown', 'questions', 'appliance_type', 'wants_time'],
             'additionalProperties' => false,
         ];
     }
@@ -142,6 +152,9 @@ class SmsTriage
             - questions: only when about_breakdown and details are few: at most 2 short questions (what exactly happens,
               since when, any error code on the display); [] otherwise.
             - appliance_type: the appliance the text is about.
+            - wants_time: true when the customer asks when we can come, asks for a time or asks us to come (a link to
+              pick a time is then added by the app; do not invent one).
+              When proposing a day, prefer the "Nearby days" listed in the message (a job is already near them).
 
             Prices and answers of the company:
             {$facts}
@@ -167,7 +180,13 @@ class SmsTriage
             return "#{$job->number}: {$job->status->label()}, {$when}, ".($job->appliances->map->label()->implode(', ') ?: '').' '.mb_substr((string) $job->description, 0, 200);
         })->implode("\n");
 
+        // Windows by area: days that already have a job near the customer's address.
+        $property = $message->customer?->primaryProperty;
+        $nearby = collect(NearbyWindows::days($company, NearbyWindows::point($property)))
+            ->sortBy('km')->map(fn (array $d, string $date) => CarbonImmutable::parse($date)->format('D Y-m-d')." ({$d['label']})")->implode(', ');
+
         return "Earlier messages:\n".($history ?: '(none)')."\n\nOpen jobs of this customer:\n".($open ?: '(none)')
+            ."\n\nNearby days: ".($nearby ?: '(none)')
             ."\n\nNew message from the customer:\n".$message->body;
     }
 

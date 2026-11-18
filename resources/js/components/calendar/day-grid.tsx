@@ -397,6 +397,8 @@ export function DayGrid({
                                                         isDraftJob(
                                                             visit.job.status,
                                                         ) && 'da-draft',
+                                                        visit.job.self_booked &&
+                                                            'da-self-booked',
                                                         (visit.conflict ||
                                                             overdue) &&
                                                             'border-danger ring-1 ring-danger',
@@ -451,6 +453,17 @@ export function DayGrid({
                                                         {isDraftJob(
                                                             visit.job.status,
                                                         ) && <DraftChip />}
+                                                        {visit.job
+                                                            .self_booked && (
+                                                            <span
+                                                                className="rounded bg-teal-600 px-1 text-[10px] text-white"
+                                                                data-test="self-booked-chip"
+                                                            >
+                                                                {t(
+                                                                    'booking.self_booked',
+                                                                )}
+                                                            </span>
+                                                        )}
                                                         <NewMessagesBadge
                                                             count={
                                                                 visit.job

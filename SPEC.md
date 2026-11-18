@@ -677,13 +677,14 @@ set up is built, stays off and says what is missing.
   (the company's arrival windows minus busy ones), name and phone (filled when known), address, what is broken, a photo
   of the sticker with the model number. After sending: the booking is created, marked "Self-booked" in its own colour
   in the calendar, and the Owner gets a push. The AI adds the link to a reply draft when the customer asks about times
-  or asks to come.
+  or asks to come (a new link per draft, for that number; the customer's name, phone and address are filled in).
 
 #### 7.17.12 Windows by area (PR 3)
 
 - Addresses of jobs and customers are geocoded by the app's map service. When a window is picked (Book customer, Quick
   booking, the AI's proposals from texts, the self-booking page), windows on days that already have a job near the
-  customer's address come first, labelled "Nearby: job in {city}, {N} km". Without a known address: the usual order.
+  customer's address come first, labelled "Nearby: job in {city}, {N} km" (straight-line distance, within 15 km).
+  Without a known address: the usual order.
 
 ## 8. Google review requests
 

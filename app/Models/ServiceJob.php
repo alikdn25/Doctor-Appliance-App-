@@ -56,6 +56,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $part_supplier
  * @property string|null $handed_to "Handed to: {name}" (Hand to technician)
  * @property Carbon|null $handed_at
+ * @property bool $self_booked Booked by the customer from a self-booking link
  * @property Carbon|null $part_ordered_on
  * @property array<string, mixed>|null $part_suggestion The AI's possible part number ("check")
  * @property int|null $closed_by
@@ -107,6 +108,7 @@ class ServiceJob extends Model
             'completed_at' => 'datetime',
             'part_ordered_on' => 'date',
             'handed_at' => 'datetime',
+            'self_booked' => 'boolean',
             'part_suggestion' => 'array',
             'cancelled_at' => 'datetime',
             'signed_at' => 'datetime',
