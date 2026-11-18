@@ -106,6 +106,7 @@ export default function MessagingSettings({
             new Date('2026-10-20T09:00:00Z'),
             new Date('2026-10-20T11:00:00Z'),
         ),
+        eta_minutes: '18',
         address: '123 Main St, Springfield',
         number: 'INV-12',
         amount: formatMoney(10640, currency, locale),

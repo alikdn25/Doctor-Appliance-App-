@@ -3,6 +3,7 @@
 namespace App\Actions\Jobs;
 
 use App\Enums\JobStatus;
+use App\Jobs\SuggestPartNumber;
 use App\Models\JobStatusChange;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
@@ -37,6 +38,11 @@ class ChangeJobStatus
 
         $job->cancelled_at = $to === JobStatus::Cancelled ? now() : null;
         $job->save();
+
+        // A part is needed: the AI suggests a possible part number (marked "check") in the background.
+        if ($to === JobStatus::NeedToOrderParts) {
+            SuggestPartNumber::dispatch($job->id, (int) $job->company_id)->afterCommit();
+        }
 
         $this->log($job, $from, $to, $user, $visit, $note);
     }

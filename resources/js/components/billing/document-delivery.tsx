@@ -57,17 +57,22 @@ export function useDocumentDelivery({
     number,
     sms = null,
     reviewPrompt = null,
+    openReview = false,
 }: {
     delivery: Delivery;
     kindLabel: string;
     number: string;
     sms?: DocumentSms;
     reviewPrompt?: ReviewPrompt;
+    /** Opened from "Send a review request?" (2 hours after payment): the request is shown at once. */
+    openReview?: boolean;
 }) {
     const t = useTrans();
     const [emailOpen, setEmailOpen] = useState(false);
     const [receiptOpen, setReceiptOpen] = useState(false);
-    const [reviewOpen, setReviewOpen] = useState(false);
+    const [reviewOpen, setReviewOpen] = useState(
+        openReview && reviewPrompt !== null,
+    );
     const [smsOpen, setSmsOpen] = useState(false);
     const [smsSending, setSmsSending] = useState(false);
     const { auth } = usePage().props;

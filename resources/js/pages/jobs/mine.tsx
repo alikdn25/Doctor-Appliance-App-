@@ -11,6 +11,7 @@ import {
     Play,
     Search,
     UserX,
+    Mic,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { formatMoney } from '@/components/billing/money';
@@ -34,6 +35,7 @@ import { ListRow } from '@/components/ui/list-row';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { useInstallPrompt } from '@/hooks/use-install-prompt';
 import { useCompanyTime } from '@/lib/datetime';
+import { currentPosition } from '@/lib/geo';
 import { useTrans } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
@@ -227,14 +229,19 @@ export default function MyJobs({
                         }
                         // From the technician's phone: the messages app opens with the text ready.
                         const sms = visit.on_my_way_sms;
-                        act(
-                            visit,
-                            onMyWay(visit.id).url,
-                            sms ? { phone_sms: sms } : {},
-                        );
                         if (sms) {
+                            act(visit, onMyWay(visit.id).url, {
+                                phone_sms: sms,
+                            });
                             openSmsApp(sms.to, sms.body);
+
+                            return;
                         }
+                        // The app texts the customer: with the drive time from here when the phone knows where it is.
+                        setBusy(visit.id);
+                        void currentPosition().then((position) =>
+                            act(visit, onMyWay(visit.id).url, position ?? {}),
+                        );
                     }}
                 >
                     <Car /> {t('jobs.actions.on_my_way')}
@@ -464,24 +471,40 @@ export default function MyJobs({
                                     : undefined
                             }
                             below={
-                                visit.assignees.length === 0 &&
-                                !auth.company?.works_alone &&
-                                (canAssign ? (
-                                    <button
-                                        type="button"
-                                        className="mx-3 mb-2 flex min-h-10 items-center gap-1.5 text-sm font-semibold text-amber-700 underline-offset-4 hover:underline"
-                                        onClick={() => setAssigning(visit)}
-                                        data-test="not-assigned"
-                                    >
-                                        <UserX className="size-4" />
-                                        {t('jobs.not_assigned')}
-                                    </button>
-                                ) : (
-                                    <span className="mx-3 mb-2 flex items-center gap-1.5 text-sm font-semibold text-amber-700">
-                                        <UserX className="size-4" />
-                                        {t('jobs.not_assigned')}
-                                    </span>
-                                ))
+                                <>
+                                    {canAssign && tab === 'day' && (
+                                        <Link
+                                            href={show(visit.job.id, {
+                                                query: { voice_edit: 1 },
+                                            })}
+                                            className="mx-3 mb-2 flex min-h-10 items-center gap-1.5 text-sm font-semibold text-violet-700 underline-offset-4 hover:underline"
+                                            data-test="edit-by-voice"
+                                        >
+                                            <Mic className="size-4" />
+                                            {t('automation.quick_edit.open')}
+                                        </Link>
+                                    )}
+                                    {visit.assignees.length === 0 &&
+                                        !auth.company?.works_alone &&
+                                        (canAssign ? (
+                                            <button
+                                                type="button"
+                                                className="mx-3 mb-2 flex min-h-10 items-center gap-1.5 text-sm font-semibold text-amber-700 underline-offset-4 hover:underline"
+                                                onClick={() =>
+                                                    setAssigning(visit)
+                                                }
+                                                data-test="not-assigned"
+                                            >
+                                                <UserX className="size-4" />
+                                                {t('jobs.not_assigned')}
+                                            </button>
+                                        ) : (
+                                            <span className="mx-3 mb-2 flex items-center gap-1.5 text-sm font-semibold text-amber-700">
+                                                <UserX className="size-4" />
+                                                {t('jobs.not_assigned')}
+                                            </span>
+                                        ))}
+                                </>
                             }
                             time={
                                 // Visits of the shown day show only the window; one still open from an earlier day shows its date.

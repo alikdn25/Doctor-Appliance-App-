@@ -1,0 +1,231 @@
+<?php
+
+namespace App\Services\AI;
+
+use App\Actions\Billing\RecordPayment;
+use App\Actions\Billing\SaveBillingDocument;
+use App\Actions\Jobs\ChangeJobStatus;
+use App\Actions\Jobs\CloseJob;
+use App\Actions\Jobs\VisitWorkflow;
+use App\Enums\JobOutcome;
+use App\Enums\JobStatus;
+use App\Enums\LineKind;
+use App\Enums\PaymentMethod;
+use App\Enums\VisitStatus;
+use App\Models\Company;
+use App\Models\JobVisit;
+use App\Models\ServiceJob;
+use App\Models\User;
+use App\Services\AI\Assistant\AssistantActions;
+use App\Services\AI\Assistant\InvoiceDraft;
+use App\Support\Audit\ActionSource;
+use App\Support\Billing\DocumentTotals;
+use App\Support\Locale\Currencies;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * "Close by voice" on the job page (owner's task of November 18): what the technician said goes to AI_MODEL_ASSISTANT,
+ * which fills the note about the work, the invoice lines, whether the amounts include tax, how it was paid and the
+ * new status (Completed, or Need to order parts with the part). Taxes and totals are calculated by code. The preview
+ * can be checked; only Confirm saves the note, creates the invoice, sets the status and records the payment.
+ */
+class VoiceCloser
+{
+    public const PAYMENTS = ['card', 'cash', 'e_transfer', 'unpaid'];
+
+    public const STATUSES = ['completed', 'need_to_order_parts'];
+
+    public function __construct(private readonly AiService $ai) {}
+
+    /**
+     * @return array<string, mixed> The AI's reading (fields as the preview edits them).
+     *
+     * @throws AiUnavailable
+     */
+    public function read(ServiceJob $job, string $text, User $user): array
+    {
+        $company = currentCompany();
+        $job->loadMissing(['customer', 'appliances']);
+        $context = sprintf("Job #%d for %s. Appliance: %s. Problem: %s.\nThe technician says: %s",
+            $job->number, $job->customer?->display_name, $job->appliances->map->label()->implode(', ') ?: '—',
+            $job->description ?: '—', trim($text));
+
+        $raw = $this->ai->send(
+            AiFeature::VoiceClose,
+            $company,
+            $user,
+            'You fill in how a repair job ended from what the technician said (Russian, English or mixed). Write in English. '
+            .'note: what was found and done, short. lines: the work and parts with their amounts as said; never invent an '
+            .'amount (no amount said = no line). amounts_include_tax: true only when they say the amount includes tax. '
+            .'payment: card, cash, e_transfer, or unpaid when not said or not paid. status: completed, or '
+            .'need_to_order_parts when a part must be ordered (part_name = the part, else ""). Currency: '.$company->currency.'.',
+            [['role' => 'user', 'content' => $context]],
+            schema: self::schema(),
+            maxTokens: 1500,
+        )->json();
+
+        $lines = [];
+        foreach ((array) ($raw['lines'] ?? []) as $line) {
+            $amount = (float) ($line['amount'] ?? 0);
+            if ($amount > 0) {
+                $lines[] = [
+                    'description' => mb_substr(trim((string) ($line['description'] ?? '')) ?: __('assistant.invoice.default_line'), 0, 500),
+                    'amount' => round($amount, 2),
+                    'kind' => ($line['kind'] ?? '') === 'part' ? 'part' : 'service',
+                ];
+            }
+        }
+
+        return [
+            'note' => mb_substr(trim((string) ($raw['note'] ?? '')), 0, 5000),
+            'lines' => $lines,
+            'amounts_include_tax' => ($raw['amounts_include_tax'] ?? false) === true,
+            'payment' => in_array($raw['payment'] ?? null, self::PAYMENTS, true) ? $raw['payment'] : 'unpaid',
+            'status' => in_array($raw['status'] ?? null, self::STATUSES, true) ? $raw['status'] : 'completed',
+            'part_name' => mb_substr(trim((string) ($raw['part_name'] ?? '')), 0, 255),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function schema(): array
+    {
+        $text = ['type' => 'string'];
+
+        return [
+            'type' => 'object',
+            'properties' => [
+                'note' => $text,
+                'lines' => ['type' => 'array', 'items' => [
+                    'type' => 'object',
+                    'properties' => ['description' => $text, 'amount' => ['type' => 'number'], 'kind' => ['type' => 'string', 'enum' => ['service', 'part']]],
+                    'required' => ['description', 'amount', 'kind'],
+                    'additionalProperties' => false,
+                ]],
+                'amounts_include_tax' => ['type' => 'boolean'],
+                'payment' => ['type' => 'string', 'enum' => self::PAYMENTS],
+                'status' => ['type' => 'string', 'enum' => self::STATUSES],
+                'part_name' => $text,
+            ],
+            'required' => ['note', 'lines', 'amounts_include_tax', 'payment', 'status', 'part_name'],
+            'additionalProperties' => false,
+        ];
+    }
+
+    /**
+     * The preview's money: lines in the invoice's price mode, the company's default taxes and the total (code).
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{lines: list<array<string, mixed>>, taxes: list<array<string, mixed>>, subtotal: int, tax_total: int, total: int, currency: string, tax_rate_ids: list<int>}
+     */
+    public static function totals(array $data, Company $company): array
+    {
+        $factor = Currencies::factor($company->currency);
+        $amounts = array_map(fn (array $line) => (int) round(((float) $line['amount']) * $factor), $data['lines']);
+        $taxes = InvoiceDraft::taxes();
+        $prices = $amounts === [] ? [] : InvoiceDraft::prices($amounts, $taxes, (bool) $data['amounts_include_tax'], (bool) $company->prices_include_tax, $factor);
+        $totals = DocumentTotals::calculate(
+            array_map(fn (int $price) => ['quantity' => 1, 'unit_price' => $price, 'taxable' => true], $prices),
+            null, 0, $taxes, (bool) $company->prices_include_tax, $factor,
+        );
+
+        return [
+            'lines' => array_map(fn (array $line, int $price, int $total) => [...$line, 'unit_price' => $price, 'total' => $total], $data['lines'], $prices, $totals['item_totals']),
+            'taxes' => $totals['taxes'],
+            'subtotal' => $totals['subtotal'],
+            'tax_total' => $totals['tax_total'],
+            'total' => $totals['total'],
+            'currency' => $company->currency,
+            'tax_rate_ids' => array_values(array_filter(array_column($taxes, 'tax_rate_id'))),
+        ];
+    }
+
+    /**
+     * Confirm: note, invoice, payment and status, as the person who pressed it (change log "AI assistant").
+     *
+     * @param  array<string, mixed>  $data  note, lines, amounts_include_tax, payment, status, part_name
+     */
+    public function confirm(ServiceJob $job, array $data, User $user): string
+    {
+        $company = currentCompany();
+        $money = self::totals($data, $company);
+
+        if ($data['payment'] !== 'unpaid' && $money['total'] <= 0) {
+            throw ValidationException::withMessages(['payment' => __('automation.voice_close.no_amount')]);
+        }
+
+        app(ActionSource::class)->as(AssistantActions::SOURCE, fn () => DB::transaction(function () use ($job, $data, $user, $money, $company) {
+            $job = ServiceJob::query()->lockForUpdate()->findOrFail($job->id);
+
+            if (trim((string) $data['note']) !== '') {
+                $job->tech_notes = trim(implode("\n", array_filter([$job->tech_notes, trim($data['note'])])));
+            }
+            if ($data['status'] === 'need_to_order_parts' && trim((string) $data['part_name']) !== '') {
+                $job->part_name = trim($data['part_name']);
+            }
+            $job->save();
+
+            $invoice = null;
+            if ($money['lines'] !== []) {
+                $invoice = app(SaveBillingDocument::class)->createInvoice($job, [
+                    'issued_on' => CarbonImmutable::now($company->timezone)->toDateString(),
+                    'due_on' => null,
+                    'notes' => null,
+                    'tax_rate_ids' => $money['tax_rate_ids'],
+                    'items' => array_map(fn (array $line) => [
+                        'description' => $line['description'],
+                        'quantity' => '1',
+                        'unit_price' => $line['unit_price'],
+                        'taxable' => true,
+                        'kind' => $line['kind'] === 'part' ? LineKind::Part->value : LineKind::Service->value,
+                    ], $money['lines']),
+                ], $user);
+            }
+
+            if ($invoice !== null && $data['payment'] !== 'unpaid' && $invoice->balance > 0) {
+                app(RecordPayment::class)->manual($invoice->refresh(), $invoice->balance, self::method($data['payment']), null, null, now(), $user);
+            }
+
+            $this->finish($job->refresh(), $data['status'] === 'need_to_order_parts' ? JobStatus::NeedToOrderParts : JobStatus::Completed, $user);
+        }));
+
+        return __('automation.voice_close.saved', ['number' => $job->number]);
+    }
+
+    private static function method(string $payment): PaymentMethod
+    {
+        return match ($payment) {
+            'cash' => PaymentMethod::Cash,
+            'e_transfer' => PaymentMethod::BankTransfer,
+            default => PaymentMethod::CardTerminal,
+        };
+    }
+
+    /**
+     * The visit under way (or the one booked for today) is finished; Completed also closes the job as repaired.
+     */
+    private function finish(ServiceJob $job, JobStatus $status, User $user): void
+    {
+        $today = CarbonImmutable::now(currentCompany()->timezone)->endOfDay()->utc();
+        $visit = $job->visits()->whereIn('status', [VisitStatus::InProgress->value, VisitStatus::OnTheWay->value])->first()
+            ?? $job->visits()->where('status', VisitStatus::Scheduled->value)->where('scheduled_start', '<=', $today)->orderByDesc('scheduled_start')->first();
+        $workflow = app(VisitWorkflow::class);
+
+        if ($visit instanceof JobVisit && $job->status->allowsVisitWork()) {
+            if ($visit->status !== VisitStatus::InProgress) {
+                $workflow->start($visit, $user);
+            }
+            $workflow->finish($visit->refresh(), $user, $status);
+            $job->refresh();
+        } elseif ($status === JobStatus::NeedToOrderParts && ! $job->status->isLocked()) {
+            app(ChangeJobStatus::class)->handle($job, $status, $user);
+        }
+
+        if ($status === JobStatus::Completed && $job->outcome === null) {
+            app(CloseJob::class)->close($job, JobOutcome::Repaired, null, null, $user, $visit);
+        }
+    }
+}

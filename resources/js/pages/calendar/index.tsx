@@ -11,6 +11,7 @@ import {
     Navigation,
     Pencil,
     SlidersHorizontal,
+    Mic,
 } from 'lucide-react';
 import type { DragEvent, TouchEvent } from 'react';
 import { useRef, useState } from 'react';
@@ -908,6 +909,20 @@ export default function CalendarPage({
                                     <Pencil /> {t('jobs.edit_visit')}
                                 </Button>
                             </div>
+                            <Button
+                                asChild
+                                variant="outline"
+                                className="w-full border-violet-300"
+                            >
+                                <Link
+                                    href={showJob(details.job.id, {
+                                        query: { voice_edit: 1 },
+                                    })}
+                                    data-test="edit-by-voice"
+                                >
+                                    <Mic /> {t('automation.quick_edit.open')}
+                                </Link>
+                            </Button>
                         </>
                     )}
                 </DialogContent>

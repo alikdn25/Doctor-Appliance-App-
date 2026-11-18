@@ -4,11 +4,14 @@ use App\Console\Commands\AiSchemaSmokeCommand;
 use App\Models\Company;
 use App\Services\AI\AiFeature;
 use App\Services\AI\Assistant\AssistantTools;
+use App\Services\AI\BookingEditor;
+use App\Services\AI\PartFinder;
 use App\Services\AI\Problems\ProblemFinder;
 use App\Services\AI\QuickBookingParser;
 use App\Services\AI\Review\AppReviewer;
 use App\Services\AI\Sms\PlateReader;
 use App\Services\AI\Sms\SmsTriage;
+use App\Services\AI\VoiceCloser;
 use App\Support\Ai\BookingTextParser;
 use Tests\Fakes\FakeAiTransport;
 
@@ -52,6 +55,9 @@ dataset('ai schemas', fn () => [
     'app review' => [AppReviewer::schema()],
     'sms triage' => [SmsTriage::schema()],
     'rating plate' => [PlateReader::schema()],
+    'booking quick edit' => [BookingEditor::schema()],
+    'close by voice' => [VoiceCloser::schema()],
+    'part number' => [PartFinder::schema()],
     'assistant tools' => [array_map(fn (array $tool) => $tool['inputSchema'], AssistantTools::definitions())],
 ]);
 

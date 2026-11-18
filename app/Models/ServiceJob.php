@@ -51,6 +51,11 @@ use Illuminate\Support\Carbon;
  * @property string|null $outcome_reason
  * @property string|null $outcome_note
  * @property Carbon|null $closed_at
+ * @property string|null $part_name The part the job waits for
+ * @property string|null $part_number
+ * @property string|null $part_supplier
+ * @property Carbon|null $part_ordered_on
+ * @property array<string, mixed>|null $part_suggestion The AI's possible part number ("check")
  * @property int|null $closed_by
  * @property Carbon|null $deleted_at
  * @property Carbon|null $created_at
@@ -98,6 +103,8 @@ class ServiceJob extends Model
             'status' => JobStatus::class,
             'assignment_is_explicit' => 'boolean',
             'completed_at' => 'datetime',
+            'part_ordered_on' => 'date',
+            'part_suggestion' => 'array',
             'cancelled_at' => 'datetime',
             'signed_at' => 'datetime',
             'outcome' => JobOutcome::class,

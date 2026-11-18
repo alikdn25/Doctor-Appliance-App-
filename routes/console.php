@@ -22,6 +22,8 @@ Schedule::command('estimates:send-followups')->hourlyAt(7)->withoutOverlapping()
 Schedule::command('sms:sync-registrations')->dailyAt('06:23');
 // Auto replies after their delay and reminders about unanswered texts (owner's task of November 18).
 Schedule::command('sms:sweep')->everyMinute()->withoutOverlapping();
+// "Send a review request?" 2 hours after an invoice is paid (never sent by itself).
+Schedule::command('invoices:paid-followup')->everyFiveMinutes()->withoutOverlapping();
 
 // Technicians are reminded before visits with a strict arrival time.
 Schedule::command('visits:strict-arrival-reminders')->everyFiveMinutes()->withoutOverlapping();

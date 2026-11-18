@@ -18,12 +18,21 @@ enum AiFeature: string
     /** A photo in an incoming MMS (rating plate). */
     case SmsPhoto = 'sms_photo';
 
+    /** "Quick edit" of a booking by voice. */
+    case BookingEdit = 'booking_edit';
+
+    /** "Close by voice" on the job page. */
+    case VoiceClose = 'voice_close';
+
+    /** A possible part number when a job needs a part. */
+    case PartLookup = 'part_lookup';
+
     /** The key in config('ai.models'). */
     public function modelKey(): string
     {
         return match ($this) {
-            self::QuickBooking, self::PasteMessage, self::SmsTriage => 'booking',
-            self::Assistant, self::FindProblems, self::SmsPhoto => 'assistant',
+            self::QuickBooking, self::PasteMessage, self::SmsTriage, self::BookingEdit => 'booking',
+            self::Assistant, self::FindProblems, self::SmsPhoto, self::VoiceClose, self::PartLookup => 'assistant',
             self::AppReview => 'review',
         };
     }

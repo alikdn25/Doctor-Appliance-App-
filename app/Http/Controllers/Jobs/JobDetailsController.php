@@ -10,8 +10,12 @@ use App\Enums\VisitStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Jobs\VisitRequest;
 use App\Messaging\BookingConfirmation;
+use App\Models\Customer;
+use App\Models\CustomerEmail;
+use App\Models\CustomerPhone;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
+use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,10 +46,18 @@ class JobDetailsController extends Controller
             'start_time' => ['nullable', 'required_with:date', 'date_format:H:i'],
             'end_time' => ['nullable', 'required_with:date', 'date_format:H:i', 'after:start_time'],
             'technician_id' => ['sometimes', 'nullable', 'integer'],
+            // Quick edit (owner's task of November 18) also changes these.
+            'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
+            'email' => ['sometimes', 'nullable', 'email', 'max:255'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'notify' => ['boolean'],
         ], [], VisitRequest::visitAttributes());
 
-        $renaming = $request->hasAny(['first_name', 'last_name', 'company_name']);
+        $renaming = $request->hasAny(['first_name', 'last_name', 'company_name', 'phone', 'email']);
+        if ($request->filled('phone') && ! PhoneNumber::isPossible($data['phone'], currentCompany()->country)) {
+            throw ValidationException::withMessages(['phone' => __('automation.quick_edit.bad_phone')]);
+        }
         if ($renaming) {
             Gate::authorize('update', $customer);
         }
@@ -66,6 +78,16 @@ class JobDetailsController extends Controller
                     throw ValidationException::withMessages(['first_name' => __('jobs.details.name_required')]);
                 }
                 $customer->save();
+                self::contacts($customer, $request, $data);
+            }
+
+            foreach (['description', 'notes'] as $field) {
+                if ($request->has($field)) {
+                    $job->{$field} = filled($data[$field] ?? null) ? trim($data[$field]) : null;
+                }
+            }
+            if ($job->isDirty()) {
+                $job->save();
             }
 
             if (filled($data['property_id'] ?? null) && (int) $data['property_id'] !== $job->property_id) {
@@ -122,6 +144,36 @@ class JobDetailsController extends Controller
         }
 
         return back();
+    }
+
+    /**
+     * The customer's main phone and email, when the sheet sent them changed.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private static function contacts(Customer $customer, Request $request, array $data): void
+    {
+        if ($request->filled('phone')) {
+            $number = PhoneNumber::normalize($data['phone'], currentCompany()->country);
+            $phone = $customer->primaryPhone()->first();
+            if ($phone === null || $phone->number_normalized !== $number) {
+                $phone ??= new CustomerPhone(['label' => 'mobile', 'is_primary' => true]);
+                $phone->number = $number;
+                $phone->customer_id = $customer->id;
+                $phone->save();
+            }
+        }
+
+        if ($request->filled('email')) {
+            $email = mb_strtolower(trim($data['email']));
+            $row = $customer->primaryEmail()->first();
+            if ($row === null || mb_strtolower($row->email) !== $email) {
+                $row ??= new CustomerEmail(['label' => 'personal', 'is_primary' => true]);
+                $row->email = $email;
+                $row->customer_id = $customer->id;
+                $row->save();
+            }
+        }
     }
 
     /** The time the job is booked for now: the latest visit not finished or cancelled. */

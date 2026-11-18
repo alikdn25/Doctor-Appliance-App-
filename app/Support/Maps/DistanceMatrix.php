@@ -21,6 +21,38 @@ class DistanceMatrix
     }
 
     /**
+     * Driving minutes from a point (e.g. the phone's GPS "49.2,-123.1") to an address, with today's traffic, or null.
+     */
+    public function minutes(string $from, string $to): ?int
+    {
+        if (! Geocoder::enabled() || trim($from) === '' || trim($to) === '') {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(8)->get('https://maps.googleapis.com/maps/api/distancematrix/json', [
+                'origins' => $from,
+                'destinations' => $to,
+                'mode' => 'driving',
+                'departure_time' => 'now',
+                'key' => config('services.google_maps.server_key'),
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('Drive time lookup failed', ['error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        $seconds = $response->json('rows.0.elements.0.duration_in_traffic.value') ?? $response->json('rows.0.elements.0.duration.value');
+
+        if (! $response->ok() || $response->json('rows.0.elements.0.status') !== 'OK' || ! is_numeric($seconds)) {
+            return null;
+        }
+
+        return max(1, (int) ceil($seconds / 60));
+    }
+
+    /**
      * Road distance and the addresses Google matched (a GPS point "49.2,-123.1" comes back as a street address).
      *
      * @return array{km: float, from: string|null, to: string|null}|null
