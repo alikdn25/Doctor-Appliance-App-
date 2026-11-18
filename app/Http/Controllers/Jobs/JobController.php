@@ -483,6 +483,8 @@ class JobController extends Controller
                     'status_label' => $f->status->label(),
                 ])->values(),
                 'outcome' => $job->outcome?->value,
+                // "Handed to: {name}" (owner's task of November 19).
+                'handed_to' => $job->handed_to,
                 'outcome_label' => $job->outcome?->label(),
                 'outcome_reason' => $job->outcome_reason,
                 'outcome_note' => $job->outcome_note,
@@ -583,6 +585,8 @@ class JobController extends Controller
                 // One tap on "Technician" (office, team mode).
                 'assign' => $canUpdate && Gate::allows('dispatch', ServiceJob::class) && ! currentCompany()->works_alone,
             ],
+            // "Hand to technician": the app's people and the outside technicians.
+            'handoffOptions' => $canUpdate && Gate::allows('dispatch', ServiceJob::class) ? JobHandoffController::options() : [],
             'statusOptions' => $canUpdate && ! $job->status->isLocked() ? JobStatus::manualOptions() : [],
             'closureReasons' => [
                 'customer_declined' => currentCompany()->closureReasons(JobOutcome::CustomerDeclined),

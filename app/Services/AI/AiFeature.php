@@ -33,12 +33,15 @@ enum AiFeature: string
     /** "Text again": a short follow-up when the customer stays quiet. */
     case SmsNudge = 'sms_nudge';
 
+    /** Russian in the reply box → a short English SMS. */
+    case Translate = 'translate';
+
     /** The key in config('ai.models'). */
     public function modelKey(): string
     {
         return match ($this) {
             self::QuickBooking, self::PasteMessage, self::SmsTriage, self::BookingEdit, self::SmsNudge => 'booking',
-            self::Assistant, self::FindProblems, self::SmsPhoto, self::VoiceClose, self::PartLookup, self::Receipt => 'assistant',
+            self::Assistant, self::FindProblems, self::SmsPhoto, self::VoiceClose, self::PartLookup, self::Receipt, self::Translate => 'assistant',
             self::AppReview => 'review',
         };
     }

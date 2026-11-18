@@ -12,6 +12,7 @@ use App\Http\Controllers\AppReviewController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\Billing\CashController;
+use App\Http\Controllers\Billing\DebtorsController;
 use App\Http\Controllers\Billing\DocumentDeliveryController;
 use App\Http\Controllers\Billing\EstimateController;
 use App\Http\Controllers\Billing\InvoiceController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Billing\InvoiceReviewRequestController;
 use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Billing\PaymentLinkController;
 use App\Http\Controllers\Billing\PriceBookController;
+use App\Http\Controllers\Company\AnswersController;
 use App\Http\Controllers\Company\AutoMessagesController;
 use App\Http\Controllers\Company\BotTokenController;
 use App\Http\Controllers\Company\BrandController;
@@ -51,6 +53,7 @@ use App\Http\Controllers\Jobs\JobController;
 use App\Http\Controllers\Jobs\JobCostController;
 use App\Http\Controllers\Jobs\JobDetailsController;
 use App\Http\Controllers\Jobs\JobFieldController;
+use App\Http\Controllers\Jobs\JobHandoffController;
 use App\Http\Controllers\Jobs\JobMessageController;
 use App\Http\Controllers\Jobs\JobMessageFillController;
 use App\Http\Controllers\Jobs\JobNoteController;
@@ -90,6 +93,9 @@ Route::get('app-version', AppVersionController::class)->middleware('throttle:app
 
 // Customer's online page of an estimate or invoice (link in the email; the token is the key).
 Route::middleware('throttle:60,1')->group(function () {
+    // "Hand to technician": the job's photos for an outside technician (signed link, no sign-in).
+    Route::get('shared/jobs/{job}/photos', [JobHandoffController::class, 'photos'])->whereNumber('job')->name('shared.job-photos');
+    Route::get('shared/jobs/{job}/photos/{photo}', [JobHandoffController::class, 'photo'])->whereNumber('job')->whereNumber('photo')->name('shared.job-photo');
     Route::get('d/{token}', [PublicDocumentController::class, 'show'])->name('documents.public');
     Route::get('d/{token}/pdf', [PublicDocumentController::class, 'pdf'])->name('documents.public.pdf');
     Route::post('d/{token}/pay', [PublicDocumentController::class, 'pay'])->middleware('throttle:10,1')->name('documents.public.pay');
@@ -154,6 +160,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('messages', [SmsInboxController::class, 'index'])->name('messages.index');
         Route::get('messages/older', [SmsInboxController::class, 'older'])->name('messages.older');
         Route::post('messages/read', [SmsInboxController::class, 'read'])->name('messages.read');
+        Route::post('messages/translate', [SmsInboxController::class, 'translate'])->middleware('throttle:30,1')->name('messages.translate');
         Route::post('messages/send', [SmsInboxController::class, 'send'])->middleware('throttle:30,1')->name('messages.send');
         Route::post('messages/done', [SmsAssistController::class, 'done'])->name('messages.done');
         Route::post('messages/{message}/not-waiting', [SmsInboxController::class, 'notWaiting'])->name('messages.not-waiting');
@@ -203,6 +210,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('jobs/{job}/appliances', [JobWorkController::class, 'storeAppliance'])->name('jobs.appliances.store');
         Route::put('jobs/{job}/appliances/{appliance}', [JobWorkController::class, 'updateAppliance'])->name('jobs.appliances.update');
         Route::post('jobs/{job}/photos', [JobFieldController::class, 'storePhoto'])->name('jobs.photos.store');
+        Route::post('jobs/{job}/handoff/preview', [JobHandoffController::class, 'preview'])->name('jobs.handoff.preview');
+        Route::post('jobs/{job}/handoff', [JobHandoffController::class, 'store'])->middleware('throttle:10,1')->name('jobs.handoff.store');
         Route::get('jobs/{job}/photos/{photo}', [JobFieldController::class, 'showPhoto'])->name('jobs.photos.show');
         Route::delete('jobs/{job}/photos/{photo}', [JobFieldController::class, 'destroyPhoto'])->name('jobs.photos.destroy');
         Route::post('jobs/{job}/appliances/{appliance}/rating-plate', [JobFieldController::class, 'ratingPlate'])->name('jobs.appliances.rating-plate');
@@ -250,6 +259,13 @@ Route::middleware(['auth', 'active'])->group(function () {
 
         Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
         Route::get('invoices/create', [InvoiceController::class, 'start'])->name('invoices.start');
+        // Debtors: import, Unpaid, soft payment reminders (owner's task of November 19).
+        Route::get('invoices/unpaid', [DebtorsController::class, 'unpaid'])->name('invoices.unpaid');
+        Route::get('invoices/import-debtors', [DebtorsController::class, 'import'])->name('invoices.debtors.import');
+        Route::post('invoices/import-debtors/preview', [DebtorsController::class, 'preview'])->middleware('throttle:20,1')->name('invoices.debtors.preview');
+        Route::post('invoices/import-debtors', [DebtorsController::class, 'store'])->name('invoices.debtors.store');
+        Route::post('invoices/reminders/preview', [DebtorsController::class, 'reminderPreview'])->name('invoices.reminders.preview');
+        Route::post('invoices/reminders', [DebtorsController::class, 'remind'])->middleware('throttle:10,1')->name('invoices.reminders.send');
         Route::get('jobs/{job}/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
         Route::post('jobs/{job}/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
@@ -357,6 +373,8 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::put('auto-messages', [AutoMessagesController::class, 'update'])->name('company.auto-messages.update');
             // Morning SMS to the owner's phone and the nightly Google Drive backup (owner's task of November 19).
             Route::get('morning', [MorningController::class, 'edit'])->name('company.morning.edit');
+            Route::get('answers', [AnswersController::class, 'edit'])->name('company.answers.edit');
+            Route::put('answers', [AnswersController::class, 'update'])->name('company.answers.update');
             Route::put('morning', [MorningController::class, 'update'])->name('company.morning.update');
             Route::post('google-drive/connect', [MorningController::class, 'connect'])->name('google-drive.connect');
             Route::delete('google-drive', [MorningController::class, 'disconnect'])->name('google-drive.disconnect');

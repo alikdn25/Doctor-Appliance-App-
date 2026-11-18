@@ -27,7 +27,10 @@ class SyncInvoice
         } else {
             // Money refunded as settled (credited) is not owed again.
             $invoice->balance = $invoice->total - $invoice->credited_amount - $paid;
+            // An imported debt still waiting for its amount stays open (owner's task of November 19).
+            $needsAmount = $paid <= 0 && $invoice->items()->where('needs_amount', true)->exists();
             $invoice->status = match (true) {
+                $needsAmount => InvoiceStatus::Unpaid,
                 $invoice->balance <= 0 && $invoice->credited_amount > 0 && $paid <= 0 => InvoiceStatus::Refunded,
                 $invoice->balance <= 0 && $invoice->credited_amount > 0 => InvoiceStatus::PartiallyRefunded,
                 $invoice->balance <= 0 && ($paid > 0 || ! $refunded) => InvoiceStatus::Paid,

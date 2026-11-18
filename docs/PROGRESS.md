@@ -2,6 +2,41 @@
 
 Several PRs (SPEC §7.17).
 
+## PR 2 — debtors and soft reminders, Russian → English, prices and answers, clarifying questions, hand to technician (done)
+
+1. **Debtors import** (`DebtorImport`, `DebtorsController`, page `invoices/import-debtors`, Owner only, gate
+   `importDebtors`): CSV name, phone, email, address, date, work, amount, note → preview (customer found by phone / email
+   or new, problems per row) → Confirm: customer, Completed job on the date (finished visit, outcome Repaired), invoice
+   open and not sent; no amount → line `needs_amount` ("Amount needed"; `SyncInvoice` keeps it Unpaid).
+2. **Unpaid** (`invoices/unpaid`, link in Company settings and the "No invoice" chip of the unfinished-jobs bar): open
+   invoices, filters not reminded / reminded / answered / no invoice; Completed jobs without an invoice with New invoice.
+3. **Soft reminder** (`PaymentReminders`, `MessageKind::PaymentReminder`, `invoices.reminder_*`): select → preview →
+   Confirm; template in Prices and answers ({first_name}, {my_name}, {company}, {appliance}, {month}); no amount, no
+   link. The customer's answer → triage draft with the amount and the link (added by code if the AI left them out);
+   push main button "Send reply" (one tap). Unanswered → "customer is quiet" (PaymentReminder counts); never repeated.
+4. **Completed without invoice** counter `no_invoice` in `JobBacklog::summary` (bar chip, not in the total) and in the
+   morning SMS.
+5. **Russian → English** (`Translator`, `AiFeature::Translate` = `AI_MODEL_ASSISTANT`, `POST messages/translate`): Send
+   with Russian in the box translates and puts the English text back; second Send sends. Switch in Prices and answers
+   (on by default).
+6. **Prices and answers** (Company → Prices and answers, `AnswersController`): diagnostic fee, service areas, hours,
+   notes go to the SMS triage prompt (`ReplyGuide::facts`); the AI names no other price.
+7. **Clarifying questions and sticker** (`ReplyGuide::compose`): about a breakdown → at most 2 questions (cut by code);
+   no model number on the customer's appliances → photo of the sticker with where to find it (fridge, washer, dryer,
+   dishwasher, range). "Send clarifying questions automatically" (off by default; `Clarifier`): business hours, once
+   per 24 h per number (`sms_threads.last_clarify_at`), `MessageKind::Clarifying`.
+8. **Hand to technician** (`JobHandoffController`, `HandoffSheet` on the job page): app person or outside technician
+   (Prices and answers → Outside technicians); preview of both texts → Confirm sends both (`MessageKind::Handoff`, never
+   "customer is quiet"); an app person becomes the job's technician; "Handed to: {name}" on the job; photos by a signed
+   link valid 14 days (`shared/jobs/{job}/photos`).
+
+- **Migration** `2026_11_19_000200_add_debtors_answers_and_handoff`: new nullable / defaulted columns only.
+- Tests: `DebtorsAnswersHandoffTest` (preview saves nothing, Owner only; Confirm find / create, Completed job, invoice
+  not sent, amount needed; reminder text without amount / link, nothing before Confirm; answer → draft with amount and
+  link, one tap; unanswered → quiet once, not repeated; Unpaid filters; no_invoice counter; translation and English
+  untouched; prices in the prompt, max 2 questions, sticker, no sticker with a model; auto clarify off / on / hours /
+  24 h; settings; hand-off preview → Confirm, app technician assigned, signed photos; other company).
+
 ## PR 1 — fixes, "customer is quiet", morning SMS, Google Drive backup, buttons on notifications, shortcuts (done)
 
 1. **Fixes**: "Edit by voice" on My Jobs for everyone who may edit the job (`can_edit`, also when working alone);

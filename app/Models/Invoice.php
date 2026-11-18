@@ -46,6 +46,9 @@ use Illuminate\Support\Carbon;
  * @property list<array{tax_rate_id: int|null, name: string, rate: string, compound?: bool, amount: int}> $taxes
  * @property string|null $notes
  * @property Carbon|null $paid_at
+ * @property Carbon|null $reminder_sent_at Soft payment reminder sent
+ * @property int|null $reminder_message_id
+ * @property Carbon|null $reminder_answered_at
  * @property Carbon|null $review_offered_at "Send a review request?" offered 2 hours after it was paid
  * @property Carbon|null $voided_at
  * @property int|null $voided_by
@@ -87,6 +90,8 @@ class Invoice extends Model
             'credited_amount' => 'integer',
             'paid_at' => 'datetime',
             'review_offered_at' => 'datetime',
+            'reminder_sent_at' => 'datetime',
+            'reminder_answered_at' => 'datetime',
             'voided_at' => 'datetime',
         ];
     }

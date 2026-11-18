@@ -11,6 +11,7 @@ use App\Models\ServiceJob;
 use App\Services\AI\AiFeature;
 use App\Services\AI\AiService;
 use App\Services\AI\AiUnavailable;
+use App\Support\Billing\PaymentReminders;
 use App\Support\Locale\RelativeDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
@@ -36,19 +37,26 @@ class SmsTriage
     public function triage(Message $message, Company $company): array
     {
         $jobs = $message->customer_id ? self::openJobs($message->customer_id) : new Collection;
+        // An answer to a soft payment reminder: the draft carries the amount and the invoice link.
+        $invoice = PaymentReminders::answered($message);
+        $debt = $invoice === null ? '' : "\n\nThis customer answers our soft payment reminder about invoice {$invoice->number}: "
+            .'balance '.PaymentReminders::facts($invoice)['amount'].', link '.PaymentReminders::facts($invoice)['link']
+            .'. The reply draft must politely give the amount and the link.';
 
         $raw = $this->ai->send(
             AiFeature::SmsTriage,
             $company,
             null,
             $this->instructions($company),
-            [['role' => 'user', 'content' => $this->context($message, $jobs, $company)]],
+            [['role' => 'user', 'content' => $this->context($message, $jobs, $company).$debt]],
             schema: self::schema(),
             maxTokens: 1500,
             effort: 'low',
         )->json();
 
-        return self::normalize($raw, $message, $jobs, $company);
+        $result = self::normalize($raw, $message, $jobs, $company);
+
+        return [...$result, ...ReplyGuide::compose($raw, $message, $invoice), 'invoice_id' => $invoice?->id];
     }
 
     /**
@@ -92,8 +100,11 @@ class SmsTriage
                 'summary' => ['type' => 'string', 'description' => 'One short line in English: who writes and what they want'],
                 'actions' => ['type' => 'array', 'items' => $action],
                 'reply_draft' => $text,
+                'about_breakdown' => ['type' => 'boolean'],
+                'questions' => ['type' => 'array', 'items' => $text],
+                'appliance_type' => ['type' => 'string', 'description' => 'refrigerator, freezer, washer, dryer, dishwasher, range, oven, cooktop, other, or "" when not named'],
             ],
-            'required' => ['urgency', 'summary', 'actions', 'reply_draft'],
+            'required' => ['urgency', 'summary', 'actions', 'reply_draft', 'about_breakdown', 'questions', 'appliance_type'],
             'additionalProperties' => false,
         ];
     }
@@ -103,6 +114,7 @@ class SmsTriage
         $now = CarbonImmutable::now($company->timezone);
         $today = $now->format('Y-m-d (l)');
         $windows = implode(', ', array_map(fn (array $w) => "{$w['start']}-{$w['end']}", $company->arrivalWindows()));
+        $facts = ReplyGuide::facts($company);
 
         return <<<TEXT
             You read a text message (SMS) a customer sent to a repair company ({$company->name}; appliance repair or handyman)
@@ -123,7 +135,16 @@ class SmsTriage
             - summary: one line in English, max 80 characters, for a phone notification: who writes and what they want
               (e.g. "Wants the washer visit moved to Thursday morning").
             - reply_draft: a short, polite reply in the customer's language, signed as nobody, max 300 characters. Never
-              promise a time that is not confirmed; say the office will confirm. Never invent prices.
+              promise a time that is not confirmed; say the office will confirm. Name only the prices listed under
+              "Prices and answers" below; any other price: say the technician will tell them after the diagnosis. Do
+              not put clarifying questions or a request for a photo into reply_draft.
+            - about_breakdown: true when the customer writes about something broken or not working.
+            - questions: only when about_breakdown and details are few: at most 2 short questions (what exactly happens,
+              since when, any error code on the display); [] otherwise.
+            - appliance_type: the appliance the text is about.
+
+            Prices and answers of the company:
+            {$facts}
             TEXT;
     }
 

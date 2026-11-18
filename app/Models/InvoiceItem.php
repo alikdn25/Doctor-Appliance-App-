@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $unit_price
  * @property bool $taxable
  * @property int $total
+ * @property bool $needs_amount An imported debt without an amount
  */
 class InvoiceItem extends Model
 {
@@ -33,6 +34,7 @@ class InvoiceItem extends Model
     {
         return [
             'position' => 'integer',
+            'needs_amount' => 'boolean',
             'quantity' => 'decimal:2',
             'unit_price' => 'integer',
             'taxable' => 'boolean',

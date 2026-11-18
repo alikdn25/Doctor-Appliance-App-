@@ -17,4 +17,7 @@ return [
     'move' => 'Move to :when',
     'cancel' => 'Cancel :job',
     'run' => 'Do it',
+    'send_reply' => 'Send reply',
+    'send_reply_does' => 'send ":text"',
+    'reply_sent' => 'Reply sent.',
 ];

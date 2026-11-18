@@ -63,6 +63,7 @@ import type { JobPart } from '@/components/jobs/part-card';
 import { VoiceCloseSheet } from '@/components/jobs/voice-close-sheet';
 import type { PossibleWarranty } from '@/components/messaging/types';
 import { WarrantyNotice } from '@/components/messaging/warranty-notice';
+import { HandoffSheet } from '@/components/jobs/handoff-sheet';
 import { JobEditSheet } from '@/components/jobs/job-edit-sheet';
 import type { JobEditCustomer } from '@/components/jobs/job-edit-sheet';
 import { JobApplianceDialog } from '@/components/jobs/job-appliance-dialog';
@@ -1284,6 +1285,7 @@ export default function JobShow({
                         </ul>
                     )}
                 </section>
+                <HandoffSheet jobId={job.id} />
                 {canVoiceClose && (
                     <Button
                         variant="outline"
