@@ -43,5 +43,11 @@ Schedule::command('ops:watchdog')->hourlyAt(0)->withoutOverlapping();
 Schedule::command('tax-reserve:remind')->hourlyAt(12)->withoutOverlapping();
 
 // Owner's task of November 18: the morning summary (each person's time) and the day's route as a mileage draft (20:00).
-Schedule::command('summary:morning')->everyFiveMinutes()->withoutOverlapping();
+// Every minute, so each arrives at its exact time (owner's task of November 19).
+Schedule::command('summary:morning')->everyMinute()->withoutOverlapping();
+Schedule::command('summary:morning-sms')->everyMinute()->withoutOverlapping();
+// Buttons on push notifications: "Later" brings the notification back an hour later.
+Schedule::command('push:resend')->everyMinute()->withoutOverlapping();
+// The nightly copy of customers and next week's jobs to the company's Google Drive (03:00 company time).
+Schedule::command('backup:drive')->everyFiveMinutes()->withoutOverlapping(30);
 Schedule::command('mileage:day-routes')->hourlyAt(20)->withoutOverlapping();

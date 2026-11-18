@@ -11,7 +11,9 @@ use App\Models\MessageRead;
 use App\Models\ServiceJob;
 use App\Models\SmsThread;
 use App\Models\User;
+use App\Services\AI\Sms\NudgeWriter;
 use App\Services\AI\Sms\SmsActions;
+use App\Support\Jobs\JobPresenter;
 use App\Support\Jobs\PossibleWarranty;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -125,7 +127,7 @@ class SmsInbox
         return $id === null ? null : ServiceJob::query()->visibleTo($user)->find($id);
     }
 
-    public function conversation(User $user, string $phone): array
+    public function conversation(User $user, string $phone, bool $nudge = false): array
     {
         // A number without texts yet opens as a new, empty conversation.
         abort_if(self::hiddenFrom($user, $phone), 404);
@@ -158,7 +160,11 @@ class SmsInbox
             // A reply is owed (reminders run until a reply or Done); the AI's draft goes into the reply box.
             'awaiting' => $awaiting,
             'urgent' => (bool) $thread?->urgent,
-            'draft' => $awaiting ? ($lastInbound?->ai_triage['reply_draft'] ?? null) : null,
+            'draft' => $awaiting ? ($lastInbound?->ai_triage['reply_draft'] ?? null)
+                // "Text again" on a "customer is quiet" reminder: a short follow-up in the box (one tap to send).
+                : ($nudge && $thread?->silent_since !== null ? app(NudgeWriter::class)->draft($thread, currentCompany(), $user) : null),
+            // Our text that waits for the customer's answer ("customer is quiet").
+            'quiet_since' => $thread?->silent_since ? JobPresenter::iso($thread->silent_since) : null,
             'warranty' => $recipient ? PossibleWarranty::for($recipient->customer_id, currentCompany()) : null,
         ];
     }
@@ -187,6 +193,10 @@ class SmsInbox
         return [
             ...MessagingPresenter::item($message),
             'ai' => $message->direction === Message::INBOUND ? SmsActions::card($message) : null,
+            // "Not waiting for a reply" on our texts that expect one.
+            'awaits_answer' => $message->direction === Message::OUTBOUND && $message->channel === Message::SMS
+                && in_array($message->kind, SmsThreads::AWAITS_ANSWER, true),
+            'no_reply_expected' => $message->no_reply_expected,
             'photos' => array_map(fn (int $index) => route('messages.media', [$message, $index]), array_keys((array) $message->media)),
         ];
     }

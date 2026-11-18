@@ -4,13 +4,17 @@ namespace App\Services\AI\Sms;
 
 use App\Actions\Customers\SaveAppliance;
 use App\Actions\Jobs\CloseJob;
+use App\Actions\Jobs\DirectBooking;
 use App\Actions\Jobs\SaveVisit;
 use App\Enums\ApplianceType;
 use App\Enums\JobOutcome;
 use App\Http\Controllers\Jobs\JobController;
+use App\Messaging\BookingConfirmation;
 use App\Models\Appliance;
+use App\Models\Customer;
 use App\Models\JobVisit;
 use App\Models\Message;
+use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\User;
 use App\Services\AI\AiUnavailable;
@@ -157,6 +161,118 @@ class SmsActions
         }
 
         return $result;
+    }
+
+    /**
+     * The action a button on a push notification does at once (owner's task of November 19): the first pending move,
+     * time change or cancel, or a booking for a known customer with an address, a day and a window. The words say
+     * exactly what the tap will do.
+     *
+     * @return array{index: int, title: string, does: string}|null
+     */
+    public static function main(Message $message): ?array
+    {
+        foreach ((array) ($message->ai_triage['actions'] ?? []) as $index => $action) {
+            if (! is_array($action) || ($action['status'] ?? 'pending') !== 'pending') {
+                continue;
+            }
+
+            if ($action['type'] === 'book') {
+                $plan = self::directPlan($message, $action);
+                if ($plan === null) {
+                    continue;
+                }
+                $when = self::shortWhen($plan['start'], $plan['end']);
+
+                return ['index' => $index, 'title' => __('push.book', ['when' => $when]), 'does' => __('push.book_does', [
+                    'customer' => $plan['customer']->display_name, 'when' => $when, 'address' => $plan['property']->fullAddress(),
+                ])];
+            }
+
+            if ($action['type'] === 'cancel') {
+                return ['index' => $index, 'title' => __('push.cancel', ['job' => '#'.$action['job_number']]), 'does' => self::preview($action)];
+            }
+
+            $visit = JobVisit::query()->find($action['visit_id'] ?? 0);
+            if ($visit === null) {
+                continue;
+            }
+            [$start, $end] = self::newTime($action, $visit);
+
+            return ['index' => $index, 'title' => __('push.move', ['when' => self::shortWhen($start, $end)]), 'does' => self::preview($action)];
+        }
+
+        return null;
+    }
+
+    /**
+     * A booking that can be made without the form: a known customer, their address, a day and a window.
+     *
+     * @param  array<string, mixed>  $action
+     * @return array{customer: Customer, property: Property, start: CarbonImmutable, end: CarbonImmutable}|null
+     */
+    private static function directPlan(Message $message, array $action): ?array
+    {
+        $customer = $message->customer;
+        $property = $customer === null ? null : Property::query()->where('customer_id', $customer->id)
+            ->orderByDesc('is_primary')->orderBy('id')->get()->first(fn (Property $p) => $p->hasAddress());
+
+        if ($customer === null || $customer->trashed() || $property === null || empty($action['date']) || empty($action['start']) || empty($action['end'])) {
+            return null;
+        }
+
+        $tz = currentCompany()->timezone;
+        $start = CarbonImmutable::createFromFormat('Y-m-d H:i', "{$action['date']} {$action['start']}", $tz);
+        $end = CarbonImmutable::createFromFormat('Y-m-d H:i', "{$action['date']} {$action['end']}", $tz);
+
+        return $start && $end && $end->greaterThan($start) && $start->isFuture()
+            ? ['customer' => $customer, 'property' => $property, 'start' => $start, 'end' => $end]
+            : null;
+    }
+
+    /**
+     * "Thu 10:00–12:00" in the company's time zone.
+     */
+    public static function shortWhen(CarbonImmutable $start, CarbonImmutable $end): string
+    {
+        $tz = currentCompany()->timezone;
+
+        return $start->setTimezone($tz)->isoFormat('ddd').' '.$start->setTimezone($tz)->format('H:i').'–'.$end->setTimezone($tz)->format('H:i');
+    }
+
+    /**
+     * The tap on the main button of a push notification: the same as Confirm in the chat; a booking is made right
+     * away (the form is skipped because everything it needs is known) and the usual booking confirmation goes out.
+     */
+    public function runFromPush(Message $message, int $index, User $user): string
+    {
+        $triage = (array) $message->ai_triage;
+        $action = $triage['actions'][$index] ?? null;
+
+        if (! is_array($action) || ($action['status'] ?? 'pending') !== 'pending') {
+            throw ValidationException::withMessages(['action' => __('automation.inbox.already_decided')]);
+        }
+
+        if ($action['type'] !== 'book') {
+            return $this->confirm($message, $index, $user)['message'];
+        }
+
+        Gate::forUser($user)->authorize('create', ServiceJob::class);
+        $plan = self::directPlan($message, $action);
+        if ($plan === null) {
+            throw ValidationException::withMessages(['action' => __('push.book_needs_form')]);
+        }
+
+        $job = app(ActionSource::class)->as(AssistantActions::SOURCE, fn () => app(DirectBooking::class)->create(
+            $plan['customer'], $plan['property'], $plan['start'], $plan['end'], mb_substr($message->body, 0, 500), $user,
+        ));
+        app(BookingConfirmation::class)->send($job, $user);
+
+        $triage['actions'][$index]['status'] = 'done';
+        $triage['actions'][$index]['job_id'] = $job->id;
+        $message->forceFill(['ai_triage' => $triage])->save();
+
+        return __('push.booked', ['job' => '#'.$job->number, 'when' => self::shortWhen($plan['start'], $plan['end'])]);
     }
 
     public function dismiss(Message $message, int $index): void

@@ -34,6 +34,7 @@ class AutoMessagesController extends Controller
                 'missed_call_reply_enabled' => $company->missed_call_reply_enabled,
                 'missed_call_reply_text' => SmsThreads::text($company, SmsThreads::MISSED_CALL),
                 'sms_reminder_hours' => $company->sms_reminder_hours,
+                'silence_reminder_hours' => $company->silence_reminder_hours,
                 'warranty_lookback_days' => $company->warranty_lookback_days,
             ],
             'delays' => self::DELAYS,
@@ -54,6 +55,7 @@ class AutoMessagesController extends Controller
             'missed_call_reply_enabled' => ['required', 'boolean'],
             'missed_call_reply_text' => ['nullable', 'string', 'max:480'],
             'sms_reminder_hours' => ['required', 'integer', 'min:1', 'max:24'],
+            'silence_reminder_hours' => ['required', 'integer', 'min:1', 'max:48'],
             'warranty_lookback_days' => ['required', 'integer', 'min:0', 'max:730'],
         ]);
 

@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { ChatDock } from '@/components/ui/chat-dock';
 import { IconButton } from '@/components/ui/icon-button';
 import { Label } from '@/components/ui/label';
-import { MicButton } from '@/components/ui/mic-button';
+import { MicButton, micFromShortcut } from '@/components/ui/mic-button';
 import { Textarea } from '@/components/ui/textarea';
 import { scrollToPageEnd } from '@/hooks/use-viewport-keyboard';
 import { xsrfToken } from '@/lib/http';
@@ -941,6 +941,7 @@ export default function AssistantIndex({
                                 data-test="assistant-question"
                             />
                             <MicButton
+                                autoStart={micFromShortcut()}
                                 value={question}
                                 onChange={setQuestion}
                                 disabled={pending !== null}

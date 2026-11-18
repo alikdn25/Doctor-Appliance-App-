@@ -30,11 +30,14 @@ enum AiFeature: string
     /** A receipt photo in Expenses. */
     case Receipt = 'receipt';
 
+    /** "Text again": a short follow-up when the customer stays quiet. */
+    case SmsNudge = 'sms_nudge';
+
     /** The key in config('ai.models'). */
     public function modelKey(): string
     {
         return match ($this) {
-            self::QuickBooking, self::PasteMessage, self::SmsTriage, self::BookingEdit => 'booking',
+            self::QuickBooking, self::PasteMessage, self::SmsTriage, self::BookingEdit, self::SmsNudge => 'booking',
             self::Assistant, self::FindProblems, self::SmsPhoto, self::VoiceClose, self::PartLookup, self::Receipt => 'assistant',
             self::AppReview => 'review',
         };

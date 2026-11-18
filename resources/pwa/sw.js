@@ -149,7 +149,10 @@ async function offlinePage() {
     );
 }
 
-// Push notifications (Settings → Notifications): show them, and open the app on tap.
+// Push notifications (Settings → Notifications): show them, and open the app on tap. A notification may carry buttons
+// (owner's task of November 19): a button with a url opens that page; any other button is sent to the server
+// (action_url), which does what the notification said (the tap is the confirmation) and answers with one line that
+// is shown as a new notification.
 self.addEventListener('push', (event) => {
     let data = {};
 
@@ -159,42 +162,101 @@ self.addEventListener('push', (event) => {
         data = { title: event.data ? event.data.text() : '' };
     }
 
+    const actions = Array.isArray(data.actions) ? data.actions : [];
+
     event.waitUntil(
         self.registration.showNotification(data.title || 'Notification', {
             body: data.body || '',
             tag: data.tag || undefined,
             icon: '/icons/icon-192.png',
             badge: '/icons/icon-192.png',
-            data: { url: data.url || '/' },
+            // Android Chrome shows two buttons; the bell list in the app shows them all.
+            actions: actions
+                .slice(
+                    0,
+                    (self.Notification && self.Notification.maxActions) || 2,
+                )
+                .map((a) => ({ action: a.action, title: a.title })),
+            data: {
+                url: data.url || '/',
+                actions: actions,
+                actionUrl: data.action_url || null,
+            },
         }),
     );
 });
 
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-    const url = new URL(
-        (event.notification.data && event.notification.data.url) || '/',
-        self.location.origin,
-    );
+function openPage(href) {
+    const url = new URL(href || '/', self.location.origin);
 
     // Only this app's own pages are opened.
     if (url.origin !== self.location.origin) {
-        return;
+        return Promise.resolve();
     }
 
-    event.waitUntil(
-        self.clients
-            .matchAll({ type: 'window', includeUncontrolled: true })
-            .then((windows) => {
-                for (const client of windows) {
-                    if ('focus' in client) {
-                        client.navigate(url.href);
+    return self.clients
+        .matchAll({ type: 'window', includeUncontrolled: true })
+        .then((windows) => {
+            for (const client of windows) {
+                if ('focus' in client) {
+                    client.navigate(url.href);
 
-                        return client.focus();
-                    }
+                    return client.focus();
                 }
+            }
 
-                return self.clients.openWindow(url.href);
+            return self.clients.openWindow(url.href);
+        });
+}
+
+function runAction(actionUrl, key) {
+    return fetch(actionUrl.replace('__action__', encodeURIComponent(key)), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    })
+        .then((response) =>
+            response.ok
+                ? response.json()
+                : { message: 'Could not do it. Open the app and try again.' },
+        )
+        .catch(() => ({
+            message: 'No connection. Open the app and try again.',
+        }))
+        .then((result) =>
+            self.registration.showNotification(result.message || 'Done', {
+                icon: '/icons/icon-192.png',
+                badge: '/icons/icon-192.png',
+                tag: 'push-action-result',
+                data: { url: '/' },
             }),
-    );
+        );
+}
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const data = event.notification.data || {};
+
+    if (event.action) {
+        const button = (data.actions || []).find(
+            (a) => a.action === event.action,
+        );
+
+        if (button && button.url) {
+            event.waitUntil(openPage(button.url));
+
+            return;
+        }
+
+        if (button && data.actionUrl) {
+            event.waitUntil(runAction(data.actionUrl, event.action));
+
+            return;
+        }
+    }
+
+    event.waitUntil(openPage(data.url || '/'));
 });

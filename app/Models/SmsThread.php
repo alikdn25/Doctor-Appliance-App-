@@ -24,6 +24,12 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $last_auto_reply_at
  * @property Carbon|null $done_at
  * @property int|null $done_by
+ * @property Carbon|null $silent_since Our text (from a person) that got no answer yet ("customer is quiet")
+ * @property int|null $silent_message_id
+ * @property Carbon|null $silent_remind_at
+ * @property Carbon|null $silent_reminded_at
+ * @property Carbon|null $silent_reported_on The morning SMS that listed it
+ * @property string|null $silent_draft The AI's short follow-up text ("Text again")
  */
 class SmsThread extends Model
 {
@@ -32,6 +38,7 @@ class SmsThread extends Model
     protected $fillable = [
         'phone', 'awaiting_since', 'urgent', 'reminders_sent', 'reminders_max', 'next_reminder_at',
         'auto_reply_due_at', 'auto_reply_kind', 'last_auto_reply_at', 'done_at', 'done_by',
+        'silent_since', 'silent_message_id', 'silent_remind_at', 'silent_reminded_at', 'silent_reported_on', 'silent_draft',
     ];
 
     protected $attributes = ['urgent' => false, 'reminders_sent' => 0, 'reminders_max' => 3];
@@ -50,6 +57,10 @@ class SmsThread extends Model
             'auto_reply_due_at' => 'datetime',
             'last_auto_reply_at' => 'datetime',
             'done_at' => 'datetime',
+            'silent_since' => 'datetime',
+            'silent_remind_at' => 'datetime',
+            'silent_reminded_at' => 'datetime',
+            'silent_reported_on' => 'date',
         ];
     }
 }

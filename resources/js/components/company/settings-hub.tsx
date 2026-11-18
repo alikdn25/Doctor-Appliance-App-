@@ -2,6 +2,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import {
     BellRing,
     BookOpen,
+    CloudUpload,
     Building,
     CalendarClock,
     Car,
@@ -24,6 +25,7 @@ import { useTrans } from '@/lib/i18n';
 import { index as brands } from '@/routes/brands';
 import { edit as autoMessages } from '@/routes/company/auto-messages';
 import { edit as googleProfiles } from '@/routes/company/google-profiles';
+import { edit as morning } from '@/routes/company/morning';
 import { edit as messaging } from '@/routes/company/messaging';
 import { edit as services } from '@/routes/company/services';
 import { edit, section as sectionRoute } from '@/routes/company/settings';
@@ -252,6 +254,13 @@ export function SettingsHub({
                   icon: <BellRing />,
                   title: t('automation.settings.title'),
                   subtitle: t('automation.settings.description'),
+              },
+              {
+                  key: 'morning',
+                  href: morning(),
+                  icon: <CloudUpload />,
+                  title: t('automation.morning_sms.title'),
+                  subtitle: t('automation.morning_sms.description'),
               },
               {
                   key: 'google',

@@ -161,7 +161,69 @@ Reply with the number that suits you.',
 
     'reminders' => [
         'title' => 'Unanswered text from :name',
+        // (buttons: the AI's main action, Draft, Later)
         'body' => '":text" — reply or press Done in the chat.',
+    ],
+
+    // "Customer is quiet" (owner's task of November 19).
+    'quiet' => [
+        'title' => '{1} :name has not answered for :hours hour|[2,*] :name has not answered for :hours hours',
+        'again' => 'Text again',
+        'call' => 'Call',
+        'not_waiting' => 'Not waiting',
+        'not_waiting_long' => 'Not waiting for a reply',
+        'not_waiting_done' => 'OK, not waiting for a reply.',
+        'not_waiting_mark' => 'No reply expected',
+        'waiting' => 'Waiting for the customer to answer',
+        'fallback' => 'Hi, just checking if you saw our message above. Could you reply when you get a chance? Thanks!',
+        'fallback_named' => 'Hi :name, just checking if you saw our message above. Could you reply when you get a chance? Thanks!',
+        'settings_title' => 'Customer is quiet',
+        'settings_hint' => 'One reminder when a customer has not answered your text. Not for auto replies, On my way, review requests or texts marked "Not waiting for a reply". In business hours only; still quiet the next day — a line in the morning SMS.',
+        'after_hours' => 'After (hours)',
+        'calling' => 'Calling :phone…',
+    ],
+
+    // The morning SMS to the owner's own phone.
+    'morning_sms' => [
+        'hello' => 'Good morning! :date',
+        'no_jobs' => 'No jobs today.',
+        'no_address_short' => 'no address',
+        'no_address' => 'No address: :jobs',
+        'texts' => '{1} 1 unanswered text: :names|[2,*] :count unanswered texts: :names',
+        'quiet' => 'Quiet customers: :names',
+        'unpaid' => '{1} 1 unpaid invoice: :total|[2,*] :count unpaid invoices: :total',
+        'no_invoice' => '{1} 1 completed job without an invoice|[2,*] :count completed jobs without an invoice',
+        'parts' => '{1} 1 part to receive: :jobs|[2,*] :count parts to receive: :jobs',
+        'backup_failed' => 'Backup failed',
+        'title' => 'Morning SMS & backup',
+        'description' => 'A text to your own phone every morning with the day, and a copy of your customers and next week\'s jobs in your Google Drive every night.',
+        'sms_title' => 'Morning SMS',
+        'sms_hint' => 'Sent from the company number to your own phone at the chosen time. It replaces the morning push for Owners.',
+        'enabled' => 'Send the morning SMS',
+        'phone' => 'My personal number',
+        'time' => 'Time',
+        'preview' => 'Today it would say',
+        'bad_phone' => 'This phone number does not look right.',
+        'phone_required' => 'Enter your personal number to turn the morning SMS on.',
+    ],
+
+    // Nightly backup to Google Drive.
+    'backup' => [
+        'folder' => ':company Backup',
+        'title' => 'Backup to Google Drive',
+        'hint' => 'Every night at 3:00: two CSV files (all customers; jobs of the next 7 days) in the folder ":folder". The last 30 copies are kept. The app sees only the files it creates.',
+        'connect' => 'Connect Google Drive',
+        'disconnect' => 'Disconnect',
+        'connected_as' => 'Connected: :email',
+        'connected_plain' => 'Connected',
+        'not_available' => 'Not set up on the server yet (GOOGLE_DRIVE_CLIENT_ID and GOOGLE_DRIVE_CLIENT_SECRET).',
+        'last_ok' => 'Last copy: :at',
+        'last_failed' => 'Last copy failed (:at): :error',
+        'connected' => 'Google Drive connected. The first copy goes tonight at 3:00.',
+        'disconnected' => 'Google Drive disconnected. No more copies are made.',
+        'connect_failed' => 'Google Drive was not connected. Try again.',
+        'failed_title' => 'Backup to Google Drive failed',
+        'failed_body' => 'Tonight\'s copy did not upload: :error',
     ],
 
     'auto' => [

@@ -18,6 +18,7 @@ type Settings = {
     missed_call_reply_enabled: boolean;
     missed_call_reply_text: string;
     sms_reminder_hours: number;
+    silence_reminder_hours: number;
     warranty_lookback_days: number;
 };
 
@@ -203,6 +204,35 @@ export default function AutoMessages({
                             }
                         />
                         <InputError message={form.errors.sms_reminder_hours} />
+                    </div>
+                </Card>
+
+                <Card
+                    title={t('automation.quiet.settings_title')}
+                    hint={t('automation.quiet.settings_hint')}
+                >
+                    <div className="max-w-40 space-y-1">
+                        <Label htmlFor="quiet-hours">
+                            {t('automation.quiet.after_hours')}
+                        </Label>
+                        <Input
+                            id="quiet-hours"
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={48}
+                            value={form.data.silence_reminder_hours}
+                            onChange={(e) =>
+                                form.setData(
+                                    'silence_reminder_hours',
+                                    Number(e.target.value),
+                                )
+                            }
+                            data-test="quiet-hours"
+                        />
+                        <InputError
+                            message={form.errors.silence_reminder_hours}
+                        />
                     </div>
                 </Card>
 

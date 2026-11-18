@@ -37,6 +37,14 @@ return [
     */
     // Google Places address suggestions in the browser (Places API (New) + Maps JavaScript API). A browser key:
     // restrict it to your domain (HTTP referrers) and to those two APIs in Google Cloud. Empty = manual address entry.
+    // Nightly backup of customers and next week's jobs to each company's Google Drive (owner's task of November 19).
+    // A Google Cloud OAuth client (Web application) with the Drive API on; redirect URI {APP_URL}/settings/google-drive/callback.
+    // Scope drive.file: the app sees only the files it created. Empty = the Connect button says it is not set up.
+    'google_drive' => [
+        'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
+    ],
+
     'google_maps' => [
         'map_id' => env('GOOGLE_MAPS_MAP_ID', 'DEMO_MAP_ID'),
         'browser_key' => env('GOOGLE_MAPS_BROWSER_KEY'),

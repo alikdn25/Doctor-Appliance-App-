@@ -27,6 +27,7 @@ use App\Http\Controllers\Company\DetectTimezoneController;
 use App\Http\Controllers\Company\GoogleProfileController;
 use App\Http\Controllers\Company\MemberTransitionController;
 use App\Http\Controllers\Company\MessagingSettingsController;
+use App\Http\Controllers\Company\MorningController;
 use App\Http\Controllers\Company\PaymentProviderController;
 use App\Http\Controllers\Company\ServiceController;
 use App\Http\Controllers\Company\SquareImportController;
@@ -67,6 +68,7 @@ use App\Http\Controllers\Mileage\TripController;
 use App\Http\Controllers\Onboarding\CompanyController as OnboardingCompanyController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
+use App\Http\Controllers\PushActionController;
 use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\ServiceWorkerController;
 use App\Http\Controllers\Settings\MenuModeController;
@@ -120,12 +122,17 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware('verified')->group(function () {
         Route::get('onboarding/company', [OnboardingCompanyController::class, 'create'])->name('onboarding.company.create');
         Route::post('onboarding/company', [OnboardingCompanyController::class, 'store'])->middleware('throttle:5,1')->name('onboarding.company.store');
+        // A button on a push notification (the token names the company and the person).
+        Route::post('push-actions/{token}/{action}', PushActionController::class)->where('token', '[A-Za-z0-9]{48}')
+            ->where('action', '[a-z_]{1,20}')->middleware('throttle:30,1')->name('push-actions.run');
     });
 
     // Tenant area: everything here runs inside the current company.
     Route::middleware(['verified', 'tenant'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
         Route::get('today', TodayController::class)->name('today');
+        // Google sends the Owner back here after "Connect Google Drive" (Company → Morning SMS & backup).
+        Route::get('settings/google-drive/callback', [MorningController::class, 'callback'])->name('google-drive.callback');
 
         // AI assistant (Owner only).
         Route::get('assistant', [AssistantController::class, 'index'])->name('assistant.index');
@@ -149,6 +156,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('messages/read', [SmsInboxController::class, 'read'])->name('messages.read');
         Route::post('messages/send', [SmsInboxController::class, 'send'])->middleware('throttle:30,1')->name('messages.send');
         Route::post('messages/done', [SmsAssistController::class, 'done'])->name('messages.done');
+        Route::post('messages/{message}/not-waiting', [SmsInboxController::class, 'notWaiting'])->name('messages.not-waiting');
         Route::post('messages/{message}/ai-actions/{index}/confirm', [SmsAssistController::class, 'confirm'])->whereNumber('index')->middleware('throttle:30,1')->name('messages.ai.confirm');
         Route::post('messages/{message}/ai-actions/{index}/dismiss', [SmsAssistController::class, 'dismiss'])->whereNumber('index')->name('messages.ai.dismiss');
         Route::post('messages/{message}/plate', [SmsAssistController::class, 'plate'])->name('messages.ai.plate');
@@ -347,6 +355,11 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::put('messaging/registration', [MessagingSettingsController::class, 'registration'])->name('company.messaging.registration');
             Route::get('auto-messages', [AutoMessagesController::class, 'edit'])->name('company.auto-messages.edit');
             Route::put('auto-messages', [AutoMessagesController::class, 'update'])->name('company.auto-messages.update');
+            // Morning SMS to the owner's phone and the nightly Google Drive backup (owner's task of November 19).
+            Route::get('morning', [MorningController::class, 'edit'])->name('company.morning.edit');
+            Route::put('morning', [MorningController::class, 'update'])->name('company.morning.update');
+            Route::post('google-drive/connect', [MorningController::class, 'connect'])->name('google-drive.connect');
+            Route::delete('google-drive', [MorningController::class, 'disconnect'])->name('google-drive.disconnect');
             Route::get('google-reviews', [GoogleProfileController::class, 'edit'])->name('company.google-profiles.edit');
             Route::put('google-reviews', [GoogleProfileController::class, 'update'])->name('company.google-profiles.update');
             Route::get('services', [ServiceController::class, 'edit'])->name('company.services.edit');

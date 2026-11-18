@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
 import { ChatDock } from '@/components/ui/chat-dock';
-import { MicButton } from '@/components/ui/mic-button';
+import { MicButton, micFromShortcut } from '@/components/ui/mic-button';
 import { Textarea } from '@/components/ui/textarea';
 import { xsrfToken } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
@@ -119,6 +119,7 @@ export default function QuickBooking() {
                 <ChatDock scrollOnKeyboard={false}>
                     <div className="flex items-end gap-2">
                         <MicButton
+                            autoStart={micFromShortcut()}
                             value={text}
                             onChange={(value) => {
                                 setText(value);

@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCompanyTime } from '@/lib/datetime';
+import { xsrfToken } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
 import { disablePush, enablePush, pushState } from '@/lib/push';
 import type { PushState } from '@/lib/push';
@@ -21,9 +22,79 @@ type Item = {
     title: string;
     body: string;
     url: string | null;
+    actions?: { action: string; title: string; url: string | null }[];
+    action_url?: string | null;
     read: boolean;
     at: string | null;
 };
+
+/**
+ * The buttons of a notification with actions, also here in the list: a page opens; anything else runs on the server
+ * (the tap is the confirmation) and its answer is shown in place of the buttons.
+ */
+function ActionButtons({ item }: { item: Item }) {
+    const [result, setResult] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    if (!item.actions || item.actions.length === 0) return null;
+    if (result) {
+        return (
+            <p className="text-sm font-medium text-emerald-700" role="status">
+                {result}
+            </p>
+        );
+    }
+
+    const run = async (key: string) => {
+        if (!item.action_url) return;
+        setBusy(true);
+        try {
+            const response = await fetch(
+                item.action_url.replace('__action__', key),
+                {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-XSRF-TOKEN': xsrfToken(),
+                    },
+                },
+            );
+            const data = (await response.json()) as { message?: string };
+            setResult(data.message ?? '');
+        } catch {
+            setResult('…');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div
+            className="flex flex-wrap gap-2 pt-1"
+            data-test="notification-actions"
+        >
+            {item.actions.map((a) =>
+                a.url ? (
+                    <Button key={a.action} asChild size="sm" variant="outline">
+                        <Link href={a.url}>{a.title}</Link>
+                    </Button>
+                ) : (
+                    <Button
+                        key={a.action}
+                        size="sm"
+                        variant={a.action === 'main' ? 'default' : 'outline'}
+                        disabled={busy}
+                        onClick={() => void run(a.action)}
+                    >
+                        {a.title}
+                    </Button>
+                ),
+            )}
+        </div>
+    );
+}
 
 /**
  * Settings → Notifications: push on this phone, and every notification kept in the app.
@@ -147,6 +218,7 @@ export default function Notifications({
                                 <p className="whitespace-pre-line text-muted-foreground">
                                     {n.body}
                                 </p>
+                                <ActionButtons item={n} />
                                 <p className="flex items-center gap-3 text-xs text-muted-foreground">
                                     {n.at && time.dateTime(n.at)}
                                     {n.url && (

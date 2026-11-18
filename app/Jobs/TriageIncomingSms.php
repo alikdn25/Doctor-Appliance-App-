@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\PhotoKind;
+use App\Messaging\IncomingSmsPush;
 use App\Messaging\SmsThreads;
 use App\Models\Company;
 use App\Models\JobPhoto;
@@ -61,12 +62,12 @@ class TriageIncomingSms implements ShouldQueue
                 $this->attach($photos, $job->id);
             }
 
-            if (! $ai->configured()) {
-                return;
-            }
-
             $result = null;
             try {
+                if (! $ai->configured()) {
+                    throw new AiUnavailable('not configured');
+                }
+
                 if (trim($message->body) !== '') {
                     $result = $triage->triage($message, $company);
                 }
@@ -90,6 +91,9 @@ class TriageIncomingSms implements ShouldQueue
                 $message->forceFill(['ai_triage' => $result])->save();
                 SmsThreads::markUrgent((string) $message->from, $result['urgency'] === 'urgent');
             }
+
+            // A push to the office for every incoming text: one line from the AI and its buttons.
+            IncomingSmsPush::send($message->refresh());
         });
     }
 

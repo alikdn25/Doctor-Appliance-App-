@@ -33,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $user_id
  * @property array<string, mixed>|null $ai_triage What the AI read from an incoming text (SmsTriage)
  * @property list<array{path: string, media_type: string}>|null $media MMS photos (private files)
+ * @property bool $no_reply_expected "Not waiting for a reply" on one of our texts
  * @property Carbon|null $created_at
  * @property-read Customer|null $customer
  * @property-read ServiceJob|null $job
@@ -55,6 +56,7 @@ class Message extends Model
     protected $fillable = [
         'customer_id', 'service_job_id', 'direction', 'channel', 'kind', 'to', 'from', 'body',
         'status', 'status_reason', 'provider_message_id', 'send_after', 'sent_at', 'user_id', 'ai_triage', 'media',
+        'no_reply_expected',
     ];
 
     /**
@@ -68,6 +70,7 @@ class Message extends Model
             'sent_at' => 'datetime',
             'ai_triage' => 'array',
             'media' => 'array',
+            'no_reply_expected' => 'boolean',
         ];
     }
 
@@ -79,6 +82,8 @@ class Message extends Model
             if ($message->direction === self::OUTBOUND && $message->user_id !== null && $message->to !== null
                 && in_array($message->channel, [self::SMS, self::TECHNICIAN_PHONE], true)) {
                 SmsThreads::answered($message->to, (int) $message->company_id);
+                // A text a person typed starts the wait for the customer's answer ("customer is quiet").
+                SmsThreads::waitForCustomer($message);
             }
         });
     }

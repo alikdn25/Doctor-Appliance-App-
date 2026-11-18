@@ -13,6 +13,7 @@ use App\Sms\SmsProviders;
 use App\Support\Audit\ActionSource;
 use App\Support\Database\MigrationGuard;
 use App\Support\Mail\MailSender;
+use App\Support\Push\PushOperations;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\TimezoneDatabase;
 use Carbon\CarbonImmutable;
@@ -60,6 +61,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Buttons on push notifications (owner's task of November 19).
+        PushOperations::register();
 
         // The price book and Google review locations are kept by the office.
         Gate::define('manageCatalog', fn (User $user) => $user->hasRole(UserRole::Owner, UserRole::Admin));
