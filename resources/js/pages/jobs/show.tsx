@@ -911,27 +911,6 @@ export default function JobShow({
                 {possibleWarranty && (
                     <WarrantyNotice warranty={possibleWarranty} />
                 )}
-                {canVoiceClose && (
-                    <Button
-                        variant="outline"
-                        size="lg"
-                        className="w-full border-violet-300"
-                        onClick={() => setVoiceCloseOpen(true)}
-                        data-test="voice-close"
-                    >
-                        <Mic /> {t('automation.voice_close.open')}
-                    </Button>
-                )}
-                {job.part && (
-                    <PartCard
-                        jobId={job.id}
-                        part={job.part}
-                        canEdit={can.work}
-                        canTextArrived={
-                            can.update && job.status === 'waiting_for_parts'
-                        }
-                    />
-                )}
                 {draft && (
                     <section
                         className="da-draft-chip flex flex-wrap items-center gap-3 rounded-2xl p-3"
@@ -1305,6 +1284,27 @@ export default function JobShow({
                         </ul>
                     )}
                 </section>
+                {canVoiceClose && (
+                    <Button
+                        variant="outline"
+                        size="lg"
+                        className="w-full border-violet-300"
+                        onClick={() => setVoiceCloseOpen(true)}
+                        data-test="voice-close"
+                    >
+                        <Mic /> {t('automation.voice_close.open')}
+                    </Button>
+                )}
+                {job.part && (
+                    <PartCard
+                        jobId={job.id}
+                        part={job.part}
+                        canEdit={can.work}
+                        canTextArrived={
+                            can.update && job.status === 'waiting_for_parts'
+                        }
+                    />
+                )}
 
                 <Instructions
                     jobId={job.id}
