@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MessageKind;
 use App\Enums\UserRole;
+use App\Messaging\SmsThreads;
 use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -30,6 +31,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $send_after
  * @property Carbon|null $sent_at
  * @property int|null $user_id
+ * @property array<string, mixed>|null $ai_triage What the AI read from an incoming text (SmsTriage)
+ * @property list<array{path: string, media_type: string}>|null $media MMS photos (private files)
  * @property Carbon|null $created_at
  * @property-read Customer|null $customer
  * @property-read ServiceJob|null $job
@@ -51,7 +54,7 @@ class Message extends Model
 
     protected $fillable = [
         'customer_id', 'service_job_id', 'direction', 'channel', 'kind', 'to', 'from', 'body',
-        'status', 'status_reason', 'provider_message_id', 'send_after', 'sent_at', 'user_id',
+        'status', 'status_reason', 'provider_message_id', 'send_after', 'sent_at', 'user_id', 'ai_triage', 'media',
     ];
 
     /**
@@ -63,7 +66,21 @@ class Message extends Model
             'kind' => MessageKind::class,
             'send_after' => 'datetime',
             'sent_at' => 'datetime',
+            'ai_triage' => 'array',
+            'media' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // A person texted this number: the wait for a reply (and its reminders) ends. Texts the app sends by
+        // itself (no user) never count as a reply.
+        static::created(function (Message $message) {
+            if ($message->direction === self::OUTBOUND && $message->user_id !== null && $message->to !== null
+                && in_array($message->channel, [self::SMS, self::TECHNICIAN_PHONE], true)) {
+                SmsThreads::answered($message->to, (int) $message->company_id);
+            }
+        });
     }
 
     /** Correspondence follows job visibility; unassigned conversations belong to the office. */

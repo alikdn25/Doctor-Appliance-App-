@@ -48,9 +48,16 @@ interface SmsProvider
     /**
      * An inbound text from a webhook.
      *
-     * @return array{from: string, to: string, body: string, message_id: string}
+     * @return array{from: string, to: string, body: string, message_id: string, media: list<array{url: string, content_type: string}>}
      */
     public function inbound(Request $request): array;
+
+    /**
+     * Downloads one photo of an incoming MMS (the URL from inbound()).
+     *
+     * @throws SmsException
+     */
+    public function fetchMedia(SmsAccount $account, string $url): string;
 
     /**
      * A delivery status update from a webhook.

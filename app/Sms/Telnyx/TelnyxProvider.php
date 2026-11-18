@@ -145,7 +145,21 @@ class TelnyxProvider implements SmsProvider
             'to' => (string) $request->input('data.payload.to.0.phone_number'),
             'body' => (string) $request->input('data.payload.text'),
             'message_id' => (string) $request->input('data.payload.id'),
+            'media' => array_values(array_filter(array_map(fn ($item) => is_array($item) && is_string($item['url'] ?? null) ? [
+                'url' => $item['url'], 'content_type' => (string) ($item['content_type'] ?? 'image/jpeg'),
+            ] : null, (array) $request->input('data.payload.media', [])))),
         ];
+    }
+
+    public function fetchMedia(SmsAccount $account, string $url): string
+    {
+        // Telnyx media links are signed and short-lived; no credentials are needed.
+        $response = Http::timeout(20)->get($url);
+        if ($response->failed()) {
+            throw new SmsException('Telnyx media download failed ('.$response->status().')');
+        }
+
+        return $response->body();
     }
 
     public function isInboundText(Request $request): bool

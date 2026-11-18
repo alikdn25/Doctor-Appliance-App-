@@ -9,7 +9,10 @@ use App\Models\CustomerPhone;
 use App\Models\Message;
 use App\Models\MessageRead;
 use App\Models\ServiceJob;
+use App\Models\SmsThread;
 use App\Models\User;
+use App\Services\AI\Sms\SmsActions;
+use App\Support\Jobs\PossibleWarranty;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -75,9 +78,13 @@ class SmsInbox
             $query->whereIn(DB::raw(self::PEER), self::unread($user)->selectRaw(self::PEER));
         }
 
+        // Urgent conversations (the AI's red mark, until someone replies or presses Done) always come first.
+        $urgent = 'BOOL_OR(EXISTS (SELECT 1 FROM sms_threads WHERE sms_threads.company_id = ? AND sms_threads.urgent AND sms_threads.phone = '.self::PEER.'))';
         $threads = $query->selectRaw(self::PEER.' AS phone, MAX(messages.id) AS latest_id')
             ->selectRaw("SUM(CASE WHEN direction = 'inbound' AND NOT EXISTS (SELECT 1 FROM message_reads WHERE message_reads.message_id = messages.id AND message_reads.user_id = ? AND message_reads.company_id = ?) THEN 1 ELSE 0 END) AS unread_count", [$user->id, currentCompany()->id])
-            ->groupByRaw(self::PEER)->orderByRaw('MAX(messages.id) DESC')->paginate(25)->withQueryString();
+            ->selectRaw($urgent.' AS urgent', [currentCompany()->id])
+            ->groupByRaw(self::PEER)->orderByRaw($urgent.' DESC', [currentCompany()->id])->orderByRaw('MAX(messages.id) DESC')
+            ->paginate(25)->withQueryString();
         $latest = self::messages($user)->with(['customer', 'user', 'job'])
             ->whereIn('id', $threads->getCollection()->pluck('latest_id'))->get()->keyBy('id');
 
@@ -89,6 +96,7 @@ class SmsInbox
                 'customer_name' => $message->customer?->display_name,
                 'preview' => mb_substr($message->body, 0, 160),
                 'unread_count' => (int) $thread->unread_count,
+                'urgent' => (bool) $thread->urgent,
                 'latest' => MessagingPresenter::item($message),
             ];
         });
@@ -134,6 +142,9 @@ class SmsInbox
         };
 
         $job = $recipient ? $this->job($user, $phone, $recipient) : null;
+        $thread = SmsThread::query()->where('phone', $phone)->first();
+        $awaiting = $thread?->awaiting_since !== null;
+        $lastInbound = self::forPhone($user, $phone)->where('direction', Message::INBOUND)->latest('id')->first();
 
         return [
             'phone' => $phone,
@@ -142,8 +153,13 @@ class SmsInbox
             'job' => $job ? ['id' => $job->id, 'number' => $job->number] : null,
             'templates' => $recipient ? $this->templates($recipient->customer, $job, $user) : [],
             'blocked' => $blocked,
-            'messages' => $messages->through(fn (Message $message) => MessagingPresenter::item($message)),
+            'messages' => $messages->through(fn (Message $message) => self::item($message)),
             'unread_ids' => $unreadIds,
+            // A reply is owed (reminders run until a reply or Done); the AI's draft goes into the reply box.
+            'awaiting' => $awaiting,
+            'urgent' => (bool) $thread?->urgent,
+            'draft' => $awaiting ? ($lastInbound?->ai_triage['reply_draft'] ?? null) : null,
+            'warranty' => $recipient ? PossibleWarranty::for($recipient->customer_id, currentCompany()) : null,
         ];
     }
 
@@ -158,7 +174,21 @@ class SmsInbox
 
         return self::forPhone($user, $phone)->with(['user', 'job'])->where('messages.id', '<', $beforeId)
             ->latest('id')->limit(50)->get()
-            ->map(fn (Message $message) => MessagingPresenter::item($message))->values()->all();
+            ->map(fn (Message $message) => self::item($message))->values()->all();
+    }
+
+    /**
+     * A chat message with the AI card (incoming texts) and its MMS photos.
+     *
+     * @return array<string, mixed>
+     */
+    public static function item(Message $message): array
+    {
+        return [
+            ...MessagingPresenter::item($message),
+            'ai' => $message->direction === Message::INBOUND ? SmsActions::card($message) : null,
+            'photos' => array_map(fn (int $index) => route('messages.media', [$message, $index]), array_keys((array) $message->media)),
+        ];
     }
 
     /**

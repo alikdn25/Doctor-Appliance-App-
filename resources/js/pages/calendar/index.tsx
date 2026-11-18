@@ -1,5 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { BookingButtons } from '@/components/jobs/booking-buttons';
+import { NewMessagesBadge } from '@/components/jobs/new-messages-badge';
 import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import {
     AlertTriangle,
@@ -853,6 +854,9 @@ export default function CalendarPage({
                                     <StatusBadge
                                         status={details.job.status}
                                         label={details.job.status_label}
+                                    />
+                                    <NewMessagesBadge
+                                        count={details.job.new_messages}
                                     />
                                     <span className="text-muted-foreground">
                                         {details.job.job_type_label}

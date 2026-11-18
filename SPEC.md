@@ -445,6 +445,54 @@ time. A daily request limit per company is set in `.env` (`AI_DAILY_LIMIT_PER_CO
 - Every review is kept (date, period, text, cost); each suggestion has Done / Not needed / Later; a screen lists the
   past reviews.
 
+### 7.16 Texts with AI, auto replies, voice, photos, booking edits and the morning summary (owner's task of November 18)
+
+Built in three PRs. Common rules: every AI action except the auto replies (§7.16.3) and On my way (§7.16.4) runs only
+after the person's Confirm or Save; the AI deletes nothing. Taxes and totals are always calculated by code. Every AI
+call counts in `AI_DAILY_LIMIT_PER_COMPANY`. Words like "tomorrow" or "on Thursday" become a date in the company's
+time zone (by code when the AI returns the word). A function whose service is not set up (Telnyx voice, web push keys,
+Google Maps key) is built, stays off, and says what is missing.
+
+#### 7.16.1 Incoming texts read by the AI (PR 1)
+
+- Every incoming SMS goes to `AI_MODEL_BOOKING` with the latest messages of the conversation and the customer's open
+  jobs. Answer: urgency (urgent / normal), proposed actions (book, move to another day, change the time, cancel) and a
+  reply draft.
+- In the SMS chat a card under the message lists the actions; each opens a preview (what will change) with Confirm and
+  Dismiss. Book opens the filled Book customer form (saved only by Save). Moving or cancelling never texts the
+  customer. The reply draft goes into the reply box (and "Use reply draft"); only the person sends it.
+- Urgent: a red label on the message and the conversation; urgent conversations are always first in the list until
+  someone replies or presses Done.
+- A text from a customer with an unfinished job is linked to that job; the job's card in the calendar and in My Jobs
+  shows a new-message badge with the count until the chat is read (a technician reads it on the job page).
+- MMS photos are kept (private files) and added to the open job's photos. They go to `AI_MODEL_ASSISTANT`; a rating
+  plate gives brand, model and serial, attached to the job's appliance only after Confirm.
+
+#### 7.16.2 Reminders about unanswered texts (PR 1)
+
+- An incoming text nobody answered and not marked Done: a reminder (push + the notification list) to the Owners and
+  Admins after N hours (Settings → Auto messages, 3 by default), repeated every N hours, at most 3 times, only during
+  business hours (a reminder due after closing waits for the next opening). A text that came outside business hours
+  gets one reminder at the start of the next business day.
+- "Done" in the chat (no reply) stops the reminders; a reply from a person stops them too.
+- Web push uses the existing VAPID keys and service worker (Settings → Notifications turns it on per device).
+
+#### 7.16.3 Auto messages (PR 1)
+
+- Settings → Auto messages (Owner). Auto reply to texts: on/off (off by default), the text, a delay of 0 / 5 / 15 / 30 /
+  60 minutes (15 by default). Sent only when no person replied within the delay, at most once per 24 hours per number,
+  only during business hours (never outside them), only in Automatic SMS mode.
+- Text after a missed call to the company number: on/off and its own text, same rules (shared 24-hour limit per
+  number). Needs calls to the company number to go through a Telnyx voice app with the webhook
+  `/webhooks/voice/telnyx` and `TELNYX_VOICE_ENABLED=true`; off until then. The customer's answer comes in as §7.16.1.
+- The company's own staff (their profile phone numbers) never get auto messages.
+- The "Possible warranty" window (§7.16.13) is set on the same page.
+
+#### 7.16.13 Possible warranty (PR 1)
+
+- When the customer had a job finished within the last 90 days (setting) and texts in, or a new job is created for
+  them, the job page and the chat show "Possible warranty" with a link to the earlier job: date, what was done, parts.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).

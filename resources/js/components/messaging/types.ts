@@ -15,7 +15,38 @@ export type MessageItem = {
     user: string | null;
     at: string | null;
     job_id: number | null;
+    /** SMS Inbox only: what the AI read from an incoming text, and the MMS photos. */
+    ai?: AiCard | null;
+    photos?: string[];
 };
+
+export type AiCard = {
+    urgent: boolean;
+    actions: {
+        index: number;
+        type: 'book' | 'reschedule' | 'change_time' | 'cancel';
+        status: 'pending' | 'done' | 'dismissed';
+        preview: string;
+    }[];
+    reply_draft: string | null;
+    plate: {
+        brand: string | null;
+        model: string | null;
+        serial: string | null;
+        job_id: number | null;
+        job_number: number | null;
+        status: 'pending' | 'done' | 'dismissed';
+        preview: string;
+    } | null;
+};
+
+export type PossibleWarranty = {
+    job_id: number;
+    number: number;
+    date: string;
+    work: string | null;
+    parts: string[];
+} | null;
 
 export type JobMessaging = {
     mode: SmsMode;

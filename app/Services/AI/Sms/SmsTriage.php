@@ -1,0 +1,213 @@
+<?php
+
+namespace App\Services\AI\Sms;
+
+use App\Enums\JobStatus;
+use App\Enums\VisitStatus;
+use App\Models\Company;
+use App\Models\JobVisit;
+use App\Models\Message;
+use App\Models\ServiceJob;
+use App\Services\AI\AiFeature;
+use App\Services\AI\AiService;
+use App\Services\AI\AiUnavailable;
+use App\Support\Locale\RelativeDate;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
+
+/**
+ * Reads an incoming SMS with AI_MODEL_BOOKING (owner's task of November 18): the text, the latest messages of the
+ * conversation and the customer's open jobs go in; urgency (urgent / normal), proposed actions (book, move to another
+ * day, change the time, cancel) and a reply draft come back. Dates like "tomorrow" or "Thursday" are turned into a date
+ * by code in the company's time zone. Nothing is done here: the actions wait for Confirm in the chat, the draft for the
+ * person's own Send. Must run in a tenant context.
+ */
+class SmsTriage
+{
+    public const ACTIONS = ['book', 'reschedule', 'change_time', 'cancel'];
+
+    public function __construct(private readonly AiService $ai) {}
+
+    /**
+     * @return array<string, mixed> What is stored on the message (ai_triage).
+     *
+     * @throws AiUnavailable
+     */
+    public function triage(Message $message, Company $company): array
+    {
+        $jobs = $message->customer_id ? self::openJobs($message->customer_id) : new Collection;
+
+        $raw = $this->ai->send(
+            AiFeature::SmsTriage,
+            $company,
+            null,
+            $this->instructions($company),
+            [['role' => 'user', 'content' => $this->context($message, $jobs, $company)]],
+            schema: self::schema(),
+            maxTokens: 1500,
+            effort: 'low',
+        )->json();
+
+        return self::normalize($raw, $message, $jobs, $company);
+    }
+
+    /**
+     * Jobs of the customer that are not finished: the ones a text can be about.
+     *
+     * @return Collection<int, ServiceJob>
+     */
+    public static function openJobs(int $customerId): Collection
+    {
+        return ServiceJob::query()->where('customer_id', $customerId)
+            ->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::Paid, JobStatus::Cancelled])
+            ->whereNull('outcome')->whereNull('closed_at')
+            ->with(['visits' => fn ($q) => $q->orderBy('scheduled_start'), 'appliances'])
+            ->latest('id')->limit(5)->get();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function schema(): array
+    {
+        $text = ['type' => 'string'];
+        $action = [
+            'type' => 'object',
+            'properties' => [
+                'type' => ['type' => 'string', 'enum' => self::ACTIONS],
+                'job_number' => ['type' => 'string', 'description' => 'Number of the open job it is about, "" for a new booking'],
+                'date' => ['type' => 'string', 'description' => 'YYYY-MM-DD, or the customer\'s words like "tomorrow" or "thursday", "" when not given'],
+                'arrival_start' => ['type' => 'string', 'description' => 'HH:MM 24-hour, "" when not given'],
+                'arrival_end' => ['type' => 'string', 'description' => 'HH:MM 24-hour, "" when not given'],
+                'arrival_now' => ['type' => 'boolean'],
+            ],
+            'required' => ['type', 'job_number', 'date', 'arrival_start', 'arrival_end', 'arrival_now'],
+            'additionalProperties' => false,
+        ];
+
+        return [
+            'type' => 'object',
+            'properties' => [
+                'urgency' => ['type' => 'string', 'enum' => ['urgent', 'normal']],
+                'actions' => ['type' => 'array', 'items' => $action],
+                'reply_draft' => $text,
+            ],
+            'required' => ['urgency', 'actions', 'reply_draft'],
+            'additionalProperties' => false,
+        ];
+    }
+
+    private function instructions(Company $company): string
+    {
+        $now = CarbonImmutable::now($company->timezone);
+        $today = $now->format('Y-m-d (l)');
+        $windows = implode(', ', array_map(fn (array $w) => "{$w['start']}-{$w['end']}", $company->arrivalWindows()));
+
+        return <<<TEXT
+            You read a text message (SMS) a customer sent to a repair company ({$company->name}; appliance repair or handyman)
+            and help the office answer it. You never send or change anything; a person confirms every action.
+
+            - urgency: "urgent" for water leaking, flooding, gas or burning smell, sparks, smoke, no heat in cold weather, a
+              fridge/freezer full of food not cooling, an angry customer, or "today / right now / ASAP"; otherwise "normal".
+            - actions: what the office may want to do, [] when nothing.
+              "book" = a new visit is wanted (no open job, or a different problem);
+              "reschedule" = move an open job's visit to another day;
+              "change_time" = same day, another time;
+              "cancel" = the customer cancels an open job.
+              job_number: the open job it is about (from the list), "" for "book".
+              date: YYYY-MM-DD when sure, otherwise the customer's own words for the day ("tomorrow", "thursday"); "".
+              Today is {$today}, company time zone {$company->timezone}.
+              Arrival windows of the company: {$windows}. Give arrival_start and arrival_end (HH:MM) when the customer
+              names a time or a part of the day; arrival_now = true only for "right now / ASAP today".
+            - reply_draft: a short, polite reply in the customer's language, signed as nobody, max 300 characters. Never
+              promise a time that is not confirmed; say the office will confirm. Never invent prices.
+            TEXT;
+    }
+
+    /**
+     * @param  Collection<int, ServiceJob>  $jobs
+     */
+    private function context(Message $message, Collection $jobs, Company $company): string
+    {
+        $history = Message::query()->where(fn ($q) => $q->where('from', $message->from)->orWhere('to', $message->from))
+            ->where('id', '<', $message->id)->whereIn('channel', [Message::SMS, Message::TECHNICIAN_PHONE])
+            ->latest('id')->limit(10)->get()->reverse()
+            ->map(fn (Message $m) => ($m->direction === Message::INBOUND ? 'Customer: ' : 'Company: ').mb_substr($m->body, 0, 400))
+            ->implode("\n");
+
+        $open = $jobs->map(function (ServiceJob $job) use ($company) {
+            $visit = $job->visits->first(fn (JobVisit $v) => $v->status === VisitStatus::Scheduled);
+            $when = $visit ? CarbonImmutable::instance($visit->scheduled_start)->setTimezone($company->timezone)->format('D Y-m-d H:i')
+                .'-'.CarbonImmutable::instance($visit->scheduled_end)->setTimezone($company->timezone)->format('H:i') : 'no time';
+
+            return "#{$job->number}: {$job->status->label()}, {$when}, ".($job->appliances->map->label()->implode(', ') ?: '').' '.mb_substr((string) $job->description, 0, 200);
+        })->implode("\n");
+
+        return "Earlier messages:\n".($history ?: '(none)')."\n\nOpen jobs of this customer:\n".($open ?: '(none)')
+            ."\n\nNew message from the customer:\n".$message->body;
+    }
+
+    /**
+     * Only actions the app can do: a known open job with a visit to move, a real date and time.
+     *
+     * @param  array<string, mixed>  $raw
+     * @param  Collection<int, ServiceJob>  $jobs
+     * @return array<string, mixed>
+     */
+    public static function normalize(array $raw, Message $message, Collection $jobs, Company $company): array
+    {
+        $time = fn ($value) => is_string($value) && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $value) === 1 ? $value : null;
+        $actions = [];
+
+        foreach (array_slice((array) ($raw['actions'] ?? []), 0, 3) as $action) {
+            $type = is_array($action) ? ($action['type'] ?? null) : null;
+
+            if (! in_array($type, self::ACTIONS, true)) {
+                continue;
+            }
+
+            $date = RelativeDate::resolve((string) ($action['date'] ?? ''), $company);
+            $start = $time($action['arrival_start'] ?? null);
+            $end = $time($action['arrival_end'] ?? null);
+            $now = ($action['arrival_now'] ?? false) === true;
+            if ($start !== null && ($end === null || $end <= $start)) {
+                $end = null;
+            }
+
+            if ($type === 'book') {
+                $actions[] = ['type' => 'book', 'text' => mb_substr($message->body, 0, 2000), 'date' => $date, 'start' => $start, 'end' => $end, 'now' => $now, 'status' => 'pending'];
+
+                continue;
+            }
+
+            $job = $jobs->first(fn (ServiceJob $j) => (string) $j->number === ltrim((string) ($action['job_number'] ?? ''), '#'))
+                ?? ($jobs->count() === 1 ? $jobs->first() : null);
+            if ($job === null) {
+                continue;
+            }
+            $visit = $job->visits->first(fn (JobVisit $v) => $v->status === VisitStatus::Scheduled);
+
+            if ($type === 'cancel') {
+                $actions[] = ['type' => 'cancel', 'job_id' => $job->id, 'job_number' => $job->number, 'status' => 'pending'];
+
+                continue;
+            }
+
+            // Moving needs a visit that has not started, and something to move it to.
+            if ($visit === null || ($date === null && $start === null && ! $now)) {
+                continue;
+            }
+
+            $actions[] = [
+                'type' => $type, 'job_id' => $job->id, 'job_number' => $job->number, 'visit_id' => $visit->id,
+                'date' => $date, 'start' => $start, 'end' => $end, 'now' => $now, 'status' => 'pending',
+            ];
+        }
+
+        return [
+            'urgency' => ($raw['urgency'] ?? null) === 'urgent' ? 'urgent' : 'normal',
+            'actions' => $actions,
+            'reply_draft' => mb_substr(trim((string) ($raw['reply_draft'] ?? '')), 0, 600) ?: null,
+        ];
+    }
+}

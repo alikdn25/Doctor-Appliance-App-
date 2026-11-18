@@ -2,6 +2,7 @@
 
 namespace App\Support\Jobs;
 
+use App\Enums\JobStatus;
 use App\Enums\JobType;
 use App\Enums\VisitStatus;
 use App\Models\Appliance;
@@ -179,6 +180,15 @@ class JobPresenter
             'signed_at' => self::iso($job->signed_at),
             'by' => $job->signer?->name,
         ] : null;
+    }
+
+    /**
+     * Not finished yet: texts from its customer are shown as a new-message badge on its card.
+     */
+    public static function isOpen(ServiceJob $job): bool
+    {
+        return ! in_array($job->status, [JobStatus::Completed, JobStatus::Invoiced, JobStatus::Paid, JobStatus::Cancelled], true)
+            && $job->outcome === null && $job->closed_at === null;
     }
 
     public static function iso(?CarbonInterface $time): ?string

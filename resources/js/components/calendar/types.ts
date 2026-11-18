@@ -18,6 +18,7 @@ export type CalendarVisit = Visit & {
         address: string | null;
         coordinates: { lat: number; lng: number } | null;
         appliances: string[];
+        new_messages?: number;
     };
 };
 

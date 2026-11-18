@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Enums\MessageKind;
+use App\Jobs\TriageIncomingSms;
+use App\Messaging\SmsThreads;
 use App\Models\Company;
 use App\Models\CustomerPhone;
 use App\Models\Message;
+use App\Services\AI\Sms\SmsTriage;
 use App\Sms\SmsProvider;
 use App\Sms\SmsProviders;
 use App\Sms\Telnyx\TelnyxProvider;
@@ -34,7 +37,7 @@ class SmsWebhookController extends Controller
 
         $text = $sms->inbound($request);
 
-        $this->tenancy->runAs($company, function () use ($text) {
+        $this->tenancy->runAs($company, function () use ($text, $company) {
             $from = PhoneNumber::normalize($text['from']);
             $phones = CustomerPhone::query()->where('number_normalized', $from)->get();
             $keyword = strtoupper(trim($text['body']));
@@ -51,11 +54,13 @@ class SmsWebhookController extends Controller
             }
 
             $phone = $phones->first();
+            // The customer's open job first (its card shows the new message), else the job of the latest text.
             $job = $phone
-                ? Message::query()->where('customer_id', $phone->customer_id)->whereNotNull('service_job_id')->latest('id')->value('service_job_id')
+                ? (SmsTriage::openJobs($phone->customer_id)->first()?->id
+                    ?? Message::query()->where('customer_id', $phone->customer_id)->whereNotNull('service_job_id')->latest('id')->value('service_job_id'))
                 : null;
 
-            Message::query()->create([
+            $message = Message::query()->create([
                 'customer_id' => $phone?->customer_id,
                 'service_job_id' => $job,
                 'direction' => Message::INBOUND,
@@ -68,9 +73,14 @@ class SmsWebhookController extends Controller
                 'provider_message_id' => $text['message_id'],
                 'sent_at' => now(),
             ]);
+
+            // Reminders and the auto reply; then the AI reads the text and its photos (in the background).
+            app(SmsThreads::class)->received($message);
+            TriageIncomingSms::dispatch($message->id, $company->id, $text['media'] ?? [])->afterCommit();
         });
 
-        // No automatic reply from us (the provider answers STOP/HELP itself). Twilio expects (empty) TwiML.
+        // Auto replies go out as their own texts (Auto messages); the provider answers STOP/HELP itself. Twilio
+        // expects (empty) TwiML.
         return $sms->key() === 'twilio'
             ? response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', 200, ['Content-Type' => 'text/xml'])
             : response()->noContent();

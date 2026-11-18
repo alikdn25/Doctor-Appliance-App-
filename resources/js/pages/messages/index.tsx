@@ -14,6 +14,7 @@ import {
 import {
     ArrowLeft,
     Briefcase,
+    CheckCheck,
     MessageSquare,
     Phone,
     Plus,
@@ -27,7 +28,12 @@ import type { FormEvent } from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 import { ChatThread } from '@/components/messaging/chat-thread';
-import type { MessageItem } from '@/components/messaging/types';
+import { AiMessageCard } from '@/components/messaging/ai-card';
+import type {
+    MessageItem,
+    PossibleWarranty,
+} from '@/components/messaging/types';
+import { WarrantyNotice } from '@/components/messaging/warranty-notice';
 import { PaginationLinks } from '@/components/pagination-links';
 import type { Paginated } from '@/components/pagination-links';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
@@ -54,7 +60,7 @@ import {
     show as customerShow,
 } from '@/routes/customers';
 import { show as showJob } from '@/routes/jobs';
-import { index, older, read, send } from '@/routes/messages';
+import { done, index, older, read, send } from '@/routes/messages';
 
 type SmsMode = 'automatic' | 'technician_phone' | 'off';
 type Thread = {
@@ -62,6 +68,7 @@ type Thread = {
     customer_name: string | null;
     preview: string;
     unread_count: number;
+    urgent: boolean;
     latest: MessageItem;
 };
 type Template = { key: string; label: string; text: string };
@@ -74,6 +81,10 @@ type Conversation = {
     blocked: string | null;
     messages: Paginated<MessageItem> & { total: number };
     unread_ids: number[];
+    awaiting: boolean;
+    urgent: boolean;
+    draft: string | null;
+    warranty: PossibleWarranty;
 };
 type Filters = { search: string; unread: boolean };
 
@@ -81,9 +92,26 @@ type Filters = { search: string; unread: boolean };
  * The reply box pinned under the chat, with ready texts next to it (UX-REDESIGN §26). In "From technician's
  * phone" mode the text opens in the phone's messages app instead.
  */
-function Composer({ conversation }: { conversation: Conversation }) {
+function Composer({
+    conversation,
+    insert,
+}: {
+    conversation: Conversation;
+    /** The AI's reply draft put into the box ("Use reply draft"); the person still presses Send. */
+    insert: { text: string; n: number } | null;
+}) {
     const t = useTrans();
-    const form = useForm({ phone: conversation.phone, body: '' });
+    const form = useForm({
+        phone: conversation.phone,
+        body: conversation.draft ?? '',
+    });
+
+    useEffect(() => {
+        if (insert) {
+            form.setData('body', insert.text);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [insert?.n]);
     // Without Automatic SMS the text still goes out: from the employee's own phone.
     const fromPhone = conversation.sms_mode !== 'automatic';
     const blocked = fromPhone ? null : conversation.blocked;
@@ -104,6 +132,15 @@ function Composer({ conversation }: { conversation: Conversation }) {
     return (
         <ChatDock>
             <form onSubmit={submit} className="space-y-2">
+                {conversation.draft !== null &&
+                    form.data.body === conversation.draft && (
+                        <p
+                            className="text-xs text-violet-700"
+                            data-test="draft-hint"
+                        >
+                            {t('automation.inbox.draft_inserted')}
+                        </p>
+                    )}
                 {(blocked || fromPhone) && (
                     <p role="status" className="text-xs text-muted-foreground">
                         {blocked ??
@@ -212,6 +249,9 @@ function Chat({
         conversation.messages.total > conversation.messages.data.length,
     );
     const [loading, setLoading] = useState(false);
+    const [insert, setInsert] = useState<{ text: string; n: number } | null>(
+        null,
+    );
     const top = useRef<HTMLDivElement>(null);
     const newestId = conversation.messages.data[0]?.id;
     const messages = [...conversation.messages.data, ...earlier];
@@ -297,6 +337,27 @@ function Chat({
                 }
                 actions={
                     <>
+                        {conversation.awaiting && (
+                            <button
+                                type="button"
+                                className={cn(
+                                    headerButtonClass,
+                                    'w-auto gap-1 px-3 text-sm font-semibold',
+                                )}
+                                title={t('automation.inbox.done_hint')}
+                                onClick={() =>
+                                    router.post(
+                                        done().url,
+                                        { phone: conversation.phone },
+                                        { preserveScroll: true },
+                                    )
+                                }
+                                data-test="chat-done"
+                            >
+                                <CheckCheck className="size-5" />
+                                {t('automation.inbox.done')}
+                            </button>
+                        )}
                         <a
                             href={`tel:${conversation.phone}`}
                             className={headerButtonClass}
@@ -350,6 +411,17 @@ function Chat({
                 aria-label={t('messages.inbox.conversation')}
                 className="mx-auto flex min-h-[calc(var(--app-vvh,100dvh)-9rem)] w-full max-w-3xl flex-col px-4 pt-3 sm:px-6"
             >
+                {conversation.urgent && (
+                    <p
+                        className="mb-2 rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white"
+                        role="status"
+                    >
+                        {t('automation.inbox.urgent')}
+                    </p>
+                )}
+                {conversation.warranty && (
+                    <WarrantyNotice warranty={conversation.warranty} />
+                )}
                 <div ref={top} />
                 {hasMore && (
                     <div className="flex justify-center pb-2">
@@ -369,13 +441,32 @@ function Chat({
                             {t('messages.inbox.start')}
                         </p>
                     ) : (
-                        <ChatThread messages={messages} showJobLinks />
+                        <ChatThread
+                            messages={messages}
+                            showJobLinks
+                            renderAfter={(m) =>
+                                m.ai ? (
+                                    <AiMessageCard
+                                        key={`${m.id}-${JSON.stringify(m.ai)}`}
+                                        messageId={m.id}
+                                        card={m.ai}
+                                        onUseDraft={(text) =>
+                                            setInsert((current) => ({
+                                                text,
+                                                n: (current?.n ?? 0) + 1,
+                                            }))
+                                        }
+                                    />
+                                ) : null
+                            }
+                        />
                     )}
                 </div>
                 <div className="h-3" />
                 <Composer
                     key={conversation.phone}
                     conversation={conversation}
+                    insert={insert}
                 />
             </section>
         </>
@@ -600,6 +691,16 @@ export default function SmsInbox({
                                     </span>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-baseline justify-between gap-2">
+                                            {thread.urgent && (
+                                                <span
+                                                    className="shrink-0 rounded-full bg-red-600 px-2 text-xs leading-5 font-bold text-white"
+                                                    data-test="thread-urgent"
+                                                >
+                                                    {t(
+                                                        'automation.inbox.urgent',
+                                                    )}
+                                                </span>
+                                            )}
                                             <span
                                                 className={cn(
                                                     'truncate',

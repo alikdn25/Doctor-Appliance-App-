@@ -1,3 +1,46 @@
+# November 18 — Owner's task: texts with AI, auto replies, voice, photos, booking edits, morning summary
+
+Three PRs (SPEC §7.16).
+
+## PR 1 — texts read by the AI, reminders, auto replies, Done, new-message badge, Possible warranty (done)
+
+1. **The AI reads every incoming text** (`TriageIncomingSms` queue job → `SmsTriage`, `AI_MODEL_BOOKING`): the text, the
+   last 10 messages and the customer's open jobs go in; urgency, actions (book / reschedule / change_time / cancel) and
+   a reply draft come back (stored in `messages.ai_triage`). Days like "tomorrow" / "Thursday" / "завтра" are turned
+   into dates by code (`RelativeDate`, company time zone). Actions only for a known open job with a visit that has not
+   started. The chat shows a card under the message (`AiMessageCard`): tap an action → preview → Confirm / Dismiss
+   (`SmsAssistController`, `SmsActions`). Book opens the filled Book customer form (Quick booking parser; the sender's
+   number fills the phone). Moving and cancelling never text the customer; change log "AI assistant".
+2. **Reply draft** goes into the reply box (and "Use reply draft"); only Send sends it.
+3. **Urgent**: red label on the message, the chat and the conversation; urgent conversations first in the list until
+   a reply or Done.
+4. **MMS photos** (Twilio `MediaUrlN`, Telnyx `payload.media`): downloaded (`SmsProvider::fetchMedia`), kept private
+   (`messages.media`, shown in the chat), copied to the open job's photos; read by `AI_MODEL_ASSISTANT`
+   (`PlateReader`): a rating plate's brand, model, serial attach to the job's appliance only after Confirm.
+5. **New-message badge** on job cards in My Jobs and the calendar (day, week, details): unread texts from the customer of
+   an unfinished job, with the count; gone when the chat is read (a technician reads them on the job page). Incoming
+   texts link to the customer's open job first.
+6. **Reminders** (`sms:sweep` every minute, `SmsThreads`, new table `sms_threads`): push + bell to Owners and Admins
+   after N hours (Settings → Auto messages, default 3), at most 3, business hours only (moved to the next opening); a
+   text from outside business hours gets one reminder at opening. A reply or **Done** (new chat button) stops them.
+   Web push was already set up (VAPID, service worker, Settings → Notifications).
+7. **Auto messages** (Company settings → Auto messages, Owner): auto reply to texts (off by default; text; delay 0 / 5 /
+   15 / 30 / 60, default 15) — only when nobody replied in time, once per 24 h per number, business hours only,
+   Automatic SMS mode only, never to staff (their profile phone). Missed-call text: same rules; Telnyx voice webhook
+   `/webhooks/voice/telnyx` (`VoiceWebhookController`), **off** until `TELNYX_VOICE_ENABLED=true` and the number's calls
+   go through a Telnyx voice app.
+8. **Possible warranty** (`PossibleWarranty`): a job of the customer finished within 90 days (setting) → amber notice on
+   the job page and in the chat with the earlier job (date, what was done, parts) and a link.
+
+- **Migration** `2026_11_18_000100_add_sms_automation`: new company columns with defaults, two nullable JSON columns on
+  `messages`, new table `sms_threads`. Nothing existing changes.
+- Tests: `SmsAutomationTest` (auto reply delay / reply in time / 24 h / after hours / staff / missed call; reminders
+  interval, max 3, next morning, setting, Done, reply; badge appears and goes; nothing moved, cancelled, booked or sent
+  before Confirm; plate only after Confirm; tomorrow / weekday dates; daily AI limit; roles; another company; Possible
+  warranty inside and outside 90 days; settings), tenant isolation (`sms_threads`), AI schemas.
+- Next: PR 2 (On my way with ETA, review request after payment, close by voice, quick edit by voice, parts), PR 3
+  (receipt photo, morning summary, mileage of the day).
+
 # November 16 — Assistant: composer on the keyboard, microphone, invoice from photos
 
 1. **Composer right on the keyboard** (assistant, SMS chat, Quick booking): `interactive-widget=resizes-content` in the

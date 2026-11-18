@@ -61,6 +61,7 @@ type MyVisit = Visit & {
         appliance_types: string[];
         picture: string | null;
         problem: string | null;
+        new_messages?: number;
     };
 };
 

@@ -57,6 +57,8 @@ import type {
 import { JobAddressSheet } from '@/components/jobs/job-address-sheet';
 import { JobPasteSheet } from '@/components/jobs/job-paste-sheet';
 import { NoAddressBadge } from '@/components/jobs/no-address-badge';
+import type { PossibleWarranty } from '@/components/messaging/types';
+import { WarrantyNotice } from '@/components/messaging/warranty-notice';
 import { JobEditSheet } from '@/components/jobs/job-edit-sheet';
 import type { JobEditCustomer } from '@/components/jobs/job-edit-sheet';
 import { JobApplianceDialog } from '@/components/jobs/job-appliance-dialog';
@@ -217,6 +219,7 @@ type Props = {
     today: string;
     photoKinds: Option[];
     messaging: JobMessaging;
+    possibleWarranty: PossibleWarranty;
     /** Invoices with money owed that this person may mark as paid. */
     payable: {
         id: number;
@@ -398,6 +401,7 @@ export default function JobShow({
     openWarranty,
     costs,
     otherAddresses,
+    possibleWarranty,
 }: Props) {
     const t = useTrans();
     const phoneText = usePhone();
@@ -881,6 +885,9 @@ export default function JobShow({
             />
 
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 sm:p-6">
+                {possibleWarranty && (
+                    <WarrantyNotice warranty={possibleWarranty} />
+                )}
                 {draft && (
                     <section
                         className="da-draft-chip flex flex-wrap items-center gap-3 rounded-2xl p-3"

@@ -23,6 +23,7 @@ use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Requests\Jobs\JobRequest;
 use App\Messaging\BookingConfirmation;
 use App\Messaging\MessagingPresenter;
+use App\Messaging\SmsThreads;
 use App\Models\Appliance;
 use App\Models\Brand;
 use App\Models\BusinessExpense;
@@ -38,6 +39,7 @@ use App\Models\JobNote;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
 use App\Models\Membership;
+use App\Models\Message;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\SupplierReceipt;
@@ -46,6 +48,7 @@ use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\JobProfit;
 use App\Support\Jobs\JobBacklog;
 use App\Support\Jobs\JobPresenter;
+use App\Support\Jobs\PossibleWarranty;
 use App\Support\Locale\LocalTime;
 use App\Support\PhoneNumber;
 use App\Support\Routing\DayOrder;
@@ -262,6 +265,8 @@ class JobController extends Controller
         }
 
         $messaging = app(MessagingPresenter::class);
+        // New-message badge: unread texts from the customer of an unfinished job.
+        $unread = SmsThreads::unreadByCustomer($user, $visits->pluck('job.customer_id')->filter()->unique()->values()->all());
 
         // My Jobs lists this person's visits (and unassigned ones for the office); the office is told how many
         // other people have that day, so an empty day here is not mistaken for an empty schedule.
@@ -285,7 +290,7 @@ class JobController extends Controller
             'cashOnHand' => CashLedger::balances()[$user->id] ?? [],
             // The person's own tasks of the day ("+ → Task"), in their own colour above the jobs.
             'tasks' => $tab === 'day' && $search === '' ? TaskController::between($user, $date, $date->addDay(), onlyOwn: true) : [],
-            'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging) {
+            'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging, $unread) {
                 $job = $visit->job;
 
                 return [
@@ -314,6 +319,7 @@ class JobController extends Controller
                         'picture' => JobPresenter::picture($job),
                         'appliance_types' => $job->appliances->map(fn (Appliance $a) => $a->type->label())->values(),
                         'problem' => $job->description,
+                        'new_messages' => JobPresenter::isOpen($job) ? ($unread[$job->customer_id] ?? 0) : 0,
                     ],
                 ];
             })->values(),
@@ -452,6 +458,12 @@ class JobController extends Controller
             return to_route('visits.finish-screen', $myVisit);
         }
 
+        // A technician has no SMS chat: the customer's texts shown on the job page count as read (the new-message
+        // badge on the job card goes away). The office reads them in the chat.
+        if (! Gate::allows('viewAny', Message::class)) {
+            SmsThreads::markCustomerRead($user, $job->customer_id);
+        }
+
         return Inertia::render('jobs/show', [
             'job' => [
                 'id' => $job->id,
@@ -548,6 +560,8 @@ class JobController extends Controller
                 ->values() : [],
             'myVisitId' => $myVisit?->id,
             'messaging' => app(MessagingPresenter::class)->forJob($job, $user, $myVisit),
+            // "Possible warranty": the customer had a job finished shortly before this one was booked.
+            'possibleWarranty' => PossibleWarranty::for($job->customer_id, currentCompany(), $job->id, CarbonImmutable::instance($job->created_at)),
             'can' => [
                 'update' => $canUpdate,
                 'delete' => Gate::allows('delete', $job),

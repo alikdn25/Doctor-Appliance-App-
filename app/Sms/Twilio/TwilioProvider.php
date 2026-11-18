@@ -128,7 +128,28 @@ class TwilioProvider implements SmsProvider
             'to' => (string) $request->input('To'),
             'body' => (string) $request->input('Body'),
             'message_id' => (string) $request->input('MessageSid'),
+            'media' => array_values(array_filter(array_map(fn (int $i) => is_string($request->input("MediaUrl{$i}")) ? [
+                'url' => (string) $request->input("MediaUrl{$i}"), 'content_type' => (string) $request->input("MediaContentType{$i}", 'image/jpeg'),
+            ] : null, self::mediaIndexes((int) $request->input('NumMedia', 0))))),
         ];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private static function mediaIndexes(int $count): array
+    {
+        return $count > 0 ? range(0, min(10, $count) - 1) : [];
+    }
+
+    public function fetchMedia(SmsAccount $account, string $url): string
+    {
+        $response = Http::withBasicAuth($account->account_sid, $account->auth_token)->timeout(20)->get($url);
+        if ($response->failed()) {
+            throw new SmsException('Twilio media download failed ('.$response->status().')');
+        }
+
+        return $response->body();
     }
 
     public function statusUpdate(Request $request): array

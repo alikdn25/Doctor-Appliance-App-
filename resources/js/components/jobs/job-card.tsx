@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { applianceImageUrl } from '@/components/appliance-image';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { mapsUrl, telUrl } from '@/components/customers/types';
+import { NewMessagesBadge } from '@/components/jobs/new-messages-badge';
 import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import { isFinishedJob } from '@/components/jobs/types';
@@ -31,6 +32,8 @@ export type JobCardData = {
     appliance_types: string[];
     problem: string | null;
     picture: string | null;
+    /** Unread texts from the customer (open jobs only). */
+    new_messages?: number;
 };
 
 /**
@@ -137,6 +140,7 @@ export function JobCard({
                         />
                         {overdue && <OverdueFlag />}
                         {!job.address && <NoAddressBadge />}
+                        <NewMessagesBadge count={job.new_messages} />
                     </div>
                     <div className="truncate text-base font-semibold">
                         {job.customer}
