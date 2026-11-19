@@ -4,6 +4,7 @@ namespace App\Http\Requests\Tasks;
 
 use App\Enums\UserRole;
 use App\Models\Membership;
+use App\Models\ServiceJob;
 use App\Models\Task;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -38,6 +39,10 @@ class TaskRequest extends FormRequest
             'end_time' => ['exclude_if:all_day,true', 'nullable', 'date_format:H:i', 'after:start_time'],
             'user_id' => ['nullable', 'integer'],
             'remind_minutes' => ['nullable', 'integer', Rule::in(Task::REMINDERS)],
+            'kind' => ['nullable', Rule::in(Task::KINDS)],
+            'address' => ['nullable', 'string', 'max:500'],
+            'service_job_id' => ['nullable', 'integer'],
+            'repeat' => ['nullable', Rule::in(Task::REPEATS)],
         ];
     }
 
@@ -46,7 +51,7 @@ class TaskRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return collect(['title', 'note', 'task_date', 'start_time', 'end_time', 'user_id', 'remind_minutes'])
+        return collect(['title', 'note', 'task_date', 'start_time', 'end_time', 'user_id', 'remind_minutes', 'kind', 'address', 'service_job_id', 'repeat'])
             ->mapWithKeys(fn (string $field) => [$field => __("tasks.fields.{$field}")])
             ->all();
     }
@@ -54,6 +59,12 @@ class TaskRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator) {
+            // A linked job must be one the person can see.
+            $jobId = $this->input('service_job_id');
+            if (filled($jobId) && ! ServiceJob::query()->visibleTo($this->user())->whereKey((int) $jobId)->exists()) {
+                $validator->errors()->add('service_job_id', __('tasks.errors.job'));
+            }
+
             $for = $this->assignee();
 
             if ($for === $this->user()->id) {
@@ -69,6 +80,13 @@ class TaskRequest extends FormRequest
     /** The one the task is for: oneself unless someone else was picked. */
     public function assignee(): int
     {
+        // A Home task is always one's own.
+        if ($this->input('kind') === Task::KIND_HOME) {
+            $task = $this->route('task');
+
+            return $task instanceof Task && $task->created_by !== null ? $task->created_by : (int) $this->user()->id;
+        }
+
         $picked = $this->input('user_id');
 
         if (filled($picked)) {
@@ -109,6 +127,10 @@ class TaskRequest extends FormRequest
             'end_time' => $allDay ? null : ($data['end_time'] ?? null),
             'remind_minutes' => $data['remind_minutes'] ?? null,
             'user_id' => $this->assignee(),
+            'kind' => $data['kind'] ?? null,
+            'address' => filled($data['address'] ?? null) ? trim($data['address']) : null,
+            'service_job_id' => filled($data['service_job_id'] ?? null) ? (int) $data['service_job_id'] : null,
+            'repeat' => $data['repeat'] ?? 'none',
         ];
     }
 }

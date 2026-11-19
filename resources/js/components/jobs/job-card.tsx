@@ -259,6 +259,7 @@ export const STATUS_CIRCLES: Record<string, string> = {
     in_progress: 'linear-gradient(135deg,#FDBA74,#F97316 60%,#C2410C)',
     need_to_order_parts: 'linear-gradient(135deg,#F9A8D4,#DB2777 60%,#9D174D)',
     waiting_for_parts: 'linear-gradient(135deg,#5EEAD4,#0D9488 60%,#115E59)',
+    parts_ready: 'linear-gradient(135deg,#D9F99D,#65A30D 60%,#3F6212)',
     on_the_way: 'linear-gradient(135deg,#FDE68A,#EAB308 60%,#A16207)',
     waiting_for_customer: 'linear-gradient(135deg,#D6B89C,#9C6B4E 60%,#6B4430)',
     cancelled: 'linear-gradient(135deg,#71717A,#27272A 60%,#09090B)',

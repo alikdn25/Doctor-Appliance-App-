@@ -5,6 +5,7 @@ import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { unpaid } from '@/routes/invoices';
 import { index as jobs } from '@/routes/jobs';
+import { index as parts } from '@/routes/parts';
 
 /** Order of the counters: what needs action first; future scheduled work last. */
 const REASONS = [
@@ -54,7 +55,14 @@ export function UnfinishedJobsBar() {
                 (reason) => (
                     <Link
                         key={reason}
-                        href={jobs({ query: { tab: 'open', reason } })}
+                        // The parts counters open the Parts page (Order / Waiting).
+                        href={
+                            reason === 'need_to_order_parts'
+                                ? parts()
+                                : reason === 'waiting_for_parts'
+                                  ? parts({ query: { tab: 'waiting' } })
+                                  : jobs({ query: { tab: 'open', reason } })
+                        }
                         data-test={`unfinished-${reason}`}
                         className={cn(
                             'inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-background px-3 text-xs font-medium',

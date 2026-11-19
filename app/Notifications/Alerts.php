@@ -42,7 +42,7 @@ class Alerts
     /**
      * @param  list<object>  $notifiables
      */
-    private static function send(array $notifiables, AppAlert $alert): void
+    public static function send(array $notifiables, AppAlert $alert): void
     {
         foreach ($notifiables as $notifiable) {
             try {

@@ -174,7 +174,7 @@ class CalendarController extends Controller
     {
         return ServiceJob::query()
             ->visibleTo($user)
-            ->whereIn('status', [JobStatus::New->value, JobStatus::NeedToOrderParts->value, JobStatus::WaitingForParts->value])
+            ->whereIn('status', [JobStatus::New->value, JobStatus::NeedToOrderParts->value, JobStatus::WaitingForParts->value, JobStatus::PartsReady->value])
             ->whereDoesntHave('visits', fn ($q) => $q->whereIn('status', VisitStatus::openValues()))
             ->with(['customer', 'property', 'appliances'])
             ->orderBy('id')

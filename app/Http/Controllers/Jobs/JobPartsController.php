@@ -49,7 +49,7 @@ class JobPartsController extends Controller
     public function arrived(ServiceJob $job): JsonResponse
     {
         Gate::authorize('update', $job);
-        abort_unless($job->status === JobStatus::WaitingForParts, 404);
+        abort_unless(in_array($job->status, [JobStatus::WaitingForParts, JobStatus::PartsReady], true), 404);
 
         return response()->json(['text' => self::text($job), 'windows' => self::windows()]);
     }
@@ -60,7 +60,7 @@ class JobPartsController extends Controller
     public function sendArrived(Request $request, ServiceJob $job, Messenger $messenger): RedirectResponse
     {
         Gate::authorize('update', $job);
-        abort_unless($job->status === JobStatus::WaitingForParts, 404);
+        abort_unless(in_array($job->status, [JobStatus::WaitingForParts, JobStatus::PartsReady], true), 404);
         $body = trim($request->validate(['text' => ['required', 'string', 'max:1600']])['text']);
 
         if (currentCompany()->sms_mode !== SmsMode::Automatic) {

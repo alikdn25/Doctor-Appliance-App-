@@ -70,6 +70,8 @@ use App\Http\Controllers\Jobs\VisitController;
 use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\Mileage\TripController;
 use App\Http\Controllers\Onboarding\CompanyController as OnboardingCompanyController;
+use App\Http\Controllers\Parts\PartsController;
+use App\Http\Controllers\Parts\SupplierController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\PushActionController;
@@ -192,6 +194,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('appliances/{appliance}', [ApplianceController::class, 'destroy'])->name('appliances.destroy');
 
         Route::get('my-jobs', [JobController::class, 'mine'])->name('jobs.mine');
+        Route::put('my-jobs/panes', [JobController::class, 'panes'])->name('jobs.panes');
         Route::get('jobs/not-completed', JobBacklogController::class)->name('jobs.backlog');
         Route::get('jobs/customers', [JobController::class, 'lookup'])->name('jobs.lookup');
         Route::post('jobs/parse-message', BookingTextController::class)->middleware('throttle:30,1')->name('jobs.parse-message');
@@ -245,6 +248,15 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('jobs/{job}/voice-close', [JobVoiceController::class, 'confirmClose'])->name('jobs.voice-close');
         // The part a job waits for, and "Part arrived" (text with free windows, sent on Confirm).
         Route::put('jobs/{job}/part', [JobPartsController::class, 'update'])->name('jobs.part');
+        // Parts page (owner's task of November 19): Order / Waiting, several parts per job, the job's status follows.
+        Route::get('parts', [PartsController::class, 'index'])->name('parts.index');
+        Route::post('jobs/{job}/parts', [PartsController::class, 'store'])->name('jobs.parts.store');
+        Route::post('jobs/{job}/parts/ordered', [PartsController::class, 'orderedAll'])->name('jobs.parts.ordered');
+        Route::put('parts/{part}', [PartsController::class, 'update'])->name('parts.update');
+        Route::post('parts/{part}/bought', [PartsController::class, 'bought'])->name('parts.bought');
+        Route::post('parts/{part}/ordered', [PartsController::class, 'ordered'])->name('parts.ordered');
+        Route::post('parts/{part}/arrived', [PartsController::class, 'arrived'])->name('parts.arrived');
+        Route::delete('parts/{part}', [PartsController::class, 'destroy'])->name('parts.destroy');
         Route::get('jobs/{job}/part-arrived', [JobPartsController::class, 'arrived'])->name('jobs.part-arrived');
         Route::post('jobs/{job}/part-arrived', [JobPartsController::class, 'sendArrived'])->middleware('throttle:30,1')->name('jobs.part-arrived.send');
         Route::put('jobs/{job}/technician', [AssignmentController::class, 'assign'])->name('jobs.technician');
@@ -304,6 +316,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('trips/{trip}', [TripController::class, 'destroy'])->name('trips.destroy');
         Route::get('tasks/people', [TaskController::class, 'people'])->name('tasks.people');
         Route::post('tasks', [TaskController::class, 'store'])->name('tasks.store');
+        Route::post('tasks/parse', [TaskController::class, 'parse'])->middleware('throttle:assistant')->name('tasks.parse');
         Route::put('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
         Route::post('tasks/{task}/done', [TaskController::class, 'done'])->name('tasks.done');
         Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
@@ -382,6 +395,10 @@ Route::middleware(['auth', 'active'])->group(function () {
             // Morning SMS to the owner's phone and the nightly Google Drive backup (owner's task of November 19).
             Route::get('morning', [MorningController::class, 'edit'])->name('company.morning.edit');
             Route::get('answers', [AnswersController::class, 'edit'])->name('company.answers.edit');
+            Route::get('suppliers', [SupplierController::class, 'index'])->name('company.suppliers.index');
+            Route::post('suppliers', [SupplierController::class, 'store'])->name('company.suppliers.store');
+            Route::put('suppliers/{supplier}', [SupplierController::class, 'update'])->name('company.suppliers.update');
+            Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('company.suppliers.destroy');
             Route::put('answers', [AnswersController::class, 'update'])->name('company.answers.update');
             Route::put('morning', [MorningController::class, 'update'])->name('company.morning.update');
             Route::post('google-drive/connect', [MorningController::class, 'connect'])->name('google-drive.connect');

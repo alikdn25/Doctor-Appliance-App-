@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\DriveBackup;
 use App\Models\JobVisit;
+use App\Models\JobPart;
 use App\Models\Message;
 use App\Models\Property;
 use App\Models\PushAction;
@@ -408,7 +409,8 @@ test('the morning SMS lists the day: no address, unanswered texts, unpaid, compl
     $noAddress = Property::factory()->for($this->customer)->create(['line1' => null, 'city' => null, 'is_primary' => false]);
     ServiceJob::factory()->for($noAddress)->create(['brand_id' => $this->brand->id, 'status' => JobStatus::New]);
     ServiceJob::factory()->for($this->property)->create(['brand_id' => $this->brand->id, 'status' => JobStatus::Completed]);
-    ServiceJob::factory()->for($this->property)->create(['brand_id' => $this->brand->id, 'status' => JobStatus::WaitingForParts, 'part_name' => 'Drain pump']);
+    $waiting = ServiceJob::factory()->for($this->property)->create(['brand_id' => $this->brand->id, 'status' => JobStatus::WaitingForParts]);
+    inCompany($this->company, fn () => JobPart::query()->create(['service_job_id' => $waiting->id, 'name' => 'Drain pump', 'status' => JobPart::ORDERED, 'ordered_on' => '2026-10-10']));
     textIn('Is anyone there?');
 
     localAt('2026-10-15 06:30');

@@ -1,10 +1,10 @@
 import { router } from '@inertiajs/react';
-import { PackageCheck, Send } from 'lucide-react';
-import type { FormEvent } from 'react';
+import { PackageCheck, Plus, Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { FormField } from '@/components/form-field';
+import { AddPartSheet } from '@/components/parts/add-part-sheet';
+import { PartRow } from '@/components/parts/part-row';
+import type { PartItem, SupplierOption } from '@/components/parts/types';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     Sheet,
     SheetContent,
@@ -14,143 +14,94 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
-import { part as partRoute, partArrived } from '@/routes/jobs';
+import { partArrived } from '@/routes/jobs';
 import { send as sendArrived } from '@/routes/jobs/part-arrived';
 
-export type JobPart = {
-    name: string | null;
-    number: string | null;
-    supplier: string | null;
-    ordered_on: string | null;
-    suggestion: { part_number: string; description: string } | null;
-};
-
 /**
- * The part a job waits for (owner's task of November 18): name, number, supplier and order date, with the AI's
- * possible part number marked "check" (Use fills the field; Save stores it). In Waiting for parts the office has
- * "Part arrived": a text with the three nearest free windows, sent only after Send.
+ * The parts of a job (owner's task of November 19): each part with its number ("check" for the AI's), quantity,
+ * supplier and Bought / Ordered / Arrived, and "Part needed" to add one. When the parts are on hand (or the job waits
+ * for them) the office has "Text the customer": the three nearest free windows, sent only after Send.
  */
 export function PartCard({
     jobId,
-    part,
-    canEdit,
+    parts,
+    suppliers,
+    canAdd,
     canTextArrived,
+    openText = false,
 }: {
     jobId: number;
-    part: JobPart;
-    canEdit: boolean;
+    parts: PartItem[];
+    suppliers: SupplierOption[];
+    canAdd: boolean;
     canTextArrived: boolean;
+    /** Opened from the "Parts ready" notification: the text is ready to check. */
+    openText?: boolean;
 }) {
     const t = useTrans();
-    const initial = {
-        part_name: part.name ?? '',
-        part_number: part.number ?? '',
-        part_supplier: part.supplier ?? '',
-        part_ordered_on: part.ordered_on ?? '',
-    };
-    const [form, setForm] = useState(initial);
-    const [busy, setBusy] = useState(false);
-    const [arrivedOpen, setArrivedOpen] = useState(false);
-    const dirty = JSON.stringify(form) !== JSON.stringify(initial);
-
-    const submit = (event: FormEvent) => {
-        event.preventDefault();
-        router.put(partRoute(jobId).url, form, {
-            preserveScroll: true,
-            onStart: () => setBusy(true),
-            onFinish: () => setBusy(false),
-        });
-    };
-
-    const field = (key: keyof typeof form, label: string, type = 'text') => (
-        <FormField id={`part-${key}`} label={label}>
-            <Input
-                id={`part-${key}`}
-                type={type}
-                value={form[key]}
-                disabled={!canEdit}
-                maxLength={255}
-                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-            />
-        </FormField>
-    );
+    const [adding, setAdding] = useState(false);
+    const [arrivedOpen, setArrivedOpen] = useState(openText && canTextArrived);
 
     return (
-        <section className="da-card space-y-3 p-4" data-test="part-card">
-            <h2 className="font-semibold">{t('automation.parts.title')}</h2>
-            <form onSubmit={submit} className="space-y-3">
-                {field('part_name', t('automation.parts.name'))}
-                {field('part_number', t('automation.parts.number'))}
-                {part.suggestion && !form.part_number && (
-                    <div
-                        className="flex items-center gap-2 rounded-xl bg-amber-50 p-2 text-sm text-amber-950"
-                        data-test="part-suggestion"
+        <section className="da-card overflow-hidden" data-test="part-card">
+            <div className="flex items-center justify-between gap-2 px-4 pt-3">
+                <h2 className="font-semibold">{t('parts.on_job')}</h2>
+                {canAdd && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAdding(true)}
+                        data-test="part-needed"
                     >
-                        <span className="min-w-0 flex-1">
-                            {t('automation.parts.suggestion', {
-                                number: part.suggestion.part_number,
-                            })}
-                            {part.suggestion.description &&
-                                ` — ${part.suggestion.description}`}{' '}
-                            <span className="rounded bg-amber-200 px-1 text-xs font-bold uppercase">
-                                {t('automation.parts.check')}
-                            </span>
-                        </span>
-                        {canEdit && (
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                    setForm({
-                                        ...form,
-                                        part_number:
-                                            part.suggestion!.part_number,
-                                    })
-                                }
-                            >
-                                {t('automation.parts.use')}
-                            </Button>
-                        )}
-                    </div>
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                    {field('part_supplier', t('automation.parts.supplier'))}
-                    {field(
-                        'part_ordered_on',
-                        t('automation.parts.ordered_on'),
-                        'date',
-                    )}
-                </div>
-                {canEdit && dirty && (
-                    <Button type="submit" className="w-full" loading={busy}>
-                        {t('common.save')}
+                        <Plus /> {t('parts.need_part')}
                     </Button>
                 )}
-            </form>
+            </div>
+            {parts.length === 0 ? (
+                <p className="px-4 pt-1 pb-3 text-sm text-muted-foreground">
+                    {t('parts.none_on_job')}
+                </p>
+            ) : (
+                <ul className="divide-y">
+                    {parts.map((part) => (
+                        <PartRow
+                            key={part.id}
+                            part={part}
+                            suppliers={suppliers}
+                            showJob={false}
+                        />
+                    ))}
+                </ul>
+            )}
             {canTextArrived && (
-                <>
+                <div className="p-3 pt-0">
                     <Button
                         variant="outline"
                         size="lg"
                         className="w-full"
                         onClick={() => setArrivedOpen(true)}
-                        data-test="part-arrived"
+                        data-test="part-arrived-text"
                     >
-                        <PackageCheck /> {t('automation.parts.arrived')}
+                        <PackageCheck /> {t('parts.ready.text_customer')}
                     </Button>
                     <PartArrivedSheet
                         open={arrivedOpen}
                         onOpenChange={setArrivedOpen}
                         jobId={jobId}
                     />
-                </>
+                </div>
             )}
+            <AddPartSheet
+                open={adding}
+                onOpenChange={setAdding}
+                jobId={jobId}
+                suppliers={suppliers}
+            />
         </section>
     );
 }
 
-function PartArrivedSheet({
+export function PartArrivedSheet({
     open,
     onOpenChange,
     jobId,

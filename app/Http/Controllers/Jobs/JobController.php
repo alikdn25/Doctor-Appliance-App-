@@ -19,6 +19,7 @@ use App\Enums\VisitType;
 use App\Enums\WarrantyUnit;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Customers\CustomerController;
+use App\Http\Controllers\Parts\PartsController;
 use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Requests\Jobs\JobRequest;
 use App\Messaging\BookingConfirmation;
@@ -36,13 +37,16 @@ use App\Models\InvoiceItem;
 use App\Models\JobBringItem;
 use App\Models\JobCostItem;
 use App\Models\JobNote;
+use App\Models\JobPart;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
 use App\Models\Membership;
 use App\Models\Message;
 use App\Models\Property;
 use App\Models\ServiceJob;
+use App\Models\Supplier;
 use App\Models\SupplierReceipt;
+use App\Models\Task;
 use App\Models\User;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\JobProfit;
@@ -213,6 +217,18 @@ class JobController extends Controller
     }
 
     /**
+     * The Today screen's Jobs / To Do buttons: one of them is always on; the choice is kept for the person.
+     */
+    public function panes(Request $request): RedirectResponse
+    {
+        Gate::authorize('viewMine', ServiceJob::class);
+        $panes = $request->validate(['panes' => ['required', 'in:jobs,todo,both']])['panes'];
+        $request->user()->currentMembership()?->update(['today_panes' => $panes]);
+
+        return back();
+    }
+
+    /**
      * "My jobs": the visits assigned to the current user (technicians, and Owners/Admins who go on calls).
      */
     public function mine(Request $request): Response
@@ -282,14 +298,17 @@ class JobController extends Controller
 
         return Inertia::render('jobs/mine', [
             'tab' => $tab,
+            // Jobs / To Do / both, as the person left it (null = by screen width).
+            'panes' => $user->currentMembership()?->today_panes,
+            'canTasks' => Gate::allows('viewAny', Task::class),
             'othersOnDay' => $othersOnDay,
             'date' => $date->toDateString(),
             'today' => $today->toDateString(),
             'search' => $search,
             // Cash this person collected and has not handed in yet.
             'cashOnHand' => CashLedger::balances()[$user->id] ?? [],
-            // The person's own tasks of the day ("+ → Task"), in their own colour above the jobs.
-            'tasks' => $tab === 'day' && $search === '' ? TaskController::between($user, $date, $date->addDay(), onlyOwn: true) : [],
+            // The person's own tasks of the day: the To Do column.
+            'tasks' => $search === '' ? TaskController::between($user, $date, $date->addDay(), onlyOwn: true) : [],
             'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging, $unread) {
                 $job = $visit->job;
 
@@ -449,7 +468,7 @@ class JobController extends Controller
         $job->load([
             'brand', 'customer.phones', 'property', 'appliances', 'visits.assignees', 'statusChanges.user',
             'photos.user', 'signer', 'estimates', 'invoices',
-            'bringItems.checker', 'previousJob', 'followUps', 'closer', 'teamNotes.user',
+            'bringItems.checker', 'previousJob', 'followUps', 'closer', 'teamNotes.user', 'parts.supplier',
         ]);
         $canUpdate = Gate::allows('update', $job);
         $property = $job->property;
@@ -467,6 +486,7 @@ class JobController extends Controller
         }
 
         return Inertia::render('jobs/show', [
+            'suppliers' => Supplier::options(),
             'job' => [
                 'id' => $job->id,
                 'number' => $job->number,
@@ -503,13 +523,8 @@ class JobController extends Controller
                 'notes' => $job->notes,
                 'tech_notes' => $job->tech_notes,
                 // The part the job waits for and the AI's possible number ("check").
-                'part' => in_array($job->status, [JobStatus::NeedToOrderParts, JobStatus::WaitingForParts], true) || filled($job->part_number) ? [
-                    'name' => $job->part_name,
-                    'number' => $job->part_number,
-                    'supplier' => $job->part_supplier,
-                    'ordered_on' => $job->part_ordered_on?->toDateString(),
-                    'suggestion' => $job->part_suggestion,
-                ] : null,
+                // The parts the job needs (Parts page), each with its status; the AI's number is marked "check".
+                'parts' => $job->parts->map(fn (JobPart $part) => PartsController::present($part->setRelation('job', $job), CarbonImmutable::now($timezone)->startOfDay()))->values(),
                 'created_at' => JobPresenter::iso($job->created_at),
                 'completed_at' => JobPresenter::iso($job->completed_at),
                 'allows_visit_work' => $job->status->allowsVisitWork(),

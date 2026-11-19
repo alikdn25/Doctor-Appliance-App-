@@ -36,11 +36,14 @@ enum AiFeature: string
     /** Russian in the reply box → a short English SMS. */
     case Translate = 'translate';
 
+    /** A To Do typed or said ("tomorrow buy an element at Marcone on Kingsway") → the task form. */
+    case TaskParse = 'task_parse';
+
     /** The key in config('ai.models'). */
     public function modelKey(): string
     {
         return match ($this) {
-            self::QuickBooking, self::PasteMessage, self::SmsTriage, self::BookingEdit, self::SmsNudge => 'booking',
+            self::QuickBooking, self::PasteMessage, self::SmsTriage, self::BookingEdit, self::SmsNudge, self::TaskParse => 'booking',
             self::Assistant, self::FindProblems, self::SmsPhoto, self::VoiceClose, self::PartLookup, self::Receipt, self::Translate => 'assistant',
             self::AppReview => 'review',
         };

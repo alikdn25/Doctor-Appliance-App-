@@ -38,8 +38,16 @@ class TaskPolicy
 
     public function update(User $user, Task $task): bool
     {
-        return $this->inCurrentCompany($task) && $this->viewAny($user)
-            && ($this->viewAll($user) || $task->user_id === $user->id || $task->created_by === $user->id);
+        if (! $this->inCurrentCompany($task) || ! $this->viewAny($user)) {
+            return false;
+        }
+
+        // A Home task belongs to the one who made it only.
+        if ($task->kind === Task::KIND_HOME) {
+            return $task->created_by === $user->id;
+        }
+
+        return $this->viewAll($user) || $task->user_id === $user->id || $task->created_by === $user->id;
     }
 
     public function delete(User $user, Task $task): bool

@@ -686,6 +686,52 @@ set up is built, stays off and says what is missing.
   customer's address come first, labelled "Nearby: job in {city}, {N} km" (straight-line distance, within 15 km).
   Without a known address: the usual order.
 
+#### 7.17.13 Jobs and To Do on Today (PR 4)
+
+- The header of Today (My Jobs) has two toggle buttons instead of the title: **Jobs** and **To Do**; the date stays.
+  Jobs only: the jobs as before. To Do only: the tasks. Both: two columns, jobs on the left (compact card: window,
+  name, short address, appliance; a tap opens the job), tasks on the right.
+- Both cannot be off (the last one on stays on). The choice is kept per person (`company_user.today_panes`); with no
+  choice yet, screens from 768 px wide start with both, phones with Jobs.
+
+#### 7.17.14 To Do (PR 4)
+
+- A task: title, date, a time or all day, address (optional, geocoded by the app's map service), type (Parts,
+  Materials, Home, Business, Call), a linked job (optional), note, repeat (none / every week / every month).
+- **Home** tasks are seen only by the one who made them (the Owner and Admins included) and are always their own.
+- The To Do column: "+" and a field with the microphone; "tomorrow buy an element at Marcone on Kingsway" goes to
+  `AI_MODEL_BOOKING` and fills the task form (days by code in the company time zone; a supplier named gives its saved
+  address); the person saves.
+- All-day tasks first, then by time. A task with an address shows "On the way: near the job at {time}, {N} km" when an
+  open job of that day is within 5 km (straight line).
+- The round tick marks a task done. Undone tasks move to the next day at the end of the day (company time) and show
+  "carried over {N} days". A repeating task makes its next one when that day comes (one at a time). A Parts or
+  Materials task ticked done offers **Add a receipt?** (photo → expense, as in §7.16.10).
+- Automatic **"Buy at {supplier}: {N} parts"**: one task for today per supplier with parts in the Order list, for the
+  Owner, with the supplier's address. It updates its count and closes by itself when none of that supplier's parts is
+  left to order; ticking it done marks those parts bought.
+
+#### 7.17.15 Parts page (PR 4)
+
+- A job can need several parts (`job_parts`): name, number, quantity, supplier, status to order → ordered (with the
+  order date) → on hand. Added with **Part needed** on the job, "+" on the Parts page or Close by voice (Need to order
+  parts with the part's name). A job moved to Need to order parts without a part gets a row "Part (name needed)".
+- **Parts** (More → Parts; the "Need to order parts" and "Waiting for parts" counters of the bar open its tabs):
+  **Order** grouped by supplier (parts without one in their own group) and **Waiting** (order date, days waited, more
+  than 7 highlighted), each with its count. A row: part, job number, customer, appliance and model, number, quantity,
+  supplier; number, quantity and supplier are edited in the row. A number from the AI is marked "check" until it is
+  corrected or confirmed ("Number is right").
+- Order: **Bought** (on hand, off the list, then "Add a receipt?") and **Ordered** (to Waiting with today's date).
+  Waiting: **Arrived** (on hand, off the list).
+- The job's status follows its parts: a part to order → Need to order parts; all ordered or on hand but not all on
+  hand → Waiting for parts; all on hand → new status **Parts ready**, and the office gets a notification and the text
+  to the customer with the three nearest free windows, sent only after Confirm (the answer goes to the SMS triage).
+  A job on site, completed, invoiced, paid or cancelled keeps its status; a job already booked again stays Scheduled
+  when its parts arrive.
+- Suppliers with addresses: Company → Suppliers (Owner, Admin).
+- The morning SMS (§7.17.3) also lists the day's tasks of the Owners and the parts to buy (by supplier) and to
+  receive.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).

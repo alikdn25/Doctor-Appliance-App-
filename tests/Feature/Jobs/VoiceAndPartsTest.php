@@ -13,6 +13,7 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\GoogleProfile;
 use App\Models\Invoice;
+use App\Models\JobPart;
 use App\Models\JobVisit;
 use App\Models\Message;
 use App\Models\Payment;
@@ -203,7 +204,11 @@ test('close by voice: need to order parts, not paid', function () {
         ->assertRedirect();
 
     $job = $this->job->fresh();
-    expect($job->status)->toBe(JobStatus::NeedToOrderParts)->and($job->part_name)->toBe('Heating element')
+    // The part named goes to the Parts page (Order list).
+    $parts = inCompany($this->company, fn () => JobPart::query()->where('service_job_id', $job->id)->get());
+    expect($job->status)->toBe(JobStatus::NeedToOrderParts)
+        ->and($parts->pluck('name')->all())->toBe(['Heating element'])
+        ->and($parts->first()->status)->toBe(JobPart::TO_ORDER)
         ->and(inCompany($this->company, fn () => Invoice::query()->count()))->toBe(0);
 });
 
@@ -262,19 +267,19 @@ test('Save of the edit sheet stores phone, email, problem and notes', function (
 
 // ——— Parts ———
 
-test('Need to order parts: the AI suggests a part number marked check; nothing goes into the fields', function () {
+test('Need to order parts: the part is listed and the AI suggests its number, marked check until confirmed', function () {
     FakeAiTransport::install(['part_number' => 'wp3387747', 'description' => 'Heating element']);
 
     inCompany($this->company, fn () => app(ChangeJobStatus::class)->handle($this->job->fresh(), JobStatus::NeedToOrderParts, $this->owner));
 
-    $job = $this->job->fresh();
-    expect($job->part_suggestion)->toEqualCanonicalizing(['part_number' => 'WP3387747', 'description' => 'Heating element'])
-        ->and($job->part_number)->toBeNull();
+    $part = inCompany($this->company, fn () => JobPart::query()->where('service_job_id', $this->job->id)->sole());
+    expect($part->part_number)->toBe('WP3387747')->and($part->number_unverified)->toBeTrue();
 
-    $this->get(route('jobs.show', $job))->assertInertia(fn (Assert $page) => $page->where('job.part.suggestion.part_number', 'WP3387747'));
+    $this->get(route('jobs.show', $this->job))->assertInertia(fn (Assert $page) => $page
+        ->where('job.parts.0.part_number', 'WP3387747')->where('job.parts.0.number_unverified', true));
 
-    $this->put(route('jobs.part', $job), ['part_name' => 'Heating element', 'part_number' => 'WP3387747', 'part_supplier' => 'Marcone', 'part_ordered_on' => '2026-10-14'])->assertRedirect();
-    expect($job->fresh())->part_number->toBe('WP3387747')->part_supplier->toBe('Marcone');
+    $this->put(route('parts.update', $part), ['confirm_number' => true])->assertRedirect();
+    expect($part->fresh()->number_unverified)->toBeFalse()->and($part->fresh()->part_number)->toBe('WP3387747');
 });
 
 test('Part arrived: a text with the three nearest free windows, sent only on Send', function () {

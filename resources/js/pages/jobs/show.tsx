@@ -59,7 +59,7 @@ import { JobAddressSheet } from '@/components/jobs/job-address-sheet';
 import { JobPasteSheet } from '@/components/jobs/job-paste-sheet';
 import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import { PartCard } from '@/components/jobs/part-card';
-import type { JobPart } from '@/components/jobs/part-card';
+import type { PartItem, SupplierOption } from '@/components/parts/types';
 import { VoiceCloseSheet } from '@/components/jobs/voice-close-sheet';
 import type { PossibleWarranty } from '@/components/messaging/types';
 import { WarrantyNotice } from '@/components/messaging/warranty-notice';
@@ -126,10 +126,10 @@ import {
     finishBooking as finishBookingRoute,
     index,
     instructions as instructionsRoute,
-    status as statusRoute,
     techNotes,
     technician as technicianRoute,
 } from '@/routes/jobs';
+import { ordered as partsOrdered } from '@/routes/jobs/parts';
 import { finishScreen, onMyWay, start } from '@/routes/visits';
 import type { Option } from '@/types';
 
@@ -160,7 +160,7 @@ type Job = {
     description: string | null;
     notes: string | null;
     tech_notes: string | null;
-    part: JobPart | null;
+    parts: PartItem[];
     created_at: string | null;
     completed_at: string | null;
     allows_visit_work: boolean;
@@ -410,7 +410,8 @@ export default function JobShow({
     costs,
     otherAddresses,
     possibleWarranty,
-}: Props) {
+    suppliers = [],
+}: Props & { suppliers?: SupplierOption[] }) {
     const t = useTrans();
     const phoneText = usePhone();
     const { auth } = usePage().props;
@@ -676,10 +677,11 @@ export default function JobShow({
                     key: 'parts-ordered',
                     label: t('jobs.actions.parts_ordered'),
                     icon: <Package />,
+                    // Every part still to order is ordered today; the job follows its parts.
                     onClick: () =>
-                        router.put(
-                            statusRoute(job.id).url,
-                            { status: 'waiting_for_parts' },
+                        router.post(
+                            partsOrdered(job.id).url,
+                            {},
                             { preserveScroll: true },
                         ),
                 },
@@ -692,7 +694,11 @@ export default function JobShow({
             ];
         }
 
-        if (job.status === 'waiting_for_parts' && can.update && !current) {
+        if (
+            ['waiting_for_parts', 'parts_ready'].includes(job.status) &&
+            can.update &&
+            !current
+        ) {
             return [
                 {
                     key: 'schedule',
@@ -1297,13 +1303,37 @@ export default function JobShow({
                         <Mic /> {t('automation.voice_close.open')}
                     </Button>
                 )}
-                {job.part && (
+                {(job.parts.length > 0 ||
+                    (can.work &&
+                        job.allows_visit_work &&
+                        ![
+                            'completed',
+                            'invoiced',
+                            'paid',
+                            'cancelled',
+                            'booking_draft',
+                        ].includes(job.status))) && (
                     <PartCard
                         jobId={job.id}
-                        part={job.part}
-                        canEdit={can.work}
+                        parts={job.parts}
+                        suppliers={suppliers}
+                        canAdd={
+                            can.work &&
+                            !['invoiced', 'paid', 'cancelled'].includes(
+                                job.status,
+                            )
+                        }
                         canTextArrived={
-                            can.update && job.status === 'waiting_for_parts'
+                            can.update &&
+                            ['waiting_for_parts', 'parts_ready'].includes(
+                                job.status,
+                            )
+                        }
+                        openText={
+                            typeof window !== 'undefined' &&
+                            new URLSearchParams(window.location.search).get(
+                                'parts_sms',
+                            ) === '1'
                         }
                     />
                 )}
