@@ -80,6 +80,13 @@ test('a task from "+" shows in My Jobs in its own colour and is ticked done', as
     await sheet.locator('[data-test="task-save"]').click();
     await expect(sheet).toHaveCount(0);
 
+    // Tasks are in the To Do column (the Jobs / To Do buttons in the header).
+    const todo = page.locator('[data-test="pane-todo"]');
+    const wasOn = (await todo.getAttribute('aria-pressed')) === 'true';
+    if (!wasOn) {
+        await todo.click();
+    }
+    await expect(page.locator('[data-test="todo-pane"]')).toBeVisible();
     const row = page
         .locator('[data-test="task-row"]')
         .filter({ hasText: title });
@@ -88,6 +95,11 @@ test('a task from "+" shows in My Jobs in its own colour and is ticked done', as
     await row.locator('[data-test="task-toggle"]').click();
     await expect(row).toHaveAttribute('data-done', 'true');
     await page.screenshot({ path: info.outputPath('390-my-jobs-task.png') });
+    // Jobs and To Do cannot both be off: with Jobs off, To Do stays on.
+    if (!wasOn) {
+        await todo.click();
+        await expect(todo).toHaveAttribute('aria-pressed', 'false');
+    }
 });
 
 test('Save as draft leaves an orange draft; Finish booking on the job page sends the confirmation', async ({

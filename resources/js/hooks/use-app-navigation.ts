@@ -17,6 +17,7 @@ import {
     LayoutGrid,
     MapPin,
     MessageSquare,
+    Package,
     Percent,
     Plus,
     Receipt,
@@ -46,6 +47,7 @@ import {
     mine as myJobs,
 } from '@/routes/jobs';
 import { index as messageInbox } from '@/routes/messages';
+import { index as partsPage } from '@/routes/parts';
 import { index as reports } from '@/routes/reports';
 import { index as taxes } from '@/routes/taxes';
 import { index as team } from '@/routes/team';
@@ -172,6 +174,8 @@ export function useAppNavigation(): AppNavigation {
         can.viewCustomers &&
             item('customers', 'nav.customers', customers(), Contact),
         invoicesItem,
+        // Parts to order and on the way (owner's task of November 19).
+        can.viewJobs && item('parts', 'nav.parts', partsPage(), Package),
         // With automatic texting the inbox sits in the header of Today and Jobs as well.
         messages,
         can.useAssistant &&

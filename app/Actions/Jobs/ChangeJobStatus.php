@@ -4,10 +4,12 @@ namespace App\Actions\Jobs;
 
 use App\Enums\JobStatus;
 use App\Jobs\SuggestPartNumber;
+use App\Models\JobPart;
 use App\Models\JobStatusChange;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
 use App\Models\User;
+use App\Support\Parts\SupplierTasks;
 
 /**
  * Sets a job's status and logs the change with user and time. Must run in a tenant context.
@@ -39,8 +41,15 @@ class ChangeJobStatus
         $job->cancelled_at = $to === JobStatus::Cancelled ? now() : null;
         $job->save();
 
-        // A part is needed: the AI suggests a possible part number (marked "check") in the background.
+        // A part is needed and none is listed yet: a row for it on the Parts page (the name is filled in there), and
+        // the AI suggests a possible part number (marked "check") in the background.
         if ($to === JobStatus::NeedToOrderParts) {
+            if (! $job->parts()->where('status', JobPart::TO_ORDER)->exists()) {
+                $part = new JobPart(['service_job_id' => $job->id, 'name' => trim((string) $job->part_name) ?: __('parts.unnamed')]);
+                $part->created_by = $user?->id;
+                $part->save();
+                SupplierTasks::sync();
+            }
             SuggestPartNumber::dispatch($job->id, (int) $job->company_id)->afterCommit();
         }
 

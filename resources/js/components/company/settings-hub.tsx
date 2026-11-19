@@ -16,6 +16,7 @@ import {
     ShieldCheck,
     Star,
     Tags,
+    Truck,
     Users,
     Wrench,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ import { edit as autoMessages } from '@/routes/company/auto-messages';
 import { edit as googleProfiles } from '@/routes/company/google-profiles';
 import { edit as answers } from '@/routes/company/answers';
 import { edit as morning } from '@/routes/company/morning';
+import { index as suppliers } from '@/routes/company/suppliers';
 import { unpaid } from '@/routes/invoices';
 import { edit as messaging } from '@/routes/company/messaging';
 import { edit as services } from '@/routes/company/services';
@@ -265,6 +267,13 @@ export function SettingsHub({
                   icon: <MessageCircleQuestion />,
                   title: t('answers.settings.title'),
                   subtitle: t('answers.settings.description'),
+              },
+              {
+                  key: 'suppliers',
+                  href: suppliers(),
+                  icon: <Truck />,
+                  title: t('parts.suppliers.title'),
+                  subtitle: t('parts.suppliers.description'),
               },
               {
                   key: 'unpaid',

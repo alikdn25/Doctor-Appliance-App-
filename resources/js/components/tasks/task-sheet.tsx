@@ -2,8 +2,8 @@ import { router, useForm, usePage } from '@inertiajs/react';
 import { Check, ListTodo, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
-import type { TaskItem } from '@/components/tasks/types';
-import { REMINDERS } from '@/components/tasks/types';
+import type { TaskDraft, TaskItem } from '@/components/tasks/types';
+import { REMINDERS, TASK_KINDS } from '@/components/tasks/types';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
@@ -61,6 +61,7 @@ export function TaskSheet({
     onOpenChange,
     task = null,
     date,
+    draft = null,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -68,11 +69,14 @@ export function TaskSheet({
     task?: TaskItem | null;
     /** The day a new task starts on (the calendar's day). */
     date?: string | null;
+    /** A new task read from the To Do microphone. */
+    draft?: TaskDraft | null;
 }) {
     const t = useTrans();
     const { auth } = usePage().props;
     const timeZone = auth.company?.timezone ?? 'UTC';
     const [people, setPeople] = useState<Option[]>([]);
+    const [jobs, setJobs] = useState<Option[]>([]);
     const form = useForm({
         title: '',
         note: '',
@@ -82,17 +86,26 @@ export function TaskSheet({
         end_time: '',
         user_id: '',
         remind_minutes: '' as string,
+        kind: '' as string,
+        address: '',
+        service_job_id: '',
+        repeat: 'none',
     });
 
     useEffect(() => {
         if (!open) return;
         form.clearErrors();
-        const start = task?.start_time ?? nextHour(timeZone);
+        const start =
+            task?.start_time ?? draft?.start_time ?? nextHour(timeZone);
         form.setData({
-            title: task?.title ?? '',
+            title: task?.title ?? draft?.title ?? '',
             note: task?.note ?? '',
-            task_date: task?.date ?? date ?? companyToday(timeZone),
-            all_day: task?.all_day ?? false,
+            task_date:
+                task?.date ??
+                draft?.task_date ??
+                date ??
+                companyToday(timeZone),
+            all_day: task?.all_day ?? draft?.all_day ?? false,
             start_time: start,
             end_time: task ? (task.end_time ?? '') : plusHour(start),
             user_id: task ? String(task.user_id) : '',
@@ -103,6 +116,10 @@ export function TaskSheet({
                         ? ''
                         : '15'
                     : String(task.remind_minutes),
+            kind: task?.kind ?? draft?.kind ?? '',
+            address: task?.address ?? draft?.address ?? '',
+            service_job_id: task?.job ? String(task.job.id) : '',
+            repeat: task?.repeat ?? 'none',
         });
 
         // Who it can be for: only the office gets a list (others' tasks are always their own).
@@ -112,15 +129,16 @@ export function TaskSheet({
             signal: controller.signal,
         })
             .then((response) => (response.ok ? response.json() : null))
-            .then((data: { people: Option[] } | null) =>
-                setPeople(data?.people ?? []),
-            )
+            .then((data: { people: Option[]; jobs?: Option[] } | null) => {
+                setPeople(data?.people ?? []);
+                setJobs(data?.jobs ?? []);
+            })
             .catch(() => undefined);
 
         return () => controller.abort();
         // Only when the sheet opens.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, task?.id]);
+    }, [open, task?.id, draft]);
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -130,6 +148,12 @@ export function TaskSheet({
             remind_minutes:
                 d.remind_minutes === '' ? null : Number(d.remind_minutes),
             end_time: d.end_time === '' ? null : d.end_time,
+            kind: d.kind === '' ? null : d.kind,
+            address: d.address.trim() === '' ? null : d.address,
+            service_job_id:
+                d.service_job_id === '' ? null : Number(d.service_job_id),
+            // A Home task is always one's own.
+            ...(d.kind === 'home' ? { user_id: null } : {}),
         }));
         const options = {
             preserveScroll: true,
@@ -262,7 +286,110 @@ export function TaskSheet({
                             </FormField>
                         </div>
                     )}
-                    {people.length > 1 && (
+                    <div className="grid grid-cols-2 gap-2">
+                        <FormField
+                            id="task-kind"
+                            label={t('tasks.fields.kind')}
+                            error={form.errors.kind}
+                        >
+                            <NativeSelect
+                                id="task-kind"
+                                value={form.data.kind}
+                                disabled={readOnly}
+                                onChange={(e) =>
+                                    form.setData('kind', e.target.value)
+                                }
+                                data-test="task-kind"
+                            >
+                                <option value="">
+                                    {t('tasks.kinds.none')}
+                                </option>
+                                {TASK_KINDS.map((kind) => (
+                                    <option key={kind} value={kind}>
+                                        {t(`tasks.kinds.${kind}`)}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FormField>
+                        <FormField
+                            id="task-repeat"
+                            label={t('tasks.fields.repeat')}
+                            error={form.errors.repeat}
+                        >
+                            <NativeSelect
+                                id="task-repeat"
+                                value={form.data.repeat}
+                                disabled={readOnly}
+                                onChange={(e) =>
+                                    form.setData('repeat', e.target.value)
+                                }
+                            >
+                                {(['none', 'weekly', 'monthly'] as const).map(
+                                    (repeat) => (
+                                        <option key={repeat} value={repeat}>
+                                            {t(`tasks.repeats.${repeat}`)}
+                                        </option>
+                                    ),
+                                )}
+                            </NativeSelect>
+                        </FormField>
+                    </div>
+                    {form.data.kind === 'home' && (
+                        <p className="text-xs text-muted-foreground">
+                            {t('tasks.home_hint')}
+                        </p>
+                    )}
+                    <FormField
+                        id="task-address"
+                        label={t('tasks.fields.address')}
+                        error={form.errors.address}
+                    >
+                        <Input
+                            id="task-address"
+                            value={form.data.address}
+                            maxLength={500}
+                            disabled={readOnly}
+                            onChange={(e) =>
+                                form.setData('address', e.target.value)
+                            }
+                        />
+                    </FormField>
+                    {(jobs.length > 0 || form.data.service_job_id !== '') && (
+                        <FormField
+                            id="task-job"
+                            label={t('tasks.fields.service_job_id')}
+                            error={form.errors.service_job_id}
+                        >
+                            <NativeSelect
+                                id="task-job"
+                                value={form.data.service_job_id}
+                                disabled={readOnly}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'service_job_id',
+                                        e.target.value,
+                                    )
+                                }
+                            >
+                                <option value="">{t('tasks.no_job')}</option>
+                                {task?.job &&
+                                    !jobs.some(
+                                        (j) => j.value === String(task.job!.id),
+                                    ) && (
+                                        <option value={String(task.job.id)}>
+                                            #{task.job.number}{' '}
+                                            {task.job.customer ?? ''}
+                                        </option>
+                                    )}
+                                {jobs.map((job) => (
+                                    <option key={job.value} value={job.value}>
+                                        {job.label}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </FormField>
+                    )}
+                    {people.length > 1 && form.data.kind !== 'home' && (
                         <FormField
                             id="task-user"
                             label={t('tasks.fields.user_id')}

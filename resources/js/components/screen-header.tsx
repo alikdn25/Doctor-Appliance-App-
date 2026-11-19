@@ -21,8 +21,11 @@ export function ScreenHeader({
     back,
     leading,
     actions,
+    titleControl,
 }: {
     title: string;
+    /** Shown in place of the title text (e.g. the Jobs / To Do buttons of Today); the title stays for screen readers. */
+    titleControl?: ReactNode;
     subtitle?: ReactNode;
     back?: NonNullable<InertiaLinkProps['href']>;
     /** Replaces ← on the left, e.g. ✕ that closes a form (UX-REDESIGN §7.1). */
@@ -40,9 +43,16 @@ export function ScreenHeader({
         <div className="flex w-full items-center gap-3">
             {leading ?? (backTo && <BackButton href={backTo} />)}
             <div className="min-w-0 flex-1">
-                <h1 className="truncate text-xl leading-tight font-semibold text-white">
+                <h1
+                    className={
+                        titleControl
+                            ? 'sr-only'
+                            : 'truncate text-xl leading-tight font-semibold text-white'
+                    }
+                >
                     {title}
                 </h1>
+                {titleControl}
                 {subtitle && (
                     <p className="line-clamp-2 text-sm text-white/75">
                         {subtitle}

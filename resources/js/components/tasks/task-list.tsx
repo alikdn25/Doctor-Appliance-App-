@@ -1,5 +1,5 @@
 import { router, usePage } from '@inertiajs/react';
-import { Bell, Check, ListTodo } from 'lucide-react';
+import { Bell, Check, ListTodo, MapPin, Repeat } from 'lucide-react';
 import { dayLabel } from '@/components/calendar/types';
 import type { TaskItem } from '@/components/tasks/types';
 import { useClock } from '@/lib/datetime';
@@ -16,6 +16,7 @@ export function TaskList({
     onOpen,
     byDay = false,
     showOwner = false,
+    bare = false,
 }: {
     tasks: TaskItem[];
     onOpen: (task: TaskItem) => void;
@@ -23,6 +24,8 @@ export function TaskList({
     byDay?: boolean;
     /** The calendar shows whose task it is. */
     showOwner?: boolean;
+    /** The To Do column has its own heading. */
+    bare?: boolean;
 }) {
     const t = useTrans();
     const clock = useClock();
@@ -43,9 +46,11 @@ export function TaskList({
             aria-label={t('tasks.list')}
             data-test="task-list"
         >
-            <h2 className="flex items-center gap-2 px-4 pt-3 pb-1 text-sm font-semibold text-[var(--task-text)]">
-                <ListTodo className="size-4" /> {t('tasks.list')}
-            </h2>
+            {!bare && (
+                <h2 className="flex items-center gap-2 px-4 pt-3 pb-1 text-sm font-semibold text-[var(--task-text)]">
+                    <ListTodo className="size-4" /> {t('tasks.list')}
+                </h2>
+            )}
             <ul className="divide-y">
                 {tasks.map((task, i) => (
                     <li key={task.id}>
@@ -102,6 +107,14 @@ export function TaskList({
                                             aria-hidden="true"
                                         />
                                     )}
+                                    {task.repeat && task.repeat !== 'none' && (
+                                        <Repeat
+                                            className="size-3"
+                                            aria-label={t(
+                                                `tasks.repeats.${task.repeat}`,
+                                            )}
+                                        />
+                                    )}
                                 </span>
                                 <span
                                     className={cn(
@@ -112,6 +125,39 @@ export function TaskList({
                                 >
                                     {task.title}
                                 </span>
+                                {(task.kind || task.automatic || task.job) && (
+                                    <span className="block truncate text-xs text-muted-foreground">
+                                        {[
+                                            task.kind &&
+                                                t(`tasks.kinds.${task.kind}`),
+                                            task.automatic &&
+                                                t('tasks.automatic'),
+                                            task.job &&
+                                                `#${task.job.number}${task.job.customer ? ` ${task.job.customer}` : ''}`,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' · ')}
+                                    </span>
+                                )}
+                                {task.on_the_way && (
+                                    <span
+                                        className="flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+                                        data-test="task-on-the-way"
+                                    >
+                                        <MapPin className="size-3" />
+                                        {task.on_the_way}
+                                    </span>
+                                )}
+                                {(task.carried_days ?? 0) > 0 && (
+                                    <span
+                                        className="block text-xs font-medium text-amber-700 dark:text-amber-400"
+                                        data-test="task-carried"
+                                    >
+                                        {t('tasks.carried', {
+                                            count: task.carried_days ?? 0,
+                                        })}
+                                    </span>
+                                )}
                                 {showOwner && task.user_name && (
                                     <span className="block truncate text-xs text-muted-foreground">
                                         {t('tasks.for_person', {

@@ -2,8 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Enums\JobStatus;
 use App\Models\Company;
+use App\Models\JobPart;
 use App\Models\ServiceJob;
 use App\Services\AI\AiService;
 use App\Services\AI\AiUnavailable;
@@ -13,7 +13,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * A job moved to "Need to order parts": the AI's possible part number is stored as a suggestion (marked "check").
+ * A part to order without a number: the AI's possible part number goes into the part, marked "check" until someone
+ * corrects or confirms it (Parts page, job page).
  */
 class SuggestPartNumber implements ShouldQueue
 {
@@ -34,18 +35,21 @@ class SuggestPartNumber implements ShouldQueue
         $tenancy->runAs($company, function () use ($finder) {
             $job = ServiceJob::query()->find($this->jobId);
 
-            if ($job === null || $job->status !== JobStatus::NeedToOrderParts || filled($job->part_number)) {
+            if ($job === null) {
                 return;
             }
 
-            try {
-                $suggestion = $finder->suggest($job);
-            } catch (AiUnavailable) {
-                return;
-            }
+            foreach ($job->parts()->where('status', JobPart::TO_ORDER)->whereNull('part_number')->limit(5)->get() as $part) {
+                try {
+                    $suggestion = $finder->suggest($job, $part->name);
+                } catch (AiUnavailable) {
+                    return;
+                }
 
-            if ($suggestion !== null) {
-                $job->forceFill(['part_suggestion' => $suggestion])->saveQuietly();
+                if ($suggestion !== null) {
+                    JobPart::query()->whereKey($part->id)->whereNull('part_number')
+                        ->update(['part_number' => $suggestion['part_number'], 'number_unverified' => true]);
+                }
             }
         });
     }

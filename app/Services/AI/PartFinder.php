@@ -18,12 +18,13 @@ class PartFinder
      *
      * @throws AiUnavailable
      */
-    public function suggest(ServiceJob $job): ?array
+    public function suggest(ServiceJob $job, ?string $partName = null): ?array
     {
         $job->loadMissing('appliances');
+        $partName ??= $job->part_name;
         $appliances = $job->appliances->map(fn ($a) => trim(implode(' ', array_filter([$a->manufacturer, $a->type->label(), $a->model_number ? 'model '.$a->model_number : null]))))->implode('; ');
 
-        if ($appliances === '' && trim((string) $job->part_name) === '' && trim((string) $job->description) === '') {
+        if ($appliances === '' && trim((string) $partName) === '' && trim((string) $job->description) === '') {
             return null;
         }
 
@@ -34,7 +35,7 @@ class PartFinder
             'You help an appliance repair technician find the OEM part number to order. Give the most likely part number '
             .'for this appliance model and problem, as printed by the manufacturer. If you are not reasonably sure, return '
             .'part_number "". Never invent a model.',
-            [['role' => 'user', 'content' => "Appliance: {$appliances}\nPart needed: ".($job->part_name ?: '—')."\nProblem: ".($job->description ?: '—')."\nNotes: ".($job->tech_notes ?: '—')]],
+            [['role' => 'user', 'content' => "Appliance: {$appliances}\nPart needed: ".($partName ?: '—')."\nProblem: ".($job->description ?: '—')."\nNotes: ".($job->tech_notes ?: '—')]],
             schema: self::schema(),
             maxTokens: 400,
         )->json();

@@ -30,6 +30,8 @@ Schedule::command('visits:strict-arrival-reminders')->everyFiveMinutes()->withou
 
 // Task reminders ("+ → Task"): push and email to the one the task is for.
 Schedule::command('tasks:send-reminders')->everyMinute()->withoutOverlapping();
+// To Do: undone tasks move to today, repeating tasks make the next one, "Buy at" tasks follow the parts to order.
+Schedule::command('tasks:roll')->everyFifteenMinutes()->withoutOverlapping();
 
 // Data protection (docs/RESTORE.md): the database every hour, uploaded files every day, both encrypted in external
 // storage; a check after each run alerts the platform owner when the newest backup is missing or too old.

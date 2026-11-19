@@ -13,6 +13,7 @@ use App\Enums\LineKind;
 use App\Enums\PaymentMethod;
 use App\Enums\VisitStatus;
 use App\Models\Company;
+use App\Models\JobPart;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
 use App\Models\User;
@@ -163,10 +164,13 @@ class VoiceCloser
             if (trim((string) $data['note']) !== '') {
                 $job->tech_notes = trim(implode("\n", array_filter([$job->tech_notes, trim($data['note'])])));
             }
-            if ($data['status'] === 'need_to_order_parts' && trim((string) $data['part_name']) !== '') {
-                $job->part_name = trim($data['part_name']);
-            }
             $job->save();
+            // The part named goes to the Parts page (Order); the job's status follows when the visit is finished.
+            if ($data['status'] === 'need_to_order_parts' && trim((string) $data['part_name']) !== '') {
+                $part = new JobPart(['service_job_id' => $job->id, 'name' => mb_substr(trim($data['part_name']), 0, 255)]);
+                $part->created_by = $user->id;
+                $part->save();
+            }
 
             $invoice = null;
             if ($money['lines'] !== []) {

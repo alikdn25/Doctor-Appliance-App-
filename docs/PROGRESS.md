@@ -2,6 +2,40 @@
 
 Several PRs (SPEC §7.17).
 
+## PR 4 — Jobs / To Do on Today, To Do, Parts page (done)
+
+1. **Jobs / To Do** (`mine.tsx`, `PUT my-jobs/panes`, `company_user.today_panes`): two toggle buttons in the header of
+   Today instead of the title; both → two columns with compact job cards; both off is refused (client and server);
+   the choice is kept per person; no choice yet → both from 768 px, Jobs on phones.
+2. **To Do** (`tasks` + kind, address, lat/lng, job, repeat, planned_date, supplier): Home tasks only for their maker
+   (scope + policy); "+" and the microphone field (`TaskParser`, `AiFeature::TaskParse` = `AI_MODEL_BOOKING`,
+   `POST tasks/parse`, counted in the daily AI limit); "On the way: near the job at {time}, {N} km" (5 km); `tasks:roll`
+   every 15 min carries undone tasks to today ("carried over N days") and makes the next repeating task; Parts /
+   Materials done → "Add a receipt?" (`AfterPartPrompts`, the receipt camera flow); automatic "Buy at {supplier}: N
+   parts" (`SupplierTasks`), closed by itself when nothing is left to order there. Addresses geocoded by
+   `GeocodeAddress` (needs `GOOGLE_MAPS_SERVER_KEY`).
+3. **Parts** (`PartsController`, page `parts/index`, table `job_parts`, `suppliers`, Company → Suppliers): Order
+   (by supplier) / Waiting (days, > 7 highlighted) with counts; inline number / quantity / supplier; "check" on the
+   AI's number (`SuggestPartNumber` now fills each part); Bought / Ordered / Arrived; "Parts ordered" on the job orders
+   every part; the bar's parts counters and More → Parts open it. Status follows (`JobParts::syncStatus`), new
+   `JobStatus::PartsReady`: notification + the "Text the customer" sheet with three windows, sent only on Send.
+   Close by voice adds the named part. The job page lists the parts with "Part needed".
+4. **Morning SMS**: the Owners' tasks of the day, parts to buy (by supplier) and to receive.
+
+- **Migration** `2026_11_20_000100_add_todo_and_parts`: new tables `suppliers`, `job_parts`; new nullable / defaulted
+  columns on `tasks` and `company_user`; parts already saved on jobs waiting for a part are copied into `job_parts`
+  (the old `service_jobs.part_*` columns stay, nothing deleted).
+- Tests: `TodoPartsTest` (Jobs / To Do kept and never both off; task fields, Home hidden from others and the Owner;
+  carry-over with days; weekly / monthly repeat once; On the way; microphone fills, saves nothing, AI counted; receipt
+  offer; Buy at {supplier} made / counted / closed; Parts tabs, groups, days waiting; inline edit and "check"; Bought /
+  Arrived / Ordered; status rules and Parts ready text only after Confirm; Parts ordered; on-site job unchanged; job
+  page; suppliers and another company; morning SMS tasks and parts), tenant isolation (`suppliers`, `job_parts`),
+  updated `VoiceAndPartsTest` and `QuietMorningBackupTest`; browser `zz-todo-parts.spec.ts`.
+- Decisions (no answer in the task): "On the way" radius 5 km; the "Buy at" task is the first Owner's; ticking it done
+  marks those parts bought; a repeating task makes the next one on its day (not ahead); Parts page for people who see
+  the Jobs list; parts of cancelled jobs are hidden.
+- Next: owner checks Today (Jobs / To Do), To Do and Parts on a phone, adds suppliers in Company → Suppliers.
+
 ## PR 3 — self-booking by link, windows by area (done)
 
 1. **Self-booking** (`SelfBookingController`, table `booking_links`, public page `public/self-booking` at `/book/{token}`):

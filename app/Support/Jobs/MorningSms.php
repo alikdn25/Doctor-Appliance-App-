@@ -4,15 +4,18 @@ namespace App\Support\Jobs;
 
 use App\Enums\InvoiceStatus;
 use App\Enums\JobStatus;
+use App\Enums\UserRole;
 use App\Enums\VisitStatus;
 use App\Messaging\SmsThreads;
 use App\Models\Company;
 use App\Models\CustomerPhone;
 use App\Models\DriveBackup;
 use App\Models\Invoice;
+use App\Models\JobPart;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
 use App\Models\SmsThread;
+use App\Models\Task;
 use App\Support\Billing\Money;
 use App\Support\Locale\LocalTime;
 use App\Support\PhoneNumber;
@@ -23,8 +26,8 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * The morning SMS to the owner's own phone (owner's task of November 19), instead of the morning push: the day's jobs
  * in order (time, name, phone, address, what is broken), jobs without an address, unanswered texts (the night ones
- * too), customers who stay quiet, unpaid invoices (count and sum), completed jobs without an invoice, parts to receive
- * and "Backup failed" when the night's Google Drive backup did not go through. Built by code only (no AI), from the
+ * too), customers who stay quiet, unpaid invoices (count and sum), completed jobs without an invoice, the
+ * day's tasks, parts to buy and to receive and "Backup failed" when the night's Google Drive backup did not go through. Built by code only (no AI), from the
  * whole company. Must run in a tenant context.
  */
 class MorningSms
@@ -58,6 +61,14 @@ class MorningSms
                 $job->property?->hasAddress() ? $job->property->fullAddress() : __('automation.morning_sms.no_address_short'),
                 $what !== '' ? $what : null,
             ]));
+        }
+
+        // The Owners' tasks of today (all-day first), Home ones included: the SMS goes to the owner's own phone.
+        $tasks = Task::query()->whereNull('completed_at')->where('task_date', $day->toDateString())
+            ->whereHas('user.memberships', fn ($q) => $q->where('company_id', $company->id)->where('role', UserRole::Owner->value))
+            ->orderByDesc('all_day')->orderBy('start_time')->orderBy('id')->limit(15)->get();
+        if ($tasks->isNotEmpty()) {
+            $lines[] = __('automation.morning_sms.tasks', ['tasks' => $tasks->map(fn (Task $t) => ($t->all_day ? '' : LocalTime::format($t->starts_at, $tz, $company->locale).' ').$t->title)->implode('; ')]);
         }
 
         $open = ServiceJob::query()
@@ -94,10 +105,20 @@ class MorningSms
             $lines[] = trans_choice('automation.morning_sms.no_invoice', $noInvoice);
         }
 
-        $parts = (clone $open)->where('status', JobStatus::WaitingForParts->value)->with('customer')->latest('id')->limit(10)->get();
-        if ($parts->isNotEmpty()) {
-            $lines[] = trans_choice('automation.morning_sms.parts', $parts->count(), [
-                'jobs' => $parts->map(fn (ServiceJob $j) => '#'.$j->number.($j->part_name ? ' '.$j->part_name : ''))->implode(', '),
+        // Parts to buy (by supplier) and to receive (ordered, waiting).
+        $toBuy = JobPart::query()->where('status', JobPart::TO_ORDER)->whereHas('job', fn ($q) => $q->where('status', '!=', JobStatus::Cancelled->value))
+            ->with('supplier')->get();
+        if ($toBuy->isNotEmpty()) {
+            $lines[] = trans_choice('automation.morning_sms.parts_to_buy', $toBuy->count(), [
+                'parts' => $toBuy->groupBy(fn (JobPart $p) => $p->supplier?->name ?? __('parts.no_supplier'))
+                    ->map(fn ($group, $supplier) => $supplier.': '.$group->pluck('name')->implode(', '))->implode('; '),
+            ]);
+        }
+        $toReceive = JobPart::query()->where('status', JobPart::ORDERED)->whereHas('job', fn ($q) => $q->where('status', '!=', JobStatus::Cancelled->value))
+            ->with('job')->orderBy('ordered_on')->limit(15)->get();
+        if ($toReceive->isNotEmpty()) {
+            $lines[] = trans_choice('automation.morning_sms.parts', $toReceive->count(), [
+                'jobs' => $toReceive->map(fn (JobPart $p) => '#'.$p->job->number.' '.$p->name)->implode(', '),
             ]);
         }
 

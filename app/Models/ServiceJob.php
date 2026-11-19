@@ -195,6 +195,16 @@ class ServiceJob extends Model
     }
 
     /**
+     * The parts the job needs (Parts page).
+     *
+     * @return HasMany<JobPart, $this>
+     */
+    public function parts(): HasMany
+    {
+        return $this->hasMany(JobPart::class)->orderBy('id');
+    }
+
+    /**
      * @return HasMany<JobStatusChange, $this>
      */
     public function statusChanges(): HasMany

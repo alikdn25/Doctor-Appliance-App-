@@ -539,6 +539,7 @@ return [
         'in_progress' => 'In progress',
         'need_to_order_parts' => 'Need to order parts',
         'waiting_for_parts' => 'Waiting for parts',
+        'parts_ready' => 'Parts ready',
         'waiting_for_customer' => 'Waiting for customer',
         'completed' => 'Completed',
         'invoiced' => 'Invoiced',

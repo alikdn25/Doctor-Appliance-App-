@@ -195,6 +195,9 @@
     --status-waiting-for-parts-from: #f0fdfa;
     --status-waiting-for-parts-to: #99f6e4;
     --status-waiting-for-parts-text: #115e59;
+    --status-parts-ready-from: #f7fee7;
+    --status-parts-ready-to: #bef264;
+    --status-parts-ready-text: #3f6212;
     --status-waiting-for-customer-from: #fff8ee;
     --status-waiting-for-customer-to: #ffd3a1;
     --status-waiting-for-customer-text: #9a3412;

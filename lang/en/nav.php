@@ -23,6 +23,8 @@ return [
     'jobs' => 'Jobs',
     'invoices' => 'Invoices',
     'my_jobs' => 'My jobs',
+    'parts' => 'Parts',
+    'suppliers' => 'Suppliers',
     'brands' => 'Brands',
     'team' => 'Team',
     'taxes' => 'Taxes',
