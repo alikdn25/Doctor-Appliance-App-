@@ -97,6 +97,7 @@ test('Jobs / To Do: the choice is kept for the person and both cannot be off', f
 // ——— To Do ———
 
 test('a task keeps its type, address, job and repeat; Home is always one\'s own', function () {
+    $other = ServiceJob::factory()->create();
     $this->post(route('tasks.store'), [
         'title' => 'Buy heating element', 'task_date' => '2026-10-14', 'all_day' => true,
         'kind' => 'parts', 'address' => '4300 Kingsway, Burnaby', 'service_job_id' => $this->job->id, 'repeat' => 'weekly',
@@ -111,7 +112,6 @@ test('a task keeps its type, address, job and repeat; Home is always one\'s own'
     expect(inCompany($this->company, fn () => Task::query()->where('kind', 'home')->sole()->user_id))->toBe($this->owner->id);
 
     // A job of another company cannot be linked.
-    $other = ServiceJob::factory()->create();
     $this->post(route('tasks.store'), ['title' => 'X', 'task_date' => '2026-10-14', 'all_day' => true, 'service_job_id' => $other->id])
         ->assertSessionHasErrors('service_job_id');
 });
@@ -380,11 +380,11 @@ test('the parts counters of the bar and More open the Parts page; the job page l
 });
 
 test('suppliers are kept in the settings; another company cannot see or touch parts and suppliers', function () {
+    $stranger = memberOf(Company::factory()->create());
     $this->post(route('company.suppliers.store'), ['name' => 'Reliable Parts', 'address' => '123 Fraser St'])->assertSessionHasNoErrors();
     $this->get(route('company.suppliers.index'))->assertInertia(fn (Assert $page) => $page->has('suppliers', 2));
 
     $part = addPart();
-    $stranger = memberOf(Company::factory()->create());
     $this->actingAs($stranger);
     $this->get(route('parts.index'))->assertInertia(fn (Assert $page) => $page->has('parts', 0)->where('counts', ['order' => 0, 'waiting' => 0])->has('suppliers', 0));
     $this->post(route('parts.bought', $part))->assertNotFound();
