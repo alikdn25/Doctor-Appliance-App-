@@ -9,6 +9,8 @@ use App\Models\Invoice;
 use App\Support\Billing\DocumentPdf;
 use App\Support\Billing\PublicDocument;
 use App\Support\Mail\MailSender;
+use App\Support\Reviews\ReviewImage;
+use App\Support\Reviews\ReviewLink;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -72,8 +74,13 @@ class DocumentMail extends Mailable implements ShouldQueue
         return $this->inCompany(function () {
             $document = $this->document();
 
+            $review = $this->review($document);
+            [$before, $after] = $this->splitMessage($review !== null);
+
             return new Content(view: 'mail.document', with: [
-                'messageText' => $this->messageText,
+                'messageBefore' => $before,
+                'messageAfter' => $after,
+                'review' => $review,
                 'url' => PublicDocument::url($document),
                 'kind' => $this->kind(),
                 'brandName' => $document->brand?->name ?? $this->company()->name,
@@ -93,6 +100,41 @@ class DocumentMail extends Mailable implements ShouldQueue
                 DocumentPdf::filename($this->document()),
             )->withMime('application/pdf'),
         ];
+    }
+
+    /**
+     * The Google review block of an invoice email: link and optional picture; null when the company has no review
+     * link (Company → Google reviews).
+     *
+     * @return array{url: string, image: string|null}|null
+     */
+    private function review(Estimate|Invoice $document): ?array
+    {
+        if (! $document instanceof Invoice) {
+            return null;
+        }
+
+        $url = ReviewLink::for($document->brand);
+
+        return $url === null ? null : ['url' => $url, 'image' => ReviewImage::url($this->company())];
+    }
+
+    /**
+     * The message around the review block: it goes right before the "view and pay online" line, or after the whole
+     * message when the user removed that line.
+     *
+     * @return array{string, string}
+     */
+    private function splitMessage(bool $withReview): array
+    {
+        $line = __('documents.mail.pay_line');
+        $at = $withReview ? mb_strpos($this->messageText, $line) : false;
+
+        if ($at === false) {
+            return [$this->messageText, ''];
+        }
+
+        return [rtrim(mb_substr($this->messageText, 0, $at)), mb_substr($this->messageText, $at)];
     }
 
     private function kind(): string

@@ -2504,3 +2504,16 @@ new screens, then restyle the app screen by screen to DESIGN.md (field screens f
 ✅ Real email transport: every email is sent from `MAIL_FROM_ADDRESS` with the company/brand name, replies go to the
 brand's sender/contact email, else `MAIL_REPLY_TO_ADDRESS` (notifications and password reset included). New
 `php artisan mail:test {to}`; `app:deployment-check` fails in production while `MAIL_MAILER` is log/array.
+
+## Google review block in invoice emails (November 20, 2026)
+
+✅ Invoice emails: the first sentence is now "Please find invoice INV-1 for $315.00 attached." (no balance / due date
+in brackets). Between it and "You can view it and pay online with the link below." comes a "Leave a review" block:
+picture on the left (110×110, above the text on narrow screens), bold title, text, ⭐⭐⭐⭐⭐ and "Leave a review →",
+all linking to the Google review link in a new tab. Tables and inline styles only. The link is the brand's default
+Google review location (Company → Google reviews), else a location of that brand or for any brand; without one there
+is no block. If the user removes the pay line from the message, the block follows the message. Estimates: no block.
+✅ Company → Google reviews → "Picture in invoice emails" (optional): any upload is cropped square and saved as a
+220×220 PNG with transparency, ≤ 40 KB (`companies.review_image_path`, migration `2026_11_20_000200`). Served by
+absolute URL from APP_URL. `php artisan reviews:set-image {company} {file}` sets it from the server; Doctor
+Appliance's picture is `resources/images/reviews/doctor-appliance.png`.

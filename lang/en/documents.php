@@ -33,7 +33,7 @@ return [
 
     'default_message' => [
         'estimate' => "Hi :name,\n\nThank you for choosing :brand. Please find estimate :number for :total attached. You can also view it online with the link below.\n\nKind regards,\n:brand",
-        'invoice' => "Hi :name,\n\nThank you for choosing :brand. Please find invoice :number for :total attached (balance due :balance, due :due). You can view it and pay online with the link below.\n\nKind regards,\n:brand",
+        'invoice' => "Hi :name,\n\nThank you for choosing :brand. Please find invoice :number for :total attached.\n\n:pay_line\n\nKind regards,\n:brand",
         'invoice_paid' => "Hi :name,\n\nThank you for choosing :brand. Please find invoice :number for :total attached. It is paid in full — thank you!\n\nKind regards,\n:brand",
     ],
 
@@ -41,6 +41,15 @@ return [
         'subject' => ':kind :number from :brand',
         'view' => 'View :kind',
         'link_hint' => 'If the button does not work, copy this link into your browser:',
+        // The Google review block goes right before this line of the invoice message.
+        'pay_line' => 'You can view it and pay online with the link below.',
+        'review' => [
+            'title' => 'Every review helps a local family business grow.',
+            'text' => 'If I fixed it right, would you take 30 seconds to tell your neighbours on Google? It means more than you know. 🙏',
+            'stars' => '⭐⭐⭐⭐⭐',
+            'cta' => 'Leave a review →',
+            'image_alt' => 'Leave us a Google review',
+        ],
     ],
 
     'receipt' => [
