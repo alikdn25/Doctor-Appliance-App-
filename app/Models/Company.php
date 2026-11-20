@@ -83,6 +83,7 @@ use Illuminate\Support\Carbon;
  * @property int $sms_reminder_hours Reminder about an unanswered text every N hours (max 3)
  * @property int $warranty_lookback_days "Possible warranty" when the customer had a job finished within this many days
  * @property int $silence_reminder_hours "Customer is quiet": one reminder this many hours after our text got no answer
+ * @property string|null $review_image_path Picture of the Google review block in invoice emails (220×220 PNG)
  * @property bool $morning_sms_enabled The morning SMS to the owner's own phone
  * @property string|null $morning_sms_phone E.164
  * @property string $morning_sms_time HH:MM, company time

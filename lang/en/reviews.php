@@ -21,6 +21,20 @@ return [
     'none' => 'None',
     'rules' => 'Google and the FTC do not allow rewards or discounts for reviews, or asking only happy customers to post. Every customer gets the same request.',
 
+    'image' => [
+        'title' => 'Picture in invoice emails',
+        'description' => 'Invoice emails show a "Leave a review" block with your Google review link. Add a picture to it (optional), e.g. you with a thumbs up. Square works best; it is shown at 110×110 and saved as a small PNG.',
+        'field' => 'Picture',
+        'choose' => 'Choose picture',
+        'replace' => 'Replace picture',
+        'remove' => 'Remove picture',
+        'none' => 'No picture: the block shows text only.',
+        'no_link' => 'Add a review link above: without one, invoice emails have no review block.',
+        'saved' => 'Picture saved.',
+        'removed' => 'Picture removed.',
+        'unusable' => 'This picture cannot be used. Try a simpler PNG or JPEG.',
+    ],
+
     'prompt' => [
         'title' => 'Send Google Review request?',
         'description' => 'The review link goes to the customer as a separate text. You can change the words for this customer.',

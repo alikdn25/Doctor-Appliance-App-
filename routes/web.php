@@ -405,6 +405,8 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::delete('google-drive', [MorningController::class, 'disconnect'])->name('google-drive.disconnect');
             Route::get('google-reviews', [GoogleProfileController::class, 'edit'])->name('company.google-profiles.edit');
             Route::put('google-reviews', [GoogleProfileController::class, 'update'])->name('company.google-profiles.update');
+            Route::post('google-reviews/image', [GoogleProfileController::class, 'storeImage'])->name('company.google-profiles.image.store');
+            Route::delete('google-reviews/image', [GoogleProfileController::class, 'destroyImage'])->name('company.google-profiles.image.destroy');
             Route::get('services', [ServiceController::class, 'edit'])->name('company.services.edit');
             Route::put('services', [ServiceController::class, 'update'])->name('company.services.update');
 

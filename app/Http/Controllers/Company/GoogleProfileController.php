@@ -6,13 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\GoogleProfile;
 use App\Services\AuditLogger;
+use App\Support\Reviews\ReviewImage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 /**
  * Company → Google reviews: the company's Google Business Profiles and their review links (SPEC §8).
@@ -36,6 +39,7 @@ class GoogleProfileController extends Controller
                         && ($profile->brand_id === $b->id || ($profile->brand_id === null && $brands->count() === 1))),
                 ]),
             'brands' => $brands->map(fn (Brand $b) => ['value' => (string) $b->id, 'label' => $b->name])->values(),
+            'reviewImageUrl' => ReviewImage::url(currentCompany()),
         ]);
     }
 
@@ -100,6 +104,40 @@ class GoogleProfileController extends Controller
 
         $audit->record('google_profiles.updated', null, ['count' => count($validated['profiles'])]);
         Inertia::flash('toast', ['type' => 'success', 'message' => __('reviews.saved')]);
+
+        return to_route('company.google-profiles.edit');
+    }
+
+    /**
+     * The optional picture of the review block in invoice emails (saved as a 220×220 PNG).
+     */
+    public function storeImage(Request $request, AuditLogger $audit): RedirectResponse
+    {
+        Gate::authorize('manageCatalog');
+
+        $request->validate([
+            'image' => ['required', 'image', 'mimes:png,jpg,jpeg,webp,gif', 'max:10240', 'dimensions:min_width=110,min_height=110'],
+        ], [], ['image' => __('reviews.image.field')]);
+
+        try {
+            ReviewImage::store(currentCompany(), $request->file('image')->getRealPath());
+        } catch (RuntimeException) {
+            throw ValidationException::withMessages(['image' => __('reviews.image.unusable')]);
+        }
+
+        $audit->record('google_profiles.image_updated', null, []);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('reviews.image.saved')]);
+
+        return to_route('company.google-profiles.edit');
+    }
+
+    public function destroyImage(AuditLogger $audit): RedirectResponse
+    {
+        Gate::authorize('manageCatalog');
+
+        ReviewImage::delete(currentCompany());
+        $audit->record('google_profiles.image_removed', null, []);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('reviews.image.removed')]);
 
         return to_route('company.google-profiles.edit');
     }

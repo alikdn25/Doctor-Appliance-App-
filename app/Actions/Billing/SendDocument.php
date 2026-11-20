@@ -7,7 +7,6 @@ use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\User;
 use App\Services\AuditLogger;
-use App\Support\Billing\DocumentPrint;
 use App\Support\Billing\Money;
 use App\Support\Billing\PublicDocument;
 use Illuminate\Support\Facades\Mail;
@@ -55,8 +54,7 @@ class SendDocument
             'brand' => $document->brand?->name ?? $company->name,
             'number' => $document->number,
             'total' => $money($document->total),
-            'balance' => $document instanceof Invoice ? $money($document->balance) : '',
-            'due' => $document instanceof Invoice ? (DocumentPrint::date($document->due_on) ?? '') : '',
+            'pay_line' => __('documents.mail.pay_line'),
         ]);
     }
 }

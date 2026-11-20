@@ -1,6 +1,7 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { ExternalLink, Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
+import { FilePicker } from '@/components/file-picker';
 import InputError from '@/components/input-error';
 import { ScreenHeader } from '@/components/screen-header';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,6 +12,10 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
 import { edit, update } from '@/routes/company/google-profiles';
+import {
+    destroy as destroyImage,
+    store as storeImage,
+} from '@/routes/company/google-profiles/image';
 import type { Option } from '@/types';
 
 type Row = {
@@ -30,6 +35,7 @@ let rowKey = 0;
 export default function GoogleProfiles({
     profiles,
     brands,
+    reviewImageUrl,
 }: {
     profiles: {
         id: number;
@@ -39,6 +45,7 @@ export default function GoogleProfiles({
         is_default: boolean;
     }[];
     brands: Option[];
+    reviewImageUrl: string | null;
 }) {
     const t = useTrans();
     const form = useForm<{ profiles: Row[] }>({
@@ -274,7 +281,102 @@ export default function GoogleProfiles({
                     {t('common.save')}
                 </Button>
             </form>
+
+            <ReviewImageCard
+                imageUrl={reviewImageUrl}
+                hasLink={profiles.length > 0}
+            />
         </>
+    );
+}
+
+/**
+ * The optional picture of the "Leave a review" block in invoice emails. Saved as soon as it is picked.
+ */
+function ReviewImageCard({
+    imageUrl,
+    hasLink,
+}: {
+    imageUrl: string | null;
+    hasLink: boolean;
+}) {
+    const t = useTrans();
+    const form = useForm<{ image: File | null }>({ image: null });
+
+    const pick = (file: File | null) => {
+        if (!file) {
+            return;
+        }
+
+        form.transform(() => ({ image: file }));
+        form.post(storeImage().url, {
+            forceFormData: true,
+            preserveScroll: true,
+            onFinish: () => form.reset(),
+        });
+    };
+
+    return (
+        <section className="mx-auto w-full max-w-2xl space-y-3 px-4 pb-6 sm:px-6">
+            <div className="da-card space-y-3 p-4">
+                <h2 className="text-base font-semibold">
+                    {t('reviews.image.title')}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                    {t('reviews.image.description')}
+                </p>
+                {!hasLink && (
+                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                        {t('reviews.image.no_link')}
+                    </p>
+                )}
+                <div className="flex items-center gap-4">
+                    {imageUrl ? (
+                        <img
+                            src={imageUrl}
+                            alt=""
+                            width={110}
+                            height={110}
+                            className="size-[110px] shrink-0 rounded-lg border bg-muted/40 object-contain"
+                        />
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            {t('reviews.image.none')}
+                        </p>
+                    )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <FilePicker
+                        id="review-image"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        disabled={form.processing}
+                        file={null}
+                        label={t(
+                            imageUrl
+                                ? 'reviews.image.replace'
+                                : 'reviews.image.choose',
+                        )}
+                        onChange={pick}
+                    />
+                    {imageUrl && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-11"
+                            disabled={form.processing}
+                            onClick={() =>
+                                router.delete(destroyImage().url, {
+                                    preserveScroll: true,
+                                })
+                            }
+                        >
+                            <Trash2 /> {t('reviews.image.remove')}
+                        </Button>
+                    )}
+                </div>
+                <InputError message={form.errors.image} />
+            </div>
+        </section>
     );
 }
 
