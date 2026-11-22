@@ -113,9 +113,9 @@ export default function NewCharge(props: Props) {
                     first_name: c.first_name ?? '',
                     last_name: c.last_name ?? '',
                     email: c.email ?? current.email,
-                    property: { ...current.property, ...(c.property ?? {}) },
+                    property: { ...current.property, ...c.property },
                     billing_same: !c.billing,
-                    billing: { ...current.billing, ...(c.billing ?? {}) },
+                    billing: { ...current.billing, ...c.billing },
                 }));
             })
             .catch(() => {});
@@ -174,7 +174,10 @@ export default function NewCharge(props: Props) {
                 data-test="new-charge"
             >
                 {lines.map((line, index) => (
-                    <div key={index} className="da-card grid gap-3 rounded-[18px] p-4">
+                    <div
+                        key={index}
+                        className="da-card grid gap-3 rounded-[18px] p-4"
+                    >
                         <label className="grid gap-1 text-sm">
                             <span className="font-medium">
                                 {t('charges.new.what')}
@@ -185,7 +188,9 @@ export default function NewCharge(props: Props) {
                                 maxLength={500}
                                 enterKeyHint="next"
                                 onChange={(e) =>
-                                    setLine(index, { description: e.target.value })
+                                    setLine(index, {
+                                        description: e.target.value,
+                                    })
                                 }
                                 data-test="charge-what"
                             />
@@ -223,7 +228,9 @@ export default function NewCharge(props: Props) {
                                     size="icon"
                                     aria-label={t('charges.new.remove_line')}
                                     onClick={() =>
-                                        setLines(lines.filter((_, i) => i !== index))
+                                        setLines(
+                                            lines.filter((_, i) => i !== index),
+                                        )
                                     }
                                 >
                                     <Trash2 />
@@ -237,7 +244,10 @@ export default function NewCharge(props: Props) {
                     <Button
                         variant="tertiary"
                         onClick={() =>
-                            setLines([...lines, { description: '', amount: '' }])
+                            setLines([
+                                ...lines,
+                                { description: '', amount: '' },
+                            ])
                         }
                         data-test="charge-add-line"
                     >
@@ -267,8 +277,13 @@ export default function NewCharge(props: Props) {
 
                 {props.quick_amounts.length > 0 && (
                     <div className="grid gap-2">
-                        <p className="text-sm font-medium">{t('charges.new.quick')}</p>
-                        <div className="flex flex-wrap gap-2" data-test="quick-amounts">
+                        <p className="text-sm font-medium">
+                            {t('charges.new.quick')}
+                        </p>
+                        <div
+                            className="flex flex-wrap gap-2"
+                            data-test="quick-amounts"
+                        >
                             {props.quick_amounts.map((q) => (
                                 <Button
                                     key={q.label}
@@ -291,7 +306,10 @@ export default function NewCharge(props: Props) {
                     </div>
                 )}
 
-                <div className="da-card grid gap-1 rounded-[18px] p-4" data-test="charge-totals">
+                <div
+                    className="da-card grid gap-1 rounded-[18px] p-4"
+                    data-test="charge-totals"
+                >
                     {props.taxes.length === 0 && (
                         <p className="text-xs text-muted-foreground">
                             {t('charges.new.no_taxes')}
@@ -301,22 +319,25 @@ export default function NewCharge(props: Props) {
                         <span>{t('charges.new.subtotal')}</span>
                         <span>{totals?.subtotal ?? '—'}</span>
                     </div>
-                    {(totals?.taxes ?? props.taxes.map((x) => ({ ...x, amount: '—' }))).map(
-                        (tax) => (
-                            <div
-                                key={tax.name}
-                                className="flex justify-between text-lg font-semibold"
-                            >
-                                <span>
-                                    {tax.name} {Number(tax.rate)}%
-                                </span>
-                                <span>{tax.amount}</span>
-                            </div>
-                        ),
-                    )}
+                    {(
+                        totals?.taxes ??
+                        props.taxes.map((x) => ({ ...x, amount: '—' }))
+                    ).map((tax) => (
+                        <div
+                            key={tax.name}
+                            className="flex justify-between text-lg font-semibold"
+                        >
+                            <span>
+                                {tax.name} {Number(tax.rate)}%
+                            </span>
+                            <span>{tax.amount}</span>
+                        </div>
+                    ))}
                     <div className="mt-1 flex justify-between text-3xl font-bold">
                         <span>{t('charges.new.total')}</span>
-                        <span data-test="charge-total">{totals?.total ?? '—'}</span>
+                        <span data-test="charge-total">
+                            {totals?.total ?? '—'}
+                        </span>
                     </div>
                 </div>
 
@@ -348,7 +369,9 @@ export default function NewCharge(props: Props) {
                                         className="rounded-xl bg-green-50 p-2 text-sm text-green-900 dark:bg-green-950 dark:text-green-100"
                                         data-test="charge-customer-found"
                                     >
-                                        {t('charges.new.found', { name: found })}
+                                        {t('charges.new.found', {
+                                            name: found,
+                                        })}
                                     </p>
                                 )}
                                 <CustomerFields
@@ -363,27 +386,27 @@ export default function NewCharge(props: Props) {
                 )}
 
                 <StickyActionBar>
-    <Button
-                                size="lg"
-                                                            disabled={!valid || totals === null}
-                                loading={saving}
-                                onClick={() => {
-                                    if (!job) {
-                                        setPaying(true);
+                    <Button
+                        size="lg"
+                        disabled={!valid || totals === null}
+                        loading={saving}
+                        onClick={() => {
+                            if (!job) {
+                                setPaying(true);
 
-                                        return;
-                                    }
-                                    setSaving(true);
-                                    router.post(job.store_url, body, {
-                                        onFinish: () => setSaving(false),
-                                    });
-                                }}
-                                data-test="charge-submit"
-                            >
-                                {job
-                                    ? t('charges.new.continue')
-                                    : `${t('charges.new.charge')} ${totals?.total ?? ''}`}
-                            </Button>
+                                return;
+                            }
+                            setSaving(true);
+                            router.post(job.store_url, body, {
+                                onFinish: () => setSaving(false),
+                            });
+                        }}
+                        data-test="charge-submit"
+                    >
+                        {job
+                            ? t('charges.new.continue')
+                            : `${t('charges.new.charge')} ${totals?.total ?? ''}`}
+                    </Button>
                 </StickyActionBar>
             </div>
         </>

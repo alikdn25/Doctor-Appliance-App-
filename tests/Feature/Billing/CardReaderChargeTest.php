@@ -21,6 +21,7 @@ use App\Models\ServiceJob;
 use App\Models\SmsAccount;
 use App\Models\TaxRate;
 use App\Notifications\AppAlert;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -79,7 +80,6 @@ beforeEach(function () {
 
     Http::fake([
         'https://api.twilio.com/*' => Http::response(['sid' => 'SM'.uniqid(), 'status' => 'queued'], 201),
-        READER_SQUARE.'/*' => Http::response([], 404),
     ]);
 
     $this->actingAs($this->owner);
@@ -87,6 +87,8 @@ beforeEach(function () {
 
 function readerSquareFake(array $payment): void
 {
+    // A fresh fake each time: what Square answers now replaces the earlier answer.
+    Http::swap(new HttpFactory);
     Http::fake([
         'https://api.twilio.com/*' => Http::response(['sid' => 'SM'.uniqid(), 'status' => 'queued'], 201),
         READER_SQUARE.'/v2/payments/*' => Http::response(['payment' => $payment]),
@@ -134,7 +136,9 @@ function chargeDraft(array $overrides = []): array
 
 function readerInvoice(): Invoice
 {
+    $taxes = inCompany(test()->company, fn () => TaxRate::query()->orderBy('sort_order')->pluck('id')->all());
     test()->post(route('invoices.store', ServiceJob::factory()->for(test()->property)->create(['brand_id' => test()->brand->id, 'status' => 'completed'])), documentPayload([
+        'tax_rate_ids' => $taxes,
         'items' => [['description' => 'Repair', 'quantity' => '1', 'unit_price' => '150.00', 'taxable' => true]],
     ]))->assertSessionHasNoErrors();
 
@@ -150,15 +154,15 @@ describe('taxes on New charge', function () {
     test('"with tax" takes GST and PST out of the amount; "without tax" adds them on top', function () {
         $this->postJson(route('charges.preview'), ['lines' => [['description' => 'Repair', 'amount' => '112.00']], 'amounts_include_tax' => true])
             ->assertOk()
-            ->assertJsonPath('subtotal', 'CA$100.00')
+            ->assertJsonPath('subtotal', '$100.00')
             ->assertJsonPath('taxes.0.name', 'GST')
-            ->assertJsonPath('taxes.0.amount', 'CA$5.00')
-            ->assertJsonPath('taxes.1.amount', 'CA$7.00')
+            ->assertJsonPath('taxes.0.amount', '$5.00')
+            ->assertJsonPath('taxes.1.amount', '$7.00')
             ->assertJsonPath('total_minor', 11200);
 
         $this->postJson(route('charges.preview'), ['lines' => [['description' => 'Repair', 'amount' => '100.00']], 'amounts_include_tax' => false])
             ->assertOk()
-            ->assertJsonPath('subtotal', 'CA$100.00')
+            ->assertJsonPath('subtotal', '$100.00')
             ->assertJsonPath('total_minor', 11200);
     });
 
@@ -317,13 +321,14 @@ describe('New charge without a booking', function () {
     });
 
     test('only the person who started a reader charge can complete it; another company never sees it', function () {
+        $other = Company::factory()->create();
+        $otherOwner = memberOf($other, UserRole::Owner);
         $this->postJson(route('charges.store'), ['method' => 'card_reader', 'draft' => chargeDraft()])->assertOk();
         $charge = lastCharge();
 
         $this->actingAs($this->tech)->postJson(route('charges.complete', $charge), ['payment_id' => 'PAY1'])->assertNotFound();
 
-        $other = Company::factory()->create();
-        $this->actingAs(memberOf($other, UserRole::Owner))->postJson(route('charges.complete', $charge), ['payment_id' => 'PAY1'])->assertNotFound();
+        $this->actingAs($otherOwner)->postJson(route('charges.complete', $charge), ['payment_id' => 'PAY1'])->assertNotFound();
     });
 });
 
@@ -435,10 +440,10 @@ describe('Paid screen and the receipt', function () {
         $body = $texts[0]->data()['Body'];
         expect($body)->toContain('Receipt from Doctor Appliance')
             ->toContain($invoice->number)
-            ->toContain('Repair: CA$150.00')
+            ->toContain('Repair: $150.00')
             ->toContain('GST')
             ->toContain('PST')
-            ->toContain('Total: CA$168.00')
+            ->toContain('Total: $168.00')
             ->toContain('Paid by Cash')
             ->toContain('https://g.page/r/doctor/review');
 
@@ -465,7 +470,7 @@ describe('Paid screen and the receipt', function () {
         Mail::assertQueued(ReceiptMail::class, fn (ReceiptMail $mail) => $mail->reviewProfileId === $this->profile->id);
 
         $html = (new ReceiptMail($invoice, $this->profile->id))->render();
-        expect($html)->toContain('https://g.page/r/doctor/review')->toContain('Paid')->toContain('CA$168.00')->toContain('Cash');
+        expect($html)->toContain('https://g.page/r/doctor/review')->toContain('Paid')->toContain('$168.00')->toContain('Cash');
         expect((new ReceiptMail($invoice))->render())->not->toContain('https://g.page/r/doctor/review');
     });
 
@@ -499,7 +504,7 @@ describe('online payment of a sent invoice', function () {
         $recorded = inCompany($this->company, fn () => Payment::query()->sole());
         Notification::assertSentToTimes($this->owner, AppAlert::class, 1);
         Notification::assertSentTo($this->owner, AppAlert::class, fn (AppAlert $alert) => $alert->kind === 'invoice_paid_online'
-            && $alert->title === "Invoice {$invoice->number} paid — CA\$168.00"
+            && $alert->title === "Invoice {$invoice->number} paid — \$168.00"
             && $alert->url === route('payments.paid', $recorded));
 
         expect(collect(Http::recorded())->filter(fn ($p) => str_contains($p[0]->url(), 'twilio')))->toHaveCount(0);
@@ -527,12 +532,13 @@ describe('settings and the app', function () {
     });
 
     test('the app gets the Square session for the reader; people who do not take payments do not', function () {
+        $collector = memberOf($this->company, UserRole::Collector);
         $this->actingAs($this->tech)->getJson(route('payments.reader.session'))
             ->assertOk()
             ->assertExactJson(['application_id' => 'sandbox-sq0idb-app', 'access_token' => 'EAAAl-access-1', 'location_id' => 'LOC1', 'environment' => 'sandbox']);
 
-        $this->actingAs(memberOf($this->company, UserRole::Collector))->getJson(route('payments.reader.session'))->assertForbidden();
-        $this->actingAs(memberOf($this->company, UserRole::Collector))->get(route('charges.create'))->assertForbidden();
+        $this->actingAs($collector)->getJson(route('payments.reader.session'))->assertForbidden();
+        $this->actingAs($collector)->get(route('charges.create'))->assertForbidden();
     });
 
     test('Square asks for in-person payments; the APK is served when it is on the server', function () {

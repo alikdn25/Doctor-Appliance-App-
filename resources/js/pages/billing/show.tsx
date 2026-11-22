@@ -189,13 +189,11 @@ export default function BillingShow({
     const editDocument = () =>
         paidSomething ? setConfirm('edit-paid') : router.visit(editUrl);
 
-    const otherWays = () =>
-        online ? setTakeOpen(true) : setPaymentOpen(true);
+    const otherWays = () => (online ? setTakeOpen(true) : setPaymentOpen(true));
 
     // Take payment opens the one Take payment screen (owner's task of November 21); "Other ways" there (link, QR,
     // check …) comes back here with ?pay=1 and opens the earlier sheet.
-    const takePayment = () =>
-        router.visit(`/invoices/${doc.id}/take-payment`);
+    const takePayment = () => router.visit(`/invoices/${doc.id}/take-payment`);
 
     useEffect(() => {
         if (

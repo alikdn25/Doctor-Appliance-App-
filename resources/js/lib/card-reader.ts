@@ -79,7 +79,9 @@ export function readerError(error: unknown): { code: string; message: string } {
  * Authorizes the SDK with the company's Square token and location from the server, unless it already is for this
  * location. The token is never stored by the web page.
  */
-export async function ensureReaderAuthorized(sessionUrl: string): Promise<void> {
+export async function ensureReaderAuthorized(
+    sessionUrl: string,
+): Promise<void> {
     const response = await fetch(sessionUrl, {
         credentials: 'same-origin',
         headers: {

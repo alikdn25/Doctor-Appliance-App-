@@ -55,9 +55,9 @@ test('Quick booking keeps the text when the AI does not answer', async ({
     // Today has no booking buttons any more (they stay in "+" and on the calendar).
     await page.goto('/my-jobs');
     await expect(page.locator('[data-test="create-fab"]')).toBeVisible();
-    await expect(
-        page.locator('[data-test="start-quick-booking"]'),
-    ).toHaveCount(0);
+    await expect(page.locator('[data-test="start-quick-booking"]')).toHaveCount(
+        0,
+    );
     await page.goto('/calendar');
     const quick = page.locator('[data-test="start-quick-booking"]');
     const manual = page.locator('[data-test="start-book-customer"]');

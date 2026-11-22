@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * The Paid screen (owner's task of November 21) after Charge reader / Cash / E-transfer, and from the "Invoice #N
@@ -119,7 +120,7 @@ class PaidController extends Controller
     /**
      * The Android app (APK built by GitHub Actions and placed on the server).
      */
-    public function androidApk(): HttpResponse|\Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function androidApk(): HttpResponse|BinaryFileResponse
     {
         $path = (string) config('payments.android_apk_path');
         abort_unless(is_file($path), 404);

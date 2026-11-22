@@ -5,7 +5,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * server as in the browser, plus the Square card reader plugin (android/app/src/main/java/…/SquareReaderPlugin.kt).
  * The site address is set when the APK is built (CAP_SERVER_URL in GitHub Actions); nothing country-specific here.
  */
-const serverUrl = process.env.CAP_SERVER_URL ?? 'https://app.doctor-appliance.ca';
+const serverUrl =
+    process.env.CAP_SERVER_URL ?? 'https://app.doctor-appliance.ca';
 
 const config: CapacitorConfig = {
     appId: process.env.CAP_APP_ID ?? 'ca.doctorappliance.app',

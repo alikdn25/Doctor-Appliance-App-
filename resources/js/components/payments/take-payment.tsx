@@ -88,7 +88,9 @@ export function TakePayment({
     }, [native, screen.reader.connected, screen.reader.session_url]);
 
     const shown =
-        editable && value !== amount ? `${value} ${screen.currency}` : amountLabel;
+        editable && value !== amount
+            ? `${value} ${screen.currency}`
+            : amountLabel;
 
     const run = async (method: Method) => {
         setBusy(method);
@@ -109,6 +111,14 @@ export function TakePayment({
 
             failUrl = started.fail_url;
             setStage(t('charges.take.reader_connecting'));
+            // Bluetooth and location are asked the first time the reader is used.
+            const { granted } = await SquareReader.requestReaderPermissions();
+            if (!granted) {
+                throw Object.assign(
+                    new Error(t('charges.reader.permissions')),
+                    { code: 'PERMISSIONS' },
+                );
+            }
             await ensureReaderAuthorized(screen.reader.session_url);
             setStage(t('charges.take.reader_waiting'));
             const result = await SquareReader.charge({
@@ -128,7 +138,9 @@ export function TakePayment({
         } catch (e) {
             const { code, message } = readerError(e);
             if (failUrl) {
-                void sendJson(failUrl, 'POST', { error: `${code}: ${message}` });
+                void sendJson(failUrl, 'POST', {
+                    error: `${code}: ${message}`,
+                });
             }
             setError(
                 code === 'CANCELED'

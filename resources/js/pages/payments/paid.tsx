@@ -55,7 +55,9 @@ export default function Paid(props: Props) {
     const country = usePage().props.auth.company?.country;
     const { payment, invoice, customer } = props;
     const [channels, setChannels] = useState<string[]>(() => [
-        ...(props.sms.available && (customer.phone || customer.walk_in) ? ['sms'] : []),
+        ...(props.sms.available && (customer.phone || customer.walk_in)
+            ? ['sms']
+            : []),
         ...(customer.email ? ['email'] : []),
     ]);
     const [details, setDetails] = useState<CustomerDetails>(() => ({
@@ -91,7 +93,9 @@ export default function Paid(props: Props) {
 
     const toggle = (channel: string, on: boolean) =>
         setChannels(
-            on ? [...new Set([...channels, channel])] : channels.filter((c) => c !== channel),
+            on
+                ? [...new Set([...channels, channel])]
+                : channels.filter((c) => c !== channel),
         );
 
     const send = () => {
@@ -170,7 +174,9 @@ export default function Paid(props: Props) {
                             <Checkbox
                                 checked={channels.includes('sms')}
                                 disabled={!props.sms.available}
-                                onCheckedChange={(c) => toggle('sms', c === true)}
+                                onCheckedChange={(c) =>
+                                    toggle('sms', c === true)
+                                }
                                 data-test="receipt-sms"
                             />
                             {t('charges.receipt.sms')}
@@ -178,7 +184,9 @@ export default function Paid(props: Props) {
                         <label className="flex min-h-10 items-center gap-2 text-sm">
                             <Checkbox
                                 checked={channels.includes('email')}
-                                onCheckedChange={(c) => toggle('email', c === true)}
+                                onCheckedChange={(c) =>
+                                    toggle('email', c === true)
+                                }
                                 data-test="receipt-email"
                             />
                             {t('charges.receipt.email')}
@@ -282,7 +290,10 @@ export default function Paid(props: Props) {
                         <Send /> {t('charges.receipt.send')}
                     </Button>
                     {sent && (
-                        <p className="text-center text-sm text-green-700" role="status">
+                        <p
+                            className="text-center text-sm text-green-700"
+                            role="status"
+                        >
                             ✓
                         </p>
                     )}
@@ -290,11 +301,15 @@ export default function Paid(props: Props) {
 
                 <div className="grid grid-cols-2 gap-3">
                     <Button variant="outline" asChild>
-                        <Link href={invoice.url}>{t('charges.paid.open_invoice')}</Link>
+                        <Link href={invoice.url}>
+                            {t('charges.paid.open_invoice')}
+                        </Link>
                     </Button>
                     {invoice.job_url && (
                         <Button variant="outline" asChild>
-                            <Link href={invoice.job_url}>{t('charges.paid.open_job')}</Link>
+                            <Link href={invoice.job_url}>
+                                {t('charges.paid.open_job')}
+                            </Link>
                         </Button>
                     )}
                 </div>

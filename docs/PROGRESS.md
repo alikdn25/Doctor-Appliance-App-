@@ -1,3 +1,51 @@
+# November 21 — Owner's task: card payments on site with the Square reader, receipts and reviews (done)
+
+One PR (SPEC §7.18).
+
+1. **Square**: OAuth as before plus `PAYMENTS_WRITE_IN_PERSON`; Settings → Payments: Square location
+   (`GET payment-providers/square/locations`, `PUT payment-providers/square/location`), status, Disconnect. Tokens stay
+   encrypted and refreshed. Webhook: a completed card reader payment (`reference_id` = our charge) pays the invoice
+   once; FAILED / CANCELED leave it unpaid. Payment links no longer pre-fill the customer's email (no Square receipts).
+2. **Android app** (`android/`, `capacitor.config.ts`, docs/ANDROID.md): Capacitor shell loading the live site, same
+   name and icon; Kotlin plugin `SquareReaderPlugin` (Square Mobile Payments SDK 2.7.0): authorize from
+   `GET payments/reader/session`, permissions on first use, pair / list / forget, battery, charge (online only).
+   GitHub Actions `android.yml` builds the signed APK (keystore in Secrets) → artifact, release `android-latest`, and
+   the server (`storage/app/android/android.apk`, served at `/download/android.apk`).
+3. **Card reader** in Settings → Payments (Pair reader, readers with state and battery, Forget reader, Square's reader
+   settings; a browser shows the APK link). The reader connects when Take payment opens.
+4. **Take payment** (`payments/take`, component `TakePayment`): amount on top (balance, editable), Charge reader (main,
+   glow; app only), Cash, E-transfer (with a confirm). Table `charges` (pending → paid / failed); the phone's Square
+   payment is checked with Square before it is recorded (`POST charges/{reference}/complete`). Method stored on the
+   payment (`card_reader` new). The invoice page's Take payment opens this screen; "Other ways to pay" keeps the link,
+   QR and Mark as paid.
+5. **Paid** (`payments/{payment}/paid`): amount, method, invoice; Send receipt by SMS and / or email, missing details
+   typed there (saved to the customer and the invoice; Walk-in moves to the real customer), Request review with a
+   location inside the same message (SMS text + review link; email: the review block with the picture). Only on Send.
+6. **Online payment**: a payment by link that pays the invoice → push + bell "Invoice #N paid — $X" (once) to the
+   Owners and the invoice's maker, opening the Paid screen. Nothing sent by itself.
+7. **Job page**: Take payment; without an open invoice a quick invoice first (`jobs/{job}/take-payment`,
+   `POST jobs/{job}/quick-invoice`).
+8. **"+" → Charge reader** (New charge in a browser; `charges/new`): what was done, amount with / without tax (taxes
+   by code, `POST charges/preview`), quick amounts (diagnostic fee + price list), totals large, customer collapsed with
+   phone lookup (`GET charges/lookup`). After the payment: customer (by phone / new / Walk-in), job Completed with "Me",
+   invoice Paid (`ChargeCheckout`, `PaidCustomer`).
+9. **Today**: Quick booking and Book customer removed (still in "+" and on the calendar).
+
+- **Migration** `2026_11_21_000100_add_card_reader_charges`: new table `charges`, `customers.is_walk_in` (default
+  false). Nothing changed or deleted.
+- Tests: `CardReaderChargeTest` (taxes with / without; quick amounts; Cash new customer + Completed job with "Me" +
+  paid invoice + cash on hand; existing customer by phone + E-transfer; Walk-in and its replacement; reader charge
+  checked with Square, once with the webhook; Square gets no email / phone; only the charge's person, other company
+  404; webhook paid once, failed / cancelled unpaid, unknown sale ignored; invoice partial / over balance; quick
+  invoice of a job; receipt SMS with review in one message; without review; email review block; Send validation;
+  online push once with the Paid screen and nothing sent; location setting; reader session by role; scope and APK
+  download), tenant isolation (`charges`), updated `SquareTest` (no buyer email); browser
+  `zz-card-reader-charge.spec.ts`, updated `zz-quick-booking.spec.ts` and `zz-plus-draft-tasks.spec.ts`.
+- Not checked here: the APK build and a real / mock reader payment in the Square sandbox (no Android SDK, Square
+  hosts or device in this workspace) — the first `android` workflow run and the sandbox check are on the owner / Grok.
+- Next: owner adds the GitHub Secrets / variables for the APK, reconnects Square (new permission), picks the
+  location, installs the APK, pairs the reader and runs one sandbox payment.
+
 # November 19 — Owner's task: reminders, morning SMS, Drive backup, debtors, actions from notifications, translation, self-booking, nearby windows
 
 Several PRs (SPEC §7.17).

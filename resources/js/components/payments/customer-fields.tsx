@@ -159,7 +159,9 @@ export function CustomerFields({
                     <span className="text-xs text-danger">{errors.email}</span>
                 )}
             </label>
-            <p className="text-sm font-medium">{t('charges.fields.property')}</p>
+            <p className="text-sm font-medium">
+                {t('charges.fields.property')}
+            </p>
             <AddressFields
                 prefix="property"
                 value={value.property}
