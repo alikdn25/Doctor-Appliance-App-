@@ -40,7 +40,7 @@ One PR (SPEC §7.18).
   invoice of a job; receipt SMS with review in one message; without review; email review block; Send validation;
   online push once with the Paid screen and nothing sent; location setting; reader session by role; scope and APK
   download), tenant isolation (`charges`), updated `SquareTest` (no buyer email); browser
-  `zz-card-reader-charge.spec.ts`, updated `zz-quick-booking.spec.ts` and `zz-plus-draft-tasks.spec.ts`.
+  `zzz-card-reader-charge.spec.ts`, updated `zz-quick-booking.spec.ts` and `zz-plus-draft-tasks.spec.ts`.
 - Not checked here: the APK build and a real / mock reader payment in the Square sandbox (no Android SDK, Square
   hosts or device in this workspace) — the first `android` workflow run and the sandbox check are on the owner / Grok.
 - Next: owner adds the GitHub Secrets / variables for the APK, reconnects Square (new permission), picks the

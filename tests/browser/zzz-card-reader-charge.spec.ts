@@ -10,6 +10,9 @@ test.use({ viewport: { width: 390, height: 844 } });
 test('New charge in the browser: Cash → Paid with Send receipt', async ({
     page,
 }, info) => {
+    // The charge makes a Completed job for today: run it once, last (phone project), so it does not change what the
+    // other screens show.
+    test.skip(info.project.name !== 'mobile', 'Runs once, on the phone');
     await page.goto('/my-jobs');
     await expect(page.locator('[data-test="start-quick-booking"]')).toHaveCount(
         0,

@@ -48,7 +48,7 @@ test('the owner gets Today, Calendar, Map, Jobs, More and the round "+"; Field s
     await expect(nav.locator('[data-test="bottom-nav-book"]')).toHaveCount(0);
     await page.locator('[data-test="create-fab"]').click();
     const menu = page.locator('[data-test="create-menu"] button');
-    await expect(menu).toHaveText(['Task', 'Trip', 'Expense']);
+    await expect(menu).toHaveText(['Task', 'Trip', 'Expense', 'New charge']);
     await expect(page.locator('[data-test="create-menu"] a')).toHaveText([
         'Quick booking',
         'Book customer',
