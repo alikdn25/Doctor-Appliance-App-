@@ -20,9 +20,12 @@ use App\Support\AppVersion;
 use App\Support\Jobs\JobBacklog;
 use App\Support\Tenancy\CurrentCompany;
 use App\Support\Translations;
+use Closure;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Middleware;
+use Symfony\Component\HttpFoundation\Response;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -30,6 +33,23 @@ class HandleInertiaRequests extends Middleware
      * @var string
      */
     protected $rootView = 'app';
+
+    /**
+     * Background JSON requests of the app (address suggestions, the version check, lookups) must not use up the
+     * flash meant for the page the browser is about to load: a request that slips in between a form's redirect and
+     * the page it leads to would otherwise eat "Booked #1005 · Today" and other one-time messages.
+     */
+    public function handle(Request $request, Closure $next): Response
+    {
+        $response = parent::handle($request, $next);
+
+        if ($request->hasSession() && ! $request->header('X-Inertia')
+            && ($response instanceof JsonResponse || $request->expectsJson() || $response->getStatusCode() === 204)) {
+            $request->session()->reflash();
+        }
+
+        return $response;
+    }
 
     public function version(Request $request): ?string
     {
