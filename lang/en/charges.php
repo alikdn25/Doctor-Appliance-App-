@@ -96,7 +96,7 @@ return [
             'channel' => 'Choose SMS or email.',
             'email' => 'Enter a valid email address.',
         ],
-        'sms' => [
+        'sms_text' => [
             'title' => 'Receipt from :brand',
             'invoice' => 'Invoice :number · :date',
             'total' => 'Total: :total',

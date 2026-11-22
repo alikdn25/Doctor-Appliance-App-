@@ -124,8 +124,8 @@ class PaymentReceipt
         $print = DocumentPrint::data($invoice);
         $brand = $print['brand']['name'] ?? $print['brand']['fallback_name'];
         $lines = [
-            __('charges.receipt.sms.title', ['brand' => $brand]),
-            __('charges.receipt.sms.invoice', ['number' => $invoice->number, 'date' => DocumentPrint::date($payment->received_at)]),
+            __('charges.receipt.sms_text.title', ['brand' => $brand]),
+            __('charges.receipt.sms_text.invoice', ['number' => $invoice->number, 'date' => DocumentPrint::date($payment->received_at)]),
             '',
         ];
 
@@ -135,8 +135,8 @@ class PaymentReceipt
         foreach ($print['taxes'] as $tax) {
             $lines[] = $tax['label'].': '.$tax['amount'];
         }
-        $lines[] = __('charges.receipt.sms.total', ['total' => $print['total']]);
-        $lines[] = __('charges.receipt.sms.paid', ['method' => self::methodLabel($payment)]);
+        $lines[] = __('charges.receipt.sms_text.total', ['total' => $print['total']]);
+        $lines[] = __('charges.receipt.sms_text.paid', ['method' => self::methodLabel($payment)]);
         $lines[] = PublicDocument::url($invoice);
 
         $text = implode("\n", $lines);
