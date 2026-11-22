@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import { CheckCircle2, MessageSquare, TriangleAlert } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Sheet,
@@ -81,6 +81,30 @@ function usePlanLine() {
     };
 }
 
+/*
+ * The last "Booked" sheet, kept outside React: the flash event is caught from the moment the app loads, and the sheet
+ * survives the layout mounting again (a flash that arrived while it was mounting was lost before).
+ */
+let current: Booked | null = null;
+const listeners = new Set<() => void>();
+
+function subscribeBooked(listener: () => void): () => void {
+    listeners.add(listener);
+
+    return () => listeners.delete(listener);
+}
+
+if (typeof window !== 'undefined') {
+    router.on('flash', (event) => {
+        const data = (event as CustomEvent).detail?.flash
+            ?.booking_confirmation as Booked | undefined;
+        if (data) {
+            current = data;
+            listeners.forEach((listener) => listener());
+        }
+    });
+}
+
 /**
  * After a booking is saved (the "booking_confirmation" flash), on whatever screen it lands: "Booked #1005 ·
  * Tomorrow 9–11" and what happened to the confirmation — texted, emailed, queued for the end of quiet hours, not sent
@@ -89,17 +113,11 @@ function usePlanLine() {
 export function BookingConfirmationPrompt() {
     const t = useTrans();
     const phone = usePhone();
-    const [booked, setBooked] = useState<Booked | null>(null);
-
-    useEffect(
-        () =>
-            router.on('flash', (event) => {
-                const data = (event as CustomEvent).detail?.flash
-                    ?.booking_confirmation as Booked | undefined;
-                if (data) setBooked(data);
-            }),
-        [],
-    );
+    const booked = useSyncExternalStore(subscribeBooked, () => current);
+    const setBooked = (value: Booked | null) => {
+        current = value;
+        listeners.forEach((listener) => listener());
+    };
 
     const sent = booked?.sent ?? null;
     const failed =

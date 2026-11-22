@@ -12,11 +12,13 @@ use App\Http\Controllers\AppReviewController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\Billing\CashController;
+use App\Http\Controllers\Billing\ChargeController;
 use App\Http\Controllers\Billing\DebtorsController;
 use App\Http\Controllers\Billing\DocumentDeliveryController;
 use App\Http\Controllers\Billing\EstimateController;
 use App\Http\Controllers\Billing\InvoiceController;
 use App\Http\Controllers\Billing\InvoiceReviewRequestController;
+use App\Http\Controllers\Billing\PaidController;
 use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Billing\PaymentLinkController;
 use App\Http\Controllers\Billing\PriceBookController;
@@ -118,6 +120,9 @@ Route::middleware('throttle:300,1')->group(function () {
     Route::post('webhooks/sms/{provider}/status', [SmsWebhookController::class, 'status'])->name('webhooks.sms.status');
     Route::post('webhooks/voice/telnyx', VoiceWebhookController::class)->name('webhooks.voice.telnyx');
 });
+
+// The Android app (Capacitor shell with the card reader), built by GitHub Actions and placed on the server.
+Route::get('download/android.apk', [PaidController::class, 'androidApk'])->middleware('throttle:30,1')->name('download.android');
 
 // Online payment provider webhooks (signature checked by the provider; no session, no CSRF).
 Route::post('webhooks/payments/{provider}', PaymentWebhookController::class)
@@ -297,6 +302,20 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('payments/{payment}/receipt', [PaymentController::class, 'receipt'])->name('payments.receipt');
         Route::post('invoices/{invoice}/refund', [PaymentController::class, 'refund'])->name('invoices.refund');
         Route::post('payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
+
+        // Take payment, New charge and the Paid screen (card reader, cash, e-transfer; owner's task of November 21).
+        Route::get('charges/new', [ChargeController::class, 'create'])->name('charges.create');
+        Route::post('charges/preview', [ChargeController::class, 'preview'])->middleware('throttle:120,1')->name('charges.preview');
+        Route::get('charges/lookup', [ChargeController::class, 'lookup'])->middleware('throttle:120,1')->name('charges.lookup');
+        Route::post('charges', [ChargeController::class, 'store'])->middleware('throttle:60,1')->name('charges.store');
+        Route::post('charges/{charge}/complete', [ChargeController::class, 'complete'])->middleware('throttle:60,1')->name('charges.complete');
+        Route::post('charges/{charge}/fail', [ChargeController::class, 'fail'])->middleware('throttle:60,1')->name('charges.fail');
+        Route::get('invoices/{invoice}/take-payment', [ChargeController::class, 'invoice'])->name('invoices.take-payment');
+        Route::get('jobs/{job}/take-payment', [ChargeController::class, 'job'])->name('jobs.take-payment');
+        Route::post('jobs/{job}/quick-invoice', [ChargeController::class, 'quickInvoice'])->name('jobs.quick-invoice');
+        Route::get('payments/reader/session', [PaidController::class, 'readerSession'])->middleware('throttle:30,1')->name('payments.reader.session');
+        Route::get('payments/{payment}/paid', [PaidController::class, 'show'])->name('payments.paid');
+        Route::post('payments/{payment}/send-receipt', [PaidController::class, 'send'])->middleware('throttle:30,1')->name('payments.send-receipt');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('business-expenses/export.csv', [BusinessExpenseController::class, 'export'])->name('expenses.download');
         Route::post('business-expenses/read-receipt', [BusinessExpenseController::class, 'readReceipt'])->middleware('throttle:assistant')->name('expenses.read-receipt');
@@ -347,6 +366,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         // Connecting the company's own payment provider account (OAuth). The callback URL is registered at the provider.
         Route::get('payment-providers/{provider}/connect', [PaymentProviderController::class, 'connect'])->name('payment-providers.connect');
         Route::get('payment-providers/{provider}/callback', [PaymentProviderController::class, 'callback'])->name('payment-providers.callback');
+        Route::get('payment-providers/square/locations', [PaymentProviderController::class, 'locations'])->name('payment-providers.square.locations');
+        Route::put('payment-providers/square/location', [PaymentProviderController::class, 'location'])->name('payment-providers.square.location');
         Route::delete('payment-providers/{provider}', [PaymentProviderController::class, 'disconnect'])->name('payment-providers.disconnect');
 
         // Import of customers and invoice history from Square (Owner only).

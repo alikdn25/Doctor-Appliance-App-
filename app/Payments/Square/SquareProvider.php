@@ -3,6 +3,9 @@
 namespace App\Payments\Square;
 
 use App\Actions\Billing\RecordPayment;
+use App\Enums\PaymentMethod;
+use App\Enums\UserRole;
+use App\Models\Charge;
 use App\Models\Company;
 use App\Models\Estimate;
 use App\Models\Invoice;
@@ -10,15 +13,20 @@ use App\Models\InvoicePaymentLink;
 use App\Models\Payment;
 use App\Models\PaymentProviderConnection;
 use App\Models\User;
+use App\Notifications\Alerts;
+use App\Notifications\AppAlert;
 use App\Payments\InvalidWebhookSignature;
 use App\Payments\PaymentLink;
 use App\Payments\PaymentProvider;
 use App\Payments\PaymentProviderException;
 use App\Services\AuditLogger;
+use App\Support\Billing\Money;
+use App\Support\Payments\ChargeCheckout;
 use App\Support\Tenancy\CurrentCompany;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -30,7 +38,10 @@ use Throwable;
  * - Each company connects its own Square account by OAuth; payments go to its main location.
  * - The customer pays the invoice balance through a Square payment link (also shown as a QR code).
  * - payment.created / payment.updated webhooks record completed payments on the invoice, once per Square
- *   payment ID; a tip is kept on the payment apart from the amount applied to the invoice.
+ *   payment ID; a tip is kept on the payment apart from the amount applied to the invoice. Card reader payments
+ *   (Android app, Mobile Payments SDK) carry our charge's reference_id and complete that charge; FAILED / CANCELED
+ *   ones leave the invoice unpaid. A payment by link that pays an invoice notifies "Invoice #N paid".
+ * - Square gets no buyer email or phone: the customer receives only our receipt.
  * - refund.created / refund.updated webhooks record completed refunds of those payments (balance and status follow).
  * - oauth.authorization.revoked forgets a connection revoked from the Square dashboard.
  */
@@ -164,8 +175,7 @@ class SquareProvider implements PaymentProvider
             ]));
         }
 
-        $document->loadMissing(['brand', 'customer.primaryEmail']);
-        $email = $document->customer?->primaryEmail?->email;
+        $document->loadMissing(['brand']);
         $deposit = $document instanceof Estimate;
 
         $link = $this->client->createPaymentLink($this->accessToken($connection), array_filter([
@@ -178,7 +188,8 @@ class SquareProvider implements PaymentProvider
                 'location_id' => $connection->location_id,
             ],
             'payment_note' => Str::limit(__($deposit ? 'payments.square.deposit_payment_note' : 'payments.square.payment_note', ['number' => $document->number]), 500, ''),
-            'pre_populated_data' => $email ? ['buyer_email' => $email] : null,
+            // No buyer email or phone: Square must not send its own receipt; the customer gets ours (owner's task of
+            // November 21).
             // Tips go to the company on top of the invoice (company setting); not on deposits.
             'checkout_options' => currentCompany()->online_tips && ! $deposit ? ['allow_tipping' => true] : null,
         ]));
@@ -271,7 +282,23 @@ class SquareProvider implements PaymentProvider
      */
     private function recordPayment(array $payment): void
     {
-        if (($payment['status'] ?? null) !== 'COMPLETED' || ! is_string($payment['id'] ?? null) || ! is_string($payment['order_id'] ?? null)) {
+        if (in_array($payment['status'] ?? null, ['FAILED', 'CANCELED'], true)) {
+            // A declined or cancelled card reader payment: the invoice stays unpaid.
+            $charge = $this->readerCharge($payment);
+            if ($charge !== null) {
+                app(ChargeCheckout::class)->fail($charge, 'Square: '.$payment['status']);
+            }
+
+            return;
+        }
+
+        if (($payment['status'] ?? null) !== 'COMPLETED' || ! is_string($payment['id'] ?? null)) {
+            return;
+        }
+
+        if (! is_string($payment['order_id'] ?? null)) {
+            $this->recordReaderPayment($payment);
+
             return;
         }
 
@@ -281,7 +308,9 @@ class SquareProvider implements PaymentProvider
             ->first();
 
         if ($link === null) {
-            // A payment taken in Square for something else (in-store sale etc.).
+            // A card reader payment from the Take payment screen, or a payment taken in Square for something else.
+            $this->recordReaderPayment($payment);
+
             return;
         }
 
@@ -309,6 +338,10 @@ class SquareProvider implements PaymentProvider
         }
 
         $link->update(['status' => InvoicePaymentLink::PAID]);
+
+        if ($link->invoice_id !== null) {
+            $this->notifyPaidOnline($payment['id']);
+        }
 
         // The processing fee may only come with a later payment.updated: keep the latest.
         $fee = collect($payment['processing_fee'] ?? [])->sum(fn ($f) => (int) ($f['amount_money']['amount'] ?? 0));
@@ -345,6 +378,162 @@ class SquareProvider implements PaymentProvider
             (int) ($refund['amount_money']['amount'] ?? 0),
             CarbonImmutable::parse($refund['updated_at'] ?? $refund['created_at'] ?? 'now'),
         );
+    }
+
+    /**
+     * A completed card reader payment (Square reference_id = our charge) is recorded on its invoice, once.
+     *
+     * @param  array<string, mixed>  $payment
+     */
+    private function recordReaderPayment(array $payment): void
+    {
+        $charge = $this->readerCharge($payment);
+
+        if ($charge === null) {
+            return;
+        }
+
+        try {
+            app(ChargeCheckout::class)->complete($charge, $payment);
+        } catch (ValidationException $e) {
+            Log::warning('Square reader payment not recorded', ['payment' => $payment['id'] ?? null, 'charge' => $charge->reference, 'errors' => $e->errors()]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payment
+     */
+    private function readerCharge(array $payment): ?Charge
+    {
+        $reference = $payment['reference_id'] ?? null;
+
+        return is_string($reference) && Str::isUuid($reference)
+            ? Charge::query()->where('reference', $reference)->where('method', PaymentMethod::CardReader->value)->first()
+            : null;
+    }
+
+    /**
+     * "Invoice #N paid — $X" to the Owners (and the person who sent the invoice) when the customer paid by the link.
+     * The tap opens the Paid screen with Send receipt; nothing is sent to the customer by itself.
+     */
+    private function notifyPaidOnline(string $squarePaymentId): void
+    {
+        $payment = Payment::query()->with('invoice')->where('provider', $this->key())->where('provider_payment_id', $squarePaymentId)->first();
+        $invoice = $payment?->invoice;
+
+        if ($payment === null || $invoice === null || $invoice->balance > 0) {
+            return;
+        }
+
+        $alert = new AppAlert(
+            'invoice_paid_online',
+            __('charges.push.paid_title', [
+                'number' => $invoice->number,
+                'amount' => Money::format($payment->amount, $payment->currency, currentCompany()->locale),
+            ]),
+            __('charges.push.paid_body', ['customer' => $invoice->customer?->display_name ?? '']),
+            route('payments.paid', $payment),
+            mail: false,
+        );
+
+        // Once per payment: a repeated webhook does not notify again.
+        if (! Cache::add('invoice-paid-push:'.$payment->id, true, now()->addDays(2))) {
+            return;
+        }
+
+        Alerts::owners(currentCompany(), $alert);
+        $sender = $invoice->created_by !== null ? User::query()->find($invoice->created_by) : null;
+        if ($sender !== null && $sender->is_active && ! $sender->hasRole(UserRole::Owner)) {
+            Alerts::send([$sender], $alert);
+        }
+    }
+
+    /**
+     * The merchant's locations, for Settings → Payments (card reader payments go to the chosen one).
+     *
+     * @return list<array{id: string, name: string, currency: string|null}>
+     */
+    public function locations(Company $company): array
+    {
+        $connection = $this->connection($company) ?? throw new PaymentProviderException(__('payments.square.errors.not_connected'));
+
+        try {
+            $locations = $this->client->locations($this->accessToken($connection));
+        } catch (Throwable) {
+            throw new PaymentProviderException(__('payments.square.errors.api'));
+        }
+
+        return collect($locations)
+            ->filter(fn (array $l) => ($l['status'] ?? 'ACTIVE') === 'ACTIVE' && is_string($l['id'] ?? null))
+            ->map(fn (array $l) => ['id' => $l['id'], 'name' => (string) ($l['name'] ?? $l['id']), 'currency' => $l['currency'] ?? null])
+            ->values()->all();
+    }
+
+    public function setLocation(Company $company, string $locationId): void
+    {
+        $location = collect($this->locations($company))->firstWhere('id', $locationId)
+            ?? throw new PaymentProviderException(__('charges.errors.location'));
+
+        $this->currentCompany->runAs($company, function () use ($company, $location) {
+            PaymentProviderConnection::query()->where('provider', $this->key())->update([
+                'location_id' => $location['id'],
+                'location_name' => $location['name'],
+                'currency' => $location['currency'],
+            ]);
+            $this->audit->record('payment_provider.location', $company, ['provider' => $this->key(), 'location' => $location['name']]);
+        });
+    }
+
+    /**
+     * What the Android app's card reader plugin needs to authorize the Square Mobile Payments SDK.
+     *
+     * @return array{application_id: string, access_token: string, location_id: string, environment: string}
+     */
+    public function readerSession(Company $company): array
+    {
+        $connection = $this->connection($company);
+
+        if ($connection === null || $connection->location_id === null) {
+            throw new PaymentProviderException(__('payments.square.errors.not_connected'));
+        }
+
+        return [
+            'application_id' => (string) config('services.square.application_id'),
+            'access_token' => $this->accessToken($connection),
+            'location_id' => $connection->location_id,
+            'environment' => config('services.square.environment') === 'production' ? 'production' : 'sandbox',
+        ];
+    }
+
+    /**
+     * The card reader payment the phone reported, as Square has it: it must be COMPLETED, be ours (reference_id)
+     * and be for the amount charged.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws PaymentProviderException
+     */
+    public function readerPayment(Charge $charge, string $paymentId): array
+    {
+        $connection = $this->connection(currentCompany()) ?? throw new PaymentProviderException(__('payments.square.errors.not_connected'));
+
+        try {
+            $payment = $this->client->payment($this->accessToken($connection), $paymentId);
+        } catch (Throwable) {
+            throw new PaymentProviderException(__('payments.square.errors.api'));
+        }
+
+        if (($payment['reference_id'] ?? null) !== $charge->reference
+            || (int) ($payment['amount_money']['amount'] ?? 0) !== $charge->amount
+            || strtoupper((string) ($payment['amount_money']['currency'] ?? '')) !== $charge->currency) {
+            throw new PaymentProviderException(__('charges.errors.mismatch'));
+        }
+
+        if (($payment['status'] ?? null) !== 'COMPLETED') {
+            throw new PaymentProviderException(__('charges.errors.not_completed'));
+        }
+
+        return $payment;
     }
 
     private function verifySignature(Request $request): void

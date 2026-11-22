@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 /**
- * Quick booking on a 390 px phone: the two booking buttons (violet Quick booking, white Book customer) on the main
- * screen, the calendar and in "+"; the big text field and Parse; without an AI key the message is shown and the text
+ * Quick booking on a 390 px phone: the two booking buttons (violet Quick booking, white Book customer) on the
+ * calendar and in "+" (no longer on Today); the big text field and Parse; without an AI key the message is shown and the text
  * stays. The filled Book customer form marks the AI-filled fields ("Check" on the ones the AI is unsure of) and offers
  * free windows when the text named no time; nothing is saved until Save. Closing either screen keeps nothing.
  */
@@ -52,7 +52,13 @@ async function stubParse(page: Page) {
 test('Quick booking keeps the text when the AI does not answer', async ({
     page,
 }) => {
+    // Today has no booking buttons any more (they stay in "+" and on the calendar).
     await page.goto('/my-jobs');
+    await expect(page.locator('[data-test="create-fab"]')).toBeVisible();
+    await expect(page.locator('[data-test="start-quick-booking"]')).toHaveCount(
+        0,
+    );
+    await page.goto('/calendar');
     const quick = page.locator('[data-test="start-quick-booking"]');
     const manual = page.locator('[data-test="start-book-customer"]');
     // Two buttons side by side: Quick booking (violet) and Book customer (white).
@@ -75,11 +81,8 @@ test('Quick booking keeps the text when the AI does not answer', async ({
     ).toBeVisible();
     await expect(text).toHaveValue(TEXT);
 
-    // "+" and the calendar have both buttons too.
-    await page.goto('/calendar');
-    await expect(
-        page.locator('[data-test="start-quick-booking"]'),
-    ).toBeVisible();
+    // "+" has both buttons too.
+    await page.goto('/my-jobs');
     await page.locator('[data-test="create-fab"]').click();
     await page.locator('[data-test="create-quick-booking"]').click();
     await expect(page).toHaveURL(/\/jobs\/quick-booking/);
@@ -88,7 +91,7 @@ test('Quick booking keeps the text when the AI does not answer', async ({
 test('closing Quick booking empties the text; it opens empty again', async ({
     page,
 }) => {
-    await page.goto('/my-jobs');
+    await page.goto('/calendar');
     await page.locator('[data-test="start-quick-booking"]').click();
     const text = page.locator('[data-test="quick-booking-text"]');
     await text.fill(TEXT);
@@ -99,7 +102,7 @@ test('closing Quick booking empties the text; it opens empty again', async ({
         void dialog.dismiss();
     });
     await page.goBack();
-    await expect(page).toHaveURL(/\/my-jobs/);
+    await expect(page).toHaveURL(/\/calendar/);
     await page.locator('[data-test="start-quick-booking"]').click();
     await expect(text).toHaveValue('');
     expect(asked).toBe(false);
@@ -163,7 +166,7 @@ test('the filled form marks the AI fields and offers free windows', async ({
 test('closing Book customer empties the form; a new booking opens empty', async ({
     page,
 }) => {
-    await page.goto('/my-jobs');
+    await page.goto('/calendar');
     await page.locator('[data-test="start-book-customer"]').click();
     await expect(page).toHaveURL(/\/jobs\/create\?book=1/);
     await page.locator('#booking-phone').fill('+16045550311');
@@ -179,7 +182,7 @@ test('closing Book customer empties the form; a new booking opens empty', async 
     await expect(page).not.toHaveURL(/\/jobs\/create/);
     expect(asked).toBe(false);
 
-    await page.goto('/my-jobs');
+    await page.goto('/calendar');
     await page.locator('[data-test="start-book-customer"]').click();
     await expect(page.locator('#booking-phone')).toHaveValue('');
     await expect(page.locator('#booking-name')).toHaveValue('');

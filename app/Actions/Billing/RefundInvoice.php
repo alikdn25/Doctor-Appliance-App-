@@ -96,7 +96,7 @@ class RefundInvoice
     {
         $refund = new Payment([
             'amount' => -$amount,
-            'method' => $payment->method === PaymentMethod::Online ? PaymentMethod::Other : $payment->method,
+            'method' => in_array($payment->method, [PaymentMethod::Online, PaymentMethod::CardReader], true) ? PaymentMethod::Other : $payment->method,
             'reference' => __('payments.refund_of', ['reference' => $payment->reference ?? $payment->method->label()]),
             'received_at' => now(),
         ]);

@@ -1,0 +1,153 @@
+<?php
+
+/*
+| Take payment, New charge, the Paid screen with Send receipt, and the card reader (owner's task of November 21).
+*/
+return [
+    'walk_in' => 'Walk-in',
+    'customer' => 'Customer',
+    'default_line' => 'Service',
+    'reader_note' => 'On-site payment',
+    'diagnostic' => 'Diagnostic',
+
+    'new' => [
+        'title' => 'New charge',
+        'job_title' => 'Invoice for :number',
+        'what' => 'What was done',
+        'what_placeholder' => 'e.g. Dryer repair, replaced belt',
+        'what_hint' => 'Tap the microphone on the keyboard to say it.',
+        'add_line' => 'Add line',
+        'remove_line' => 'Remove line',
+        'amount' => 'Amount',
+        'with_tax' => 'With tax',
+        'without_tax' => 'Without tax',
+        'with_tax_hint' => 'The amount includes tax: tax is taken out of it.',
+        'without_tax_hint' => 'Tax is added on top of the amount.',
+        'quick' => 'Quick amounts',
+        'subtotal' => 'Subtotal',
+        'total' => 'Total',
+        'no_taxes' => 'No default taxes set (Company → Taxes).',
+        'customer' => 'Customer',
+        'customer_hint' => 'Optional. Leave empty for a walk-in customer; you can add details after payment.',
+        'found' => 'Existing customer: :name. Details filled in.',
+        'charge' => 'Charge',
+        'continue' => 'Create invoice and take payment',
+    ],
+
+    'fields' => [
+        'phone' => 'Phone',
+        'first_name' => 'First name',
+        'last_name' => 'Last name',
+        'email' => 'Email',
+        'property' => 'Property address',
+        'billing' => 'Billing address',
+        'billing_same' => 'Billing address is the same as the property',
+        'line1' => 'Street address',
+        'unit' => 'Unit',
+        'city' => 'City',
+        'region' => 'Region',
+        'postal_code' => 'Postal code',
+    ],
+
+    'take' => [
+        'title' => 'Take payment',
+        'due' => 'Amount to pay',
+        'invoice' => 'Invoice :number',
+        'charge_reader' => 'Charge reader',
+        'cash' => 'Cash',
+        'reader_waiting' => 'Follow the reader: tap, insert or swipe the card.',
+        'reader_connecting' => 'Connecting to the card reader…',
+        'reader_not_connected' => 'Square is not connected or has no location. Settings → Payments.',
+        'reader_app_only' => 'Card reader payments work in the Android app.',
+        'saving' => 'Saving the payment…',
+        'try_again' => 'Try again',
+        'other_ways' => 'Other ways to pay (payment link, QR code, check …)',
+        'failed' => 'Payment did not go through: :error',
+        'cancelled' => 'Payment was cancelled. Nothing was charged.',
+        'confirm_cash' => 'Mark :amount paid in cash?',
+        'confirm_transfer' => 'Mark :amount paid by :method?',
+    ],
+
+    'paid' => [
+        'title' => 'Paid',
+        'invoice' => 'Invoice :number',
+        'balance_left' => 'Balance left: :amount',
+        'tip' => 'Tip :amount',
+        'open_invoice' => 'Open invoice',
+        'open_job' => 'Open job',
+        'done' => 'Done',
+    ],
+
+    'receipt' => [
+        'title' => 'Send receipt',
+        'by' => 'Send by',
+        'sms' => 'SMS',
+        'email' => 'Email',
+        'details' => 'Customer details',
+        'details_hint' => 'Saved to the customer and the invoice.',
+        'review' => 'Request review',
+        'review_hint' => 'The review request goes in the same message as the receipt.',
+        'location' => 'Location',
+        'no_locations' => 'No Google review locations yet (Company → Google reviews).',
+        'send' => 'Send',
+        'sent' => 'Receipt sent to :to.',
+        'sms_off' => 'Texting is off for the company.',
+        'errors' => [
+            'channel' => 'Choose SMS or email.',
+            'email' => 'Enter a valid email address.',
+        ],
+        'sms_text' => [
+            'title' => 'Receipt from :brand',
+            'invoice' => 'Invoice :number · :date',
+            'total' => 'Total: :total',
+            'paid' => 'Paid by :method. Thank you!',
+        ],
+    ],
+
+    'push' => [
+        'paid_title' => 'Invoice :number paid — :amount',
+        'paid_body' => ':customer paid online. Tap to send the receipt.',
+    ],
+
+    'reader' => [
+        'title' => 'Card reader',
+        'hint' => 'Pair a Square reader with this phone. The paired reader connects by itself when you open Take payment.',
+        'app_only' => 'Pair the reader in the Android app.',
+        'download' => 'Download the Android app',
+        'pair' => 'Pair reader',
+        'pairing' => 'Looking for readers… Press the button on the reader.',
+        'stop' => 'Stop',
+        'none' => 'No reader paired.',
+        'forget' => 'Forget reader',
+        'confirm_forget' => 'Forget this reader? You can pair it again later.',
+        'ready' => 'Connected',
+        'connecting' => 'Connecting…',
+        'unavailable' => 'Not available',
+        'faulty' => 'Needs attention',
+        'battery' => 'Battery :percent%',
+        'charging' => 'charging',
+        'settings' => 'Reader settings',
+        'permissions' => 'Allow Bluetooth and location so the app can find the reader.',
+    ],
+
+    'settings' => [
+        'location' => 'Square location',
+        'location_hint' => 'Card reader payments go to this location.',
+        'choose_location' => 'Choose a location',
+        'save_location' => 'Save location',
+        'location_saved' => 'Square location saved.',
+        'reconnect' => 'Card reader payments need a new permission: press Disconnect, then Connect Square again.',
+    ],
+
+    'errors' => [
+        'no_user' => 'This charge has no person who took it.',
+        'location' => 'This location was not found in your Square account.',
+        'mismatch' => 'This Square payment does not match the charge.',
+        'not_completed' => 'Square has not completed this payment.',
+    ],
+
+    'nav' => [
+        'charge_reader' => 'Charge reader',
+        'new_charge' => 'New charge',
+    ],
+];

@@ -38,6 +38,7 @@ return [
         'crypto' => 'Crypto',
         'other' => 'Other',
         'online' => 'Online',
+        'card_reader' => 'Card reader',
     ],
 
     'take_receipt_photo' => 'Take a photo of the cash receipt',

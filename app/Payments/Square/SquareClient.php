@@ -99,6 +99,16 @@ class SquareClient
     }
 
     /**
+     * One payment, as Square has it now (to check a card reader payment the phone reported).
+     *
+     * @return array<string, mixed>
+     */
+    public function payment(string $accessToken, string $paymentId): array
+    {
+        return (array) $this->api($accessToken)->get('/v2/payments/'.rawurlencode($paymentId))->throw()->json('payment');
+    }
+
+    /**
      * @param  array<string, mixed>  $body
      * @return array<string, mixed>
      */

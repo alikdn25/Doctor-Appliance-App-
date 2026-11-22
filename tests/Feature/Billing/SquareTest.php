@@ -248,7 +248,9 @@ describe('paying an invoice', function () {
             && $r['quick_pay']['price_money'] === ['amount' => 28050, 'currency' => 'USD']
             && $r['quick_pay']['location_id'] === 'LOC1'
             && str_contains($r['quick_pay']['name'], $this->invoice->number)
-            && $r['pre_populated_data']['buyer_email'] === 'maria@example.com'
+            // No buyer email or phone: Square sends no receipt of its own (owner's task of November 21).
+            && ! isset($r['pre_populated_data'])
+            && ! str_contains($r->body(), 'maria@example.com')
             && filled($r['idempotency_key']));
 
         $this->get(route('invoices.show', $this->invoice))->assertInertia(fn (Assert $page) => $page

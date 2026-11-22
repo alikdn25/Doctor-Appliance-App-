@@ -2,7 +2,9 @@
 
 namespace App\Mail;
 
+use App\Enums\PaymentMethod;
 use App\Models\Company;
+use App\Models\GoogleProfile;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Support\Billing\DocumentPdf;
@@ -10,6 +12,7 @@ use App\Support\Billing\DocumentPrint;
 use App\Support\Billing\Money;
 use App\Support\Billing\PublicDocument;
 use App\Support\Mail\MailSender;
+use App\Support\Reviews\ReviewImage;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -34,7 +37,7 @@ class ReceiptMail extends Mailable implements ShouldQueue
     /**
      * Only ids are queued: tenant-scoped models cannot be restored outside their company.
      */
-    public function __construct(Invoice $invoice)
+    public function __construct(Invoice $invoice, public ?int $reviewProfileId = null)
     {
         $this->invoiceId = $invoice->id;
         $this->companyId = $invoice->company_id;
@@ -71,10 +74,11 @@ class ReceiptMail extends Mailable implements ShouldQueue
                 'print' => DocumentPrint::data($invoice),
                 'paidAmount' => Money::format($invoice->amount_paid, $invoice->currency, $company->locale),
                 'paidOn' => DocumentPrint::date($payment?->received_at ?? $invoice->paid_at ?? now()),
-                'method' => $payment ? ($payment->provider ? __('payments.online', ['provider' => $payment->provider]) : $payment->method->label()) : null,
+                'method' => $payment ? ($payment->provider && $payment->method === PaymentMethod::Online ? __('payments.online', ['provider' => $payment->provider]) : $payment->method->label()) : null,
                 'reference' => $payment?->reference,
                 'url' => PublicDocument::url($invoice),
                 'pdfUrl' => route('documents.public.pdf', PublicDocument::token($invoice)),
+                'review' => $this->review(),
             ]);
         });
     }
@@ -90,6 +94,19 @@ class ReceiptMail extends Mailable implements ShouldQueue
                 $this->inCompany(fn () => DocumentPdf::filename($this->invoice())),
             )->withMime('application/pdf'),
         ];
+    }
+
+    /**
+     * "Request review" ticked on the Paid screen: the same review block as invoice emails (link and picture), with
+     * the chosen location's link.
+     *
+     * @return array{url: string, image: string|null}|null
+     */
+    private function review(): ?array
+    {
+        $url = $this->reviewProfileId === null ? null : GoogleProfile::query()->whereKey($this->reviewProfileId)->value('review_url');
+
+        return filled($url) ? ['url' => $url, 'image' => ReviewImage::url($this->company())] : null;
     }
 
     private function lastPayment(Invoice $invoice): ?Payment

@@ -68,8 +68,10 @@ class RecordPayment
         ?string $reference = null,
         ?string $currency = null,
         int $tip = 0,
+        PaymentMethod $method = PaymentMethod::Online,
+        ?User $user = null,
     ): Payment {
-        return DB::transaction(function () use ($document, $provider, $providerPaymentId, $amount, $receivedAt, $reference, $currency, $tip) {
+        return DB::transaction(function () use ($document, $provider, $providerPaymentId, $amount, $receivedAt, $reference, $currency, $tip, $method, $user) {
             $estimate = null;
 
             if ($document instanceof Estimate) {
@@ -102,7 +104,7 @@ class RecordPayment
                 'amount' => $amount,
                 // A tip is the customer's extra to the company: kept on the payment, not applied to the invoice.
                 'tip_amount' => max(0, $tip),
-                'method' => PaymentMethod::Online,
+                'method' => $method,
                 'reference' => $reference,
                 'received_at' => $receivedAt,
                 'provider' => $provider,
@@ -113,7 +115,7 @@ class RecordPayment
                 return $this->createDeposit($estimate, $attributes);
             }
 
-            return $this->create($invoice, $attributes, null, $estimate?->id);
+            return $this->create($invoice, $attributes, $user, $estimate?->id);
         });
     }
 

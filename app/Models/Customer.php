@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $last_name
  * @property string|null $company_name
  * @property string $display_name
+ * @property bool $is_walk_in The company's "Walk-in" customer (charges without anybody's details)
  * @property LeadSource|null $lead_source
  * @property PaymentTerms|null $payment_terms Null = the company default
  * @property list<string> $tags
@@ -94,6 +95,7 @@ class Customer extends Model
             'payment_terms' => PaymentTerms::class,
             'tags' => 'array',
             'has_second_contact' => 'boolean',
+            'is_walk_in' => 'boolean',
         ];
     }
 

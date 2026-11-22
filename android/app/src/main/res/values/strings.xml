@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Doctor Appliance</string>
+    <string name="title_activity_main">Doctor Appliance</string>
+    <string name="package_name">ca.doctorappliance.app</string>
+    <string name="custom_url_scheme">ca.doctorappliance.app</string>
+</resources>

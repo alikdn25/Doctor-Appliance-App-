@@ -19,6 +19,7 @@ use App\Models\BrandAddress;
 use App\Models\BusinessExpense;
 use App\Models\BusinessExpenseCategory;
 use App\Models\CashMovement;
+use App\Models\Charge;
 use App\Models\Company;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Customer;
@@ -156,6 +157,7 @@ beforeEach(function () {
             SupplierReceiptLink::create(['supplier_receipt_id' => $receipt->id, 'service_job_id' => $job->id]);
             Trip::create(['user_id' => $owner->id, 'trip_date' => now()->toDateString(), 'type' => 'other', 'from_address' => 'Secret from', 'distance_km' => 5]);
             Task::create(['user_id' => $owner->id, 'title' => 'Secret task', 'task_date' => now()->toDateString(), 'all_day' => true]);
+            Charge::create(['amount' => 1000, 'currency' => 'CAD', 'method' => 'cash', 'draft' => ['description' => 'Secret charge']]);
             $supplier = Supplier::create(['name' => 'Secret supplier '.currentCompany()->id, 'address' => '1 Secret St']);
             JobPart::create(['service_job_id' => $job->id, 'name' => 'Secret part', 'supplier_id' => $supplier->id]);
             $note = new JobNote(['body' => 'Secret note']);
@@ -233,6 +235,7 @@ dataset('tenant models', [
     'trips' => [Trip::class],
     'tasks' => [Task::class],
     'suppliers' => [Supplier::class],
+    'charges' => [Charge::class],
     'job parts' => [JobPart::class],
     'job notes' => [JobNote::class],
     'tax reserve transfers' => [TaxReserveTransfer::class],
@@ -290,7 +293,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         JobAppliance::class, JobAssignee::class, JobBringItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
         Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class, TaxReserveTransfer::class, Trip::class, BotToken::class,
-        Task::class, Supplier::class, JobPart::class, JobNote::class, AiRequest::class, AssistantMessage::class, AssistantAction::class, SquareImport::class, SquareImportCustomer::class, SquareInvoice::class, ProblemReport::class, UsageEvent::class, InconvenienceReport::class, AppReview::class, AppReviewSuggestion::class,
+        Task::class, Supplier::class, Charge::class, JobPart::class, JobNote::class, AiRequest::class, AssistantMessage::class, AssistantAction::class, SquareImport::class, SquareImportCustomer::class, SquareInvoice::class, ProblemReport::class, UsageEvent::class, InconvenienceReport::class, AppReview::class, AppReviewSuggestion::class,
     ])->sort()->values()->all());
 });
 

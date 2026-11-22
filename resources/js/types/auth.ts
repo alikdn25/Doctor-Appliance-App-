@@ -45,6 +45,7 @@ export type Permissions = {
     useAssistant?: boolean;
     runAppReview?: boolean;
     createTasks?: boolean;
+    takeCharges?: boolean;
     viewInvoices?: boolean;
     viewMyJobs?: boolean;
     viewCalendar?: boolean;

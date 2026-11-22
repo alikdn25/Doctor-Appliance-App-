@@ -26,6 +26,8 @@ enum MessageKind: string
     case Clarifying = 'clarifying';
     /** "Hand to technician": the texts to the technician and to the customer. */
     case Handoff = 'handoff';
+    /** The receipt after payment, from the Paid screen (with the review request inside when ticked). */
+    case Receipt = 'receipt';
 
     public function label(): string
     {

@@ -21,6 +21,8 @@ enum PaymentMethod: string
     case Crypto = 'crypto';
     case Other = 'other';
     case Online = 'online';
+    // Card reader paired with the technician's phone (Square Mobile Payments SDK); recorded by the provider.
+    case CardReader = 'card_reader';
 
     public function label(): string
     {
