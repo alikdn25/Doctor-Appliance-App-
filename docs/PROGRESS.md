@@ -2665,3 +2665,10 @@ field optional — AI, charges and conversions keep the company's mode). New doc
 from an approved estimate keeps the estimate's mode; editing shows the document's own mode.
 ✅ Close by voice: the AI no longer guesses "amounts include tax"; the preview starts with the switch off and the
 technician switches it there (money recalculated by code).
+
+## Android download path fix (November 22, 2026)
+
+✅ `android_apk_path` moved out of `payments.square` to the top level of `config/payments.php`: before,
+`config('payments.android_apk_path')` was null, so `/download/android.apk` answered 404, `/download/android.json`
+`{"version_code":0}` and `/android` showed no download, although the files were on the server. Unit test
+`AndroidApkPathConfigTest` guards the key. Next: deploy, check the three URLs, then delete the leftover `.b64` file.
