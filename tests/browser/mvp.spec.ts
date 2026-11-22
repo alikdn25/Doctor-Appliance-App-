@@ -112,10 +112,13 @@ test('an old unfinished repair remains in the backlog and map fallback keeps vis
             'Map is unavailable right now. Jobs and directions are listed below.',
         ),
     ).toBeVisible();
+    // Another browser test can book Jane Browser for the same window today (depends on the hour it runs).
     await expect(
-        page.getByRole('button', {
-            name: /1:00 p\.m\. – 3:00 p\.m\..*Jane Browser/,
-        }),
+        page
+            .getByRole('button', {
+                name: /1:00 p\.m\. – 3:00 p\.m\..*Jane Browser/,
+            })
+            .first(),
     ).toBeVisible();
     // The person filter of the map is a row of chips (UX-REDESIGN §9.4).
     await page
@@ -123,9 +126,11 @@ test('an old unfinished repair remains in the backlog and map fallback keeps vis
         .getByRole('button', { name: 'Browser Technician' })
         .click();
     await expect(
-        page.getByRole('button', {
-            name: /1:00 p\.m\. – 3:00 p\.m\..*Jane Browser/,
-        }),
+        page
+            .getByRole('button', {
+                name: /1:00 p\.m\. – 3:00 p\.m\..*Jane Browser/,
+            })
+            .first(),
     ).toBeVisible();
     await screenshot(page, info, 'calendar-map');
 });
