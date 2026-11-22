@@ -117,6 +117,9 @@ function cardWebhook(array $payment)
 
 describe('the token endpoint', function () {
     test('only a signed-in person of the company who takes payments gets the Square token and location', function () {
+        $stranger = memberOf(Company::factory()->create(), UserRole::Owner);
+        $collector = memberOf($this->company, UserRole::Collector);
+
         $this->actingAs($this->tech)->getJson(route('payments.reader.session'))
             ->assertOk()
             ->assertJsonPath('access_token', 'EAAAl-card-token')
@@ -128,13 +131,12 @@ describe('the token endpoint', function () {
         $this->getJson(route('payments.reader.session'))->assertUnauthorized();
 
         // Another company (no Square of its own) never gets this company's token.
-        $stranger = memberOf(Company::factory()->create(), UserRole::Owner);
         $this->actingAs($stranger)->getJson(route('payments.reader.session'))
             ->assertStatus(422)
             ->assertDontSee('EAAAl-card-token');
 
         // People who do not take payments.
-        $this->actingAs(memberOf($this->company, UserRole::Collector))->getJson(route('payments.reader.session'))->assertForbidden();
+        $this->actingAs($collector)->getJson(route('payments.reader.session'))->assertForbidden();
     });
 });
 
