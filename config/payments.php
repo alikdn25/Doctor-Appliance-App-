@@ -13,6 +13,9 @@ return [
         SquareProvider::class,
     ],
 
+    // The Android app (Capacitor) download, built by GitHub Actions and placed on the server (docs/ANDROID.md).
+    'android_apk_path' => env('ANDROID_APK_PATH') ?: storage_path('app/android/android.apk'),
+
     'square' => [
         /*
         | Countries where Square takes card payments for sellers. Companies elsewhere are not offered
@@ -23,9 +26,6 @@ return [
         // Permissions asked from the company's Square account. PAYMENTS_WRITE_IN_PERSON: card reader payments in the
         // Android app (Mobile Payments SDK). Companies connected before it was added press Connect Square again.
         'scopes' => ['MERCHANT_PROFILE_READ', 'PAYMENTS_READ', 'PAYMENTS_WRITE', 'PAYMENTS_WRITE_IN_PERSON', 'ORDERS_READ', 'ORDERS_WRITE'],
-
-        // The Android app (Capacitor) download, built by GitHub Actions and placed on the server (docs/ANDROID.md).
-        'android_apk_path' => env('ANDROID_APK_PATH') ?: storage_path('app/android/android.apk'),
 
         // Asked only when the Owner presses "Import from Square": reading customers, invoices, orders and payments.
         'import_scopes' => ['CUSTOMERS_READ', 'INVOICES_READ', 'ORDERS_READ', 'PAYMENTS_READ'],
