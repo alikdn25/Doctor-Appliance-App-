@@ -145,6 +145,18 @@ base64 -w0 release.jks   # → ANDROID_KEYSTORE_BASE64
 Technicians install the same APK (the Owner sends them the `/download/android.apk` link; the page itself is Owner
 only).
 
+## When a card payment fails
+
+- The Take payment screen shows the plain message and, under it, the SDK's full error exactly as Square returned it:
+  `Error code`, `Message`, `debugCode`, `debugMessage`, `details`.
+- Every failure is written on the server to `storage/logs/card-payments.log` (daily file, 90 days), one line per
+  attempt: time, company, charge, amount, Square location (server) and the SDK's location, error code / message /
+  debugCode / debugMessage / details, SDK version, phone model, Android version, app version, `app_build`
+  (release / debug), the APK's signing certificate SHA-256 (`app_signing_sha256` — must equal the fingerprint in the
+  Square Developer Dashboard), NFC on/off, environment on the phone and on the server, both Square application IDs
+  and whether they match, and the reader permissions the token is missing (`missing_scopes`).
+- Read it: `grep "Card payment failed" storage/logs/card-payments-*.log | tail -n 5`.
+
 ## Building
 
 GitHub Actions → **android**: every push to `main` builds the signed APK (version `1.0.<run number>`, version code =

@@ -367,6 +367,43 @@ describe('webhooks for reader payments', function () {
         $this->postJson(route('charges.fail', $charge), ['error' => 'CANCELED: buyer cancelled'])->assertOk();
     });
 
+    test('a failed card payment is written to card-payments.log with the SDK error, phone and build', function () {
+        $path = storage_path('framework/testing/card-payments-'.Str::random(8).'.log');
+        config(['logging.channels.card_payments' => ['driver' => 'single', 'path' => $path, 'level' => 'debug']]);
+
+        $invoice = readerInvoice();
+        $this->postJson(route('charges.store'), ['method' => 'card_reader', 'invoice_id' => $invoice->id])->assertOk();
+        $charge = lastCharge();
+
+        $this->postJson(route('charges.fail', $charge), [
+            'error' => 'PAYMENT_FAILED: The payment did not complete.',
+            'code' => 'PAYMENT_FAILED',
+            'message' => 'The payment did not complete.',
+            'debug_code' => 'tap_to_pay_unavailable',
+            'debug_message' => 'Device not supported',
+            'details' => ['category=PAYMENT code=TAP_TO_PAY_UNAVAILABLE'],
+            'sdk_version' => '2.7.0',
+            'device' => 'samsung SM-S921W',
+            'android' => '16 (API 36)',
+            'app_build' => 'release',
+            'application_id' => 'sandbox-sq0idb-app',
+            'environment' => 'sandbox',
+        ])->assertOk();
+
+        $log = file_get_contents($path);
+        expect($log)->toContain('Card payment failed')
+            ->toContain('"error_code":"PAYMENT_FAILED"')
+            ->toContain('"debug_code":"tap_to_pay_unavailable"')
+            ->toContain('"sdk_version":"2.7.0"')
+            ->toContain('"device":"samsung SM-S921W"')
+            ->toContain('"android":"16 (API 36)"')
+            ->toContain('"amount_minor":'.$charge->amount)
+            ->toContain('"application_ids_match":true')
+            ->and(inCompany($this->company, fn () => $charge->fresh()->status))->toBe(Charge::FAILED);
+
+        @unlink($path);
+    });
+
     test('a payment of a sale not made here is ignored', function () {
         readerWebhook(['id' => 'X1', 'status' => 'COMPLETED', 'reference_id' => (string) Str::uuid(), 'amount_money' => ['amount' => 100, 'currency' => 'CAD']])->assertNoContent();
 

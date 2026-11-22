@@ -65,6 +65,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Every failed card payment from the Android app (ChargeController::fail): SDK error, phone, build.
+        'card_payments' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/card-payments.log'),
+            'level' => 'debug',
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

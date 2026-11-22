@@ -23,6 +23,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -222,13 +223,82 @@ class ChargeController extends Controller
     /**
      * The reader said no (declined, cancelled, no reader): kept for the record; nothing is paid.
      */
-    public function fail(Request $request, Charge $charge, ChargeCheckout $checkout): JsonResponse
+    public function fail(Request $request, Charge $charge, ChargeCheckout $checkout, SquareProvider $square): JsonResponse
     {
         Gate::authorize('takeCharges');
         abort_unless($charge->user_id === $request->user()->id, 404);
-        $checkout->fail($charge, (string) $request->validate(['error' => ['nullable', 'string', 'max:500']])['error']);
+        $text = ['nullable', 'string', 'max:500'];
+        $data = $request->validate([
+            'error' => $text,
+            'code' => $text,
+            'message' => ['nullable', 'string', 'max:1000'],
+            'debug_code' => $text,
+            'debug_message' => ['nullable', 'string', 'max:2000'],
+            'details' => ['nullable', 'array', 'max:20'],
+            'details.*' => ['nullable', 'string', 'max:1000'],
+            'sdk_version' => $text,
+            'device' => $text,
+            'android' => $text,
+            'app_version' => $text,
+            'app_build' => $text,
+            'application_id' => $text,
+            'signing_sha256' => $text,
+            'nfc' => $text,
+            'environment' => $text,
+            'sdk_location_id' => $text,
+            'sdk_location_name' => $text,
+            'raw' => ['nullable', 'string', 'max:2000'],
+        ]);
+        $checkout->fail($charge, (string) ($data['error'] ?? ''));
+        $this->logCardFailure($charge, $data, $square);
 
         return response()->json(['status' => $charge->fresh()->status]);
+    }
+
+    /**
+     * One line per failed card payment in storage/logs/card-payments.log: when, how much, which Square location,
+     * the SDK's error, the SDK version, the phone and Android, the app build and environment on both sides.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function logCardFailure(Charge $charge, array $data, SquareProvider $square): void
+    {
+        $company = currentCompany();
+        $connection = $square->connection($company);
+        $serverAppId = (string) config('services.square.application_id');
+
+        Log::channel('card_payments')->warning('Card payment failed', [
+            'time' => now()->toIso8601String(),
+            'company_id' => $company->id,
+            'user_id' => $charge->user_id,
+            'charge' => $charge->reference,
+            'amount' => Money::format($charge->amount, $charge->currency),
+            'amount_minor' => $charge->amount,
+            'currency' => $charge->currency,
+            'location_id' => $connection?->location_id,
+            'location_name' => $connection?->location_name,
+            'sdk_location_id' => $data['sdk_location_id'] ?? null,
+            'sdk_location_name' => $data['sdk_location_name'] ?? null,
+            'error_code' => $data['code'] ?? null,
+            'error_message' => $data['message'] ?? null,
+            'debug_code' => $data['debug_code'] ?? null,
+            'debug_message' => $data['debug_message'] ?? null,
+            'details' => $data['details'] ?? [],
+            'sdk_version' => $data['sdk_version'] ?? null,
+            'device' => $data['device'] ?? null,
+            'android' => $data['android'] ?? null,
+            'app_version' => $data['app_version'] ?? null,
+            'app_build' => $data['app_build'] ?? null,
+            'app_signing_sha256' => $data['signing_sha256'] ?? null,
+            'nfc' => $data['nfc'] ?? null,
+            'app_environment' => $data['environment'] ?? null,
+            'app_square_application_id' => $data['application_id'] ?? null,
+            'server_environment' => config('services.square.environment'),
+            'server_square_application_id' => $serverAppId,
+            'application_ids_match' => filled($data['application_id'] ?? null) ? $data['application_id'] === $serverAppId : null,
+            'missing_scopes' => $square->missingReaderScopes($company),
+            'raw' => $data['raw'] ?? null,
+        ]);
     }
 
     /**

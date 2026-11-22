@@ -14,8 +14,10 @@ import {
     ensureReaderAuthorized,
     hasCardReader,
     readerError,
+    readerErrorText,
     SquareReader,
 } from '@/lib/card-reader';
+import type { ReaderErrorInfo } from '@/lib/card-reader';
 import { sendJson } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
 import { useOnline } from '@/lib/online';
@@ -60,6 +62,42 @@ async function post<T>(url: string, data: unknown): Promise<T> {
     }
 
     return body as T;
+}
+
+/**
+ * Sends the failed card payment to the server (kept on the charge and written to storage/logs/card-payments.log):
+ * the SDK's code, message, debugCode, details, and the phone, Android, SDK version, app build and environment.
+ */
+async function reportFailure(failUrl: string, info: ReaderErrorInfo) {
+    let data = info.data;
+    if (!data.sdkVersion) {
+        // Errors raised on the web side (permissions, Square not connected) carry no diagnostics: ask the plugin.
+        data = {
+            ...(await SquareReader.diagnostics().catch(() => ({}))),
+            ...data,
+        };
+    }
+
+    await sendJson(failUrl, 'POST', {
+        error: `${info.code}: ${info.message}`,
+        code: info.code,
+        message: info.message,
+        debug_code: data.debugCode ?? null,
+        debug_message: data.debugMessage ?? null,
+        details: data.details ?? [],
+        sdk_version: data.sdkVersion ?? null,
+        device: data.device ?? null,
+        android: data.android ?? null,
+        app_version: data.appVersion ?? null,
+        app_build: data.appBuild ?? null,
+        application_id: data.applicationId ?? null,
+        signing_sha256: data.signingSha256 ?? null,
+        nfc: data.nfc ?? null,
+        environment: data.environment ?? null,
+        sdk_location_id: data.sdkLocationId ?? null,
+        sdk_location_name: data.sdkLocationName ?? null,
+        raw: data.raw ?? null,
+    }).catch(() => {});
 }
 
 /** What the person sees when the reader or Square says no. */
@@ -107,6 +145,8 @@ export function TakePayment({
     const [busy, setBusy] = useState<Method | null>(null);
     const [stage, setStage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    // The full SDK error (code, message, debugCode, details) under the plain message.
+    const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [confirm, setConfirm] = useState<Method | null>(null);
 
     // The paired reader connects as soon as the screen opens.
@@ -124,6 +164,7 @@ export function TakePayment({
     const run = async (method: Method) => {
         setBusy(method);
         setError(null);
+        setErrorDetails(null);
         let failUrl: string | null = null;
 
         try {
@@ -165,11 +206,11 @@ export function TakePayment({
             );
             router.visit(done.paid_url);
         } catch (e) {
-            const { code, message } = readerError(e);
+            const info = readerError(e);
+            const { code, message } = info;
             if (failUrl) {
-                void sendJson(failUrl, 'POST', {
-                    error: `${code}: ${message}`,
-                });
+                setErrorDetails(readerErrorText(info));
+                void reportFailure(failUrl, info);
             }
             setError(
                 t(
@@ -224,6 +265,14 @@ export function TakePayment({
                     data-test="take-payment-error"
                 >
                     <p>{error}</p>
+                    {errorDetails && (
+                        <pre
+                            className="overflow-x-auto rounded-xl bg-white/80 p-2 font-mono text-xs break-words whitespace-pre-wrap select-text dark:bg-black/30"
+                            data-test="take-payment-error-details"
+                        >
+                            {errorDetails}
+                        </pre>
+                    )}
                 </div>
             )}
 
