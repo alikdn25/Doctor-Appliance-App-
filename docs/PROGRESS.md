@@ -9,6 +9,7 @@
    locations, SDK error, SDK version, phone, Android, app build, signing SHA-256, environments, application IDs,
    missing token permissions (docs/ANDROID.md → When a card payment fails). Plugin method `diagnostics()`.
 4. Square Mobile Payments SDK stays at 2.7.0 (the latest, October 29, 2026; Tap to Pay on Android since 2.1.0).
+
 - Tests: `CardReaderChargeTest` — a failure is written to the log with the SDK error, phone and build.
 
 # November 22 — Owner's task: Android app and the Square reader inside it (done)
