@@ -14,7 +14,7 @@ return new class extends Migration
     {
         Schema::create('fcm_tokens', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained();
             $table->string('token', 512);
             $table->char('token_hash', 64)->unique();
             $table->string('platform', 20)->default('android');
