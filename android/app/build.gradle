@@ -74,6 +74,8 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // AppMessagingService extends FirebaseMessagingService (the push plugin keeps Firebase to itself).
+    implementation "com.google.firebase:firebase-messaging:${rootProject.ext.has('firebaseMessagingVersion') ? rootProject.ext.firebaseMessagingVersion : '25.0.1'}"
     implementation "com.squareup.sdk:mobile-payments-sdk:$squareSdkVersion"
     // The mock reader shows only in the Square sandbox (MobilePaymentsSdk.isSandboxEnvironment()).
     implementation "com.squareup.sdk:mockreader-ui:$squareSdkVersion"
