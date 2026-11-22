@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import { ArrowLeft, Check, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useMoney } from '@/components/billing/money';
+import { TaxIncludedSwitch } from '@/components/billing/tax-included-switch';
 import { Button } from '@/components/ui/button';
 import { MicButton } from '@/components/ui/mic-button';
 import {
@@ -106,9 +107,26 @@ export function VoiceCloseSheet({
         }
     };
 
-    // A tick changed: the line's taxes and the money again (code).
-    const toggleTax = async (index: number, id: number) => {
+    // A tick or "Price includes tax" changed: the money again (code).
+    const recalc = async (draft: Draft) => {
         if (!preview || busy) return;
+        setPreview({ ...preview, draft });
+        try {
+            const response = await sendJson(previewClose(jobId).url, 'POST', {
+                lines: draft.lines,
+                amounts_include_tax: draft.amounts_include_tax,
+            });
+            const body = (await response.json()) as { money?: Money };
+            if (response.ok && body.money) {
+                setPreview({ draft, money: body.money });
+            }
+        } catch {
+            setError(t('automation.inbox.failed'));
+        }
+    };
+
+    const toggleTax = (index: number, id: number) => {
+        if (!preview) return;
         const lines = preview.draft.lines.map((line, i) =>
             i !== index
                 ? line
@@ -119,20 +137,7 @@ export function VoiceCloseSheet({
                           : [...line.tax_rate_ids, id],
                   },
         );
-        const draft = { ...preview.draft, lines };
-        setPreview({ ...preview, draft });
-        try {
-            const response = await sendJson(previewClose(jobId).url, 'POST', {
-                lines,
-                amounts_include_tax: draft.amounts_include_tax,
-            });
-            const body = (await response.json()) as { money?: Money };
-            if (response.ok && body.money) {
-                setPreview({ draft, money: body.money });
-            }
-        } catch {
-            setError(t('automation.inbox.failed'));
-        }
+        void recalc({ ...preview.draft, lines });
     };
 
     const confirm = () => {
@@ -254,7 +259,7 @@ export function VoiceCloseSheet({
                                                                     on
                                                                 }
                                                                 onClick={() =>
-                                                                    void toggleTax(
+                                                                    toggleTax(
                                                                         i,
                                                                         tax.id,
                                                                     )
@@ -287,6 +292,18 @@ export function VoiceCloseSheet({
                                             )}
                                         </div>
                                     ))}
+                                    <TaxIncludedSwitch
+                                        checked={
+                                            preview.draft.amounts_include_tax
+                                        }
+                                        onChange={(on) =>
+                                            void recalc({
+                                                ...preview.draft,
+                                                amounts_include_tax: on,
+                                            })
+                                        }
+                                        testId="voice-close-price-includes-tax"
+                                    />
                                     <p className="flex justify-between gap-2 border-t pt-1 text-muted-foreground">
                                         <span>
                                             {t(
@@ -321,13 +338,6 @@ export function VoiceCloseSheet({
                                             {money(preview.money.total)}
                                         </span>
                                     </p>
-                                    {preview.draft.amounts_include_tax && (
-                                        <p className="text-xs text-muted-foreground">
-                                            {t(
-                                                'automation.voice_close.with_tax',
-                                            )}
-                                        </p>
-                                    )}
                                 </>
                             )}
                         </div>

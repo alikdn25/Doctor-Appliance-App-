@@ -57,7 +57,7 @@ class VoiceCloser
             $user,
             'You fill in how a repair job ended from what the technician said (Russian, English or mixed). Write in English. '
             .'note: what was found and done, short. lines: one line per piece of work, part or material, with its amount as said; never invent an '
-            .'amount (no amount said = no line). amounts_include_tax: true only when they say the amount includes tax. '
+            .'amount (no amount said = no line). '
             .'payment: card, cash, e_transfer, or unpaid when not said or not paid. status: completed, or '
             .'need_to_order_parts when a part must be ordered (part_name = the part, else ""). Currency: '.$company->currency.'.',
             [['role' => 'user', 'content' => $context]],
@@ -83,7 +83,8 @@ class VoiceCloser
         return [
             'note' => mb_substr(trim((string) ($raw['note'] ?? '')), 0, 5000),
             'lines' => $lines,
-            'amounts_include_tax' => ($raw['amounts_include_tax'] ?? false) === true,
+            // "Price includes tax" starts off on every preview; the technician switches it on there.
+            'amounts_include_tax' => false,
             'payment' => in_array($raw['payment'] ?? null, self::PAYMENTS, true) ? $raw['payment'] : 'unpaid',
             'status' => in_array($raw['status'] ?? null, self::STATUSES, true) ? $raw['status'] : 'completed',
             'part_name' => mb_substr(trim((string) ($raw['part_name'] ?? '')), 0, 255),
@@ -107,12 +108,11 @@ class VoiceCloser
                     'required' => ['description', 'amount', 'kind'],
                     'additionalProperties' => false,
                 ]],
-                'amounts_include_tax' => ['type' => 'boolean'],
                 'payment' => ['type' => 'string', 'enum' => self::PAYMENTS],
                 'status' => ['type' => 'string', 'enum' => self::STATUSES],
                 'part_name' => $text,
             ],
-            'required' => ['note', 'lines', 'amounts_include_tax', 'payment', 'status', 'part_name'],
+            'required' => ['note', 'lines', 'payment', 'status', 'part_name'],
             'additionalProperties' => false,
         ];
     }

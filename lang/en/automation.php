@@ -77,7 +77,6 @@ return [
         'no_lines' => 'No invoice lines (no amount was said).',
         'subtotal' => 'Subtotal',
         'total' => 'Total',
-        'with_tax' => 'Amounts said include tax',
         'payment' => 'Payment',
         'payments' => [
             'card' => 'Card',

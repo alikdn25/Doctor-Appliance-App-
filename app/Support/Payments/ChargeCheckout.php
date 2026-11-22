@@ -104,7 +104,7 @@ class ChargeCheckout
             }
             $currency = $invoice->currency;
         } else {
-            $totals = self::totals((array) ($draft['lines'] ?? []), (bool) ($draft['amounts_include_tax'] ?? true));
+            $totals = self::totals((array) ($draft['lines'] ?? []), (bool) ($draft['amounts_include_tax'] ?? false));
             if ($totals['total'] <= 0) {
                 throw ValidationException::withMessages(['amount' => __('payments.errors.amount_required')]);
             }
@@ -203,7 +203,7 @@ class ChargeCheckout
     private function invoiceFromDraft(Charge $charge, User $user): Invoice
     {
         $draft = (array) $charge->draft;
-        $totals = self::totals((array) ($draft['lines'] ?? []), (bool) ($draft['amounts_include_tax'] ?? true));
+        $totals = self::totals((array) ($draft['lines'] ?? []), (bool) ($draft['amounts_include_tax'] ?? false));
 
         if ($totals['total'] !== $charge->amount) {
             // The tax rates changed between Charge and the payment: the invoice is made for what was charged.

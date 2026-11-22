@@ -47,6 +47,7 @@ class SaveBillingDocument
         return DB::transaction(function () use ($job, $data, $user) {
             $estimate = new Estimate;
             $this->attachToJob($estimate, $job, $user);
+            $this->taxMode($estimate, $data);
             $estimate->number = $this->numbers->estimate();
             $this->fill($estimate, $data, $this->taxSnapshot($data['tax_rate_ids'] ?? []), $user);
 
@@ -69,6 +70,7 @@ class SaveBillingDocument
 
             $invoice = new Invoice;
             $this->attachToJob($invoice, $job, $user);
+            $this->taxMode($invoice, $data);
             $invoice->number = $this->numbers->invoice();
             $invoice->estimate_id = $from?->id;
             $this->fill($invoice, $data, $this->taxSnapshot($data['tax_rate_ids'] ?? []), $user);
@@ -145,12 +147,27 @@ class SaveBillingDocument
     public function update(Estimate|Invoice $document, array $data, User $user): void
     {
         DB::transaction(function () use ($document, $data, $user) {
+            $this->taxMode($document, $data);
             $this->fill($document, $data, $this->taxSnapshot($data['tax_rate_ids'] ?? [], $document->taxes), $user);
 
             if ($document instanceof Invoice) {
                 $this->syncInvoice->handle($document, $user);
             }
         });
+    }
+
+    /**
+     * The "Price includes tax" switch on the form (owner's task of November 22): off = the line prices are without
+     * tax and the taxes are added on top; on = the prices already include the ticked taxes. Without the field (AI,
+     * charges, conversions) the document keeps its mode, a new one the company's.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function taxMode(Estimate|Invoice $document, array $data): void
+    {
+        if (array_key_exists('prices_include_tax', $data)) {
+            $document->prices_include_tax = (bool) $data['prices_include_tax'];
+        }
     }
 
     private function attachToJob(Estimate|Invoice $document, ServiceJob $job, User $user): void

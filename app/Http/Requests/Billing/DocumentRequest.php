@@ -61,6 +61,8 @@ class DocumentRequest extends FormRequest
                 $this->input('discount_type') === 'percent' ? 'max:100' : 'max:9999999',
             ],
             'notes' => ['nullable', 'string', 'max:5000'],
+            // "Price includes tax" switch under the lines: off = taxes added on top of the line amounts.
+            'prices_include_tax' => ['sometimes', 'boolean'],
             'tax_rate_ids' => ['array'],
             'tax_rate_ids.*' => [
                 'integer', 'distinct',
@@ -169,6 +171,9 @@ class DocumentRequest extends FormRequest
             ] : []),
         ], $data['items']);
         $data['tax_rate_ids'] ??= [];
+        if (array_key_exists('prices_include_tax', $data)) {
+            $data['prices_include_tax'] = (bool) $data['prices_include_tax'];
+        }
 
         return $data;
     }

@@ -1,6 +1,7 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { Check, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { TaxIncludedSwitch } from '@/components/billing/tax-included-switch';
 import {
     CustomerFields,
     emptyCustomer,
@@ -11,7 +12,6 @@ import type { ChargeScreen } from '@/components/payments/take-payment';
 import { ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SegmentedControl } from '@/components/ui/segmented-control';
 import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import { hasCardReader } from '@/lib/card-reader';
 import { sendJson } from '@/lib/http';
@@ -41,7 +41,8 @@ type Props = ChargeScreen & {
 /**
  * New charge ("+" → Charge reader) and the quick invoice of a job without one (owners' tasks of November 21 and 22):
  * a list of lines (description, by voice through the keyboard's microphone, and amount), each with a large tick per
- * company tax (only the first is ticked on a new line); all amounts with or without tax; quick amounts from the price
+ * company tax (only the first is ticked on a new line); taxes added on top, or worked out of the amounts with
+ * "Price includes tax" (off on every new screen); quick amounts from the price
  * list; Subtotal, each tax used by a line and the Total (worked out on the server); and the customer (collapsed,
  * phone first; a phone already in the database fills in that customer). Empty lines are left out. Charge opens Take
  * payment; the customer, a Completed job and the paid invoice are made only after the payment.
@@ -61,7 +62,8 @@ export default function NewCharge(props: Props) {
     ]);
     const [focusLine, setFocusLine] = useState<number | null>(null);
     const descriptions = useRef<(HTMLInputElement | null)[]>([]);
-    const [withTax, setWithTax] = useState<'with' | 'without'>('with');
+    // "Price includes tax": off on every new screen (never remembered).
+    const [taxIncluded, setTaxIncluded] = useState(props.price_includes_tax);
     const [totals, setTotals] = useState<Totals | null>(null);
     const [customerOpen, setCustomerOpen] = useState(false);
     const [customer, setCustomer] = useState<CustomerDetails>(emptyCustomer);
@@ -78,7 +80,7 @@ export default function NewCharge(props: Props) {
         filled.length > 0 && filled.every((l) => Number(l.amount) > 0);
     const body = {
         lines: filled,
-        amounts_include_tax: withTax === 'with',
+        amounts_include_tax: taxIncluded,
     };
 
     // "+ Add line": the cursor goes straight to the new line's description.
@@ -338,25 +340,10 @@ export default function NewCharge(props: Props) {
                     <Plus /> {t('charges.new.add_line')}
                 </Button>
 
-                <div className="grid gap-1">
-                    <SegmentedControl
-                        label={t('charges.new.amount')}
-                        options={[
-                            { value: 'with', label: t('charges.new.with_tax') },
-                            {
-                                value: 'without',
-                                label: t('charges.new.without_tax'),
-                            },
-                        ]}
-                        value={withTax}
-                        onChange={setWithTax}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        {withTax === 'with'
-                            ? t('charges.new.with_tax_hint')
-                            : t('charges.new.without_tax_hint')}
-                    </p>
-                </div>
+                <TaxIncludedSwitch
+                    checked={taxIncluded}
+                    onChange={setTaxIncluded}
+                />
 
                 {props.quick_amounts.length > 0 && (
                     <div className="grid gap-2">
