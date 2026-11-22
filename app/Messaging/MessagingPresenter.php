@@ -101,15 +101,15 @@ class MessagingPresenter
     }
 
     /**
-     * "Send by SMS" next to "Send by email" on an estimate or invoice.
+     * "Send by SMS" next to "Send by email" on an estimate. Invoices go by email only (owner's task of November 22).
      *
-     * @return array<string, mixed>|null Null in Off mode (documents go by email only)
+     * @return array<string, mixed>|null Null for invoices and in Off mode (documents go by email only)
      */
     public function forDocument(Estimate|Invoice $document): ?array
     {
         $company = currentCompany();
 
-        if ($company->sms_mode === SmsMode::Off) {
+        if ($document instanceof Invoice || $company->sms_mode === SmsMode::Off) {
             return null;
         }
 
@@ -121,9 +121,9 @@ class MessagingPresenter
             'phone' => $phone?->number,
             'blocked' => $company->sms_mode === SmsMode::Automatic ? $this->messenger->smsBlockedReason($document->customer) : ($phone === null ? __('messages.blocked.no_phone') : null),
             'text' => self::documentText($document),
-            'url' => route($document instanceof Invoice ? 'invoices.sms' : 'estimates.sms', $document),
+            'url' => route('estimates.sms', $document),
             'opened_url' => route('jobs.messages.opened', $document->service_job_id),
-            'kind' => ($document instanceof Invoice ? MessageKind::InvoiceLink : MessageKind::EstimateLink)->value,
+            'kind' => MessageKind::EstimateLink->value,
         ];
     }
 

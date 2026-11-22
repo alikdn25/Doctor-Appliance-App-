@@ -204,7 +204,7 @@ class SmsInbox
     }
 
     /**
-     * Ready texts next to the reply box (On my way, Reminder, Invoice link, General), filled in for the customer and
+     * Ready texts next to the reply box (On my way, Reminder, General; invoices go by email only), filled in for the customer and
      * their latest job.
      *
      * @return list<array{key: string, label: string, text: string}>
@@ -214,24 +214,17 @@ class SmsInbox
         $company = currentCompany();
         $visit = $job?->visits()->orderByDesc('scheduled_start')->first();
         $context = MessageContext::for($customer, $job, $visit, $user);
-        $invoice = $job?->invoices()->outstanding()->where('balance', '>', 0)->latest('id')->first();
         $kinds = array_filter([
             $visit ? MessageKind::OnMyWay : null,
             $visit ? MessageKind::VisitReminder : null,
             MessageKind::General,
         ]);
 
-        $templates = array_map(fn (MessageKind $kind) => [
+        return array_map(fn (MessageKind $kind) => [
             'key' => $kind->value,
             'label' => $kind->label(),
             'text' => MessageTemplates::render($company, $kind, $context),
         ], array_values($kinds));
-
-        if ($invoice) {
-            $templates[] = ['key' => MessageKind::InvoiceLink->value, 'label' => MessageKind::InvoiceLink->label(), 'text' => MessagingPresenter::documentText($invoice)];
-        }
-
-        return $templates;
     }
 
     public function markRead(User $user, string $phone, array $ids): void

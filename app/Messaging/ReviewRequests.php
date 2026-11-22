@@ -3,7 +3,8 @@
 namespace App\Messaging;
 
 use App\Enums\MessageKind;
-use App\Enums\SmsMode;
+use App\Models\Customer;
+use App\Models\CustomerEmail;
 use App\Models\GoogleProfile;
 use App\Models\Invoice;
 use App\Models\Message;
@@ -12,33 +13,31 @@ use App\Models\ServiceJob;
 use App\Models\User;
 
 /**
- * Google review requests (SPEC §8). The only way to send one: after an invoice is sent, the user answers
- * "Send Google Review request?" and picks a location (Google profile) and a phone number; the link goes out as a
- * separate SMS (Automatic mode) or opens on the technician's phone (sms: link). Nothing is sent automatically.
- * Every customer gets the same request: no incentive, no "are you happy?" filter. Must run in a tenant context.
+ * Google review requests (SPEC §8). The only way to send one: after an invoice is sent or paid, the user answers
+ * "Send Google Review request?", picks a location (Google profile) and the customer's email; the request goes by
+ * email only (owner's task of November 22), with the review block and the company's picture. Nothing is sent
+ * automatically. Every customer gets the same request: no incentive, no "are you happy?" filter. Must run in a
+ * tenant context.
  */
 class ReviewRequests
 {
     public function __construct(private readonly Messenger $messenger) {}
 
     /**
-     * The prompt shown after the invoice is sent: locations with their ready texts, and the customer's phone.
+     * The prompt shown after the invoice is sent or paid: locations with their ready texts, and the customer's email.
      *
      * @return array<string, mixed>
      */
     public function prompt(Invoice $invoice): array
     {
-        $company = currentCompany();
-        $invoice->loadMissing(['customer', 'job.brand']);
+        $invoice->loadMissing(['customer.primaryEmail', 'job.brand']);
         $job = $invoice->job;
         $profiles = GoogleProfile::query()->orderBy('label')->get();
         $default = $job->brand?->google_profile_id;
 
         return [
             'url' => route('invoices.review-request', $invoice),
-            'mode' => $company->sms_mode->value,
-            'blocked' => $company->sms_mode === SmsMode::Off ? __('reviews.prompt.sms_off') : null,
-            'phone' => $this->messenger->mobile($invoice->customer)?->number,
+            'email' => $invoice->customer?->primaryEmail?->email ?? $invoice->customer?->emails()->value('email'),
             'profiles' => $profiles->map(fn (GoogleProfile $p) => [
                 'id' => $p->id,
                 'label' => $p->label,
@@ -54,33 +53,47 @@ class ReviewRequests
     }
 
     /**
-     * "Send" in the prompt: an SMS from the company number (Automatic) or the record that the text was opened on
-     * the technician's phone. The job keeps the latest request.
+     * "Send" in the prompt: an email to the address given (kept on the customer when they had none). The job keeps
+     * the latest request.
      */
-    public function send(Invoice $invoice, GoogleProfile $profile, string $to, User $user, ?string $text = null): Message
+    public function send(Invoice $invoice, GoogleProfile $profile, string $email, User $user, ?string $text = null): Message
     {
-        $invoice->loadMissing(['customer', 'job']);
+        $invoice->loadMissing(['customer', 'job.brand']);
         $job = $invoice->job;
         $body = $this->personal($text, $profile) ?? $this->text($job, $profile);
+        self::keepEmail($invoice->customer, $email);
 
-        $message = currentCompany()->sms_mode === SmsMode::Automatic
-            ? $this->messenger->smsToCustomerNumber(MessageKind::ReviewRequest, $invoice->customer, $job, $to, $body, $user)
-            : $this->messenger->openedOnPhone(MessageKind::ReviewRequest, $invoice->customer, $job, $to, $body, $user);
-
-        $blocked = in_array($message->status, ['blocked', 'failed'], true);
+        $message = $this->messenger->emailToAddress(MessageKind::ReviewRequest, $invoice->customer, $job, $email, $body, $user, reviewUrl: $profile->review_url);
 
         ReviewRequest::query()->updateOrCreate(['service_job_id' => $job->id], [
             'customer_id' => $invoice->customer_id,
             'google_profile_id' => $profile->id,
-            'status' => $blocked ? ReviewRequest::SKIPPED : ReviewRequest::SENT,
-            'channel' => $message->channel,
-            'skip_reason' => $blocked ? $message->status_reason : null,
+            'status' => ReviewRequest::SENT,
+            'channel' => Message::EMAIL,
+            'skip_reason' => null,
             'send_after' => null,
-            'sent_at' => $blocked ? null : now(),
+            'sent_at' => now(),
             'message_id' => $message->id,
         ]);
 
         return $message;
+    }
+
+    /**
+     * An email typed for a customer who had none is kept on the customer.
+     */
+    public static function keepEmail(Customer $customer, string $email): void
+    {
+        $email = mb_strtolower(trim($email));
+
+        if ($customer->is_walk_in || $customer->emails()->whereRaw('LOWER(email) = ?', [$email])->exists()) {
+            return;
+        }
+
+        $row = new CustomerEmail(['email' => $email, 'label' => 'personal']);
+        $row->customer()->associate($customer);
+        $row->is_primary = ! $customer->emails()->exists();
+        $row->save();
     }
 
     /**

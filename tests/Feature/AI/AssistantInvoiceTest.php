@@ -188,7 +188,7 @@ test('a missing phone or amount makes the assistant ask instead of inventing', f
         ->and(inCompany($this->company, fn () => AssistantAction::query()->count()))->toBe(0);
 });
 
-test('Confirm & send: an existing customer\'s open job gets the invoice, texted and emailed', function () {
+test('Confirm & send: an existing customer\'s open job gets the invoice, emailed only (never texted)', function () {
     config(['mail.default' => 'smtp']);
     inCompany($this->company, fn () => $this->customer->emails()->create(['email' => 'jane@example.com', 'is_primary' => true]));
     $job = ServiceJob::factory()->for($this->property)->create(['status' => JobStatus::Completed]);
@@ -208,8 +208,7 @@ test('Confirm & send: an existing customer\'s open job gets the invoice, texted 
         ->and($invoice->tax_total)->toBe(1800)
         ->and(inCompany($this->company, fn () => Customer::query()->count()))->toBe(1);
 
-    $message = inCompany($this->company, fn () => Message::query()->sole());
-    expect($message->kind->value)->toBe('invoice_link')->and($message->to)->toBe('+16045550142');
+    expect(inCompany($this->company, fn () => Message::query()->where('channel', 'sms')->count()))->toBe(0);
     Mail::assertQueued(DocumentMail::class, fn (DocumentMail $mail) => $mail->hasTo('jane@example.com'));
 });
 
@@ -235,9 +234,9 @@ test('Confirm & send for a new customer creates the customer and a Completed job
             ->and($job->statusChanges()->pluck('to_status')->map->value->all())->toContain('completed');
     });
 
-    // Mail is not set up in tests (array mailer): texted only.
+    // Mail is not set up in tests (array mailer) and invoices never go by SMS: nothing is sent.
     Mail::assertNothingQueued();
-    expect(inCompany($this->company, fn () => Message::query()->count()))->toBe(1);
+    expect(inCompany($this->company, fn () => Message::query()->count()))->toBe(0);
 });
 
 test('Edit saves the customer and the invoice without sending and opens the editor', function () {

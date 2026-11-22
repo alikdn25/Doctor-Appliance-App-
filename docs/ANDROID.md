@@ -56,9 +56,23 @@ The APK is the workflow artifact `android-apk`, the asset of the release `androi
 
 Local build (Android Studio or the SDK installed): `npm ci && npx cap sync android && cd android && ./gradlew assembleDebug`.
 
+## Push notifications (Firebase Cloud Messaging)
+
+The app gets the same pushes as the browser (SPEC §7.19.1). Setup, once:
+
+1. https://console.firebase.google.com → Add project (e.g. "Doctor Appliance"), Google Analytics off.
+2. Project overview → Add app → Android. Package name `ca.doctorappliance.app`, nickname "Doctor Appliance" →
+   Register app → Download `google-services.json` (skip the remaining SDK steps: the project already has them).
+3. `base64 -w0 google-services.json` → GitHub secret `GOOGLE_SERVICES_JSON_BASE64`.
+4. Project settings (gear) → Cloud Messaging: "Firebase Cloud Messaging API (V1)" must be Enabled.
+5. Project settings → Service accounts → Generate new private key → a JSON file. On the server:
+   `base64 -w0 key.json` → `.env` `FCM_SERVICE_ACCOUNT_BASE64=…`, then `php artisan config:cache`. Keep the file
+   private (it can send pushes); delete the local copy after.
+6. Run the **android** workflow; install the new APK. On first start Android asks to allow notifications.
+
+Buttons on a notification run with the app's session (the same request as the browser's service worker).
+
 ## Limits
 
 - The app shows the live site: without signal the offline page shows until the site can be reached.
-- Web push notifications do not arrive inside the Android WebView; keep notifications on in the browser / PWA on
-  the phone for "Invoice paid" and the other pushes.
 - Payments are online only (no offline card payments): the server must confirm every payment.

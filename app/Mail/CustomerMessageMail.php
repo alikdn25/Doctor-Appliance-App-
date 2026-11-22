@@ -6,6 +6,7 @@ use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Message;
 use App\Support\Mail\MailSender;
+use App\Support\Reviews\ReviewImage;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,7 +22,10 @@ class CustomerMessageMail extends Mailable implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public int $messageId, public int $companyId, public string $subjectLine) {}
+    /**
+     * $reviewUrl: a review request by email gets the Google review block (link and the company's picture).
+     */
+    public function __construct(public int $messageId, public int $companyId, public string $subjectLine, public ?string $reviewUrl = null) {}
 
     public function envelope(): Envelope
     {
@@ -47,6 +51,10 @@ class CustomerMessageMail extends Mailable implements ShouldQueue
                 'body' => $message->body,
                 'brandName' => $brand?->name ?? Company::query()->find($this->companyId)?->name,
                 'color' => Brand::readableColor($brand?->primary_color),
+                'review' => $this->reviewUrl === null ? null : [
+                    'url' => $this->reviewUrl,
+                    'image' => ReviewImage::url(Company::query()->findOrFail($this->companyId)),
+                ],
             ]);
         });
     }

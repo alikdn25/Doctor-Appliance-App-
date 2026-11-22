@@ -11,6 +11,7 @@ use App\Http\Controllers\Jobs\JobMessageController;
 use App\Mail\ReceiptMail;
 use App\Messaging\MessagingPresenter;
 use App\Messaging\Messenger;
+use App\Messaging\ReviewRequests;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Services\AuditLogger;
@@ -62,15 +63,8 @@ class DocumentDeliveryController extends Controller
         return $this->sms($request, $estimate, $messenger);
     }
 
-    public function smsInvoice(Request $request, Invoice $invoice, Messenger $messenger): RedirectResponse
-    {
-        abort_if($invoice->isVoid(), 422);
-
-        return $this->sms($request, $invoice, $messenger);
-    }
-
     /**
-     * "Send by SMS" in Automatic mode: the document's link by text from the company number.
+     * "Send by SMS" in Automatic mode: the estimate's link by text from the company number (invoices go by email only).
      */
     private function sms(Request $request, Estimate|Invoice $document, Messenger $messenger): RedirectResponse
     {
@@ -79,7 +73,7 @@ class DocumentDeliveryController extends Controller
 
         $document->loadMissing(['customer', 'job']);
         $message = $messenger->sms(
-            $document instanceof Invoice ? MessageKind::InvoiceLink : MessageKind::EstimateLink,
+            MessageKind::EstimateLink,
             $document->customer,
             $document->job,
             MessagingPresenter::documentText($document),
@@ -142,6 +136,9 @@ class DocumentDeliveryController extends Controller
 
         PublicDocument::token($invoice);
         Mail::to($email)->queue(new ReceiptMail($invoice));
+        if ($invoice->customer !== null) {
+            ReviewRequests::keepEmail($invoice->customer, $email);
+        }
         $audit->record('invoice.receipt_sent', $invoice, ['number' => $invoice->number, 'to' => $email]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('documents.receipt.sent', ['email' => $email])]);
@@ -159,6 +156,11 @@ class DocumentDeliveryController extends Controller
         ], [], ['email' => __('documents.to'), 'message' => __('documents.message')]);
 
         $send->handle($document, $data['email'], $data['message'], $request->user());
+
+        // An invoice goes by email only: an email typed for a customer who had none is kept on the customer.
+        if ($document instanceof Invoice && $document->customer !== null) {
+            ReviewRequests::keepEmail($document->customer, $data['email']);
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('documents.sent', [
             'kind' => __($document instanceof Invoice ? 'documents.invoice' : 'documents.estimate'),

@@ -1,4 +1,4 @@
-import { useForm, usePage } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { Send } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
@@ -16,14 +16,12 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
-import { formatPhone, phoneCharacters, toE164 } from '@/lib/phone';
-import { smsUrl } from '@/lib/sms';
 
 /**
  * "Send Google Review request?" after the invoice is sent and after it is paid in full (UX-REDESIGN §18). The text
  * of the Review request template is shown with the customer's details filled in and can be changed for this one
- * customer; Send texts it with the location's review link (added back at the end if it was removed), Don't send
- * closes.
+ * customer; Send emails it with the location's review link (added back at the end if it was removed) and the review
+ * picture — email only (owner's task of November 22). An email typed here is kept on the customer. Don't send closes.
  */
 export function ReviewPromptDialog({
     prompt,
@@ -35,13 +33,11 @@ export function ReviewPromptDialog({
     onOpenChange: (open: boolean) => void;
 }) {
     const t = useTrans();
-    const { auth } = usePage().props;
-    const country = auth.company?.country ?? 'US';
     // Until the text is changed by hand it follows the chosen location (its own review link).
     const [edited, setEdited] = useState(false);
     const form = useForm({
         google_profile_id: '',
-        phone: '',
+        email: '',
         text: '',
     });
 
@@ -57,7 +53,7 @@ export function ReviewPromptDialog({
             form.clearErrors();
             form.setData({
                 google_profile_id: id,
-                phone: formatPhone(prompt.phone, country),
+                email: prompt.email ?? '',
                 text: profileText(id),
             });
         }
@@ -69,44 +65,14 @@ export function ReviewPromptDialog({
         (p) => String(p.id) === form.data.google_profile_id,
     );
     const canSend =
-        prompt.blocked === null &&
         profile !== undefined &&
-        form.data.phone.trim() !== '' &&
+        /^\S+@\S+\.\S+$/.test(form.data.email.trim()) &&
         !form.processing;
-
-    // What the customer gets: the edited text, with the review link at the end if it was taken out.
-    const finalText = () => {
-        const text = form.data.text.trim();
-
-        if (!profile || text === '') {
-            return profile?.text ?? text;
-        }
-
-        const link = profile.review_url;
-
-        return link && !text.includes(link) ? `${text}\n${link}` : text;
-    };
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
 
         if (!canSend) {
-            return;
-        }
-
-        if (prompt.mode === 'technician_phone') {
-            // The text opens in the phone's messages app; the request is recorded in the background.
-            const body = finalText();
-            form.post(prompt.url, {
-                preserveScroll: true,
-                preserveState: true,
-            });
-            window.location.href = smsUrl(
-                toE164(form.data.phone, country),
-                body,
-            );
-            onOpenChange(false);
-
             return;
         }
 
@@ -172,22 +138,20 @@ export function ReviewPromptDialog({
                         )
                     )}
                     <FormField
-                        id="review-phone"
-                        label={t('reviews.prompt.phone')}
-                        error={form.errors.phone}
+                        id="review-email"
+                        label={t('reviews.prompt.email')}
+                        error={form.errors.email}
                     >
                         <Input
-                            id="review-phone"
-                            type="tel"
-                            inputMode="tel"
-                            autoComplete="tel"
-                            value={form.data.phone}
+                            id="review-email"
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            value={form.data.email}
                             onChange={(e) =>
-                                form.setData(
-                                    'phone',
-                                    phoneCharacters(e.target.value),
-                                )
+                                form.setData('email', e.target.value)
                             }
+                            data-test="review-email"
                         />
                     </FormField>
                     {profile && (
@@ -208,11 +172,6 @@ export function ReviewPromptDialog({
                                 }}
                             />
                         </FormField>
-                    )}
-                    {prompt.blocked && (
-                        <p className="text-sm text-muted-foreground">
-                            {prompt.blocked}
-                        </p>
                     )}
                     <div className="grid grid-cols-2 gap-2">
                         <Button

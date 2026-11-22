@@ -4,4 +4,6 @@
     <string name="title_activity_main">Doctor Appliance</string>
     <string name="package_name">ca.doctorappliance.app</string>
     <string name="custom_url_scheme">ca.doctorappliance.app</string>
+    <string name="push_channel_name">Alerts</string>
+    <string name="push_action_offline">No connection. Open the app and try again.</string>
 </resources>

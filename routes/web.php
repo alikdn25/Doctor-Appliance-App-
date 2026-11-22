@@ -355,7 +355,6 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('estimates/{estimate}/link', [DocumentDeliveryController::class, 'estimateLink'])->middleware('throttle:30,1')->name('estimates.link');
         Route::post('invoices/{invoice}/link', [DocumentDeliveryController::class, 'invoiceLink'])->middleware('throttle:30,1')->name('invoices.link');
         Route::post('invoices/{invoice}/receipt', [DocumentDeliveryController::class, 'sendReceipt'])->middleware('throttle:30,1')->name('invoices.receipt');
-        Route::post('invoices/{invoice}/sms', [DocumentDeliveryController::class, 'smsInvoice'])->middleware('throttle:30,1')->name('invoices.sms');
         Route::post('invoices/{invoice}/review-request', InvoiceReviewRequestController::class)->middleware('throttle:30,1')->name('invoices.review-request');
         Route::post('jobs/{job}/sms', [JobMessageController::class, 'sms'])->middleware('throttle:30,1')->name('jobs.sms');
         Route::get('jobs/{job}/booking-confirmation', [BookingConfirmationController::class, 'show'])->name('jobs.booking-confirmation.show');

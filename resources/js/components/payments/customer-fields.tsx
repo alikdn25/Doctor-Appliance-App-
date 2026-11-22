@@ -87,12 +87,15 @@ export function CustomerFields({
     country,
     errors = {},
     onPhoneBlur,
+    hideEmail = false,
 }: {
     value: CustomerDetails;
     onChange: (value: CustomerDetails) => void;
     country?: string;
     errors?: Record<string, string>;
     onPhoneBlur?: () => void;
+    /** The Paid screen has its own email field (the receipt goes there). */
+    hideEmail?: boolean;
 }) {
     const t = useTrans();
     const set = <K extends keyof CustomerDetails>(
@@ -142,7 +145,7 @@ export function CustomerFields({
                     />
                 </label>
             </div>
-            <label className="grid gap-1 text-sm">
+            <label className={hideEmail ? 'hidden' : 'grid gap-1 text-sm'}>
                 <span className="text-muted-foreground">
                     {t('charges.fields.email')}
                 </span>

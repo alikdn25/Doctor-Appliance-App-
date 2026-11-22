@@ -37,13 +37,14 @@ return [
 
     'prompt' => [
         'title' => 'Send Google Review request?',
-        'description' => 'The review link goes to the customer as a separate text. You can change the words for this customer.',
+        'description' => 'The review link goes to the customer by email, with your review picture. You can change the words for this customer.',
         'yes' => 'Yes',
         'no' => 'No',
         'location' => 'Location',
         'choose_location' => 'Choose a location',
-        'phone' => 'Phone',
+        'email' => 'Email',
         'send' => 'Send',
+        'sent' => 'Review request sent to :email.',
         'dont_send' => 'Don\'t send',
         'text' => 'Message',
         'text_hint' => 'Only for this customer; the template in settings stays the same. The review link is added at the end if you remove it.',

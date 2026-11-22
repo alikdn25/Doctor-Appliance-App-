@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Mail\CustomerMessageMail;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
@@ -58,13 +59,14 @@ test('nothing is sent automatically when the job is paid in full', function () {
     Mail::assertNothingQueued();
 });
 
-test('the invoice page offers the review prompt with the locations and the customer phone', function () {
+test('the invoice page offers the review prompt with the locations and the customer email', function () {
     $burnaby = inCompany($this->company, fn () => GoogleProfile::create(['label' => 'Burnaby', 'review_url' => 'https://g.page/r/burnaby/review']));
     $invoice = invoiceForJob();
 
     $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
         ->where('reviewPrompt.url', route('invoices.review-request', $invoice))
-        ->where('reviewPrompt.phone', '+16045550142')
+        ->where('reviewPrompt.email', 'jane@example.com')
+        ->missing('reviewPrompt.phone')
         ->where('reviewPrompt.default_profile_id', $this->profile->id)
         ->has('reviewPrompt.profiles', 2)
         ->where('reviewPrompt.profiles.0.label', 'Burnaby')
@@ -78,72 +80,63 @@ test('the invoice page offers the review prompt with the locations and the custo
         ->missing('messaging.texts.review_request'));
 });
 
-test('in Automatic mode "Send" texts the chosen location\'s link to the chosen phone as a separate SMS', function () {
+test('"Send" emails the chosen location\'s link with the review picture; never an SMS (owner\'s task of November 22)', function () {
     automaticSms();
     $burnaby = inCompany($this->company, fn () => GoogleProfile::create(['label' => 'Burnaby', 'review_url' => 'https://g.page/r/burnaby/review']));
     $invoice = invoiceForJob('invoiced');
 
-    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $burnaby->id, 'phone' => '(604) 555-0199'])
+    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $burnaby->id, 'email' => 'jane@example.com'])
         ->assertSessionHasNoErrors()->assertRedirect();
 
     $message = inCompany($this->company, fn () => Message::sole());
-    expect($message)->kind->value->toBe('review_request')->channel->toBe('sms')->status->toBe('sent')
-        ->to->toBe('+16045550199')->customer_id->toBe($this->customer->id)->service_job_id->toBe($invoice->service_job_id)
+    expect($message)->kind->value->toBe('review_request')->channel->toBe('email')->status->toBe('sent')
+        ->to->toBe('jane@example.com')->customer_id->toBe($this->customer->id)->service_job_id->toBe($invoice->service_job_id)
         ->and($message->body)->toBe('Hi Jane, thank you for choosing Doctor Appliance! Would you take a moment to review us on Google? https://g.page/r/burnaby/review');
-    Http::assertSent(fn ($r) => ($r['To'] ?? null) === '+16045550199' && str_contains($r['Body'] ?? '', 'https://g.page/r/burnaby/review'));
+    Http::assertNothingSent();
+    Mail::assertQueued(CustomerMessageMail::class, fn (CustomerMessageMail $mail) => $mail->hasTo('jane@example.com') && $mail->reviewUrl === 'https://g.page/r/burnaby/review');
 
     expect(inCompany($this->company, fn () => ReviewRequest::sole()))
-        ->status->toBe('sent')->channel->toBe('sms')->google_profile_id->toBe($burnaby->id)->message_id->toBe($message->id);
+        ->status->toBe('sent')->channel->toBe('email')->google_profile_id->toBe($burnaby->id)->message_id->toBe($message->id);
 });
 
-test('the customer\'s own phone is texted as that phone, and a later send replaces the job\'s request', function () {
-    automaticSms();
+test('the review email shows the review block with the picture', function () {
+    $invoice = invoiceForJob();
+    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'email' => 'jane@example.com'])->assertSessionHasNoErrors();
+    $message = inCompany($this->company, fn () => Message::sole());
+
+    $html = (new CustomerMessageMail($message->id, $this->company->id, 'Review', 'https://g.page/r/surrey/review'))->render();
+    expect($html)->toContain('https://g.page/r/surrey/review')->toContain(__('documents.mail.review.cta'));
+});
+
+test('a later send replaces the job\'s request; an email typed for a customer without one is kept', function () {
+    $customer = Customer::factory()->for($this->company)->create(['first_name' => 'Bob']);
+    $this->customer = $customer;
     $invoice = invoiceForJob();
 
-    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'phone' => '+16045550142'])->assertSessionHasNoErrors();
-    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'phone' => '+16045550142'])->assertSessionHasNoErrors();
+    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'email' => 'Bob@Example.com'])->assertSessionHasNoErrors();
+    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'email' => 'bob@example.com'])->assertSessionHasNoErrors();
 
-    expect(inCompany($this->company, fn () => Message::where('kind', 'review_request')->where('status', 'sent')->count()))->toBe(2)
-        ->and(inCompany($this->company, fn () => ReviewRequest::count()))->toBe(1);
+    expect(inCompany($this->company, fn () => Message::where('kind', 'review_request')->where('channel', 'email')->count()))->toBe(2)
+        ->and(inCompany($this->company, fn () => ReviewRequest::count()))->toBe(1)
+        ->and(inCompany($this->company, fn () => $customer->emails()->pluck('email')->all()))->toBe(['bob@example.com']);
 });
 
-test('an opted-out number is not texted', function () {
-    automaticSms();
-    inCompany($this->company, fn () => $this->customer->phones()->update(['sms_opted_out_at' => now()]));
-    $invoice = invoiceForJob();
-
-    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'phone' => '+16045550142'])
-        ->assertSessionHasNoErrors();
-
-    expect(inCompany($this->company, fn () => Message::sole()))->status->toBe('blocked')
-        ->and(inCompany($this->company, fn () => ReviewRequest::sole()))->status->toBe('skipped');
-    Http::assertNothingSent();
-});
-
-test('from the technician\'s phone "Send" is recorded as opened on the phone', function () {
-    $invoice = invoiceForJob();
-
-    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'phone' => '604-555-0142'])
-        ->assertSessionHasNoErrors();
-
-    expect(inCompany($this->company, fn () => Message::sole()))->channel->toBe('technician_phone')->status->toBe('opened')->to->toBe('+16045550142')
-        ->and(inCompany($this->company, fn () => ReviewRequest::sole()))->status->toBe('sent')->channel->toBe('technician_phone');
-});
-
-test('the prompt needs a location of the company, a valid phone and texting on', function () {
+test('the prompt needs a location of the company and a valid email; texting being off does not matter', function () {
     $invoice = invoiceForJob();
     $foreign = inCompany(Company::factory()->create(), fn () => GoogleProfile::create(['label' => 'Elsewhere', 'review_url' => 'https://g.page/r/x/review']));
 
-    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $foreign->id, 'phone' => '+16045550142'])
+    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $foreign->id, 'email' => 'jane@example.com'])
         ->assertSessionHasErrors('google_profile_id');
-    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'phone' => '12'])
-        ->assertSessionHasErrors('phone');
+    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'email' => 'not-an-email'])
+        ->assertSessionHasErrors('email');
+    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'phone' => '+16045550142'])
+        ->assertSessionHasErrors('email');
+    expect(inCompany($this->company, fn () => Message::count()))->toBe(0);
 
     $this->company->update(['sms_mode' => 'off']);
-    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'phone' => '+16045550142'])
-        ->assertSessionHasErrors('phone');
-
-    expect(inCompany($this->company, fn () => Message::count()))->toBe(0);
+    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'email' => 'jane@example.com'])
+        ->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => Message::count()))->toBe(1);
 });
 
 test('review requests cannot be opened from the job any more', function () {
@@ -215,7 +208,7 @@ test('the review text can be changed for this customer; the link goes back at th
 
     $this->post(route('invoices.review-request', $invoice), [
         'google_profile_id' => $this->profile->id,
-        'phone' => '604-555-0142',
+        'email' => 'jane@example.com',
         'text' => 'Jane, thanks for having us over today!',
     ])->assertSessionHasNoErrors();
 
@@ -226,7 +219,7 @@ test('the review text can be changed for this customer; the link goes back at th
     // Kept as written when the link is still in the text.
     $this->post(route('invoices.review-request', $invoice), [
         'google_profile_id' => $this->profile->id,
-        'phone' => '604-555-0142',
+        'email' => 'jane@example.com',
         'text' => 'Review us: https://g.page/r/surrey/review please',
     ])->assertSessionHasNoErrors();
     expect(inCompany($this->company, fn () => Message::query()->latest('id')->first()->body))

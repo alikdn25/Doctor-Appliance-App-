@@ -12,10 +12,7 @@ use App\Actions\Jobs\SaveVisit;
 use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\LineKind;
-use App\Enums\MessageKind;
-use App\Enums\SmsMode;
 use App\Enums\VisitStatus;
-use App\Messaging\MessagingPresenter;
 use App\Messaging\Messenger;
 use App\Models\AssistantAction;
 use App\Models\Brand;
@@ -36,7 +33,7 @@ use Throwable;
  * Saves an invoice the assistant proposed (create_invoice), only after the person pressed Confirm & send or Edit:
  * the customer is found by phone or email (else created), the invoice goes on the customer's open job (else a job
  * for today, Completed, is made for it), the photos it was read from become its attachments. Confirm & send then
- * texts the invoice link (company SMS) and emails it when mail is set up; Edit sends nothing and opens the editor.
+ * emails it when the customer has an email and mail is set up (invoices never go by SMS); Edit sends nothing and opens the editor.
  */
 class AssistantInvoice
 {
@@ -91,7 +88,8 @@ class AssistantInvoice
             ];
         }
 
-        $sent = array_filter([$this->sms($invoice, $user), $this->email($invoice, $user)]);
+        // Invoices go by email only (owner's task of November 22).
+        $sent = array_filter([$this->email($invoice, $user)]);
 
         return [
             'message' => __('assistant.invoice.created', ['number' => $invoice->number, 'total' => $money]).' '
@@ -207,25 +205,6 @@ class AssistantInvoice
                 'size' => $disk->size($path),
             ]);
         }
-    }
-
-    /** The invoice link by text from the company number (Telnyx or the company's SMS provider). */
-    private function sms(Invoice $invoice, User $user): ?string
-    {
-        if (currentCompany()->sms_mode !== SmsMode::Automatic) {
-            return __('assistant.invoice.sms_off');
-        }
-
-        $invoice->loadMissing(['customer', 'job']);
-        $message = $this->messenger->sms(MessageKind::InvoiceLink, $invoice->customer, $invoice->job, MessagingPresenter::documentText($invoice), $user);
-
-        if ($message->status === 'blocked') {
-            return __('messages.sms_blocked', ['reason' => $message->status_reason]);
-        }
-
-        $invoice->forceFill(['sent_at' => now(), 'sent_to' => $message->to])->saveQuietly();
-
-        return __('assistant.invoice.sms_sent', ['phone' => $message->to]);
     }
 
     /** The invoice by email, when the customer has an email and mail is set up. */

@@ -53,6 +53,7 @@ return [
         'push_on' => 'On for this device.',
         'push_blocked' => 'Notifications are blocked in this browser. Allow them in the browser or phone settings.',
         'push_unsupported' => 'This browser cannot show notifications. On iPhone, add the app to the Home Screen first.',
+        'push_app' => 'This Android app gets push notifications. Turn them on or off in the phone\'s settings for the app.',
         'push_unavailable' => 'Push notifications are not set up on the server yet.',
         'push_failed' => 'Notifications could not be turned on. Try again.',
         'devices' => '{0} No devices|{1} 1 device|[2,*] :count devices',

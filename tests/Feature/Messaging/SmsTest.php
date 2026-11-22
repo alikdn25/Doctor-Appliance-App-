@@ -245,21 +245,14 @@ test('company templates replace the default texts', function () {
         ->and($this->company->fresh()->message_templates)->toBe(['on_my_way' => '{brand}: {tech_name} is coming, {arrival_window}.']);
 });
 
-test('an invoice link goes by SMS from the invoice page', function () {
+test('invoices never go by SMS: no SMS option on the invoice page and no route (owner\'s task of November 22)', function () {
     $this->post(route('invoices.store', $this->job), documentPayload());
     $invoice = inCompany($this->company, fn () => Invoice::sole());
 
-    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
-        ->where('sms.mode', 'automatic')->where('sms.blocked', null));
-    $this->post(route('invoices.sms', $invoice))->assertSessionHasNoErrors();
-
-    $message = messages($this->company)->sole();
-    expect($message->kind->value)->toBe('invoice_link')
-        ->and($message->body)->toContain($invoice->number)->toContain('/d/i')->toContain('$280.50');
-
-    // Off mode: documents go by email only.
-    $this->company->update(['sms_mode' => 'off']);
     $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page->where('sms', null));
+    $this->post('/invoices/'.$invoice->id.'/sms')->assertNotFound();
+
+    expect(messages($this->company)->count())->toBe(0);
 });
 
 test('visit reminders go out the day before: SMS in Automatic mode, email otherwise, once', function () {

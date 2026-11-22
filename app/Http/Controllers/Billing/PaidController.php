@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Billing;
 
-use App\Enums\SmsMode;
 use App\Http\Controllers\Controller;
 use App\Models\GoogleProfile;
 use App\Models\Payment;
@@ -15,15 +14,14 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * The Paid screen (owner's task of November 21) after Charge reader / Cash / E-transfer, and from the "Invoice #N
- * paid" notification of an online payment: amount, way of payment, invoice number, and Send receipt (SMS and / or
- * email, the customer's details when missing, Request review). Nothing goes before Send.
+ * paid" notification of an online payment: amount, way of payment, invoice number, and Send receipt (email only:
+ * the customer's email or one typed there, the other details when missing, Request review). Nothing goes before Send.
  */
 class PaidController extends Controller
 {
@@ -65,10 +63,6 @@ class PaidController extends Controller
                 'email' => $customer->is_walk_in ? '' : (string) $customer->primaryEmail?->email,
                 'has_address' => ! $customer->is_walk_in && filled($property?->line1),
             ],
-            'sms' => [
-                'mode' => $company->sms_mode->value,
-                'available' => $company->sms_mode !== SmsMode::Off,
-            ],
             'profiles' => $profiles->map(fn (GoogleProfile $p) => ['id' => $p->id, 'label' => $p->label])->values(),
             'default_profile_id' => match (true) {
                 $profiles->contains('id', $default) => $default,
@@ -86,8 +80,6 @@ class PaidController extends Controller
         abort_if($invoice->isVoid(), 422);
 
         $data = $request->validate([
-            'channels' => ['required', 'array', 'min:1'],
-            'channels.*' => [Rule::in(['sms', 'email'])],
             'review' => ['boolean'],
             'google_profile_id' => ['nullable', 'integer'],
             ...ChargeController::customerRules(''),
@@ -96,9 +88,6 @@ class PaidController extends Controller
         $result = $receipt->send($payment, $data, $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('charges.receipt.sent', ['to' => implode(', ', $result['sent'])])]);
-        if ($result['sms_url'] !== null) {
-            Inertia::flash('open_url', $result['sms_url']);
-        }
 
         return back();
     }

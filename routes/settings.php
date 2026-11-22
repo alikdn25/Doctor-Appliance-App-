@@ -30,4 +30,7 @@ Route::middleware(['auth', 'active', 'tenant:optional'])->group(function () {
     Route::post('settings/notifications/read', [NotificationController::class, 'read'])->name('notifications.read');
     Route::post('settings/notifications/push', [NotificationController::class, 'subscribe'])->middleware('throttle:20,1')->name('notifications.push.subscribe');
     Route::delete('settings/notifications/push', [NotificationController::class, 'unsubscribe'])->name('notifications.push.unsubscribe');
+    // The Android app's Firebase token (push in the app).
+    Route::post('settings/notifications/fcm', [NotificationController::class, 'fcm'])->middleware('throttle:30,1')->name('notifications.fcm.store');
+    Route::delete('settings/notifications/fcm', [NotificationController::class, 'forgetFcm'])->name('notifications.fcm.destroy');
 });

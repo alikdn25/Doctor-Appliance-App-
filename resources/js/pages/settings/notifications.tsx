@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useCompanyTime } from '@/lib/datetime';
 import { xsrfToken } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
+import { hasNativePush } from '@/lib/native-push';
 import { disablePush, enablePush, pushState } from '@/lib/push';
 import type { PushState } from '@/lib/push';
 import { cn } from '@/lib/utils';
@@ -152,15 +153,17 @@ export default function Notifications({
                         {t('notifications.page.push_title')}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                        {!push.available
-                            ? t('notifications.page.push_unavailable')
-                            : state === 'unsupported'
-                              ? t('notifications.page.push_unsupported')
-                              : state === 'blocked'
-                                ? t('notifications.page.push_blocked')
-                                : state === 'on'
-                                  ? t('notifications.page.push_on')
-                                  : t('notifications.page.push_hint')}
+                        {hasNativePush()
+                            ? t('notifications.page.push_app')
+                            : !push.available
+                              ? t('notifications.page.push_unavailable')
+                              : state === 'unsupported'
+                                ? t('notifications.page.push_unsupported')
+                                : state === 'blocked'
+                                  ? t('notifications.page.push_blocked')
+                                  : state === 'on'
+                                    ? t('notifications.page.push_on')
+                                    : t('notifications.page.push_hint')}
                     </p>
                     {failed && (
                         <p className="text-sm text-destructive">

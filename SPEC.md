@@ -810,6 +810,37 @@ set up is built, stays off and says what is missing.
 
 - Quick booking and Book customer are no longer on Today; they stay in "+" and on the calendar.
 
+### 7.19 Push in the Android app; invoices, receipts and reviews by email only (owner's task of November 22)
+
+#### 7.19.1 Push in the Android app
+
+- Native push through Firebase Cloud Messaging (`@capacitor/push-notifications`). Every push the browser / PWA gets
+  (Invoice paid, incoming SMS, "I did not answer", "the customer is quiet", the morning summary, all others — every
+  `AppAlert`) also goes to each app install of the person (`fcm_tokens`, one row per install; a phone signed in by
+  someone else moves to that person). Signed in both in the app and a browser: once on each device.
+- A tap opens the page in the app (Invoice paid → Paid screen). Buttons on the notification work as in the browser:
+  a page button opens its page, a server button runs `push-actions/{token}/{action}` with the app's session.
+- Permission asked on the first start; the token is sent after sign-in and dropped on sign-out.
+- `google-services.json` from GitHub Secrets (`GOOGLE_SERVICES_JSON_BASE64`); the Firebase service account key from
+  `.env` (`FCM_SERVICE_ACCOUNT_BASE64`, FCM HTTP v1). Without the key only browser push goes.
+
+#### 7.19.2 Invoices, receipts and review requests: email only
+
+- Invoices, receipts and Google review requests are sent by email only; no SMS anywhere (Paid screen, invoice page,
+  job page / inbox templates, the review request after sending or after payment, the assistant's Confirm & send).
+- Paid screen → Send receipt: the email field (the customer's email filled in; empty when there is none, typed there
+  and saved to the customer); Send is off until there is a valid email. "Request review" with a location stays,
+  ticked by hand, for any customer: the review block (text and picture) goes inside the receipt email.
+- Sending an invoice: by email with the same field; a typed email is saved to the customer when they had none.
+- The review request (after an invoice is sent or paid): email field instead of phone; the email gets the review
+  block with the picture.
+- The soft SMS payment reminders on open invoices stay as they are (§7.17.7).
+
+#### 7.19.3 "Booked" sheet
+
+- The "Booked #… · Today" sheet after a booking no longer gets lost when a background request (the nearby windows
+  lookup) reaches the server between the booking and the next page: background JSON requests keep the page's flash.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).

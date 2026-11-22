@@ -52,6 +52,15 @@ return [
         'server_key' => env('GOOGLE_MAPS_SERVER_KEY'),
     ],
 
+    /*
+    | Firebase Cloud Messaging (push to the Android app). The service account key JSON of the Firebase project,
+    | base64-encoded (Firebase console → Project settings → Service accounts → Generate new private key).
+    | Empty = no push to the app (browser / PWA push keeps working).
+    */
+    'fcm' => [
+        'credentials' => env('FCM_SERVICE_ACCOUNT_BASE64'),
+    ],
+
     'square' => [
         'environment' => env('SQUARE_ENVIRONMENT', 'sandbox'),
         'application_id' => env('SQUARE_APPLICATION_ID'),

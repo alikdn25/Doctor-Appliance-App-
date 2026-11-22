@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\FcmToken;
 use App\Models\PushSubscription;
 use App\Notifications\Channels\WebPushChannel;
 use App\Support\Jobs\JobPresenter;
@@ -82,6 +83,33 @@ class NotificationController extends Controller
         ]);
         $subscription->user_id = $request->user()->id;
         $subscription->save();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * The Android app registers its Firebase token on every start while signed in (owner's task of November 22). One
+     * row per install: a phone signed in by someone else moves to that person, so nobody gets another's pushes.
+     */
+    public function fcm(Request $request): JsonResponse
+    {
+        $data = $request->validate(['token' => ['required', 'string', 'min:20', 'max:512']]);
+
+        $token = FcmToken::query()->firstOrNew(['token_hash' => hash('sha256', $data['token'])]);
+        $token->fill(['token' => $data['token'], 'platform' => 'android', 'last_seen_at' => now()]);
+        $token->user_id = $request->user()->id;
+        $token->save();
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Signing out in the app stops its pushes.
+     */
+    public function forgetFcm(Request $request): JsonResponse
+    {
+        $data = $request->validate(['token' => ['required', 'string', 'max:512']]);
+        FcmToken::query()->where('user_id', $request->user()->id)->where('token_hash', hash('sha256', $data['token']))->delete();
 
         return response()->json(['ok' => true]);
     }

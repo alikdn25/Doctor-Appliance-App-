@@ -1,3 +1,30 @@
+# November 22 — Owner's task: push in the Android app, invoices / receipts / reviews by email only, "Now" test (done)
+
+One PR (SPEC §7.19), after PR #82 was merged.
+
+1. **"Now" test**: the real cause was not the hour but a race: the address field's background `booking/nearby`
+   request reached the server between Finish booking and the calendar and used up the one-time flash, so the
+   "Booked #… · Today" sheet did not open. `HandleInertiaRequests` now keeps the flash for background JSON requests;
+   the sheet also keeps its state outside React. Tests: "Now" at 00:05, 06:30, 12:00, 18:45, 22:30; flash kept
+   across a background request; shown once.
+2. **Push in the Android app** (`@capacitor/push-notifications` 8.1.3, `FcmChannel`, `FcmClient` (HTTP v1, service
+   account JWT), table `fcm_tokens`, `POST/DELETE settings/notifications/fcm`, `resources/js/lib/native-push.ts`,
+   Kotlin `AppMessagingService`, `PushActionReceiver`, `MainActivity` opens the tapped page): every `AppAlert` goes to
+   each install once; buttons work as in the browser; permission on the first start; `GOOGLE_SERVICES_JSON_BASE64` in
+   the Android workflow; `FCM_SERVICE_ACCOUNT_BASE64` in `.env`.
+3. **Email only** for invoices, receipts and review requests: Paid screen (email field from the customer, saved to
+   the customer, Send off without it, Request review → review block in the receipt email), invoice page (no Send by
+   SMS, route removed; typed email saved), inbox templates (no invoice link), review prompt (email; `CustomerMessageMail`
+   with the review block and picture), assistant Confirm & send (email only). SMS payment reminders unchanged.
+
+- **Migration** `2026_11_22_000100_create_fcm_tokens`: new table only.
+- Tests: `FcmPushTest` (token register / move / forget; data message with page and buttons; Invoice paid → Paid
+  screen URL; once per install, unregistered forgotten; no key = nothing), `BookedNowAnyHourTest`, updated
+  `CardReaderChargeTest` (receipt by email with / without review, email kept, validation, never SMS),
+  `ReviewRequestTest` (email, picture block, email kept), `SmsTest` (no invoice SMS), `AssistantInvoiceTest`; browser
+  `zzz-card-reader-charge.spec.ts` (Send off without email), `money-screens.spec.ts` (no Send by SMS).
+- Not checked here: a real FCM delivery to a phone (needs the Firebase project and the APK built with it).
+
 # November 21 — Owner's task: card payments on site with the Square reader, receipts and reviews (done)
 
 One PR (SPEC §7.18).

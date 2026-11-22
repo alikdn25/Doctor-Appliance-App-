@@ -74,9 +74,7 @@ export type DocumentSms = {
 
 export type ReviewPrompt = {
     url: string;
-    mode: SmsMode;
-    blocked: string | null;
-    phone: string | null;
+    email: string | null;
     profiles: {
         id: number;
         label: string;
