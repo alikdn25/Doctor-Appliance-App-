@@ -732,6 +732,84 @@ set up is built, stays off and says what is missing.
 - The morning SMS (§7.17.3) also lists the day's tasks of the Owners and the parts to buy (by supplier) and to
   receive.
 
+### 7.18 Card payments on site with the Square reader, receipts and reviews (owner's task of November 21)
+
+#### 7.18.1 Square connection
+
+- OAuth as before (keys only in `.env`: `SQUARE_APPLICATION_ID`, `SQUARE_APPLICATION_SECRET`, `SQUARE_ENVIRONMENT`);
+  the permissions now include `PAYMENTS_WRITE_IN_PERSON` (companies connected earlier press Disconnect → Connect).
+- Settings → Payments: Connect Square, status, Disconnect, and the **Square location** card reader payments go to.
+  Tokens are stored encrypted and refreshed automatically (daily command and before use).
+- Webhook `payment.created` / `payment.updated`: a completed card reader payment (its `reference_id` is our charge)
+  marks the invoice paid, once per Square payment ID; FAILED / CANCELED leave it unpaid.
+- Square never gets the customer's email or phone (no Square receipts): payment links have no pre-filled email; the
+  reader payment carries only the amount, our reference and a note. Automatic customer receipts are also turned off
+  in the Square Dashboard (server hand-off).
+
+#### 7.18.2 Android app
+
+- Capacitor shell (`android/`, `capacitor.config.ts`) that loads the live site (`server.url`); updates come from the
+  server. Same name and icon as the web app.
+- Own Capacitor plugin in Kotlin (`SquareReaderPlugin`) around the Square Mobile Payments SDK: authorize with the
+  company's access token and location from the server (`GET payments/reader/session`, Owner / Admin / Technician),
+  pair / list / forget readers (state, battery), take a payment (tap, chip, chip + PIN, Interac). Online only.
+  Bluetooth and location are asked on first use.
+- Signed APK built by GitHub Actions (`.github/workflows/android.yml`, signing key in GitHub Secrets), published to
+  the release `android-latest` and copied to the server; served at `/download/android.apk`.
+- In a browser everything works as before; Charge reader is hidden and Cash / E-transfer stay.
+
+#### 7.18.3 Card reader in settings
+
+- Settings → Payments → Card reader: Pair reader, the readers found (connected, battery), Forget reader, Square's own
+  reader settings. The paired reader connects by itself when Take payment opens. A browser shows the APK link.
+
+#### 7.18.4 Take payment
+
+- One screen for a booking, an invoice and the "+": the amount on top (the invoice balance, can be changed), then
+  Charge reader (main button with the glow), Cash, E-transfer (Bank transfer outside Canada).
+- Charge reader: the amount goes to the reader, the customer pays, the phone reports the Square payment, the server
+  checks it with Square (reference, amount, currency, COMPLETED) and records it → Paid. A failure shows a plain
+  message and Try again; nothing is recorded.
+- Cash / E-transfer (after a confirm): the payment with that method → Paid. The method is stored on the payment
+  (`card_reader`, `cash`, `bank_transfer`) and counts in the tax reserve and reports like every payment.
+- The invoice page's Take payment opens this screen; "Other ways to pay" keeps the earlier link / QR / Mark as paid.
+
+#### 7.18.5 Paid screen and receipt
+
+- Amount, method, invoice number; the invoice is Paid (or the balance left).
+- Send receipt: SMS and / or email; missing phone, email, name, property and billing address (with "same as
+  property") are typed right there and saved to the customer and the invoice (a Walk-in invoice moves to the real
+  customer, found by phone or new). "Request review" with a location, ticked by hand, shown for every customer: the
+  review request text (and in the email the review picture) goes inside the receipt message, one message. Nothing
+  goes before Send.
+- The receipt: company (brand) name, date, invoice number, lines, taxes by name (GST, PST …), total, method, Paid.
+  In "From technician's phone" mode the phone's messages app opens with the receipt.
+
+#### 7.18.6 Online payment of a sent invoice
+
+- A payment by link that pays the invoice → push + bell "Invoice #N paid — $X" to the Owners (and the person who made
+  the invoice); the tap opens the same Paid screen with Send receipt and Request review. Nothing is sent by itself.
+
+#### 7.18.7 Take payment on a job
+
+- Job page and invoice: Take payment. A job without an open invoice gets a quick invoice first (lines; taxes by code),
+  then Take payment.
+
+#### 7.18.8 Charge without a booking ("+" → Charge reader)
+
+- New charge: what was done (one line, voice through the keyboard), amount with a "with tax / without tax" switch
+  ("with tax" takes the company's default taxes out of the amount, "without tax" adds them), quick amounts (the
+  diagnostic fee and price list items), the taxes and total in large type, the customer collapsed (phone first, name,
+  email, property and billing address; a phone already in the database fills in that customer). Charge → Take payment.
+- After the payment: the customer (if a phone or a name was typed; a known phone links to that customer), a job
+  Completed now with the person as its technician ("Me"), and the invoice, Paid. Nothing typed but the amount → the
+  company's one "Walk-in" customer; details typed later on the Paid screen replace Walk-in with the real customer.
+- In a browser the item is called New charge (Cash / E-transfer only).
+
+#### 7.18.9 Today
+
+- Quick booking and Book customer are no longer on Today; they stay in "+" and on the calendar.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).

@@ -18,7 +18,6 @@ import { useEffect, useRef, useState } from 'react';
 import { formatMoney } from '@/components/billing/money';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { InboxHeaderButton } from '@/components/inbox-header-button';
-import { BookingButtons } from '@/components/jobs/booking-buttons';
 import { cardButton, JobCard } from '@/components/jobs/job-card';
 import { JobAddressSheet } from '@/components/jobs/job-address-sheet';
 import { StrictBadge } from '@/components/jobs/job-outcome';
@@ -437,8 +436,6 @@ export default function MyJobs({
                     both ? 'max-w-6xl' : 'max-w-2xl',
                 )}
             >
-                <BookingButtons date={date} />
-
                 {install && (
                     <Button variant="outline" onClick={() => void install()}>
                         <Download /> {t('jobs.install.button')}

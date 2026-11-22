@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import type { InertiaLinkProps } from '@inertiajs/react';
 import {
+    CreditCard,
     AlarmClock,
     Banknote,
     CalendarPlus,
@@ -1292,6 +1293,21 @@ export default function JobShow({
                     )}
                 </section>
                 <HandoffSheet jobId={job.id} />
+                {can.work &&
+                    auth.can?.takeCharges &&
+                    !['paid', 'cancelled', 'draft'].includes(job.status) && (
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            className="w-full"
+                            asChild
+                            data-test="job-take-payment"
+                        >
+                            <Link href={`/jobs/${job.id}/take-payment`}>
+                                <CreditCard /> {t('charges.take.title')}
+                            </Link>
+                        </Button>
+                    )}
                 {canVoiceClose && (
                     <Button
                         variant="outline"

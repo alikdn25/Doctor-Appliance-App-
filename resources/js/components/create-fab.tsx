@@ -1,11 +1,13 @@
 import { router, usePage } from '@inertiajs/react';
-import { Car, ListTodo, Plus, Wallet } from 'lucide-react';
+import { Car, CreditCard, ListTodo, Plus, Wallet } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { BookingButtons } from '@/components/jobs/booking-buttons';
 import { TaskSheet } from '@/components/tasks/task-sheet';
+import { hasCardReader } from '@/lib/card-reader';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { create as createCharge } from '@/routes/charges';
 import { create as createExpense } from '@/routes/expenses';
 import { index as trips } from '@/routes/trips';
 
@@ -19,7 +21,7 @@ type Item = {
 /**
  * The round "+" above the bottom bar on every screen (owner's task, Oct 24), volumetric with the blue glow. A tap
  * opens, from the bottom up next to the thumb, Quick booking and Book customer side by side (Book customer on the day
- * the calendar shows), then Expense · Trip · Task. Expense and Trip open the new expense and the mileage form, Task opens the task sheet here.
+ * the calendar shows), then Charge reader · Expense · Trip · Task. Expense and Trip open the new expense and the mileage form, Task opens the task sheet here.
  * Screens with their own pinned actions (forms) hide it, like the bottom bar.
  */
 export function CreateFab() {
@@ -78,6 +80,18 @@ export function CreateFab() {
                 label: t('nav.create.expense'),
                 icon: <Wallet />,
                 onSelect: () => router.visit(createExpense()),
+            },
+            // Charge reader (owner's task of November 21): New charge without a booking; in a browser it is called
+            // New charge and takes Cash / E-transfer only.
+            can.takeCharges && {
+                key: 'charge',
+                label: t(
+                    hasCardReader()
+                        ? 'charges.nav.charge_reader'
+                        : 'charges.nav.new_charge',
+                ),
+                icon: <CreditCard />,
+                onSelect: () => router.visit(createCharge()),
             },
         ] as (Item | false | undefined)[]
     ).filter((item): item is Item => !!item);

@@ -8,6 +8,7 @@ import { TimezoneSelect } from '@/components/timezone-select';
 import InputError from '@/components/input-error';
 import { ScreenHeader } from '@/components/screen-header';
 import { StickyActionBar } from '@/components/ui/sticky-action-bar';
+import { SquareReaderSettings } from '@/components/payments/reader-settings';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -1269,6 +1270,17 @@ export default function CompanySettingsPage({
                                 )}
                             </div>
                         ))}
+                        {providerConnections.some(
+                            (p) => p.key === 'square' && p.connected,
+                        ) && (
+                            <SquareReaderSettings
+                                currentLocation={
+                                    providerConnections.find(
+                                        (p) => p.key === 'square',
+                                    )?.connected?.location ?? null
+                                }
+                            />
+                        )}
                         {/* Always shown: the import screen asks to connect Square first when it is not connected. */}
                         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
                             <p className="text-sm text-muted-foreground">

@@ -89,6 +89,7 @@ return [
         'payment_reminder' => 'Payment reminder',
         'clarifying' => 'Clarifying questions',
         'handoff' => 'Handed to technician',
+        'receipt' => 'Receipt',
     ],
 
     // Default texts (English). Companies edit their own in Messaging settings. Placeholders in {braces}.

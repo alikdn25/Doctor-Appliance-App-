@@ -116,6 +116,7 @@ class HandleInertiaRequests extends Middleware
                 'useAssistant' => $user->can('useAssistant'),
                 'runAppReview' => $user->can('runAppReview'),
                 'createTasks' => $user->can('create', Task::class),
+                'takeCharges' => $user->can('takeCharges'),
                 'viewCustomers' => $user->can('viewAny', Customer::class),
                 'viewMessageInbox' => $user->can('viewAny', Message::class),
                 'viewBusinessExpenses' => $user->can('viewAny', BusinessExpense::class),

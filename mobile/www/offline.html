@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#0E7490" />
+        <title>No connection</title>
+        <style>
+            body {
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: system-ui, sans-serif;
+                background: #fff;
+                color: #111;
+                padding: 24px;
+                box-sizing: border-box;
+            }
+            main {
+                max-width: 22rem;
+                text-align: center;
+            }
+            img {
+                width: 72px;
+                height: 72px;
+                border-radius: 16px;
+            }
+            h1 {
+                font-size: 1.25rem;
+                margin: 16px 0 8px;
+            }
+            p {
+                color: #555;
+                line-height: 1.5;
+            }
+            button {
+                margin-top: 16px;
+                width: 100%;
+                height: 48px;
+                border: 0;
+                border-radius: 8px;
+                background: #0e7490;
+                color: #fff;
+                font-size: 1rem;
+            }
+            @media (prefers-color-scheme: dark) {
+                body {
+                    background: #111;
+                    color: #eee;
+                }
+                p {
+                    color: #aaa;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <img src="/icons/icon-192.png" alt="" />
+            <h1>No connection</h1>
+            <p>
+                This page needs the internet. Photos and signatures you already
+                took are saved on this phone and will upload when the signal is
+                back.
+            </p>
+            <button type="button" id="retry">Try again</button>
+        </main>
+        <script>
+            // Try again: fetch the newest service worker, drop old caches, then load this page again from the network.
+            document
+                .getElementById('retry')
+                .addEventListener('click', async (event) => {
+                    event.currentTarget.disabled = true;
+                    try {
+                        const registration =
+                            'serviceWorker' in navigator
+                                ? await navigator.serviceWorker.getRegistration(
+                                      '/',
+                                  )
+                                : undefined;
+                        if (registration) {
+                            await registration.update();
+                            const next =
+                                registration.installing || registration.waiting;
+                            // A new worker takes over by itself; give it a moment so the reload goes through it.
+                            if (next) {
+                                await new Promise((resolve) => {
+                                    navigator.serviceWorker.addEventListener(
+                                        'controllerchange',
+                                        resolve,
+                                        { once: true },
+                                    );
+                                    setTimeout(resolve, 3000);
+                                });
+                            }
+                        }
+                    } catch {
+                        // The reload below still tries the network.
+                    }
+                    try {
+                        const keys = await caches.keys();
+                        await Promise.all(
+                            keys.map((key) => caches.delete(key)),
+                        );
+                    } catch {
+                        // No cache storage: nothing to clear.
+                    }
+                    window.location.reload();
+                });
+        </script>
+    </body>
+</html>

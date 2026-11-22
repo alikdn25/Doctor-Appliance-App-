@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Payments\PaymentProvider;
 use App\Payments\PaymentProviderException;
 use App\Payments\PaymentProviders;
+use App\Payments\Square\SquareProvider;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -78,6 +80,37 @@ class PaymentProviderController extends Controller
         $found->disconnect($company);
 
         return $this->back('success', __('payments.connect.disconnected', ['provider' => $found->label()]));
+    }
+
+    /**
+     * Settings → Payments: the Square locations to choose from (card reader payments go to the chosen one).
+     */
+    public function locations(SquareProvider $square): JsonResponse
+    {
+        Gate::authorize('managePayments', currentCompany());
+
+        try {
+            return response()->json(['locations' => $square->locations(currentCompany())]);
+        } catch (PaymentProviderException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function location(Request $request, SquareProvider $square): RedirectResponse
+    {
+        $company = currentCompany();
+        Gate::authorize('managePayments', $company);
+        $id = (string) $request->validate(['location_id' => ['required', 'string', 'max:100']])['location_id'];
+
+        try {
+            $square->setLocation($company, $id);
+        } catch (PaymentProviderException $e) {
+            return $this->back('error', $e->getMessage());
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('charges.settings.location_saved')]);
+
+        return to_route('company.settings.section', 'payments');
     }
 
     private function available(PaymentProviders $providers, string $key): PaymentProvider

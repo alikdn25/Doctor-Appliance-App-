@@ -19,4 +19,12 @@ class Money
 
         return (string) $formatter->formatCurrency($minor / Currencies::factor($currency), $currency);
     }
+
+    /**
+     * The amount as a plain number for an input field, e.g. (12345, "CAD") → "123.45", (500, "JPY") → "500".
+     */
+    public static function input(int $minor, string $currency): string
+    {
+        return number_format($minor / Currencies::factor($currency), Currencies::decimals($currency), '.', '');
+    }
 }

@@ -13,7 +13,7 @@ import {
     XCircle,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     DeliveryStatus,
     SendMenu,
@@ -189,8 +189,24 @@ export default function BillingShow({
     const editDocument = () =>
         paidSomething ? setConfirm('edit-paid') : router.visit(editUrl);
 
-    const takePayment = () =>
+    const otherWays = () =>
         online ? setTakeOpen(true) : setPaymentOpen(true);
+
+    // Take payment opens the one Take payment screen (owner's task of November 21); "Other ways" there (link, QR,
+    // check …) comes back here with ?pay=1 and opens the earlier sheet.
+    const takePayment = () =>
+        router.visit(`/invoices/${doc.id}/take-payment`);
+
+    useEffect(() => {
+        if (
+            isInvoice &&
+            can.recordPayment &&
+            new URLSearchParams(window.location.search).get('pay') === '1'
+        ) {
+            otherWays();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const removePayment = (payment: PaymentData) => {
         if (

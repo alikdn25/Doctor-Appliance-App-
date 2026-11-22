@@ -74,6 +74,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('useAssistant', fn (User $user) => $user->hasRole(UserRole::Owner));
         // Debtors import (owner's task of November 19): Owner only.
         Gate::define('importDebtors', fn (User $user) => $user->hasRole(UserRole::Owner));
+        // Take payment / New charge (card reader, cash, e-transfer): the people who go on calls and the office.
+        Gate::define('takeCharges', fn (User $user) => $user->hasRole(UserRole::Owner, UserRole::Admin, UserRole::Technician));
         Gate::define('useQuickBooking', fn (User $user) => $user->hasRole(UserRole::Owner, UserRole::Admin));
 
         // Own counters: a plain "throttle:N,1" shares one counter per person across routes, so the version check

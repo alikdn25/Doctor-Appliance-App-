@@ -1,0 +1,139 @@
+name: android
+
+# Builds the signed Android app (Capacitor shell + Square card reader, docs/ANDROID.md) and publishes it:
+# - as the workflow artifact "android-apk";
+# - as the asset android.apk of the GitHub release "android-latest";
+# - on the server at storage/app/android/android.apk (served at /download/android.apk), when the repository variable
+#   ANDROID_PUBLISH_TO_SERVER is "true" (uses the same SSH secrets as the deploy workflow).
+#
+# Secrets: ANDROID_KEYSTORE_BASE64 (base64 of the release .jks), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
+# ANDROID_KEY_PASSWORD. Variables: SQUARE_APPLICATION_ID (sandbox or production, the same as on the server),
+# CAP_SERVER_URL (default https://app.doctor-appliance.ca).
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'android/**'
+      - 'mobile/**'
+      - 'capacitor.config.ts'
+      - 'package-lock.json'
+      - '.github/workflows/android.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      CAP_SERVER_URL: ${{ vars.CAP_SERVER_URL || 'https://app.doctor-appliance.ca' }}
+      SQUARE_APPLICATION_ID: ${{ vars.SQUARE_APPLICATION_ID }}
+      ANDROID_VERSION_CODE: ${{ github.run_number }}
+      ANDROID_VERSION_NAME: 1.0.${{ github.run_number }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Android SDK platform
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;36.0.0"
+
+      - name: Install and sync Capacitor
+        run: |
+          npm ci --no-audit --no-fund
+          npx cap sync android
+
+      - name: Signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64" || { echo 'ANDROID_KEYSTORE_BASE64 is not set' >&2; exit 1; }
+          test -n "$SQUARE_APPLICATION_ID" || echo '::warning::SQUARE_APPLICATION_ID is not set: the card reader will be off in this build.'
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: Build signed APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/android.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$RUNNER_TEMP/android.apk" | head -5
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: android-apk
+          path: ${{ runner.temp }}/android.apk
+          retention-days: 30
+
+      - name: Publish to the android-latest release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view android-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create android-latest --repo "$GITHUB_REPOSITORY" --title 'Android app (latest)' \
+                 --notes 'Built by the android workflow from main. Served at /download/android.apk.' --prerelease
+          gh release upload android-latest "$RUNNER_TEMP/android.apk" --repo "$GITHUB_REPOSITORY" --clobber
+
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/main' && vars.ANDROID_PUBLISH_TO_SERVER == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+
+      - name: Copy the APK to the server
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          APP_PATH: ${{ secrets.APP_PATH }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" -o StrictHostKeyChecking=yes "$SSH_USER@$SSH_HOST" "mkdir -p '$APP_PATH/storage/app/android'"
+          scp -i ~/.ssh/deploy_key -P "$SSH_PORT" -o StrictHostKeyChecking=yes android.apk "$SSH_USER@$SSH_HOST:$APP_PATH/storage/app/android/android.apk.new"
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" -o StrictHostKeyChecking=yes "$SSH_USER@$SSH_HOST" \
+            "mv '$APP_PATH/storage/app/android/android.apk.new' '$APP_PATH/storage/app/android/android.apk'"
+          rm -f ~/.ssh/deploy_key
