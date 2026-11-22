@@ -14,7 +14,7 @@ return new class extends Migration
     {
         Schema::create('charges', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('company_id')->constrained();
             // Passed to the card reader payment (Square reference_id): ties the Square payment back to this charge.
             $table->uuid('reference')->unique();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
