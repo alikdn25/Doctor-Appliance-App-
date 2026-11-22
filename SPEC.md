@@ -841,6 +841,24 @@ set up is built, stays off and says what is missing.
 - The "Booked #… · Today" sheet after a booking no longer gets lost when a background request (the nearby windows
   lookup) reaches the server between the booking and the next page: background JSON requests keep the page's flash.
 
+### 7.20 Lines and taxes on New charge (owner's task of November 22)
+
+- New charge (and a job's quick invoice) is a list of lines, each a card: Description (voice through the keyboard's
+  microphone), Amount, and a large tick per company tax (e.g. GST 5 %, PST 7 % — the company's own default rates,
+  never hard-coded). A new line has only the first of the company's taxes ticked; the person changes the ticks on
+  each line. No line types and no automatic ticks. A trash button (top right) removes a line when there is more than
+  one; "+ Add line" adds an empty line and puts the cursor in its Description. The screen opens with one empty line.
+- "With tax / Without tax" applies to all lines: without tax, each line's ticked taxes are added on top; with tax, the
+  line already contains its ticked taxes and code takes them out (the total is what was typed).
+- All money is worked out by code in minor units; each tax is rounded once, on the total, not line by line.
+- Totals: Subtotal, each tax only when at least one line has it, Total; the Charge button always shows the Total,
+  which is the amount sent to Square.
+- Empty lines (no description, no amount) are left out; a line with an amount and no description is "Service".
+- The invoice keeps each line (description, amount, its taxes) and the tax amounts; the receipt email lists every
+  line, then Subtotal, the taxes and Total; the tax reserve counts the taxes from them.
+- Close by voice: the AI makes one line per piece of work, part or material with its amount; each line gets the first
+  company tax ticked; the ticks are changed in the preview.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).

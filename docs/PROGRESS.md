@@ -1,3 +1,26 @@
+# November 22 — Owner's task: lines and taxes on New charge (done)
+
+One PR (SPEC §7.20), after PR #83 was merged.
+
+1. **Lines**: New charge and a job's quick invoice are a list of line cards (Description, Amount, a large tick per
+   company tax; trash top right when there is more than one line; "+ Add line" focuses the new Description). A new
+   line has only the first company tax ticked (Doctor Appliance: GST on, PST off). Empty lines are left out; an
+   amount without a description is "Service".
+2. **Taxes per line** (`App\Support\Billing\ChargeLines`): With tax / Without tax for all lines; with tax each line's
+   own taxes are taken out and the total is exactly what was typed. `DocumentTotals` (and `money.ts`) now round each
+   tax once on the document total instead of per tax combination (same result for documents with one combination).
+   Tax ids of another company are ignored.
+3. **Totals**: Subtotal, only the taxes ticked on some line, Total; Charge button = Total = Square amount.
+4. **Saved**: invoice lines carry their `tax_rate_ids`; the invoice gets only the taxes used, so the receipt email and
+   the tax reserve show GST / PST from the lines. No migration (the per-line tax column already existed).
+5. **Close by voice**: one line per piece of work / part / material, first tax ticked; ticks changed in the preview
+   (`POST jobs/{job}/voice-close/preview`).
+
+- Tests: `ChargeLinesTest` (one line; several lines with different ticks; with / without tax; rounding on the total;
+  empty lines; Charge total = Square amount = invoice; receipt and tax reserve; quick invoice; foreign tax ids),
+  `DocumentTotalsTest` (rounding on the total), updated `VoiceAndPartsTest`.
+- Next: owner checks the screen on the phone.
+
 # November 22 — Owner's task: push in the Android app, invoices / receipts / reviews by email only, "Now" test (done)
 
 One PR (SPEC §7.19), after PR #82 was merged.

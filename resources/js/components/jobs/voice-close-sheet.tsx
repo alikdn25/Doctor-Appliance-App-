@@ -14,21 +14,34 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { sendJson } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { voiceClose } from '@/routes/jobs';
-import { read } from '@/routes/jobs/voice-close';
+import { preview as previewClose, read } from '@/routes/jobs/voice-close';
 
 type Draft = {
     note: string;
-    lines: { description: string; amount: number; kind: 'service' | 'part' }[];
+    lines: {
+        description: string;
+        amount: number;
+        kind: 'service' | 'part';
+        tax_rate_ids: number[];
+    }[];
     amounts_include_tax: boolean;
     payment: 'card' | 'cash' | 'e_transfer' | 'unpaid';
     status: 'completed' | 'need_to_order_parts';
     part_name: string;
 };
 
+type Tax = { id: number; name: string; rate: string };
+
 type Money = {
     lines: { description: string; total: number }[];
-    taxes: { name: string; rate: string; amount: number }[];
+    taxes: {
+        tax_rate_id: number;
+        name: string;
+        rate: string;
+        amount: number;
+    }[];
     subtotal: number;
     total: number;
     currency: string;
@@ -36,7 +49,8 @@ type Money = {
 
 /**
  * "Close by voice" (owner's task of November 18): the technician says what was done, the prices, how the customer paid
- * and whether a part is needed (microphone, like the assistant). The AI fills it in; the app works out taxes and the
+ * and whether a part is needed (microphone, like the assistant). The AI fills it in, one line per piece of work, part
+ * or material; each line has a tick per company tax (the first ticked), changed here; the app works out taxes and the
  * total; the preview is checked and only Confirm saves the note, the invoice, the payment and the status.
  */
 export function VoiceCloseSheet({
@@ -56,6 +70,7 @@ export function VoiceCloseSheet({
         draft: Draft;
         money: Money;
     } | null>(null);
+    const [taxes, setTaxes] = useState<Tax[]>([]);
     const money = useMoney(preview?.money.currency);
 
     useEffect(() => {
@@ -74,6 +89,7 @@ export function VoiceCloseSheet({
             const body = (await response.json()) as {
                 draft?: Draft;
                 money?: Money;
+                taxes?: Tax[];
                 message?: string;
             };
             if (!response.ok || !body.draft || !body.money) {
@@ -81,11 +97,41 @@ export function VoiceCloseSheet({
 
                 return;
             }
+            setTaxes(body.taxes ?? []);
             setPreview({ draft: body.draft, money: body.money });
         } catch {
             setError(t('automation.inbox.failed'));
         } finally {
             setBusy(false);
+        }
+    };
+
+    // A tick changed: the line's taxes and the money again (code).
+    const toggleTax = async (index: number, id: number) => {
+        if (!preview || busy) return;
+        const lines = preview.draft.lines.map((line, i) =>
+            i !== index
+                ? line
+                : {
+                      ...line,
+                      tax_rate_ids: line.tax_rate_ids.includes(id)
+                          ? line.tax_rate_ids.filter((x) => x !== id)
+                          : [...line.tax_rate_ids, id],
+                  },
+        );
+        const draft = { ...preview.draft, lines };
+        setPreview({ ...preview, draft });
+        try {
+            const response = await sendJson(previewClose(jobId).url, 'POST', {
+                lines,
+                amounts_include_tax: draft.amounts_include_tax,
+            });
+            const body = (await response.json()) as { money?: Money };
+            if (response.ok && body.money) {
+                setPreview({ draft, money: body.money });
+            }
+        } catch {
+            setError(t('automation.inbox.failed'));
         }
     };
 
@@ -172,15 +218,74 @@ export function VoiceCloseSheet({
                             ) : (
                                 <>
                                     {preview.money.lines.map((line, i) => (
-                                        <p
+                                        <div
                                             key={i}
-                                            className="flex justify-between gap-2"
+                                            className="space-y-1.5 border-b pb-2 last:border-b-0"
+                                            data-test="voice-close-line"
                                         >
-                                            <span>{line.description}</span>
-                                            <span className="tabular-nums">
-                                                {money(line.total)}
-                                            </span>
-                                        </p>
+                                            <p className="flex justify-between gap-2">
+                                                <span>{line.description}</span>
+                                                <span className="tabular-nums">
+                                                    {money(line.total)}
+                                                </span>
+                                            </p>
+                                            {taxes.length > 0 && (
+                                                <div
+                                                    className="flex flex-wrap gap-2"
+                                                    role="group"
+                                                    aria-label={t(
+                                                        'charges.new.line_taxes',
+                                                    )}
+                                                >
+                                                    {taxes.map((tax) => {
+                                                        const on =
+                                                            preview.draft.lines[
+                                                                i
+                                                            ]?.tax_rate_ids.includes(
+                                                                tax.id,
+                                                            ) ?? false;
+
+                                                        return (
+                                                            <button
+                                                                key={tax.id}
+                                                                type="button"
+                                                                role="checkbox"
+                                                                aria-checked={
+                                                                    on
+                                                                }
+                                                                onClick={() =>
+                                                                    void toggleTax(
+                                                                        i,
+                                                                        tax.id,
+                                                                    )
+                                                                }
+                                                                className={cn(
+                                                                    'da-chip da-press inline-flex min-h-11 items-center gap-2 rounded-2xl px-3 text-sm font-semibold',
+                                                                    on &&
+                                                                        'text-primary ring-2 ring-primary',
+                                                                )}
+                                                                data-test={`voice-close-tax-${tax.id}`}
+                                                            >
+                                                                <span
+                                                                    className={cn(
+                                                                        'flex size-6 shrink-0 items-center justify-center rounded-md border-2',
+                                                                        on
+                                                                            ? 'border-primary bg-primary text-primary-foreground'
+                                                                            : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-transparent',
+                                                                    )}
+                                                                >
+                                                                    {on && (
+                                                                        <Check className="size-4" />
+                                                                    )}
+                                                                </span>
+                                                                {tax.name}{' '}
+                                                                {tax.rate}%
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
                                     ))}
                                     <p className="flex justify-between gap-2 border-t pt-1 text-muted-foreground">
                                         <span>
@@ -194,7 +299,7 @@ export function VoiceCloseSheet({
                                     </p>
                                     {preview.money.taxes.map((tax) => (
                                         <p
-                                            key={tax.name}
+                                            key={tax.tax_rate_id}
                                             className="flex justify-between gap-2 text-muted-foreground"
                                         >
                                             <span>

@@ -166,22 +166,37 @@ test('close by voice: the preview creates nothing; Confirm saves note, invoice, 
 
     $response = $this->postJson(route('jobs.voice-close.read', $this->job), ['text' => 'Поменял термопредохранитель, 150 работа и 50 деталь, оплатили картой'])
         ->assertOk();
+    // Each line has only the first company tax (GST) ticked; PST is ticked in the preview.
+    $gst = inCompany($this->company, fn () => TaxRate::query()->where('name', 'GST')->value('id'));
+    $pst = inCompany($this->company, fn () => TaxRate::query()->where('name', 'PST')->value('id'));
     expect($fake->requests[0]['model'])->toBe('claude-sonnet-5-5')
+        ->and(array_column($response->json('draft.lines'), 'tax_rate_ids'))->toBe([[$gst], [$gst]])
+        ->and(array_column($response->json('taxes'), 'name'))->toBe(['GST', 'PST'])
         ->and($response->json('money.subtotal'))->toBe(20000)
-        ->and(array_column($response->json('money.taxes'), 'amount'))->toBe([1000, 1400])
-        ->and($response->json('money.total'))->toBe(22400);
+        ->and(array_column($response->json('money.taxes'), 'amount'))->toBe([1000])
+        ->and($response->json('money.total'))->toBe(21000);
+
+    $draft = $response->json('draft');
+    $draft['lines'][1]['tax_rate_ids'] = [$gst, $pst];
+    $this->postJson(route('jobs.voice-close.preview', $this->job), ['lines' => $draft['lines'], 'amounts_include_tax' => false])
+        ->assertOk()
+        ->assertJsonPath('money.taxes.0.amount', 1000)
+        ->assertJsonPath('money.taxes.1.name', 'PST')
+        ->assertJsonPath('money.taxes.1.amount', 350)
+        ->assertJsonPath('money.total', 21350);
 
     // Nothing stored yet.
     $job = $this->job->fresh();
     expect($job->tech_notes)->toBeNull()->and($job->status)->toBe(JobStatus::InProgress)
         ->and(inCompany($this->company, fn () => Invoice::query()->count()))->toBe(0);
 
-    $this->post(route('jobs.voice-close', $this->job), $response->json('draft'))->assertRedirect();
+    $this->post(route('jobs.voice-close', $this->job), $draft)->assertRedirect();
 
     $job = $this->job->fresh();
-    $invoice = inCompany($this->company, fn () => Invoice::query()->sole());
+    $invoice = inCompany($this->company, fn () => Invoice::query()->with('items')->sole());
     expect($job->tech_notes)->toBe('Replaced the thermal fuse; tested, heats fine.')
-        ->and($invoice->total)->toBe(22400)
+        ->and($invoice->total)->toBe(21350)
+        ->and($invoice->items->pluck('tax_rate_ids')->all())->toBe([[$gst], [$gst, $pst]])
         ->and($invoice->status->value)->toBe('paid')
         ->and(inCompany($this->company, fn () => Payment::query()->sole()->method))->toBe(PaymentMethod::CardTerminal)
         ->and($job->status)->toBe(JobStatus::Paid)

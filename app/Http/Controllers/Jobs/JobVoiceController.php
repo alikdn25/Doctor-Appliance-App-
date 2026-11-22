@@ -10,6 +10,8 @@ use App\Services\AI\AiService;
 use App\Services\AI\AiUnavailable;
 use App\Services\AI\BookingEditor;
 use App\Services\AI\VoiceCloser;
+use App\Support\Billing\ChargeLines;
+use App\Support\Billing\DocumentTotals;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -56,8 +58,26 @@ class JobVoiceController extends Controller
         return $this->ai(function () use ($closer, $job, $text, $request) {
             $reading = $closer->read($job, $text, $request->user());
 
-            return response()->json(['draft' => $reading, 'money' => VoiceCloser::totals($reading, currentCompany())]);
+            return response()->json([
+                'draft' => $reading,
+                'money' => VoiceCloser::totals($reading, currentCompany()),
+                'taxes' => array_map(fn (array $t) => ['id' => $t['tax_rate_id'], 'name' => $t['name'], 'rate' => DocumentTotals::rateLabel($t['rate'])], ChargeLines::taxes()),
+            ]);
         });
+    }
+
+    /**
+     * The preview's money again after the ticks of a line's taxes or "with tax" were changed (code only).
+     */
+    public function previewClose(Request $request, ServiceJob $job): JsonResponse
+    {
+        Gate::authorize('work', $job);
+        $data = $request->validate([
+            ...self::lineRules(),
+            'amounts_include_tax' => ['required', 'boolean'],
+        ]);
+
+        return response()->json(['money' => VoiceCloser::totals(['lines' => $data['lines'] ?? [], 'amounts_include_tax' => $data['amounts_include_tax']], currentCompany())]);
     }
 
     public function confirmClose(Request $request, ServiceJob $job, VoiceCloser $closer): RedirectResponse
@@ -65,10 +85,7 @@ class JobVoiceController extends Controller
         Gate::authorize('work', $job);
         $data = $request->validate([
             'note' => ['nullable', 'string', 'max:5000'],
-            'lines' => ['array', 'max:20'],
-            'lines.*.description' => ['required', 'string', 'max:500'],
-            'lines.*.amount' => ['required', 'numeric', 'min:0.01', 'max:1000000'],
-            'lines.*.kind' => ['required', Rule::in(['service', 'part'])],
+            ...self::lineRules(),
             'amounts_include_tax' => ['required', 'boolean'],
             'payment' => ['required', Rule::in(VoiceCloser::PAYMENTS)],
             'status' => ['required', Rule::in(VoiceCloser::STATUSES)],
@@ -79,6 +96,23 @@ class JobVoiceController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => $closer->confirm($job, $data, $request->user())]);
 
         return back();
+    }
+
+    /**
+     * Invoice lines of Close by voice: each with its amount and the company taxes ticked on it.
+     *
+     * @return array<string, list<mixed>>
+     */
+    private static function lineRules(): array
+    {
+        return [
+            'lines' => ['array', 'max:20'],
+            'lines.*.description' => ['required', 'string', 'max:500'],
+            'lines.*.amount' => ['required', 'numeric', 'min:0.01', 'max:1000000'],
+            'lines.*.kind' => ['required', Rule::in(['service', 'part'])],
+            'lines.*.tax_rate_ids' => ['nullable', 'array', 'max:10'],
+            'lines.*.tax_rate_ids.*' => ['integer'],
+        ];
     }
 
     /**

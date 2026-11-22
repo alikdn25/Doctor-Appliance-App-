@@ -250,6 +250,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         // Voice (owner's task of November 18): quick edit of a booking, close by voice. Nothing saved without Save / Confirm.
         Route::post('jobs/{job}/quick-edit', [JobVoiceController::class, 'quickEdit'])->middleware('throttle:assistant')->name('jobs.quick-edit');
         Route::post('jobs/{job}/voice-close/read', [JobVoiceController::class, 'readClose'])->middleware('throttle:assistant')->name('jobs.voice-close.read');
+        Route::post('jobs/{job}/voice-close/preview', [JobVoiceController::class, 'previewClose'])->middleware('throttle:120,1')->name('jobs.voice-close.preview');
         Route::post('jobs/{job}/voice-close', [JobVoiceController::class, 'confirmClose'])->name('jobs.voice-close');
         // The part a job waits for, and "Part arrived" (text with free windows, sent on Confirm).
         Route::put('jobs/{job}/part', [JobPartsController::class, 'update'])->name('jobs.part');

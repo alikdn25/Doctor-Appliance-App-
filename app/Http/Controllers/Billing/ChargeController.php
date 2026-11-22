@@ -12,7 +12,8 @@ use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Payments\PaymentProviderException;
 use App\Payments\Square\SquareProvider;
-use App\Services\AI\Assistant\InvoiceDraft;
+use App\Support\Billing\ChargeLines;
+use App\Support\Billing\DocumentTotals;
 use App\Support\Billing\Money;
 use App\Support\Locale\Currencies;
 use App\Support\Payments\ChargeCheckout;
@@ -23,6 +24,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -71,6 +73,9 @@ class ChargeController extends Controller
         Gate::authorize('work', $job);
         $data = $this->validateLines($request);
         $totals = ChargeCheckout::totals($data['lines'], $data['amounts_include_tax']);
+        if ($totals['total'] <= 0) {
+            throw ValidationException::withMessages(['lines' => __('payments.errors.amount_required')]);
+        }
 
         $invoice = $save->createInvoice($job, [
             'issued_on' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
@@ -81,7 +86,8 @@ class ChargeController extends Controller
                 'description' => $line['description'],
                 'quantity' => '1',
                 'unit_price' => $line['unit_price'],
-                'taxable' => true,
+                'taxable' => $line['tax_rate_ids'] !== [],
+                'tax_rate_ids' => $line['tax_rate_ids'],
                 'kind' => LineKind::Service->value,
             ], $totals['lines']),
         ], $request->user());
@@ -233,6 +239,7 @@ class ChargeController extends Controller
         $company = currentCompany();
         $square = app(SquareProvider::class);
         $connection = $square->connection($company);
+        $taxes = ChargeLines::taxes();
         $quick = [];
 
         if ($company->diagnostic_fee !== null && $company->diagnostic_fee > 0) {
@@ -244,7 +251,8 @@ class ChargeController extends Controller
 
         return [
             'currency' => $company->currency,
-            'taxes' => array_map(fn (array $t) => ['name' => $t['name'], 'rate' => $t['rate']], InvoiceDraft::taxes()),
+            'taxes' => array_map(fn (array $t) => ['id' => $t['tax_rate_id'], 'name' => $t['name'], 'rate' => DocumentTotals::rateLabel($t['rate'])], $taxes),
+            'default_tax_ids' => ChargeLines::defaultIds($taxes),
             'quick_amounts' => array_values(collect($quick)->unique('label')->take(8)->all()),
             'methods' => [
                 'cash' => $company->accepts_cash !== false,
@@ -274,7 +282,7 @@ class ChargeController extends Controller
 
         return [
             'subtotal' => $format($totals['subtotal']),
-            'taxes' => array_map(fn (array $tax) => ['name' => $tax['name'], 'rate' => $tax['rate'], 'amount' => $format((int) $tax['amount'])], $totals['taxes']),
+            'taxes' => array_map(fn (array $tax) => ['id' => $tax['tax_rate_id'], 'name' => $tax['name'], 'rate' => $tax['rate'], 'amount' => $format((int) $tax['amount'])], $totals['taxes']),
             'tax_total' => $format($totals['tax_total']),
             'total' => $format($totals['total']),
             'total_minor' => $totals['total'],
@@ -282,7 +290,7 @@ class ChargeController extends Controller
     }
 
     /**
-     * @return array{lines: list<array{description: string, amount: string}>, amounts_include_tax: bool}
+     * @return array{lines: list<array{description: string|null, amount: string|null, tax_rate_ids?: list<int>}>, amounts_include_tax: bool}
      */
     private function validateLines(Request $request): array
     {
@@ -301,7 +309,10 @@ class ChargeController extends Controller
         return [
             $prefix.'lines' => [$required, 'array', 'min:1', 'max:20'],
             $prefix.'lines.*.description' => ['nullable', 'string', 'max:500'],
-            $prefix.'lines.*.amount' => ['required', 'numeric', 'gt:0', 'max:1000000'],
+            // An empty line (no description, no amount) is left out; a description needs an amount.
+            $prefix.'lines.*.amount' => ['nullable', 'required_with:'.$prefix.'lines.*.description', 'numeric', 'min:0', 'max:1000000'],
+            $prefix.'lines.*.tax_rate_ids' => ['nullable', 'array', 'max:10'],
+            $prefix.'lines.*.tax_rate_ids.*' => ['integer'],
             $prefix.'amounts_include_tax' => [$required, 'boolean'],
         ];
     }

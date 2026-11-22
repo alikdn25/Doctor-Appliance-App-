@@ -208,3 +208,16 @@ test('matching selections aggregate before rounding and null inherits document t
     ], null, 0, [['tax_rate_id' => 1, 'name' => 'Tax', 'rate' => 5]], minorFactor: 1);
     expect($totals['tax_total'])->toBe(1)->and($totals['total'])->toBe(11);
 });
+
+test('each tax is rounded once on the total, not per combination of taxes', function () {
+    $totals = DocumentTotals::calculate([
+        ['quantity' => 1, 'unit_price' => 10, 'taxable' => true, 'tax_rate_ids' => [1]],
+        ['quantity' => 1, 'unit_price' => 10, 'taxable' => true, 'tax_rate_ids' => [1, 2]],
+    ], null, 0, [
+        ['tax_rate_id' => 1, 'name' => 'Federal', 'rate' => 5],
+        ['tax_rate_id' => 2, 'name' => 'Regional', 'rate' => 7],
+    ]);
+
+    // 0.5 + 0.5 cents of Federal tax: 1 cent on the total (2 if each combination were rounded).
+    expect(array_column($totals['taxes'], 'amount'))->toBe([1, 1])->and($totals['total'])->toBe(22);
+});

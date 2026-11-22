@@ -12,7 +12,8 @@ namespace App\Support\Billing;
  * - Discount (fixed amount or percent of the subtotal) is applied before taxes; taxable lines carry
  *   their share of it.
  * - Taxes are applied in order. A normal tax is charged on the discounted taxable amount; a compound tax
- *   on that amount plus the taxes before it. Each tax is rounded to the minor unit.
+ *   on that amount plus the taxes before it. Each tax is rounded to the minor unit once, on the document's total
+ *   (lines with different taxes are not rounded one by one).
  * - Prices with tax included (tax-inclusive pricing): line prices already contain the taxes. The taxes are
  *   worked out backwards from the discounted taxable amount and the total is not increased by them.
  */
@@ -64,16 +65,18 @@ class DocumentTotals
         $discount = self::discount($subtotal, $discountType, (float) ($discountValue ?? 0), $minorFactor);
         $amounts = array_fill(0, count($taxes), 0);
         // Aggregate matching combinations before rounding, preserving legacy whole-document calculations.
-        // Compound and inclusive taxes are calculated only with the other taxes selected on that group.
+        // Compound and inclusive taxes are calculated only with the other taxes selected on that group. Taxes on
+        // top are summed unrounded over the groups and rounded once per tax.
         foreach ($groups as $group) {
             $share = $subtotal > 0 ? (int) round($discount * $group['subtotal'] / $subtotal) : 0;
             $base = max(0, $group['subtotal'] - $share);
             $selected = array_map(fn (int $index) => $taxes[$index], $group['indices']);
-            $groupAmounts = $pricesIncludeTax ? self::includedTaxes($base, $selected) : self::addedTaxes($base, $selected);
+            $groupAmounts = $pricesIncludeTax ? self::includedTaxes($base, $selected) : self::addedTaxes($base, $selected, false);
             foreach ($group['indices'] as $position => $index) {
                 $amounts[$index] += $groupAmounts[$position];
             }
         }
+        $amounts = array_map(fn (int|float $amount) => (int) round($amount), $amounts);
 
         $taxLines = array_map(fn (array $tax, int $amount) => [
             'tax_rate_id' => $tax['tax_rate_id'] ?? null,
@@ -101,20 +104,22 @@ class DocumentTotals
     }
 
     /**
-     * Taxes on top of a net amount.
+     * Taxes on top of a net amount. Unrounded ($round = false): each amount as is, for rounding on the total
+     * (a compound tax still builds on the rounded taxes before it).
      *
      * @param  list<array{rate: string|float, compound?: bool}>  $taxes
-     * @return list<int>
+     * @return ($round is true ? list<int> : list<float>)
      */
-    private static function addedTaxes(int $net, array $taxes): array
+    private static function addedTaxes(int $net, array $taxes, bool $round = true): array
     {
         $amounts = [];
         $running = $net;
 
         foreach ($taxes as $tax) {
             $base = ($tax['compound'] ?? false) ? $running : $net;
-            $amount = (int) round($base * (float) $tax['rate'] / 100);
-            $amounts[] = $amount;
+            $raw = $base * (float) $tax['rate'] / 100;
+            $amount = (int) round($raw);
+            $amounts[] = $round ? $amount : $raw;
             $running += $amount;
         }
 
@@ -166,6 +171,11 @@ class DocumentTotals
     /**
      * "5.0000" → "5", "7.5000" → "7.5" (as shown on documents).
      */
+    public static function rateLabel(string|float $rate): string
+    {
+        return self::rate($rate);
+    }
+
     private static function rate(string|float $rate): string
     {
         $formatted = rtrim(rtrim(number_format((float) $rate, 4, '.', ''), '0'), '.');
