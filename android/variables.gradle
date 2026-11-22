@@ -1,6 +1,6 @@
 ext {
     minSdkVersion = 28
-    compileSdkVersion = 37
+    compileSdkVersion = 36
     targetSdkVersion = 36
     androidxActivityVersion = '1.11.0'
     androidxAppCompatVersion = '1.7.1'
@@ -15,5 +15,5 @@ ext {
     cordovaAndroidVersion = '14.0.1'
     // Square Mobile Payments SDK (card reader); minSdk 28 is its minimum.
     squareSdkVersion = '2.7.0'
-    kotlinVersion = '2.2.21'
+    kotlinVersion = '2.4.0'
 }

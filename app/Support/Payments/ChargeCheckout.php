@@ -3,6 +3,7 @@
 namespace App\Support\Payments;
 
 use App\Actions\Billing\CashLedger;
+use App\Actions\Billing\NextDocumentNumber;
 use App\Actions\Billing\RecordPayment;
 use App\Actions\Billing\SaveBillingDocument;
 use App\Actions\Customers\SaveProperty;
@@ -18,6 +19,7 @@ use App\Models\Brand;
 use App\Models\Charge;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\ServiceJob;
 use App\Models\User;
 use App\Support\Billing\ChargeLines;
@@ -48,6 +50,7 @@ class ChargeCheckout
         private readonly ChangeJobStatus $changeStatus,
         private readonly CashLedger $cash,
         private readonly PaidCustomer $customers,
+        private readonly NextDocumentNumber $numbers,
     ) {}
 
     /**
@@ -112,7 +115,7 @@ class ChargeCheckout
             $currency = $company->currency;
         }
 
-        $charge = Charge::create([
+        $charge = new Charge([
             'user_id' => $user->id,
             'invoice_id' => $invoice?->id,
             'amount' => $amount,
@@ -121,7 +124,63 @@ class ChargeCheckout
             'draft' => $invoice === null ? $draft : null,
         ]);
 
-        return $method === PaymentMethod::CardReader ? $charge : $this->complete($charge);
+        if ($method !== PaymentMethod::CardReader) {
+            $charge->save();
+
+            return $this->complete($charge);
+        }
+
+        // Square reference_id = the invoice number (a charge without a booking reserves the number its invoice gets).
+        $charge->square_reference = $invoice?->number ?? $this->reserveNumber($user, $amount, $draft);
+        $charge->save();
+
+        return $charge;
+    }
+
+    /**
+     * The Square payment note: what the job is about (the invoice's job description, else its lines), at most 500
+     * characters.
+     */
+    public static function squareNote(Charge $charge): string
+    {
+        $invoice = $charge->invoice;
+        $note = $invoice !== null
+            ? ($invoice->job?->description ?: $invoice->items()->orderBy('position')->pluck('description')->implode(', '))
+            : collect((array) ($charge->draft['lines'] ?? []))->pluck('description')->filter(fn ($d) => trim((string) $d) !== '')->implode(', ');
+
+        $note = trim((string) $note);
+        if ($note === '') {
+            $note = $invoice !== null ? __('payments.square.payment_note', ['number' => $invoice->number]) : __('charges.reader_note');
+        }
+
+        return mb_substr(preg_replace('/\s+/', ' ', $note) ?? $note, 0, 500);
+    }
+
+    /**
+     * The invoice number of a charge without a booking, taken when Card is pressed. Try again after a declined card
+     * keeps the same number (no gap); the number is skipped only when the card payment is never finished.
+     *
+     * @param  array<string, mixed>|null  $draft
+     */
+    private function reserveNumber(User $user, int $amount, ?array $draft): string
+    {
+        $earlier = Charge::query()
+            ->where('user_id', $user->id)
+            ->where('method', PaymentMethod::CardReader->value)
+            ->whereNull('invoice_id')
+            ->where('status', '!=', Charge::PAID)
+            ->whereNotNull('square_reference')
+            ->where('amount', $amount)
+            ->where('created_at', '>=', now()->subHours(12))
+            ->latest('id')
+            ->get()
+            ->first(fn (Charge $c) => $c->draft == $draft);
+
+        if ($earlier !== null && ! Invoice::query()->withTrashed()->where('number', $earlier->square_reference)->exists()) {
+            return (string) $earlier->square_reference;
+        }
+
+        return DB::transaction(fn () => $this->numbers->invoice());
     }
 
     /**
@@ -140,12 +199,32 @@ class ChargeCheckout
             }
 
             $user = $charge->user ?? throw ValidationException::withMessages(['charge' => __('charges.errors.no_user')]);
+
+            if ($charge->method === PaymentMethod::CardReader) {
+                $square ?? throw ValidationException::withMessages(['payment_id' => __('charges.errors.not_completed')]);
+                // A Square payment is recorded once: the same payment ID never pays a second charge or invoice.
+                $existing = Payment::query()->where('provider', 'square')->where('provider_payment_id', (string) $square['id'])->first();
+                if ($existing !== null) {
+                    $sibling = Charge::query()->where('payment_id', $existing->id)->where('status', Charge::PAID)->first();
+                    if ($sibling !== null && $sibling->square_reference !== null && $sibling->square_reference === $charge->square_reference) {
+                        // Try again after a lost answer: the earlier charge for the same invoice already has it.
+                        $charge->forceFill(['status' => Charge::FAILED, 'error' => 'Recorded by charge '.$sibling->reference])->save();
+
+                        return $sibling;
+                    }
+
+                    throw ValidationException::withMessages(['payment_id' => __('charges.errors.already_recorded')]);
+                }
+            }
+
             $invoice = $charge->invoice ?? $this->invoiceFromDraft($charge, $user);
 
             if ($charge->method === PaymentMethod::CardReader) {
                 $card = $square['card_details']['card'] ?? null;
-                $reference = is_array($card) && isset($card['card_brand'], $card['last_4'])
-                    ? Str::of($card['card_brand'])->replace('_', ' ')->title().' •••• '.$card['last_4']
+                $brand = is_array($card) && is_string($card['card_brand'] ?? null) ? (string) $card['card_brand'] : null;
+                $last4 = is_array($card) && is_string($card['last_4'] ?? null) ? mb_substr((string) $card['last_4'], -4) : null;
+                $reference = $brand !== null && $last4 !== null
+                    ? self::brandLabel($brand).' •••• '.$last4
                     : ($square['receipt_number'] ?? null);
 
                 $payment = $this->recordPayment->fromProvider(
@@ -161,9 +240,11 @@ class ChargeCheckout
                     $user,
                 );
                 $fee = collect($square['processing_fee'] ?? [])->sum(fn ($f) => (int) ($f['amount_money']['amount'] ?? 0));
-                if ($fee > 0) {
-                    $payment->forceFill(['processing_fee' => $fee])->save();
-                }
+                $payment->forceFill([
+                    'card_brand' => $brand !== null ? mb_substr(self::brandLabel($brand), 0, 40) : null,
+                    'card_last4' => $last4,
+                    ...($fee > 0 ? ['processing_fee' => $fee] : []),
+                ])->save();
             } else {
                 $payment = $this->recordPayment->manual($invoice, $charge->amount, $charge->method, null, null, now(), $user);
                 if ($payment->method === PaymentMethod::Cash) {
@@ -182,6 +263,12 @@ class ChargeCheckout
 
             return $charge;
         });
+    }
+
+    /** "VISA" → "Visa", "AMERICAN_EXPRESS" → "American Express", "INTERAC" → "Interac". */
+    public static function brandLabel(string $brand): string
+    {
+        return (string) Str::of($brand)->replace('_', ' ')->lower()->title();
     }
 
     /**
@@ -219,6 +306,8 @@ class ChargeCheckout
         $job = $this->completedJob($customer, $totals, $user);
 
         return $this->saveDocument->createInvoice($job, [
+            // The number sent to Square at Card (taken anew if another invoice got it meanwhile).
+            'reserved_number' => $charge->square_reference,
             'issued_on' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
             'due_on' => null,
             'notes' => null,

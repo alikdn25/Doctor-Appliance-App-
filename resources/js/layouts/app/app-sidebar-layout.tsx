@@ -1,4 +1,5 @@
 import { AppContent } from '@/components/app-content';
+import { AndroidUpdateBanner } from '@/components/android-update-banner';
 import { AppUpdateBanner } from '@/components/app-update-banner';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
@@ -34,6 +35,7 @@ export default function AppSidebarLayout({
                         className="min-w-0 overflow-x-clip"
                     >
                         <AppUpdateBanner />
+                        <AndroidUpdateBanner />
                         <ImpersonationBanner />
                         <UnfinishedJobsBar />
                         <AppSidebarHeader

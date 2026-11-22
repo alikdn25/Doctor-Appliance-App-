@@ -1,5 +1,11 @@
-import { router } from '@inertiajs/react';
-import { Banknote, CreditCard, Landmark, RotateCcw } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import {
+    Banknote,
+    CreditCard,
+    Landmark,
+    RotateCcw,
+    WifiOff,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -12,6 +18,7 @@ import {
 } from '@/lib/card-reader';
 import { sendJson } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
+import { useOnline } from '@/lib/online';
 
 export type ChargeScreen = {
     currency: string;
@@ -32,6 +39,8 @@ type StoreResponse =
     | {
           status: 'pending';
           reference: string;
+          /** Square reference_id: the invoice number. */
+          reference_id?: string | null;
           amount: number;
           currency: string;
           note: string;
@@ -53,11 +62,24 @@ async function post<T>(url: string, data: unknown): Promise<T> {
     return body as T;
 }
 
+/** What the person sees when the reader or Square says no. */
+export function cardErrorKey(code: string): string {
+    const upper = code.toUpperCase();
+    if (upper.includes('CANCEL')) return 'charges.take.cancelled';
+    if (upper.includes('DECLIN')) return 'charges.take.declined';
+    if (upper.includes('NETWORK') || upper === 'OFFLINE')
+        return 'charges.take.offline';
+
+    return 'charges.take.reader_problem';
+}
+
 /**
  * The one Take payment screen (owner's task of November 21) for a booking, an invoice and the "+": the amount on top
- * (the invoice balance, can be changed), then Charge reader (the main button, with the glow; only in the Android app),
- * Cash and E-transfer. Charge reader: the amount goes to the reader, the customer pays, the Paid screen opens. A
- * failed payment shows a plain message and Try again; nothing is recorded.
+ * (the invoice balance, can be changed), then Card (the first and main button, with the glow; only in the Android
+ * app — a browser shows a small "Card reader works in the Android app" line instead), Cash and E-transfer. Card: the
+ * amount goes to the reader ("Tap, insert or swipe card", Cancel), the customer pays, the Paid screen opens. A
+ * declined card or a reader error shows a plain message and Try again; nothing is recorded. Without internet Card
+ * stays pressable but says that it needs a connection (no offline card payments).
  */
 export function TakePayment({
     screen,
@@ -77,6 +99,10 @@ export function TakePayment({
 }) {
     const t = useTrans();
     const native = hasCardReader();
+    const online = useOnline();
+    const { auth } = usePage<{ auth: { role?: { value: string } | null } }>()
+        .props;
+    const isOwner = auth?.role?.value === 'owner';
     const [value, setValue] = useState(amount);
     const [busy, setBusy] = useState<Method | null>(null);
     const [stage, setStage] = useState<string | null>(null);
@@ -127,7 +153,7 @@ export function TakePayment({
             const result = await SquareReader.charge({
                 amount: started.amount,
                 currency: started.currency,
-                referenceId: started.reference,
+                referenceId: started.reference_id ?? started.reference,
                 note: started.note,
                 paymentAttemptId: started.reference,
             });
@@ -146,9 +172,12 @@ export function TakePayment({
                 });
             }
             setError(
-                code === 'CANCELED'
-                    ? t('charges.take.cancelled')
-                    : t('charges.take.failed', { error: message }),
+                t(
+                    navigator.onLine === false
+                        ? 'charges.take.offline'
+                        : cardErrorKey(code),
+                    { error: message },
+                ),
             );
             setBusy(null);
             setStage(null);
@@ -210,19 +239,43 @@ export function TakePayment({
 
             {native &&
                 (screen.reader.connected ? (
-                    <Button
-                        size="lg"
-                        className="da-fab-glow h-16 text-lg"
-                        loading={busy === 'card_reader'}
-                        disabled={busy !== null && busy !== 'card_reader'}
-                        onClick={() => void run('card_reader')}
-                        data-test="charge-reader"
-                    >
-                        {error ? <RotateCcw /> : <CreditCard />}
-                        {error
-                            ? t('charges.take.try_again')
-                            : t('charges.take.charge_reader')}
-                    </Button>
+                    <div className="grid gap-2">
+                        <Button
+                            size="lg"
+                            className="da-fab-glow h-16 text-lg"
+                            loading={busy === 'card_reader'}
+                            disabled={busy !== null && busy !== 'card_reader'}
+                            onClick={() => void run('card_reader')}
+                            data-test="charge-reader"
+                        >
+                            {error ? <RotateCcw /> : <CreditCard />}
+                            {error
+                                ? t('charges.take.try_again')
+                                : t('charges.take.card')}
+                        </Button>
+                        {busy === 'card_reader' && (
+                            <Button
+                                variant="outline"
+                                onClick={() =>
+                                    void SquareReader.cancelPayment().catch(
+                                        () => {},
+                                    )
+                                }
+                                data-test="charge-reader-cancel"
+                            >
+                                {t('charges.take.cancel')}
+                            </Button>
+                        )}
+                        {!online && (
+                            <p
+                                className="flex items-center justify-center gap-2 text-sm font-medium text-red-700 dark:text-red-300"
+                                data-test="charge-reader-offline"
+                            >
+                                <WifiOff className="size-4" />
+                                {t('charges.take.offline')}
+                            </p>
+                        )}
+                    </div>
                 ) : (
                     <p className="rounded-2xl bg-white/70 p-3 text-sm text-muted-foreground">
                         {t('charges.take.reader_not_connected')}
@@ -254,6 +307,21 @@ export function TakePayment({
                     <Landmark /> {screen.methods.e_transfer_label}
                 </Button>
             </div>
+
+            {!native && (
+                <p
+                    className="text-center text-xs text-muted-foreground"
+                    data-test="card-android-only"
+                >
+                    {isOwner ? (
+                        <Link href="/android" className="underline">
+                            {t('charges.take.android_only')}
+                        </Link>
+                    ) : (
+                        t('charges.take.android_only')
+                    )}
+                </p>
+            )}
 
             <ConfirmDialog
                 open={confirm !== null}

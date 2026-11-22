@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
 use App\Http\Controllers\Admin\WorkspaceController;
+use App\Http\Controllers\AndroidAppController;
 use App\Http\Controllers\AppReviewController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AssistantController;
@@ -123,6 +124,7 @@ Route::middleware('throttle:300,1')->group(function () {
 
 // The Android app (Capacitor shell with the card reader), built by GitHub Actions and placed on the server.
 Route::get('download/android.apk', [PaidController::class, 'androidApk'])->middleware('throttle:30,1')->name('download.android');
+Route::get('download/android.json', [AndroidAppController::class, 'latest'])->middleware('throttle:app-version')->name('download.android.latest');
 
 // Online payment provider webhooks (signature checked by the provider; no session, no CSRF).
 Route::post('webhooks/payments/{provider}', PaymentWebhookController::class)
@@ -314,6 +316,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('invoices/{invoice}/take-payment', [ChargeController::class, 'invoice'])->name('invoices.take-payment');
         Route::get('jobs/{job}/take-payment', [ChargeController::class, 'job'])->name('jobs.take-payment');
         Route::post('jobs/{job}/quick-invoice', [ChargeController::class, 'quickInvoice'])->name('jobs.quick-invoice');
+        // The Android app's download page (Owner only; owner's task of November 22).
+        Route::get('android', [AndroidAppController::class, 'show'])->name('android.show');
         Route::get('payments/reader/session', [PaidController::class, 'readerSession'])->middleware('throttle:30,1')->name('payments.reader.session');
         Route::get('payments/{payment}/paid', [PaidController::class, 'show'])->name('payments.paid');
         Route::post('payments/{payment}/send-receipt', [PaidController::class, 'send'])->middleware('throttle:30,1')->name('payments.send-receipt');

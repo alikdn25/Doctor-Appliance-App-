@@ -90,7 +90,12 @@ class PaymentProviderController extends Controller
         Gate::authorize('managePayments', currentCompany());
 
         try {
-            return response()->json(['locations' => $square->locations(currentCompany())]);
+            return response()->json([
+                'locations' => $square->locations(currentCompany()),
+                // An older connection without the card reader's permissions: "Reconnect Square".
+                'reconnect' => $square->missingReaderScopes(currentCompany()) !== [],
+                'reconnect_url' => route('payment-providers.connect', 'square'),
+            ]);
         } catch (PaymentProviderException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

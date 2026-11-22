@@ -29,6 +29,7 @@ export function SquareReaderSettings({
     const [locations, setLocations] = useState<Location[] | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
     const [location, setLocation] = useState('');
+    const [reconnect, setReconnect] = useState<string | null>(null);
     const [readers, setReaders] = useState<CardReader[]>([]);
     const [pairing, setPairing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -46,6 +47,9 @@ export function SquareReaderSettings({
                 if (!r.ok) throw new Error(body?.message ?? r.statusText);
                 const list = (body?.locations ?? []) as Location[];
                 setLocations(list);
+                setReconnect(
+                    body?.reconnect ? (body.reconnect_url as string) : null,
+                );
                 setLocation(
                     list.find((l) => l.name === currentLocation)?.id ?? '',
                 );
@@ -148,9 +152,19 @@ export function SquareReaderSettings({
                         </Button>
                     </div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                    {t('charges.settings.reconnect')}
-                </p>
+                {reconnect && (
+                    <div
+                        className="grid gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+                        data-test="square-reconnect"
+                    >
+                        <p>{t('charges.settings.reconnect')}</p>
+                        <Button type="button" asChild className="sm:w-fit">
+                            <a href={reconnect}>
+                                {t('charges.settings.reconnect_button')}
+                            </a>
+                        </Button>
+                    </div>
+                )}
             </div>
 
             <div
@@ -174,7 +188,7 @@ export function SquareReaderSettings({
                             asChild
                             className="sm:w-fit"
                         >
-                            <a href="/download/android.apk">
+                            <a href="/android">
                                 <Download /> {t('charges.reader.download')}
                             </a>
                         </Button>

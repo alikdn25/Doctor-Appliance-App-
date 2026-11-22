@@ -50,6 +50,8 @@ class SquareReaderPlugin : Plugin() {
     private var pairingHandle: PairingHandle? = null
     private var pairingCall: PluginCall? = null
     private var readerCallback: CallbackReference? = null
+    // Cancels the payment in progress (Cancel on Take payment).
+    private var cancelPayment: (() -> Unit)? = null
 
     override fun load() {
         if (!MainApplication.squareReady) return
@@ -262,7 +264,8 @@ class SquareReaderPlugin : Plugin() {
         val prompt = PromptParameters(mode = PromptMode.DEFAULT, additionalPaymentMethods = emptyList())
 
         activity.runOnUiThread {
-            MobilePaymentsSdk.paymentManager().startPaymentActivity(parameters, prompt) { result ->
+            val handle = MobilePaymentsSdk.paymentManager().startPaymentActivity(parameters, prompt) { result ->
+                cancelPayment = null
                 when (result) {
                     is Result.Success -> when (val payment = result.value) {
                         is Payment.OnlinePayment -> call.resolve(
@@ -275,6 +278,17 @@ class SquareReaderPlugin : Plugin() {
                     is Result.Failure -> call.reject(result.errorMessage, result.errorCode.toString())
                 }
             }
+            cancelPayment = { handle.cancel() }
+        }
+    }
+
+    @PluginMethod
+    fun cancelPayment(call: PluginCall) {
+        activity.runOnUiThread {
+            val cancel = cancelPayment
+            cancelPayment = null
+            cancel?.invoke()
+            call.resolve(JSObject().put("cancelled", cancel != null))
         }
     }
 

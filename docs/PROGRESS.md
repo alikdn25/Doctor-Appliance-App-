@@ -1,3 +1,41 @@
+# November 22 — Owner's task: Android app and the Square reader inside it (done)
+
+One PR (SPEC §7.21), after PR #85 was merged. The Android shell, the Square plugin and FCM push already existed
+(§7.18, §7.19); this task filled the gaps.
+
+1. **Android app** (`android/` — Capacitor's standard folder, kept instead of a new `android-app/`): voice input with
+   Android speech recognition (`SpeechInputPlugin.kt`, `native-speech.ts`, plugged into `use-dictation.ts`, EN/RU);
+   back button = the ← arrow, sheets close first (`MainActivity.kt`, `native-shell.ts`); camera permission and
+   Android 11+ `<queries>` (speech, dialer, maps, camera); `AppShellPlugin.kt` (installed version, open the APK
+   download in the browser).
+2. **Builds**: `android.yml` builds on every push to `main` (version `1.0.<run>`), writes `android.json` and copies it
+   with the APK to the server; pull requests that touch the app build a debug APK (compile check). The signing key
+   was generated and handed to the owner (not in the repository).
+3. **/android** (Owner only, `AndroidAppController`, page `android/index`): version, build date, size, Download,
+   install steps. `GET /download/android.json` (public) → "Update available · Download" in the app on start
+   (`AndroidUpdateBanner`).
+4. **Card**: "Card" first and with the glow on Take payment (New charge and invoices too); browser line "Card reader
+   works in the Android app" (link to /android for the Owner); "Tap, insert or swipe card" + Cancel
+   (`SquareReader.cancelPayment`); declined / reader error / no internet messages + Try again; offline notice
+   without blocking.
+5. **Square**: `reference_id` = invoice number (a charge without a booking reserves it at Card; Try again keeps it;
+   `SaveBillingDocument` uses the reserved number), `note` = job description; the webhook matches by invoice number
+   (old UUID references still work); one payment ID pays once (a retry for the same invoice returns the earlier
+   charge); card brand and last 4 saved on the payment; "Reconnect Square" in Settings → Payments when the token
+   lacks the reader permissions (`missingReaderScopes`, token status cached 10 min).
+
+- **Migration** `2026_11_22_000200_add_card_details_to_payments`: new nullable columns `payments.card_brand`,
+  `payments.card_last4`, `charges.square_reference` (+ index). Nothing changed or deleted.
+- Tests: `AndroidCardTest` (token endpoint: company people only, guest 401, other company never sees the token,
+  Collector 403; reference_id / note, no customer data; COMPLETED + exact Total pays with ID, brand, last 4; APPROVED /
+  PENDING / FAILED / other amounts do not; a recorded payment ID never pays a second invoice; repeated reports and the
+  webhook record once; Square error leaves the invoice unpaid; webhook by invoice number; New charge number kept on
+  Try again; Reconnect Square; /android Owner only with version; android.json).
+- Not checked here: the APK build (no Android SDK here — the PR's android workflow compiles it) and a real reader
+  payment.
+- Next: owner adds the GitHub Secrets / variables (docs/ANDROID.md), Reconnect Square if shown, installs the APK from
+  /android, pairs the reader and runs one sandbox payment.
+
 # November 22 — Owner's task: lines and taxes on New charge (done)
 
 One PR (SPEC §7.20), after PR #83 was merged.

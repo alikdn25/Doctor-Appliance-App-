@@ -71,7 +71,10 @@ class SaveBillingDocument
             $invoice = new Invoice;
             $this->attachToJob($invoice, $job, $user);
             $this->taxMode($invoice, $data);
-            $invoice->number = $this->numbers->invoice();
+            $reserved = is_string($data['reserved_number'] ?? null) ? $data['reserved_number'] : null;
+            $invoice->number = $reserved !== null && ! Invoice::query()->withTrashed()->where('number', $reserved)->exists()
+                ? $reserved
+                : $this->numbers->invoice();
             $invoice->estimate_id = $from?->id;
             $this->fill($invoice, $data, $this->taxSnapshot($data['tax_rate_ids'] ?? []), $user);
 

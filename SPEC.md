@@ -859,6 +859,35 @@ set up is built, stays off and says what is missing.
 - Close by voice: the AI makes one line per piece of work, part or material with its amount; each line gets the first
   company tax ticked; the ticks are changed in the preview.
 
+### 7.21 Android app and the Square reader inside it (owner's task of November 22)
+
+- The Android app (Capacitor, `android/`) opens the live site inside itself: same sign-in, screens and design; name
+  "Doctor Appliance", the PWA's icon and splash colour; minimum Android = the Square Mobile Payments SDK's (API 28).
+- Everything the PWA does works in the app: push through Firebase Cloud Messaging (the server sends each alert to
+  the browser / PWA and to the app; a tap opens the screen), voice input with Android's own speech recognition
+  (EN / RU as in the browser), camera and photo picking, Call, Navigate, location for On my way. The Android back
+  button does what the ← arrow does (an open sheet closes first; on a main screen the app goes to the background).
+- Every merge into `main` builds a signed APK (GitHub Actions; key in GitHub Secrets) and puts it on the server: page
+  `/android` (Owner only) with Download and the version; the app checks the version on start and shows "Update
+  available" with Download.
+- Square: the server gives the app the company's Square access token and location only through a signed-in endpoint
+  for the company's people who take payments. A connection without the in-person permission shows "Reconnect
+  Square" in Settings → Payments. Settings → Payments → Card reader: pair (Bluetooth search), status, battery, Forget
+  reader; Bluetooth and location are asked when needed.
+- Take payment: "Card" is the first and most visible button (the only one with the glow), before Cash and E-transfer,
+  only in the Android app; a browser / PWA shows a small "Card reader works in the Android app" line (a link to
+  `/android` for the Owner). The same Card comes from New charge (Charge) and from a job's invoice.
+- Card: the SDK takes the Total (company currency) by tap, chip or swipe; "Tap, insert or swipe card" and Cancel.
+  Square gets `reference_id` = the invoice number (a charge without a booking takes the next invoice number at Card;
+  Try again keeps it) and `note` = the job description; never the customer's email or phone (no Square receipts).
+- Success: the server reads the payment from the Square Payments API by its ID and marks the invoice / job paid
+  (method Card) only when it is COMPLETED and for exactly the Total; one payment ID pays once. It keeps the payment
+  ID, card brand and last 4 digits. Then the same Paid screen as Cash / E-transfer (receipt email, optional review
+  request with a location).
+- Declined card or reader error: a plain message and Try again; the invoice stays unpaid. A Square error never
+  changes the invoice.
+- No internet: Card stays pressable and says "No internet — card payment needs connection"; no offline payments.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).

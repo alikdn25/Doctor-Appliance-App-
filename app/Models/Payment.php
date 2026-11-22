@@ -31,6 +31,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $user_id
  * @property string|null $provider
  * @property string|null $provider_payment_id
+ * @property string|null $card_brand Card payments: e.g. "Visa"
+ * @property string|null $card_last4 Card payments: the last 4 digits
  * @property int $processing_fee Fee the provider kept (e.g. Square), minor units
  * @property string|null $refund_reason
  * @property string|null $receipt_path Photo of a cash receipt (private disk)

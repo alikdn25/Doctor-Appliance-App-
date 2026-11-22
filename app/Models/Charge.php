@@ -26,6 +26,7 @@ use Illuminate\Support\Str;
  * @property PaymentMethod $method
  * @property string $status pending | paid | failed
  * @property array<string, mixed>|null $draft
+ * @property string|null $square_reference The Square reference_id: the invoice number (reserved for a charge without a booking)
  * @property string|null $provider_payment_id
  * @property string|null $error
  * @property Carbon|null $paid_at

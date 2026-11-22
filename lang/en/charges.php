@@ -51,9 +51,15 @@ return [
         'title' => 'Take payment',
         'due' => 'Amount to pay',
         'invoice' => 'Invoice :number',
-        'charge_reader' => 'Charge reader',
+        'charge_reader' => 'Card',
+        'card' => 'Card',
         'cash' => 'Cash',
-        'reader_waiting' => 'Follow the reader: tap, insert or swipe the card.',
+        'reader_waiting' => 'Tap, insert or swipe card',
+        'cancel' => 'Cancel',
+        'offline' => 'No internet — card payment needs connection',
+        'android_only' => 'Card reader works in the Android app',
+        'declined' => 'Card declined. Nothing was charged. Ask for another card or try again.',
+        'reader_problem' => 'The card reader did not finish: :error',
         'reader_connecting' => 'Connecting to the card reader…',
         'reader_not_connected' => 'Square is not connected or has no location. Settings → Payments.',
         'reader_app_only' => 'Card reader payments work in the Android app.',
@@ -126,7 +132,8 @@ return [
         'choose_location' => 'Choose a location',
         'save_location' => 'Save location',
         'location_saved' => 'Square location saved.',
-        'reconnect' => 'Card reader payments need a new permission: press Disconnect, then Connect Square again.',
+        'reconnect' => 'Card reader payments need a new Square permission. Reconnect Square to allow it.',
+        'reconnect_button' => 'Reconnect Square',
     ],
 
     'errors' => [
@@ -134,6 +141,7 @@ return [
         'location' => 'This location was not found in your Square account.',
         'mismatch' => 'This Square payment does not match the charge.',
         'not_completed' => 'Square has not completed this payment.',
+        'already_recorded' => 'This card payment is already recorded on another invoice.',
     ],
 
     'nav' => [

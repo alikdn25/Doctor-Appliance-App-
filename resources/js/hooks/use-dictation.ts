@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { hasNativeSpeech, NativeSpeechRecognition } from '@/lib/native-speech';
 
 export type DictationLanguage = 'en' | 'ru';
 
@@ -27,9 +28,15 @@ type Recognition = {
 };
 type RecognitionClass = new () => Recognition;
 
-/** The browser's speech recognition (Web Speech API), or null when it has none. */
+/**
+ * The speech recognition to use: Android's own in the Android app (its web view has no Web Speech API), else the
+ * browser's (Web Speech API), or null when there is none.
+ */
 export function speechRecognitionClass(): RecognitionClass | null {
     if (typeof window === 'undefined') return null;
+    if (hasNativeSpeech()) {
+        return NativeSpeechRecognition as unknown as RecognitionClass;
+    }
     const w = window as unknown as {
         SpeechRecognition?: RecognitionClass;
         webkitSpeechRecognition?: RecognitionClass;

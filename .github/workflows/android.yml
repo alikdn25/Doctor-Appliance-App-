@@ -1,10 +1,13 @@
 name: android
 
-# Builds the signed Android app (Capacitor shell + Square card reader, docs/ANDROID.md) and publishes it:
+# Builds the signed Android app (Capacitor shell + Square card reader, docs/ANDROID.md) on every merge into main and
+# publishes it:
 # - as the workflow artifact "android-apk";
 # - as the asset android.apk of the GitHub release "android-latest";
-# - on the server at storage/app/android/android.apk (served at /download/android.apk), when the repository variable
-#   ANDROID_PUBLISH_TO_SERVER is "true" (uses the same SSH secrets as the deploy workflow).
+# - on the server at storage/app/android/android.apk + android.json (version; page /android, download
+#   /download/android.apk, "Update available" in the app), when the repository variable ANDROID_PUBLISH_TO_SERVER is
+#   "true" (uses the same SSH secrets as the deploy workflow).
+# Pull requests that touch the app build an unsigned debug APK only (a compile check; nothing is published).
 #
 # Secrets: ANDROID_KEYSTORE_BASE64 (base64 of the release .jks), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
 # ANDROID_KEY_PASSWORD, GOOGLE_SERVICES_JSON_BASE64 (base64 of Firebase google-services.json). Variables: SQUARE_APPLICATION_ID (sandbox or production, the same as on the server),
@@ -14,6 +17,7 @@ on:
   push:
     branches:
       - main
+  pull_request:
     paths:
       - 'android/**'
       - 'mobile/**'
@@ -25,8 +29,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-build
-  cancel-in-progress: false
+  group: android-build-${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -58,7 +62,7 @@ jobs:
       - name: Android SDK platform
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;36.0.0"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Install and sync Capacitor
         run: |
@@ -75,7 +79,15 @@ jobs:
             echo '::warning::GOOGLE_SERVICES_JSON_BASE64 is not set: push notifications will be off in this build.'
           fi
 
+      - name: Debug build (pull request, compile check only)
+        if: github.event_name == 'pull_request'
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
       - name: Signing key
+        if: github.event_name != 'pull_request'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
@@ -85,6 +97,7 @@ jobs:
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
       - name: Build signed APK
+        if: github.event_name != 'pull_request'
         working-directory: android
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -95,16 +108,23 @@ jobs:
           ./gradlew --no-daemon assembleRelease
           cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/android.apk"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$RUNNER_TEMP/android.apk" | head -5
+          # The version the server shows on /android and the app compares with its own on start.
+          printf '{"version_code":%s,"version_name":"%s","built_at":"%s","commit":"%s"}\n' \
+            "$ANDROID_VERSION_CODE" "$ANDROID_VERSION_NAME" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$GITHUB_SHA" > "$RUNNER_TEMP/android.json"
+          cat "$RUNNER_TEMP/android.json"
 
       - name: Remove signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks" android/app/google-services.json
 
       - name: Upload APK artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: android-apk
-          path: ${{ runner.temp }}/android.apk
+          path: |
+            ${{ runner.temp }}/android.apk
+            ${{ runner.temp }}/android.json
           retention-days: 30
 
       - name: Publish to the android-latest release
@@ -115,7 +135,7 @@ jobs:
           gh release view android-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
             || gh release create android-latest --repo "$GITHUB_REPOSITORY" --title 'Android app (latest)' \
                  --notes 'Built by the android workflow from main. Served at /download/android.apk.' --prerelease
-          gh release upload android-latest "$RUNNER_TEMP/android.apk" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload android-latest "$RUNNER_TEMP/android.apk" "$RUNNER_TEMP/android.json" --repo "$GITHUB_REPOSITORY" --clobber
 
   publish:
     needs: build
@@ -144,6 +164,8 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" -o StrictHostKeyChecking=yes "$SSH_USER@$SSH_HOST" "mkdir -p '$APP_PATH/storage/app/android'"
           scp -i ~/.ssh/deploy_key -P "$SSH_PORT" -o StrictHostKeyChecking=yes android.apk "$SSH_USER@$SSH_HOST:$APP_PATH/storage/app/android/android.apk.new"
+          scp -i ~/.ssh/deploy_key -P "$SSH_PORT" -o StrictHostKeyChecking=yes android.json "$SSH_USER@$SSH_HOST:$APP_PATH/storage/app/android/android.json.new"
+          # The APK first, then its version: the app never offers a version whose file is not there yet.
           ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" -o StrictHostKeyChecking=yes "$SSH_USER@$SSH_HOST" \
-            "mv '$APP_PATH/storage/app/android/android.apk.new' '$APP_PATH/storage/app/android/android.apk'"
+            "mv '$APP_PATH/storage/app/android/android.apk.new' '$APP_PATH/storage/app/android/android.apk' && mv '$APP_PATH/storage/app/android/android.json.new' '$APP_PATH/storage/app/android/android.json'"
           rm -f ~/.ssh/deploy_key

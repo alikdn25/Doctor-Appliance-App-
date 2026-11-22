@@ -191,7 +191,9 @@ class ChargeController extends Controller
             'reference' => $charge->reference,
             'amount' => $charge->amount,
             'currency' => $charge->currency,
-            'note' => $invoice !== null ? __('payments.square.payment_note', ['number' => $invoice->number]) : __('charges.reader_note'),
+            // Square: reference_id = the invoice number, note = what the job is about (no customer email or phone).
+            'reference_id' => $charge->square_reference,
+            'note' => ChargeCheckout::squareNote($charge),
             'complete_url' => route('charges.complete', $charge),
             'fail_url' => route('charges.fail', $charge),
         ]);
