@@ -47,6 +47,9 @@ use Throwable;
  */
 class SquareProvider implements PaymentProvider
 {
+    /** What the Android app's card reader (Mobile Payments SDK) needs: in-person payments, reading them, locations. */
+    public const READER_SCOPES = ['PAYMENTS_WRITE', 'PAYMENTS_WRITE_IN_PERSON', 'PAYMENTS_READ', 'MERCHANT_PROFILE_READ'];
+
     public function __construct(
         private readonly SquareClient $client,
         private readonly RecordPayment $recordPayment,
@@ -407,9 +410,23 @@ class SquareProvider implements PaymentProvider
     {
         $reference = $payment['reference_id'] ?? null;
 
-        return is_string($reference) && Str::isUuid($reference)
-            ? Charge::query()->where('reference', $reference)->where('method', PaymentMethod::CardReader->value)->first()
-            : null;
+        if (! is_string($reference) || $reference === '') {
+            return null;
+        }
+
+        // Charges made before the invoice number was used carry our own reference (a UUID).
+        if (Str::isUuid($reference)) {
+            return Charge::query()->where('reference', $reference)->where('method', PaymentMethod::CardReader->value)->first();
+        }
+
+        // reference_id = the invoice number: the latest unpaid card charge with that number and amount.
+        return Charge::query()
+            ->where('square_reference', $reference)
+            ->where('method', PaymentMethod::CardReader->value)
+            ->where('status', '!=', Charge::PAID)
+            ->where('amount', (int) ($payment['amount_money']['amount'] ?? 0))
+            ->latest('id')
+            ->first();
     }
 
     /**
@@ -523,7 +540,10 @@ class SquareProvider implements PaymentProvider
             throw new PaymentProviderException(__('payments.square.errors.api'));
         }
 
-        if (($payment['reference_id'] ?? null) !== $charge->reference
+        $reference = $payment['reference_id'] ?? null;
+        $ours = $reference !== null && in_array($reference, array_filter([$charge->square_reference, $charge->reference]), true);
+
+        if (! $ours
             || (int) ($payment['amount_money']['amount'] ?? 0) !== $charge->amount
             || strtoupper((string) ($payment['amount_money']['currency'] ?? '')) !== $charge->currency) {
             throw new PaymentProviderException(__('charges.errors.mismatch'));
@@ -534,6 +554,32 @@ class SquareProvider implements PaymentProvider
         }
 
         return $payment;
+    }
+
+    /**
+     * Permissions the card reader needs that the connected Square account has not granted (an older connection):
+     * Settings → Payments then shows "Reconnect Square". Checked with Square at most every 10 minutes; unknown
+     * (Square not reachable) counts as nothing missing.
+     *
+     * @return list<string>
+     */
+    public function missingReaderScopes(Company $company): array
+    {
+        $connection = $this->connection($company);
+
+        if ($connection === null) {
+            return [];
+        }
+
+        $granted = Cache::remember('square-scopes:'.$connection->id.':'.$connection->updated_at?->timestamp, now()->addMinutes(10), function () use ($connection) {
+            try {
+                return $this->client->tokenScopes($this->accessToken($connection));
+            } catch (Throwable) {
+                return null;
+            }
+        });
+
+        return is_array($granted) ? array_values(array_diff(self::READER_SCOPES, $granted)) : [];
     }
 
     private function verifySignature(Request $request): void

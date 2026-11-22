@@ -4,7 +4,7 @@ import type { PluginListenerHandle } from '@capacitor/core';
 /**
  * The card reader in the Android app (owner's task of November 21): a Capacitor plugin written in Kotlin
  * (android/app/src/main/java/.../SquareReaderPlugin.kt) around the Square Mobile Payments SDK. In a browser the plugin
- * is not there: Charge reader is hidden and only Cash and E-transfer are offered.
+ * is not there: Card is hidden and only Cash and E-transfer are offered.
  */
 export type CardReader = {
     id: string;
@@ -45,6 +45,8 @@ type SquareReaderPlugin = {
         note: string;
         paymentAttemptId: string;
     }): Promise<{ paymentId: string; status: string }>;
+    /** Cancels the payment the reader is waiting for (Cancel on Take payment). */
+    cancelPayment(): Promise<{ cancelled: boolean }>;
     addListener(
         event: 'readerChanged',
         callback: (data: { readers: CardReader[] }) => void,
