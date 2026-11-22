@@ -190,17 +190,20 @@ export type Totals = {
     total: number;
 };
 
-function addedTaxes(net: number, taxes: TotalsInput['taxes']): number[] {
+function addedTaxes(
+    net: number,
+    taxes: TotalsInput['taxes'],
+    round = true,
+): number[] {
     let running = net;
 
     return taxes.map((tax) => {
         const base = tax.compound ? running : net;
-        const amount = Math.round(
-            (base * (Number.parseFloat(tax.rate) || 0)) / 100,
-        );
+        const raw = (base * (Number.parseFloat(tax.rate) || 0)) / 100;
+        const amount = Math.round(raw);
         running += amount;
 
-        return amount;
+        return round ? amount : raw;
     });
 }
 
@@ -278,11 +281,15 @@ export function computeTotals(input: TotalsInput): Totals {
         const taxes = group.indices.map((index) => input.taxes[index]);
         const selected = input.prices_include_tax
             ? includedTaxes(base, taxes)
-            : addedTaxes(base, taxes);
+            : addedTaxes(base, taxes, false);
         group.indices.forEach((index, position) => {
             amounts[index] += selected[position];
         });
     }
+    // Each tax is rounded once, on the total (as on the server).
+    amounts.forEach((amount, i) => {
+        amounts[i] = Math.round(amount);
+    });
     const taxTotal = amounts.reduce((sum, amount) => sum + amount, 0);
 
     return {

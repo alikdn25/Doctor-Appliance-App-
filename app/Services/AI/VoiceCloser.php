@@ -18,10 +18,8 @@ use App\Models\JobVisit;
 use App\Models\ServiceJob;
 use App\Models\User;
 use App\Services\AI\Assistant\AssistantActions;
-use App\Services\AI\Assistant\InvoiceDraft;
 use App\Support\Audit\ActionSource;
-use App\Support\Billing\DocumentTotals;
-use App\Support\Locale\Currencies;
+use App\Support\Billing\ChargeLines;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -58,7 +56,7 @@ class VoiceCloser
             $company,
             $user,
             'You fill in how a repair job ended from what the technician said (Russian, English or mixed). Write in English. '
-            .'note: what was found and done, short. lines: the work and parts with their amounts as said; never invent an '
+            .'note: what was found and done, short. lines: one line per piece of work, part or material, with its amount as said; never invent an '
             .'amount (no amount said = no line). amounts_include_tax: true only when they say the amount includes tax. '
             .'payment: card, cash, e_transfer, or unpaid when not said or not paid. status: completed, or '
             .'need_to_order_parts when a part must be ordered (part_name = the part, else ""). Currency: '.$company->currency.'.',
@@ -68,6 +66,7 @@ class VoiceCloser
         )->json();
 
         $lines = [];
+        $defaultTaxes = ChargeLines::defaultIds();
         foreach ((array) ($raw['lines'] ?? []) as $line) {
             $amount = (float) ($line['amount'] ?? 0);
             if ($amount > 0) {
@@ -75,6 +74,8 @@ class VoiceCloser
                     'description' => mb_substr(trim((string) ($line['description'] ?? '')) ?: __('assistant.invoice.default_line'), 0, 500),
                     'amount' => round($amount, 2),
                     'kind' => ($line['kind'] ?? '') === 'part' ? 'part' : 'service',
+                    // The first company tax is ticked; the technician changes the ticks in the preview.
+                    'tax_rate_ids' => $defaultTaxes,
                 ];
             }
         }
@@ -117,31 +118,14 @@ class VoiceCloser
     }
 
     /**
-     * The preview's money: lines in the invoice's price mode, the company's default taxes and the total (code).
+     * The preview's money: each line with its own taxes (ChargeLines), in the invoice's price mode (code).
      *
      * @param  array<string, mixed>  $data
      * @return array{lines: list<array<string, mixed>>, taxes: list<array<string, mixed>>, subtotal: int, tax_total: int, total: int, currency: string, tax_rate_ids: list<int>}
      */
     public static function totals(array $data, Company $company): array
     {
-        $factor = Currencies::factor($company->currency);
-        $amounts = array_map(fn (array $line) => (int) round(((float) $line['amount']) * $factor), $data['lines']);
-        $taxes = InvoiceDraft::taxes();
-        $prices = $amounts === [] ? [] : InvoiceDraft::prices($amounts, $taxes, (bool) $data['amounts_include_tax'], (bool) $company->prices_include_tax, $factor);
-        $totals = DocumentTotals::calculate(
-            array_map(fn (int $price) => ['quantity' => 1, 'unit_price' => $price, 'taxable' => true], $prices),
-            null, 0, $taxes, (bool) $company->prices_include_tax, $factor,
-        );
-
-        return [
-            'lines' => array_map(fn (array $line, int $price, int $total) => [...$line, 'unit_price' => $price, 'total' => $total], $data['lines'], $prices, $totals['item_totals']),
-            'taxes' => $totals['taxes'],
-            'subtotal' => $totals['subtotal'],
-            'tax_total' => $totals['tax_total'],
-            'total' => $totals['total'],
-            'currency' => $company->currency,
-            'tax_rate_ids' => array_values(array_filter(array_column($taxes, 'tax_rate_id'))),
-        ];
+        return ChargeLines::totals((array) $data['lines'], (bool) $data['amounts_include_tax'], $company);
     }
 
     /**
@@ -183,8 +167,9 @@ class VoiceCloser
                         'description' => $line['description'],
                         'quantity' => '1',
                         'unit_price' => $line['unit_price'],
-                        'taxable' => true,
-                        'kind' => $line['kind'] === 'part' ? LineKind::Part->value : LineKind::Service->value,
+                        'taxable' => $line['tax_rate_ids'] !== [],
+                        'tax_rate_ids' => $line['tax_rate_ids'],
+                        'kind' => ($line['kind'] ?? 'service') === 'part' ? LineKind::Part->value : LineKind::Service->value,
                     ], $money['lines']),
                 ], $user);
             }

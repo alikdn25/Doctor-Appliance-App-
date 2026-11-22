@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
     CustomerFields,
@@ -16,12 +16,13 @@ import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import { hasCardReader } from '@/lib/card-reader';
 import { sendJson } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 
-type Line = { description: string; amount: string };
+type Line = { description: string; amount: string; tax_rate_ids: number[] };
 
 type Totals = {
     subtotal: string;
-    taxes: { name: string; rate: string; amount: string }[];
+    taxes: { id: number; name: string; rate: string; amount: string }[];
     tax_total: string;
     total: string;
     total_minor: number;
@@ -38,20 +39,28 @@ type Props = ChargeScreen & {
 };
 
 /**
- * New charge ("+" → Charge reader) and the quick invoice of a job without one (owner's task of November 21): what
- * was done (one line; voice through the keyboard's microphone), the amount with or without tax, quick amounts from
- * the price list, taxes and the total in large type (worked out on the server), and the customer (collapsed, phone
- * first; a phone already in the database fills in that customer). Charge opens Take payment; the customer, a
- * Completed job and the paid invoice are made only after the payment.
+ * New charge ("+" → Charge reader) and the quick invoice of a job without one (owners' tasks of November 21 and 22):
+ * a list of lines (description, by voice through the keyboard's microphone, and amount), each with a large tick per
+ * company tax (only the first is ticked on a new line); all amounts with or without tax; quick amounts from the price
+ * list; Subtotal, each tax used by a line and the Total (worked out on the server); and the customer (collapsed,
+ * phone first; a phone already in the database fills in that customer). Empty lines are left out. Charge opens Take
+ * payment; the customer, a Completed job and the paid invoice are made only after the payment.
  */
 export default function NewCharge(props: Props) {
     const t = useTrans();
     const { auth } = usePage().props;
     const country = auth.company?.country;
     const { job } = props;
+    const newLine = (description = ''): Line => ({
+        description,
+        amount: '',
+        tax_rate_ids: [...props.default_tax_ids],
+    });
     const [lines, setLines] = useState<Line[]>([
-        { description: job?.description ?? '', amount: '' },
+        newLine(job?.description ?? ''),
     ]);
+    const [focusLine, setFocusLine] = useState<number | null>(null);
+    const descriptions = useRef<(HTMLInputElement | null)[]>([]);
     const [withTax, setWithTax] = useState<'with' | 'without'>('with');
     const [totals, setTotals] = useState<Totals | null>(null);
     const [customerOpen, setCustomerOpen] = useState(false);
@@ -61,10 +70,36 @@ export default function NewCharge(props: Props) {
     const [saving, setSaving] = useState(false);
     const lookedUp = useRef('');
 
-    const valid = lines.every((l) => Number(l.amount) > 0);
+    // Empty lines are left out; a line with a description needs an amount; at least one amount.
+    const filled = lines.filter(
+        (l) => l.description.trim() !== '' || l.amount.trim() !== '',
+    );
+    const valid =
+        filled.length > 0 && filled.every((l) => Number(l.amount) > 0);
     const body = {
-        lines,
+        lines: filled,
         amounts_include_tax: withTax === 'with',
+    };
+
+    // "+ Add line": the cursor goes straight to the new line's description.
+    useEffect(() => {
+        if (focusLine === null) return;
+        descriptions.current[focusLine]?.focus();
+        setFocusLine(null);
+    }, [focusLine]);
+
+    const addLine = () => {
+        setLines([...lines, newLine()]);
+        setFocusLine(lines.length);
+    };
+
+    const toggleTax = (index: number, id: number) => {
+        const ids = lines[index].tax_rate_ids;
+        setLine(index, {
+            tax_rate_ids: ids.includes(id)
+                ? ids.filter((x) => x !== id)
+                : [...ids, id],
+        });
     };
 
     // Taxes and the total come from the server (company rates), shortly after typing stops.
@@ -176,13 +211,39 @@ export default function NewCharge(props: Props) {
                 {lines.map((line, index) => (
                     <div
                         key={index}
-                        className="da-card grid gap-3 rounded-[18px] p-4"
+                        className="da-card relative grid gap-3 rounded-[18px] p-4"
+                        data-test="charge-line"
                     >
+                        {lines.length > 1 && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute top-2 right-2 text-danger"
+                                aria-label={t('charges.new.remove_line')}
+                                onClick={() =>
+                                    setLines(
+                                        lines.filter((_, i) => i !== index),
+                                    )
+                                }
+                                data-test="charge-remove-line"
+                            >
+                                <Trash2 />
+                            </Button>
+                        )}
                         <label className="grid gap-1 text-sm">
-                            <span className="font-medium">
-                                {t('charges.new.what')}
+                            <span
+                                className={
+                                    lines.length > 1
+                                        ? 'pr-10 font-medium'
+                                        : 'font-medium'
+                                }
+                            >
+                                {t('charges.new.description')}
                             </span>
                             <Input
+                                ref={(el) => {
+                                    descriptions.current[index] = el;
+                                }}
                                 value={line.description}
                                 placeholder={t('charges.new.what_placeholder')}
                                 maxLength={500}
@@ -200,60 +261,82 @@ export default function NewCharge(props: Props) {
                                 </span>
                             )}
                         </label>
-                        <div className="flex items-end gap-2">
-                            <label className="grid flex-1 gap-1 text-sm">
-                                <span className="font-medium">
-                                    {t('charges.new.amount')}
-                                </span>
-                                <Input
-                                    type="text"
-                                    inputMode="decimal"
-                                    value={line.amount}
-                                    placeholder="0.00"
-                                    className="h-14 text-2xl font-bold"
-                                    onChange={(e) =>
-                                        setLine(index, {
-                                            amount: e.target.value.replace(
-                                                /[^0-9.]/g,
-                                                '',
-                                            ),
-                                        })
-                                    }
-                                    data-test="charge-amount"
-                                />
-                            </label>
-                            {lines.length > 1 && (
-                                <Button
-                                    variant="destructive"
-                                    size="icon"
-                                    aria-label={t('charges.new.remove_line')}
-                                    onClick={() =>
-                                        setLines(
-                                            lines.filter((_, i) => i !== index),
-                                        )
-                                    }
-                                >
-                                    <Trash2 />
-                                </Button>
-                            )}
-                        </div>
+                        <label className="grid gap-1 text-sm">
+                            <span className="font-medium">
+                                {t('charges.new.amount')}
+                            </span>
+                            <Input
+                                type="text"
+                                inputMode="decimal"
+                                value={line.amount}
+                                placeholder="0.00"
+                                className="h-14 text-2xl font-bold"
+                                onChange={(e) =>
+                                    setLine(index, {
+                                        amount: e.target.value.replace(
+                                            /[^0-9.]/g,
+                                            '',
+                                        ),
+                                    })
+                                }
+                                data-test="charge-amount"
+                            />
+                        </label>
+                        {props.taxes.length > 0 && (
+                            <div
+                                className="flex flex-wrap gap-2"
+                                role="group"
+                                aria-label={t('charges.new.line_taxes')}
+                            >
+                                {props.taxes.map((tax) => {
+                                    const on = line.tax_rate_ids.includes(
+                                        tax.id,
+                                    );
+
+                                    return (
+                                        <button
+                                            key={tax.id}
+                                            type="button"
+                                            role="checkbox"
+                                            aria-checked={on}
+                                            onClick={() =>
+                                                toggleTax(index, tax.id)
+                                            }
+                                            className={cn(
+                                                'da-chip da-press inline-flex min-h-12 min-w-[7.5rem] flex-1 items-center gap-2.5 rounded-2xl px-3 text-base font-semibold',
+                                                on &&
+                                                    'text-primary ring-2 ring-primary',
+                                            )}
+                                            data-test={`charge-tax-${tax.id}`}
+                                        >
+                                            <span
+                                                className={cn(
+                                                    'flex size-7 shrink-0 items-center justify-center rounded-lg border-2',
+                                                    on
+                                                        ? 'border-primary bg-primary text-primary-foreground'
+                                                        : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-transparent',
+                                                )}
+                                            >
+                                                {on && (
+                                                    <Check className="size-5" />
+                                                )}
+                                            </span>
+                                            {tax.name} {tax.rate}%
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 ))}
 
-                {job && (
-                    <Button
-                        variant="tertiary"
-                        onClick={() =>
-                            setLines([
-                                ...lines,
-                                { description: '', amount: '' },
-                            ])
-                        }
-                        data-test="charge-add-line"
-                    >
-                        <Plus /> {t('charges.new.add_line')}
-                    </Button>
-                )}
+                <Button
+                    variant="tertiary"
+                    onClick={addLine}
+                    data-test="charge-add-line"
+                >
+                    <Plus /> {t('charges.new.add_line')}
+                </Button>
 
                 <div className="grid gap-1">
                     <SegmentedControl
@@ -317,15 +400,25 @@ export default function NewCharge(props: Props) {
                     )}
                     <div className="flex justify-between text-base">
                         <span>{t('charges.new.subtotal')}</span>
-                        <span>{totals?.subtotal ?? '—'}</span>
+                        <span data-test="charge-subtotal">
+                            {totals?.subtotal ?? '—'}
+                        </span>
                     </div>
+                    {/* Only the taxes ticked on at least one line. */}
                     {(
                         totals?.taxes ??
-                        props.taxes.map((x) => ({ ...x, amount: '—' }))
+                        props.taxes
+                            .filter((x) =>
+                                lines.some((l) =>
+                                    l.tax_rate_ids.includes(x.id),
+                                ),
+                            )
+                            .map((x) => ({ ...x, amount: '—' }))
                     ).map((tax) => (
                         <div
-                            key={tax.name}
+                            key={tax.id}
                             className="flex justify-between text-lg font-semibold"
+                            data-test={`charge-total-tax-${tax.id}`}
                         >
                             <span>
                                 {tax.name} {Number(tax.rate)}%
@@ -404,7 +497,7 @@ export default function NewCharge(props: Props) {
                         data-test="charge-submit"
                     >
                         {job
-                            ? t('charges.new.continue')
+                            ? `${t('charges.new.continue')} ${totals?.total ?? ''}`
                             : `${t('charges.new.charge')} ${totals?.total ?? ''}`}
                     </Button>
                 </StickyActionBar>

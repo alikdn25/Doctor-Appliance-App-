@@ -20,7 +20,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\ServiceJob;
 use App\Models\User;
-use App\Services\AI\VoiceCloser;
+use App\Support\Billing\ChargeLines;
 use App\Support\Locale\Currencies;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +31,7 @@ use Illuminate\Validation\ValidationException;
  * The Take payment screen (owner's task of November 21): Charge reader, Cash or E-transfer for an invoice's balance
  * (or part of it), or for a charge without a booking. A charge without a booking makes, once paid: the customer
  * (PaidCustomer: by phone, new, or Walk-in), a job Completed now with the person as its technician, and the invoice,
- * paid. Taxes always come from code (the company's default rates), never from the screen. Must run in a tenant
+ * paid. Taxes always come from code (the company's default rates; the screen only ticks which of them each line has). Must run in a tenant
  * context.
  */
 class ChargeCheckout
@@ -51,21 +51,30 @@ class ChargeCheckout
     ) {}
 
     /**
-     * Totals of the lines typed (amounts with or without tax), in the company's currency and tax rates.
+     * Totals of the lines typed (amounts with or without tax; each line with its own taxes), in the company's
+     * currency and tax rates. Empty lines (no description, no amount) are left out; a line with an amount and no
+     * description is "Service".
      *
-     * @param  list<array{description: string, amount: string|float|int}>  $lines
+     * @param  list<array{description?: string|null, amount?: string|float|int|null, tax_rate_ids?: list<int>|null}>  $lines
      * @return array<string, mixed>
      */
     public static function totals(array $lines, bool $amountsIncludeTax): array
     {
-        return VoiceCloser::totals([
-            'lines' => array_map(fn (array $line) => [
-                'description' => trim((string) $line['description']) !== '' ? mb_substr(trim((string) $line['description']), 0, 500) : __('charges.default_line'),
+        $kept = [];
+        foreach ($lines as $line) {
+            $description = trim((string) ($line['description'] ?? ''));
+            if ((float) ($line['amount'] ?? 0) <= 0) {
+                continue;
+            }
+            $kept[] = [
+                'description' => $description !== '' ? mb_substr($description, 0, 500) : __('charges.default_line'),
                 'amount' => $line['amount'],
                 'kind' => 'service',
-            ], $lines),
-            'amounts_include_tax' => $amountsIncludeTax,
-        ], currentCompany());
+                ...(array_key_exists('tax_rate_ids', $line) ? ['tax_rate_ids' => (array) $line['tax_rate_ids']] : []),
+            ];
+        }
+
+        return ChargeLines::totals($kept, $amountsIncludeTax, currentCompany());
     }
 
     /**
@@ -198,7 +207,12 @@ class ChargeCheckout
 
         if ($totals['total'] !== $charge->amount) {
             // The tax rates changed between Charge and the payment: the invoice is made for what was charged.
-            $totals = self::totals([['description' => $totals['lines'][0]['description'] ?? '', 'amount' => $charge->amount / Currencies::factor($charge->currency)]], true);
+            $first = $totals['lines'][0] ?? [];
+            $totals = self::totals([[
+                'description' => $first['description'] ?? '',
+                'amount' => $charge->amount / Currencies::factor($charge->currency),
+                ...(isset($first['tax_rate_ids']) ? ['tax_rate_ids' => $first['tax_rate_ids']] : []),
+            ]], true);
         }
 
         $customer = $this->customers->resolve(is_array($draft['customer'] ?? null) ? $draft['customer'] : null);
@@ -213,7 +227,8 @@ class ChargeCheckout
                 'description' => $line['description'],
                 'quantity' => '1',
                 'unit_price' => $line['unit_price'],
-                'taxable' => true,
+                'taxable' => $line['tax_rate_ids'] !== [],
+                'tax_rate_ids' => $line['tax_rate_ids'],
                 'kind' => LineKind::Service->value,
             ], $totals['lines']),
         ], $user);

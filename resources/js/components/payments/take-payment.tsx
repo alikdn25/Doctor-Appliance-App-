@@ -15,7 +15,8 @@ import { useTrans } from '@/lib/i18n';
 
 export type ChargeScreen = {
     currency: string;
-    taxes: { name: string; rate: string }[];
+    taxes: { id: number; name: string; rate: string }[];
+    default_tax_ids: number[];
     quick_amounts: { label: string; amount: string }[];
     methods: { cash: boolean; e_transfer_label: string };
     reader: { connected: boolean; session_url: string; settings_url: string };
