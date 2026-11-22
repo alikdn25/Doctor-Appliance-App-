@@ -8,10 +8,12 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
+import com.google.firebase.FirebaseApp
 
 /**
  * Small things the web app needs from the Android shell (resources/js/lib/native-shell.ts): the installed version
- * (for "Update available") and opening a link outside the app (the APK download goes to the phone's browser).
+ * (for "Update available"), whether push can work in this build (Firebase configured from google-services.json) and
+ * opening a link outside the app (the APK download goes to the phone's browser).
  */
 @CapacitorPlugin(name = "AppShell")
 class AppShellPlugin : Plugin() {
@@ -25,7 +27,9 @@ class AppShellPlugin : Plugin() {
         call.resolve(
             JSObject()
                 .put("versionCode", code)
-                .put("versionName", info.versionName ?: ""),
+                .put("versionName", info.versionName ?: "")
+                // Without google-services.json Firebase is not started and PushNotifications.register() crashes the app.
+                .put("push", FirebaseApp.getApps(context).isNotEmpty()),
         )
     }
 

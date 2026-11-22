@@ -2672,3 +2672,11 @@ technician switches it there (money recalculated by code).
 `config('payments.android_apk_path')` was null, so `/download/android.apk` answered 404, `/download/android.json`
 `{"version_code":0}` and `/android` showed no download, although the files were on the server. Unit test
 `AndroidApkPathConfigTest` guards the key. Next: deploy, check the three URLs, then delete the leftover `.b64` file.
+
+## Android app crash on start without Firebase (November 22, 2026)
+
+✅ APK 1.0.14 was built without `GOOGLE_SERVICES_JSON_BASE64`, so Firebase never started and
+`PushNotifications.register()` on the first page crashed the app (white screen, then closed). The web app now
+registers for push only when the app reports `push: true` (new field of `AppShell.info()`); older APKs and APKs
+without Firebase skip push. The fix takes effect on the installed 1.0.14 after the server deploy (no reinstall).
+Next: create the Firebase project and the secret (docs/ANDROID.md, Push notifications) to turn push on.
