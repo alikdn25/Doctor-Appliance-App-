@@ -5,15 +5,15 @@ of the site reaches the app at once. Only the card reader needs native code.
 
 ## What is where
 
-| Part                          | Path                                                                                   |
-| ----------------------------- | -------------------------------------------------------------------------------------- |
-| Capacitor config (server.url) | `capacitor.config.ts` (`CAP_SERVER_URL`, default `https://app.doctor-appliance.ca`)    |
-| Android project               | `android/` (package `ca.doctorappliance.app`, name "Doctor Appliance", same icon)      |
-| Card reader plugin (Kotlin)   | `android/app/src/main/java/ca/doctorappliance/app/SquareReaderPlugin.kt`               |
-| SDK start                     | `android/app/src/main/java/ca/doctorappliance/app/MainApplication.kt`                  |
-| Web side of the plugin        | `resources/js/lib/card-reader.ts`                                                      |
-| Offline fallback page         | `mobile/www/`                                                                          |
-| Build workflow                | `.github/workflows/android.yml`                                                        |
+| Part                          | Path                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------ |
+| Capacitor config (server.url) | `capacitor.config.ts` (`CAP_SERVER_URL`, default `https://app.doctor-appliance.ca`)        |
+| Android project               | `android/` (package `ca.doctorappliance.app`, name "Doctor Appliance", same icon)          |
+| Card reader plugin (Kotlin)   | `android/app/src/main/java/ca/doctorappliance/app/SquareReaderPlugin.kt`                   |
+| SDK start                     | `android/app/src/main/java/ca/doctorappliance/app/MainApplication.kt`                      |
+| Web side of the plugin        | `resources/js/lib/card-reader.ts`                                                          |
+| Offline fallback page         | `mobile/www/`                                                                              |
+| Build workflow                | `.github/workflows/android.yml`                                                            |
 | Download on the server        | `storage/app/android/android.apk` → `https://app.doctor-appliance.ca/download/android.apk` |
 
 Square Mobile Payments SDK 2.7.0 (`com.squareup.sdk:mobile-payments-sdk`, repository
