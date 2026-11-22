@@ -266,14 +266,17 @@ class SquareReaderPlugin : Plugin() {
             )
             return
         }
+        val currencyCode = currency!!
+        val attempt = attemptId!!
+        val reference = referenceId!!
 
         val parameters = PaymentParameters.Builder(
-            amount = Money(amount, currency),
+            amount = Money(amount, currencyCode),
             processingMode = ProcessingMode.ONLINE_ONLY,
             allowCardSurcharge = false,
-            paymentAttemptId = attemptId,
+            paymentAttemptId = attempt,
         )
-            .referenceId(referenceId)
+            .referenceId(reference)
             .note((call.getString("note") ?: "").take(500))
             .autocomplete(true)
             .build()
