@@ -257,13 +257,14 @@ describe('New charge without a booking', function () {
             ->where('customer.phone', ''));
 
         $this->post(route('payments.send-receipt', $payment), [
-            'channels' => ['sms'], 'phone' => '604-555-0177', 'first_name' => 'Bob', 'last_name' => 'Ray',
+            'email' => 'bob@example.com', 'phone' => '604-555-0177', 'first_name' => 'Bob', 'last_name' => 'Ray',
             'property' => ['line1' => '9 Elm St', 'city' => 'Surrey'], 'billing_same' => true, 'review' => false,
         ])->assertSessionHasNoErrors();
 
         inCompany($this->company, function () use ($first, $second) {
             $second->refresh();
             expect($second->customer->display_name)->toBe('Bob Ray')
+                ->and($second->customer->emails()->pluck('email')->all())->toBe(['bob@example.com'])
                 ->and($second->customer->is_walk_in)->toBeFalse()
                 ->and($second->job->customer_id)->toBe($second->customer_id)
                 ->and($second->job->property->line1)->toBe('9 Elm St')
@@ -416,7 +417,7 @@ describe('Take payment for an invoice or a job', function () {
 });
 
 describe('Paid screen and the receipt', function () {
-    test('the receipt by SMS carries the review request when ticked — one message', function () {
+    test('the receipt goes by email only; with "Request review" the review block is in the same email', function () {
         $invoice = readerInvoice();
         $this->postJson(route('charges.store'), ['method' => 'cash', 'invoice_id' => $invoice->id])->assertOk();
         $payment = inCompany($this->company, fn () => Payment::query()->sole());
@@ -425,64 +426,55 @@ describe('Paid screen and the receipt', function () {
             ->where('payment.method', 'Cash')
             ->where('invoice.number', $invoice->number)
             ->where('invoice.paid', true)
-            ->where('customer.phone', '+16045550142')
+            ->where('customer.email', '')
+            ->missing('sms')
             ->where('default_profile_id', $this->profile->id));
 
         // Nothing goes before Send.
-        expect(collect(Http::recorded())->filter(fn ($p) => str_contains($p[0]->url(), 'twilio')))->toHaveCount(0);
+        Mail::assertNothingQueued();
 
         $this->post(route('payments.send-receipt', $payment), [
-            'channels' => ['sms'], 'phone' => '+16045550142', 'review' => true, 'google_profile_id' => $this->profile->id,
+            'email' => 'Jane@Example.com', 'review' => true, 'google_profile_id' => $this->profile->id,
+            // An old client still sending "sms": ignored, never texted.
+            'channels' => ['sms'], 'phone' => '+16045550142',
         ])->assertSessionHasNoErrors();
 
-        $texts = collect(Http::recorded())->map(fn ($p) => $p[0])->filter(fn (HttpRequest $r) => str_contains($r->url(), 'Messages.json'))->values();
-        expect($texts)->toHaveCount(1);
-        $body = $texts[0]->data()['Body'];
-        expect($body)->toContain('Receipt from Doctor Appliance')
-            ->toContain($invoice->number)
-            ->toContain('Repair: $150.00')
-            ->toContain('GST')
-            ->toContain('PST')
-            ->toContain('Total: $168.00')
-            ->toContain('Paid by Cash')
-            ->toContain('https://g.page/r/doctor/review');
-
-        expect(inCompany($this->company, fn () => ReviewRequest::query()->where('service_job_id', $invoice->service_job_id)->value('status')))->toBe(ReviewRequest::SENT);
-    });
-
-    test('without the tick the receipt has no review link; email gets the review block only when ticked', function () {
-        $invoice = readerInvoice();
-        $this->postJson(route('charges.store'), ['method' => 'cash', 'invoice_id' => $invoice->id])->assertOk();
-        $payment = inCompany($this->company, fn () => Payment::query()->sole());
-
-        $this->post(route('payments.send-receipt', $payment), ['channels' => ['sms', 'email'], 'phone' => '+16045550142', 'email' => 'jane@example.com'])
-            ->assertSessionHasNoErrors();
-
-        $body = collect(Http::recorded())->map(fn ($p) => $p[0])->first(fn (HttpRequest $r) => str_contains($r->url(), 'Messages.json'))->data()['Body'];
-        expect($body)->not->toContain('g.page');
-        Mail::assertQueued(ReceiptMail::class, fn (ReceiptMail $mail) => $mail->hasTo('jane@example.com') && $mail->reviewProfileId === null);
-        expect(inCompany($this->company, fn () => ReviewRequest::query()->count()))->toBe(0);
-        // The email typed is kept on the customer.
-        expect(inCompany($this->company, fn () => $this->customer->emails()->pluck('email')->all()))->toBe(['jane@example.com']);
-
-        $this->post(route('payments.send-receipt', $payment), ['channels' => ['email'], 'email' => 'jane@example.com', 'review' => true, 'google_profile_id' => $this->profile->id])
-            ->assertSessionHasNoErrors();
-        Mail::assertQueued(ReceiptMail::class, fn (ReceiptMail $mail) => $mail->reviewProfileId === $this->profile->id);
+        Mail::assertQueued(ReceiptMail::class, 1);
+        Mail::assertQueued(ReceiptMail::class, fn (ReceiptMail $mail) => $mail->hasTo('jane@example.com') && $mail->reviewProfileId === $this->profile->id);
+        expect(collect(Http::recorded())->filter(fn ($p) => str_contains($p[0]->url(), 'twilio')))->toHaveCount(0)
+            ->and(inCompany($this->company, fn () => ReviewRequest::query()->where('service_job_id', $invoice->service_job_id)->value('channel')))->toBe('email')
+            // The email typed is kept on the customer.
+            ->and(inCompany($this->company, fn () => $this->customer->emails()->pluck('email')->all()))->toBe(['jane@example.com']);
 
         $html = (new ReceiptMail($invoice, $this->profile->id))->render();
-        expect($html)->toContain('https://g.page/r/doctor/review')->toContain('Paid')->toContain('$168.00')->toContain('Cash');
-        expect((new ReceiptMail($invoice))->render())->not->toContain('https://g.page/r/doctor/review');
+        expect($html)->toContain('https://g.page/r/doctor/review')->toContain('Paid')->toContain('$168.00')->toContain('Cash')
+            ->toContain('GST')->toContain('PST')->toContain($invoice->number);
     });
 
-    test('Send needs a way and a valid number or email', function () {
+    test('without the tick the receipt email has no review block', function () {
         $invoice = readerInvoice();
         $this->postJson(route('charges.store'), ['method' => 'cash', 'invoice_id' => $invoice->id])->assertOk();
         $payment = inCompany($this->company, fn () => Payment::query()->sole());
 
-        $this->post(route('payments.send-receipt', $payment), ['channels' => []])->assertSessionHasErrors('channels');
-        $this->post(route('payments.send-receipt', $payment), ['channels' => ['sms'], 'phone' => '12'])->assertSessionHasErrors('phone');
-        $this->post(route('payments.send-receipt', $payment), ['channels' => ['email'], 'email' => ''])->assertSessionHasErrors('email');
-        $this->post(route('payments.send-receipt', $payment), ['channels' => ['email'], 'email' => 'a@b.co', 'review' => true])->assertSessionHasErrors('google_profile_id');
+        $this->post(route('payments.send-receipt', $payment), ['email' => 'jane@example.com'])->assertSessionHasNoErrors();
+
+        Mail::assertQueued(ReceiptMail::class, fn (ReceiptMail $mail) => $mail->hasTo('jane@example.com') && $mail->reviewProfileId === null);
+        expect(inCompany($this->company, fn () => ReviewRequest::query()->count()))->toBe(0)
+            ->and((new ReceiptMail($invoice))->render())->not->toContain('https://g.page/r/doctor/review');
+    });
+
+    test('the email comes from the customer; Send needs a valid email and, with the tick, a location', function () {
+        inCompany($this->company, fn () => $this->customer->emails()->create(['email' => 'jane@example.com', 'is_primary' => true]));
+        $invoice = readerInvoice();
+        $this->postJson(route('charges.store'), ['method' => 'cash', 'invoice_id' => $invoice->id])->assertOk();
+        $payment = inCompany($this->company, fn () => Payment::query()->sole());
+
+        $this->get(route('payments.paid', $payment))->assertInertia(fn (Assert $page) => $page->where('customer.email', 'jane@example.com'));
+
+        $this->post(route('payments.send-receipt', $payment), [])->assertSessionHasErrors('email');
+        $this->post(route('payments.send-receipt', $payment), ['email' => 'not-an-email'])->assertSessionHasErrors('email');
+        $this->post(route('payments.send-receipt', $payment), ['email' => 'a@b.co', 'review' => true])->assertSessionHasErrors('google_profile_id');
+        Mail::assertNothingQueued();
     });
 });
 

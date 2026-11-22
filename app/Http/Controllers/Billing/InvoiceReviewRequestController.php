@@ -2,23 +2,21 @@
 
 namespace App\Http\Controllers\Billing;
 
-use App\Enums\SmsMode;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Jobs\JobMessageController;
 use App\Messaging\ReviewRequests;
 use App\Models\GoogleProfile;
 use App\Models\Invoice;
-use App\Models\Message;
-use App\Support\PhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 /**
- * "Send Google Review request?" after an invoice is sent (SPEC §8): the review link of the chosen location goes to
- * the chosen phone as a separate SMS, with the text as edited for this customer. Everyone who can send the invoice can send it.
+ * "Send Google Review request?" after an invoice is sent or paid (SPEC §8): the review link of the chosen location
+ * goes to the customer by email only (owner's task of November 22), with the text as edited for this customer and the
+ * review block with the company's picture. An email typed here is kept on the customer. Everyone who can send the
+ * invoice can send it.
  */
 class InvoiceReviewRequestController extends Controller
 {
@@ -29,25 +27,14 @@ class InvoiceReviewRequestController extends Controller
 
         $data = $request->validate([
             'google_profile_id' => ['required', 'integer', Rule::exists('google_profiles', 'id')->where('company_id', currentCompany()->id)],
-            'phone' => ['required', 'string', 'max:32'],
+            'email' => ['required', 'email', 'max:255'],
             'text' => ['nullable', 'string', 'max:1000'],
-        ], [], ['google_profile_id' => __('reviews.prompt.location'), 'phone' => __('reviews.prompt.phone'), 'text' => __('reviews.prompt.text')]);
+        ], [], ['google_profile_id' => __('reviews.prompt.location'), 'email' => __('reviews.prompt.email'), 'text' => __('reviews.prompt.text')]);
 
-        if (currentCompany()->sms_mode === SmsMode::Off) {
-            throw ValidationException::withMessages(['phone' => __('reviews.prompt.sms_off')]);
-        }
+        $reviews->send($invoice, GoogleProfile::query()->findOrFail($data['google_profile_id']), $data['email'], $request->user(), $data['text'] ?? null);
 
-        if (! PhoneNumber::isPossible($data['phone'])) {
-            throw ValidationException::withMessages(['phone' => __('reviews.prompt.invalid_phone')]);
-        }
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('reviews.prompt.sent', ['email' => $data['email']])]);
 
-        $message = $reviews->send($invoice, GoogleProfile::query()->findOrFail($data['google_profile_id']), PhoneNumber::normalize($data['phone']), $request->user(), $data['text'] ?? null);
-
-        // On the technician's phone the messages app opens in the browser; nothing to report here.
-        if ($message->channel !== Message::SMS) {
-            return back();
-        }
-
-        return JobMessageController::result($message->status, $message->status_reason, $message->send_after);
+        return back();
     }
 }

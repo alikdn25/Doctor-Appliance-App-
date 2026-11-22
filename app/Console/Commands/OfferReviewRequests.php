@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Enums\InvoiceStatus;
-use App\Enums\SmsMode;
 use App\Models\Company;
 use App\Models\GoogleProfile;
 use App\Models\Invoice;
@@ -22,7 +21,7 @@ use Throwable;
  * Two hours after an invoice is marked paid: a notification "Send a review request?" (owner's task of November 18)
  * to the person who took the payment (else the Owners). It opens the invoice with the review request ready; the
  * text can be edited and nothing goes before Send. Never sent automatically. Once per invoice; skipped when the job
- * already had a request, there is no Google profile, or texts are off.
+ * already had a request or there is no Google profile. The request itself goes by email.
  */
 #[Signature('invoices:paid-followup')]
 #[Description('Offer a review request 2 hours after an invoice is paid')]
@@ -44,7 +43,7 @@ class OfferReviewRequests extends Command
                 foreach ($invoices as $invoice) {
                     $invoice->forceFill(['review_offered_at' => now()])->save();
 
-                    if ($company->sms_mode === SmsMode::Off || GoogleProfile::query()->doesntExist()
+                    if (GoogleProfile::query()->doesntExist()
                         || ReviewRequest::query()->where('service_job_id', $invoice->service_job_id)->where('status', ReviewRequest::SENT)->exists()) {
                         continue;
                     }

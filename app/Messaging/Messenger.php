@@ -285,6 +285,32 @@ class Messenger
     /**
      * An email to the customer's primary address, or a "not sent" record when there is none.
      */
+    /**
+     * An email to an address typed for this customer (receipt, review request): kept on the customer's record. A
+     * review request carries the Google review block ($reviewUrl).
+     */
+    public function emailToAddress(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $email, string $body, User $user, ?string $subject = null, ?string $reviewUrl = null): Message
+    {
+        $brand = $job?->brand?->name ?? currentCompany()->name;
+        $message = Message::query()->create([
+            'customer_id' => $customer->id,
+            'service_job_id' => $job?->id,
+            'direction' => Message::OUTBOUND,
+            'channel' => Message::EMAIL,
+            'kind' => $kind,
+            'to' => $email,
+            'body' => $body,
+            'status' => 'sent',
+            'sent_at' => now(),
+            'user_id' => $user->id,
+        ]);
+
+        Mail::to($email)->queue(new CustomerMessageMail($message->id, currentCompany()->id,
+            $subject ?? __("messages.email_subject.{$kind->value}", ['brand' => $brand, 'number' => '']), $reviewUrl));
+
+        return $message;
+    }
+
     public function emailMessage(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $body, ?User $user = null, ?string $subject = null): Message
     {
         return $this->email($kind, $customer, $job, $body, $user, $subject, failIfMissing: true);

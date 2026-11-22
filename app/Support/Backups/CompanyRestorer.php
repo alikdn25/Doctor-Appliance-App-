@@ -25,7 +25,7 @@ class CompanyRestorer
      */
     private const SKIP = [
         'audit_logs', 'impersonation_logs', 'backup_runs', 'data_snapshots', 'sessions', 'jobs', 'failed_jobs',
-        'job_batches', 'cache', 'cache_locks', 'notifications', 'push_subscriptions',
+        'job_batches', 'cache', 'cache_locks', 'notifications', 'push_subscriptions', 'fcm_tokens',
         'bot_tokens', 'payment_provider_connections', 'sms_accounts',
     ];
 

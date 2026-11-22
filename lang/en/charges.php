@@ -80,27 +80,19 @@ return [
 
     'receipt' => [
         'title' => 'Send receipt',
-        'by' => 'Send by',
-        'sms' => 'SMS',
-        'email' => 'Email',
+        'email' => 'Customer email',
+        'email_placeholder' => 'name@example.com',
+        'email_hint' => 'No email on file: type it here; it is saved to the customer.',
         'details' => 'Customer details',
         'details_hint' => 'Saved to the customer and the invoice.',
         'review' => 'Request review',
-        'review_hint' => 'The review request goes in the same message as the receipt.',
+        'review_hint' => 'The review request (text and picture) goes in the same email as the receipt.',
         'location' => 'Location',
         'no_locations' => 'No Google review locations yet (Company → Google reviews).',
         'send' => 'Send',
         'sent' => 'Receipt sent to :to.',
-        'sms_off' => 'Texting is off for the company.',
         'errors' => [
-            'channel' => 'Choose SMS or email.',
             'email' => 'Enter a valid email address.',
-        ],
-        'sms_text' => [
-            'title' => 'Receipt from :brand',
-            'invoice' => 'Invoice :number · :date',
-            'total' => 'Total: :total',
-            'paid' => 'Paid by :method. Thank you!',
         ],
     ],
 

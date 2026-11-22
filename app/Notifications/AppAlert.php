@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Notifications\Channels\FcmChannel;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Channels\WebPushChannel;
 use App\Support\AccountEmail;
@@ -42,6 +43,8 @@ class AppAlert extends Notification
         return array_values(array_filter([
             'database',
             WebPushChannel::class,
+            // The Android app (Firebase); each install once, next to the browsers' Web Push.
+            FcmChannel::class,
             $this->mail && AccountEmail::deliveryEnabled() ? 'mail' : null,
         ]));
     }

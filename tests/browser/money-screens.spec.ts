@@ -77,32 +77,16 @@ test('invoice page: status in large type, Take payment, Send ▾ and the rare ac
     await page.keyboard.press('Escape');
 });
 
-test("Send by SMS asks first and sends nothing on Don't send", async ({
-    page,
-}, info) => {
-    const sentCount = async () =>
-        (await (await page.request.get('http://127.0.0.1:9001/sent')).json())
-            .length as number;
-    const before = await sentCount();
-
+test('an invoice goes by email only: no "Send by SMS"', async ({ page }) => {
     await page.goto(`/invoices/${fixture.invoice_id}`);
     await page.locator('[data-test="send-menu"]').click();
-    await page.getByRole('button', { name: 'Send by SMS' }).click();
-    const confirm = page.locator('[data-test="sms-confirm"]');
-    await expect(confirm).toBeVisible();
     await expect(
-        confirm.getByRole('button', { name: 'Send', exact: true }),
+        page.getByRole('button', { name: 'Send by email' }),
     ).toBeVisible();
-    // The long document link wraps; the dialog never scrolls sideways.
-    const dialog = page.getByRole('dialog');
-    expect(
-        await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
-    ).toBe(true);
-    await screenshot(page, info, 'sms-confirm');
-
-    await confirm.getByRole('button', { name: "Don't send" }).click();
-    await expect(confirm).not.toBeVisible();
-    expect(await sentCount()).toBe(before);
+    await expect(page.getByRole('button', { name: 'Send by SMS' })).toHaveCount(
+        0,
+    );
+    await page.keyboard.press('Escape');
 });
 
 test('inbox: the list, then a conversation as a chat with templates', async ({

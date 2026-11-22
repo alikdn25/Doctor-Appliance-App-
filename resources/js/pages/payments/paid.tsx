@@ -1,6 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { CheckCircle2, Send } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
     CustomerFields,
     emptyCustomer,
@@ -9,6 +9,7 @@ import type { CustomerDetails } from '@/components/payments/customer-fields';
 import { ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useTrans } from '@/lib/i18n';
 
@@ -38,15 +39,14 @@ type Props = {
         email: string;
         has_address: boolean;
     };
-    sms: { mode: string; available: boolean };
     profiles: { id: number; label: string }[];
     default_profile_id: number | null;
     send_url: string;
 };
 
 /**
- * Paid (owner's task of November 21): amount, way of payment and invoice number, then Send receipt — SMS and / or
- * email, the customer's details right here when they are missing (saved to the customer and the invoice), and
+ * Paid (owner's task of November 21): amount, way of payment and invoice number, then Send receipt — by email only
+ * (the customer's email, or typed here and kept on the customer; Send waits for one), the other details right here when they are missing (saved to the customer and the invoice), and
  * "Request review" with a location (ticked by hand, for any customer; the request goes inside the receipt message).
  * Nothing is sent before Send. Also opened by the "Invoice #N paid" notification of an online payment.
  */
@@ -54,12 +54,7 @@ export default function Paid(props: Props) {
     const t = useTrans();
     const country = usePage().props.auth.company?.country;
     const { payment, invoice, customer } = props;
-    const [channels, setChannels] = useState<string[]>(() => [
-        ...(props.sms.available && (customer.phone || customer.walk_in)
-            ? ['sms']
-            : []),
-        ...(customer.email ? ['email'] : []),
-    ]);
+    const [email, setEmail] = useState(customer.email);
     const [details, setDetails] = useState<CustomerDetails>(() => ({
         ...emptyCustomer(),
         phone: customer.phone,
@@ -67,11 +62,8 @@ export default function Paid(props: Props) {
         last_name: customer.last_name,
         email: customer.email,
     }));
-    const missing =
-        customer.walk_in ||
-        (channels.includes('sms') && !customer.phone) ||
-        (channels.includes('email') && !customer.email) ||
-        !customer.has_address;
+    const missing = customer.walk_in || !customer.has_address;
+    const validEmail = /^\S+@\S+\.\S+$/.test(email.trim());
     const [showDetails, setShowDetails] = useState(customer.walk_in);
     const [review, setReview] = useState(false);
     const [profile, setProfile] = useState<string>(
@@ -81,30 +73,13 @@ export default function Paid(props: Props) {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [sent, setSent] = useState(false);
 
-    // From technician's phone: the messages app opens with the receipt.
-    useEffect(
-        () =>
-            router.on('flash', (event) => {
-                const url = (event as CustomEvent).detail?.flash?.open_url;
-                if (typeof url === 'string') window.location.href = url;
-            }),
-        [],
-    );
-
-    const toggle = (channel: string, on: boolean) =>
-        setChannels(
-            on
-                ? [...new Set([...channels, channel])]
-                : channels.filter((c) => c !== channel),
-        );
-
     const send = () => {
         setSending(true);
         router.post(
             props.send_url,
             {
-                channels,
                 ...details,
+                email,
                 review,
                 google_profile_id: review && profile ? Number(profile) : null,
             },
@@ -112,8 +87,9 @@ export default function Paid(props: Props) {
                 preserveScroll: true,
                 onSuccess: () => setSent(true),
                 onError: (e) => {
-                    setErrors(e as Record<string, string>);
-                    setShowDetails(true);
+                    const found = e as Record<string, string>;
+                    setErrors(found);
+                    if (found.phone) setShowDetails(true);
                 },
                 onFinish: () => setSending(false),
             },
@@ -169,37 +145,32 @@ export default function Paid(props: Props) {
                     <h2 className="text-base font-semibold">
                         {t('charges.receipt.title')}
                     </h2>
-                    <div className="flex flex-wrap gap-4">
-                        <label className="flex min-h-10 items-center gap-2 text-sm">
-                            <Checkbox
-                                checked={channels.includes('sms')}
-                                disabled={!props.sms.available}
-                                onCheckedChange={(c) =>
-                                    toggle('sms', c === true)
-                                }
-                                data-test="receipt-sms"
-                            />
-                            {t('charges.receipt.sms')}
-                        </label>
-                        <label className="flex min-h-10 items-center gap-2 text-sm">
-                            <Checkbox
-                                checked={channels.includes('email')}
-                                onCheckedChange={(c) =>
-                                    toggle('email', c === true)
-                                }
-                                data-test="receipt-email"
-                            />
+                    <label className="grid gap-1 text-sm">
+                        <span className="text-muted-foreground">
                             {t('charges.receipt.email')}
-                        </label>
-                    </div>
-                    {!props.sms.available && (
-                        <p className="text-xs text-muted-foreground">
-                            {t('charges.receipt.sms_off')}
-                        </p>
-                    )}
-                    {errors.channels && (
-                        <p className="text-sm text-danger">{errors.channels}</p>
-                    )}
+                        </span>
+                        <Input
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            value={email}
+                            placeholder={t('charges.receipt.email_placeholder')}
+                            onChange={(e) => setEmail(e.target.value)}
+                            aria-invalid={!!errors.email}
+                            data-test="receipt-email"
+                        />
+                        {errors.email ? (
+                            <span className="text-xs text-danger">
+                                {errors.email}
+                            </span>
+                        ) : (
+                            !customer.email && (
+                                <span className="text-xs text-muted-foreground">
+                                    {t('charges.receipt.email_hint')}
+                                </span>
+                            )
+                        )}
+                    </label>
 
                     {(missing || showDetails) && (
                         <div className="grid gap-2">
@@ -222,12 +193,13 @@ export default function Paid(props: Props) {
                                         onChange={setDetails}
                                         country={country}
                                         errors={errors}
+                                        hideEmail
                                     />
                                 </>
                             )}
-                            {!showDetails && (errors.phone || errors.email) && (
+                            {!showDetails && errors.phone && (
                                 <p className="text-sm text-danger">
-                                    {errors.phone ?? errors.email}
+                                    {errors.phone}
                                 </p>
                             )}
                         </div>
@@ -281,9 +253,7 @@ export default function Paid(props: Props) {
                     <Button
                         size="lg"
                         loading={sending}
-                        disabled={
-                            channels.length === 0 || (review && profile === '')
-                        }
+                        disabled={!validEmail || (review && profile === '')}
                         onClick={send}
                         data-test="receipt-send"
                     >

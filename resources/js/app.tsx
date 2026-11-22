@@ -8,6 +8,7 @@ import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { startUploadQueue } from '@/lib/upload-queue';
 import { startUsageLog } from '@/lib/usage';
+import { initNativePush } from '@/lib/native-push';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -40,6 +41,9 @@ void createInertiaApp({
         color: '#4B5563',
     },
 });
+
+// The Android app: push notifications (Firebase); nothing in a browser.
+initNativePush();
 
 // This will set light / dark mode on load...
 initializeTheme();

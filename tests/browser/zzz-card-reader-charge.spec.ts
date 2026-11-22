@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 /**
  * Owner's task of November 21 on a 390 px phone, in the browser (no Android app): Today without the booking buttons,
  * "+" → New charge, the amount with tax and the total from the server, Take payment without Charge reader (Cash and
- * E-transfer only), Cash → Paid with Send receipt and Request review; nothing is sent before Send.
+ * E-transfer only), Cash → Paid with Send receipt (email only, Send waits for an email) and Request review; nothing is sent before Send.
  */
 test.use({ viewport: { width: 390, height: 844 } });
 
@@ -52,6 +52,14 @@ test('New charge in the browser: Cash → Paid with Send receipt', async ({
     await expect(page.locator('[data-test="receipt-review"]')).toBeVisible();
     // Walk-in: the customer's details are asked right here.
     await expect(page.locator('[data-test="customer-phone"]')).toBeVisible();
+    // The receipt goes by email only: Send waits for an email.
+    await expect(page.locator('[data-test="receipt-sms"]')).toHaveCount(0);
+    const send = page.locator('[data-test="receipt-send"]');
+    await expect(send).toBeDisabled();
+    await page
+        .locator('[data-test="receipt-email"]')
+        .fill('walkin@example.com');
+    await expect(send).toBeEnabled();
     await page.screenshot({
         path: info.outputPath('390-paid.png'),
         fullPage: true,
