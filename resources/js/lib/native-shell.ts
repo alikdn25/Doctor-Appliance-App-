@@ -7,7 +7,11 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
  * the screen does. Nothing happens in a browser.
  */
 type AppShellPlugin = {
-    info(): Promise<{ versionCode: number; versionName: string }>;
+    info(): Promise<{
+        versionCode: number;
+        versionName: string;
+        push?: boolean;
+    }>;
     openExternal(options: { url: string }): Promise<void>;
 };
 

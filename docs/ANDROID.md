@@ -168,6 +168,9 @@ Setup, once:
    private (it can send pushes); delete the local copy after.
 6. Run the **android** workflow; install the new APK. On first start Android asks to allow notifications.
 
+An APK built without `GOOGLE_SERVICES_JSON_BASE64` has no push: the app reports `push: false` (AppShell.info) and
+the web app never calls `PushNotifications.register()`, which would otherwise crash it on start.
+
 Buttons on a notification run with the app's session (the same request as the browser's service worker).
 
 ## Limits

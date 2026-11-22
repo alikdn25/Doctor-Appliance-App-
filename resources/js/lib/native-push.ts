@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { router } from '@inertiajs/react';
 import { sendJson } from '@/lib/http';
+import { AppShell, hasAppShell } from '@/lib/native-shell';
 
 /**
  * Push in the Android app (owner's task of November 22): Firebase Cloud Messaging through @capacitor/push-notifications.
@@ -42,8 +43,27 @@ function store(token: string | null): void {
 
 let listening = false;
 let signedIn = false;
+let firebaseReady: Promise<boolean> | null = null;
+
+/**
+ * True only when the installed app says Firebase is configured (AppShell.info().push). An APK built without
+ * google-services.json (or one older than this check) answers no: PushNotifications.register() would crash it.
+ */
+function pushAvailable(): Promise<boolean> {
+    if (!firebaseReady) {
+        firebaseReady = hasAppShell()
+            ? AppShell.info()
+                  .then((info) => info.push === true)
+                  .catch(() => false)
+            : Promise.resolve(false);
+    }
+
+    return firebaseReady;
+}
 
 async function register(): Promise<void> {
+    if (!(await pushAvailable())) return;
+
     if (!listening) {
         listening = true;
         await PushNotifications.addListener('registration', ({ value }) => {
