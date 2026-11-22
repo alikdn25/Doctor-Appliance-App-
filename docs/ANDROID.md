@@ -22,7 +22,7 @@ button and the app version.
 | On the server                 | `storage/app/android/android.apk` + `android.json` → page `/android` (Owner), file `/download/android.apk`, version `/download/android.json` |
 
 Square Mobile Payments SDK 2.7.0 (`com.squareup.sdk:mobile-payments-sdk`, repository
-`https://sdk.squareup.com/public/android/`). **minSdk 28 (Android 9) — the SDK's minimum**, compileSdk 36,
+`https://sdk.squareup.com/public/android/`). **minSdk 28 (Android 9) — the SDK's minimum**, compileSdk 36 (the SDK's AAR metadata asks for 37 / AGP 9.1; that check is skipped in `android/app/build.gradle` until the runner has android-37),
 targetSdk 36, Kotlin 2.2.21, AGP 8.13, Java 17+.
 
 ## What works in the app
