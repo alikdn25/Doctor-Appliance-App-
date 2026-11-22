@@ -253,6 +253,8 @@ class ChargeController extends Controller
             'currency' => $company->currency,
             'taxes' => array_map(fn (array $t) => ['id' => $t['tax_rate_id'], 'name' => $t['name'], 'rate' => DocumentTotals::rateLabel($t['rate'])], $taxes),
             'default_tax_ids' => ChargeLines::defaultIds($taxes),
+            // "Price includes tax" is off on every new screen (never remembered): taxes are added on top.
+            'price_includes_tax' => false,
             'quick_amounts' => array_values(collect($quick)->unique('label')->take(8)->all()),
             'methods' => [
                 'cash' => $company->accepts_cash !== false,

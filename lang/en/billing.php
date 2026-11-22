@@ -47,6 +47,8 @@ return [
     'tax_line' => ':name :rate%',
     'compound' => 'compound',
     'prices_include_tax' => 'Prices include tax.',
+    'price_includes_tax' => 'Price includes tax',
+    'taxes_inside' => 'Taxes are inside the amounts you entered',
     'includes_tax' => 'Includes :name :rate%',
     'notes_hint' => 'Shown on the document (warranty on the repair, terms, etc.).',
     'job' => 'Job #:number',

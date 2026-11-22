@@ -2615,3 +2615,15 @@ is no block. If the user removes the pay line from the message, the block follow
 220×220 PNG with transparency, ≤ 40 KB (`companies.review_image_path`, migration `2026_11_20_000200`). Served by
 absolute URL from APP_URL. `php artisan reviews:set-image {company} {file}` sets it from the server; Doctor
 Appliance's picture is `resources/images/reviews/doctor-appliance.png`.
+
+## Taxes on top by default (November 22, 2026)
+
+✅ New charge: the "With tax / Without tax" control and its hint are gone. Taxes are added on top of each line's amount.
+Under "+ Add line" a small "Price includes tax" switch (off on every new screen, never remembered; the screen gets
+`price_includes_tax: false`): on, each amount already includes its ticked taxes and they are worked back out, with
+the hint "Taxes are inside the amounts you entered". 250 (GST) + 110 (GST+PST) = 385.70; switched on = 360.00.
+✅ Invoice/estimate form: the same switch under "Add item"; saved on the document (`prices_include_tax`, request
+field optional — AI, charges and conversions keep the company's mode). New documents open with it off; an invoice
+from an approved estimate keeps the estimate's mode; editing shows the document's own mode.
+✅ Close by voice: the AI no longer guesses "amounts include tax"; the preview starts with the switch off and the
+technician switches it there (money recalculated by code).

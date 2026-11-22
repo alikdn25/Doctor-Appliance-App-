@@ -321,3 +321,13 @@ test('technicians cannot text Part arrived; another company cannot use quick edi
 
     $this->actingAs($stranger)->postJson(route('jobs.quick-edit', $this->job), ['text' => 'x', 'current' => []])->assertNotFound();
 });
+
+test('close by voice: "Price includes tax" starts off in the preview, whatever the AI heard', function () {
+    FakeAiTransport::install(voiceAnswer(['lines' => [['description' => 'Repair', 'amount' => 112, 'kind' => 'service']], 'amounts_include_tax' => true]));
+    $this->post(route('visits.start', $this->visit))->assertRedirect();
+
+    $this->postJson(route('jobs.voice-close.read', $this->job), ['text' => 'Repair 112 including tax'])
+        ->assertOk()
+        ->assertJsonPath('draft.amounts_include_tax', false)
+        ->assertJsonPath('money.total', 11760);
+});

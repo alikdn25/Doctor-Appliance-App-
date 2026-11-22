@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 /**
  * Owner's task of November 21 on a 390 px phone, in the browser (no Android app): Today without the booking buttons,
- * "+" → New charge, the amount with tax and the total from the server, Take payment without Charge reader (Cash and
+ * "+" → New charge, "Price includes tax" (off, switched on) and the total from the server, Take payment without Charge reader (Cash and
  * E-transfer only), Cash → Paid with Send receipt (email only, Send waits for an email) and Request review; nothing is sent before Send.
  */
 test.use({ viewport: { width: 390, height: 844 } });
@@ -24,6 +24,13 @@ test('New charge in the browser: Cash → Paid with Send receipt', async ({
 
     await page.locator('[data-test="charge-what"]').fill('Dryer repair');
     await page.locator('[data-test="charge-amount"]').fill('112');
+    // "Price includes tax" starts off; switched on, the total is what was typed.
+    const included = page.locator('[data-test="price-includes-tax"]');
+    await expect(included).toHaveAttribute('aria-checked', 'false');
+    await included.click();
+    await expect(
+        page.locator('[data-test="price-includes-tax-hint"]'),
+    ).toContainText('Taxes are inside the amounts you entered');
     await expect(page.locator('[data-test="charge-total"]')).toContainText(
         '112',
     );

@@ -13,6 +13,7 @@ import {
     toNumber,
     useMoney,
 } from '@/components/billing/money';
+import { TaxIncludedSwitch } from '@/components/billing/tax-included-switch';
 import { NumberHint } from '@/components/billing/number-hint';
 import { depositFor } from '@/components/billing/estimate-approval';
 import { AddItemSheet } from '@/components/billing/add-item-sheet';
@@ -74,6 +75,8 @@ type FormData = {
     deposit_value: string;
     /** A new invoice made from an approved estimate: the estimate becomes invoiced. */
     estimate_id: number | null;
+    /** "Price includes tax" under the lines: off on every new document. */
+    prices_include_tax: boolean;
 };
 
 /**
@@ -131,12 +134,8 @@ export default function BillingForm({
     const t = useTrans();
     const time = useCompanyTime();
     const { auth } = usePage().props;
-    // A document keeps the currency and tax mode it was created with.
+    // A document keeps the currency it was created with.
     const currency = document?.currency ?? auth.company?.currency ?? 'USD';
-    const pricesIncludeTax =
-        document?.prices_include_tax ??
-        auth.company?.prices_include_tax ??
-        false;
     const symbol = currencySymbol(currency, auth.company?.locale);
     const money = useMoney(currency);
     const group = kind === 'invoice' ? 'invoices' : 'estimates';
@@ -268,6 +267,13 @@ export default function BillingForm({
                   ? String(Number(fromEstimate.discount_value))
                   : '',
         notes: document?.notes ?? fromEstimate?.notes ?? '',
+        // A saved document keeps its tax mode; an invoice from an estimate takes the estimate's (the company's, see
+        // approvedEstimate); any other new document opens with the switch off: taxes on top.
+        prices_include_tax:
+            document?.prices_include_tax ??
+            (fromEstimate
+                ? (auth.company?.prices_include_tax ?? false)
+                : false),
         tax_rate_ids: document
             ? document.taxes
                   .map((tax) => tax.tax_rate_id)
@@ -309,6 +315,7 @@ export default function BillingForm({
         estimate_id: fromEstimate?.id ?? null,
     });
     const { data, errors } = form;
+    const pricesIncludeTax = data.prices_include_tax;
     const fieldErrors = errors as Record<string, string | undefined>;
 
     // The taxes each line is charged: its own selection, or the document's taxes (lines saved before
@@ -813,6 +820,12 @@ export default function BillingForm({
                     >
                         <Plus className="size-5" /> {t('billing.add_item')}
                     </button>
+                    <TaxIncludedSwitch
+                        checked={data.prices_include_tax}
+                        onChange={(on) =>
+                            form.setData('prices_include_tax', on)
+                        }
+                    />
 
                     {discountShown ? (
                         <FormField
@@ -1113,11 +1126,6 @@ export default function BillingForm({
                         <dt>{t('billing.total')}</dt>
                         <dd className="tabular-nums">{money(totals.total)}</dd>
                     </div>
-                    {pricesIncludeTax && (
-                        <p className="text-right text-xs text-muted-foreground">
-                            {t('billing.prices_include_tax')}
-                        </p>
-                    )}
                     {kind === 'estimate' && data.deposit_type && (
                         <div className="flex justify-between">
                             <dt>{t('estimates.deposit')}</dt>
