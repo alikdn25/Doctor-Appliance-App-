@@ -79,7 +79,7 @@ jobs:
             echo '::warning::GOOGLE_SERVICES_JSON_BASE64 is not set: push notifications will be off in this build.'
           fi
 
-      - name: Debug build (pull request: compile check only)
+      - name: Debug build (pull request, compile check only)
         if: github.event_name == 'pull_request'
         working-directory: android
         run: |
