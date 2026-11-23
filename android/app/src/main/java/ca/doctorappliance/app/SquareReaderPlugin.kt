@@ -1,6 +1,8 @@
 package ca.doctorappliance.app
 
 import android.Manifest
+import android.content.pm.PackageManager
+import android.nfc.NfcAdapter
 import android.os.Build
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
@@ -25,6 +27,7 @@ import com.squareup.sdk.mobilepayments.payment.ProcessingMode
 import com.squareup.sdk.mobilepayments.payment.PromptMode
 import com.squareup.sdk.mobilepayments.payment.PromptParameters
 import org.json.JSONObject
+import java.security.MessageDigest
 
 /**
  * The card reader for the web app (resources/js/lib/card-reader.ts), around the Square Mobile Payments SDK:
@@ -76,7 +79,7 @@ class SquareReaderPlugin : Plugin() {
 
     private fun ready(call: PluginCall): Boolean {
         if (!MainApplication.squareReady) {
-            call.reject("The card reader is not set up in this app build.", "NOT_CONFIGURED")
+            call.reject("The card reader is not set up in this app build (no Square application ID).", "NOT_CONFIGURED", diagnostics())
             return false
         }
         return true
@@ -119,7 +122,7 @@ class SquareReaderPlugin : Plugin() {
                                 .put("location", MobilePaymentsSdk.authorizationManager().location?.name ?: JSONObject.NULL),
                         )
                     }
-                    is Result.Failure -> call.reject(result.errorMessage, result.errorCode.toString())
+                    is Result.Failure -> call.reject(result.errorMessage, result.errorCode.toString(), failureData(result))
                 }
             }
         }
@@ -236,27 +239,44 @@ class SquareReaderPlugin : Plugin() {
     @PluginMethod
     fun charge(call: PluginCall) {
         if (!ready(call)) return
-        val amount = call.getLong("amount")
+        // PluginCall.getLong() returns null for any amount that fits in an Int (Android's JSONObject keeps it as an
+        // Integer), so every normal payment was refused here before the SDK started. optLong reads Integer, Long,
+        // Double and numeric strings.
+        val amount = call.data.optLong("amount", -1L)
         val referenceId = call.getString("referenceId")
         val attemptId = call.getString("paymentAttemptId") ?: referenceId
+        val currencyText = (call.getString("currency") ?: "").uppercase()
         val currency = try {
-            CurrencyCode.valueOf((call.getString("currency") ?: "").uppercase())
+            CurrencyCode.valueOf(currencyText)
         } catch (e: IllegalArgumentException) {
             null
         }
 
-        if (amount == null || amount <= 0 || referenceId.isNullOrBlank() || attemptId.isNullOrBlank() || currency == null) {
-            call.reject("The payment is not complete.", "USAGE_ERROR")
+        val invalid = listOfNotNull(
+            if (amount <= 0) "amount=${call.data.opt("amount")}" else null,
+            if (referenceId.isNullOrBlank()) "referenceId is empty" else null,
+            if (attemptId.isNullOrBlank()) "paymentAttemptId is empty" else null,
+            if (currency == null) "currency '$currencyText' is not supported by the SDK" else null,
+        )
+        if (invalid.isNotEmpty()) {
+            call.reject(
+                "Payment parameters are invalid: ${invalid.joinToString("; ")}",
+                "INVALID_PARAMETERS",
+                diagnostics().put("details", JSArray().apply { invalid.forEach { put(it) } }),
+            )
             return
         }
+        val currencyCode = currency!!
+        val attempt = attemptId!!
+        val reference = referenceId!!
 
         val parameters = PaymentParameters.Builder(
-            amount = Money(amount, currency),
+            amount = Money(amount, currencyCode),
             processingMode = ProcessingMode.ONLINE_ONLY,
             allowCardSurcharge = false,
-            paymentAttemptId = attemptId,
+            paymentAttemptId = attempt,
         )
-            .referenceId(referenceId)
+            .referenceId(reference)
             .note((call.getString("note") ?: "").take(500))
             .autocomplete(true)
             .build()
@@ -273,13 +293,98 @@ class SquareReaderPlugin : Plugin() {
                                 .put("paymentId", payment.id)
                                 .put("status", payment.status.toString()),
                         )
-                        else -> call.reject("The payment was stored offline; it is not accepted here.", "OFFLINE")
+                        else -> call.reject("The payment was stored offline; it is not accepted here.", "OFFLINE", diagnostics())
                     }
-                    is Result.Failure -> call.reject(result.errorMessage, result.errorCode.toString())
+                    is Result.Failure -> call.reject(
+                        result.errorMessage,
+                        result.errorCode.toString(),
+                        failureData(result),
+                    )
                 }
             }
             cancelPayment = { handle.cancel() }
         }
+    }
+
+    /** What the phone, the app build and the SDK are: sent with every failed payment. */
+    @PluginMethod
+    fun diagnostics(call: PluginCall) {
+        call.resolve(diagnostics())
+    }
+
+    private fun diagnostics(): JSObject {
+        val data = JSObject()
+            .put("sdkVersion", BuildConfig.SQUARE_SDK_VERSION)
+            .put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
+            .put("android", "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+            .put("appVersion", BuildConfig.VERSION_NAME)
+            .put("appBuild", if (BuildConfig.DEBUG) "debug" else "release")
+            .put("applicationId", BuildConfig.SQUARE_APPLICATION_ID)
+            .put("signingSha256", signingSha256() ?: JSONObject.NULL)
+            .put("nfc", nfcState())
+        if (MainApplication.squareReady) {
+            try {
+                val auth = MobilePaymentsSdk.authorizationManager()
+                data.put("environment", if (MobilePaymentsSdk.isSandboxEnvironment()) "sandbox" else "production")
+                    .put("authorized", auth.authorizationState.isAuthorized)
+                    .put("sdkLocationId", auth.location?.locationId ?: JSONObject.NULL)
+                    .put("sdkLocationName", auth.location?.name ?: JSONObject.NULL)
+            } catch (e: Throwable) {
+                data.put("sdkState", e.toString())
+            }
+        } else {
+            data.put("environment", "not initialized")
+        }
+        return data
+    }
+
+    /**
+     * Everything the SDK says about a failure: errorCode and errorMessage, plus debugCode, debugMessage and details
+     * (read by name so the build does not depend on their exact types).
+     */
+    private fun failureData(failure: Any): JSObject {
+        val data = diagnostics()
+        fun field(name: String): Any? = try {
+            failure.javaClass.methods
+                .firstOrNull { it.name == "get" + name.replaceFirstChar { c -> c.uppercase() } && it.parameterCount == 0 }
+                ?.invoke(failure)
+        } catch (e: Throwable) {
+            null
+        }
+        data.put("debugCode", field("debugCode")?.toString() ?: JSONObject.NULL)
+        data.put("debugMessage", field("debugMessage")?.toString() ?: JSONObject.NULL)
+        val details = JSArray()
+        when (val raw = field("details")) {
+            is Iterable<*> -> raw.forEach { details.put(it.toString()) }
+            null -> Unit
+            else -> details.put(raw.toString())
+        }
+        data.put("details", details)
+        data.put("raw", failure.toString().take(2000))
+        return data
+    }
+
+    private fun signingSha256(): String? = try {
+        val info = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        val signers = info.signingInfo?.let {
+            if (it.hasMultipleSigners()) it.apkContentsSigners else it.signingCertificateHistory
+        }
+        signers?.lastOrNull()?.toByteArray()?.let { bytes ->
+            MessageDigest.getInstance("SHA-256").digest(bytes).joinToString(":") { "%02X".format(it) }
+        }
+    } catch (e: Throwable) {
+        null
+    }
+
+    private fun nfcState(): String = try {
+        val adapter = NfcAdapter.getDefaultAdapter(context)
+        when {
+            adapter == null -> "none"
+            adapter.isEnabled -> "on"
+            else -> "off"
+        }
+    } catch (e: Throwable) {
+        "unknown"
     }
 
     @PluginMethod

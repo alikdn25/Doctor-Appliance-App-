@@ -1,3 +1,17 @@
+# November 22 — Owner's task: fix Tap to Pay / card payments (done)
+
+1. **Cause**: `SquareReaderPlugin.charge` read the amount with `PluginCall.getLong()`, which returns null for any
+   amount that fits in an Int (Android's JSONObject keeps it as an Integer). Every payment was refused by the plugin
+   with "The payment is not complete." before the SDK started. Now `optLong` reads it; a bad parameter is reported
+   by name (`INVALID_PARAMETERS`).
+2. **Full error on screen**: code, message, debugCode, debugMessage, details under the plain message on Take payment.
+3. **Server log** `storage/logs/card-payments.log` (`card_payments` channel): every failed card payment with amount,
+   locations, SDK error, SDK version, phone, Android, app build, signing SHA-256, environments, application IDs,
+   missing token permissions (docs/ANDROID.md → When a card payment fails). Plugin method `diagnostics()`.
+4. Square Mobile Payments SDK stays at 2.7.0 (the latest, October 29, 2026; Tap to Pay on Android since 2.1.0).
+
+- Tests: `CardReaderChargeTest` — a failure is written to the log with the SDK error, phone and build.
+
 # November 22 — Owner's task: Android app and the Square reader inside it (done)
 
 One PR (SPEC §7.21), after PR #85 was merged. The Android shell, the Square plugin and FCM push already existed
