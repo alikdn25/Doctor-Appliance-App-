@@ -2,18 +2,10 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
-/** Booking starts on the day the calendar shows ("+ → Job" on a phone, Book customer in the sidebar on a computer). */
-async function bookShownDay(page: Page, mobile: boolean) {
-    if (mobile) {
-        await page.locator('[data-test="create-fab"]').click();
-        await page.locator('[data-test="create-job"]').click();
-    } else {
-        await page
-            .locator('[data-sidebar="content"]')
-            .last()
-            .getByRole('link', { name: 'Book customer', exact: true })
-            .click();
-    }
+/** Booking starts on the day the calendar shows: "+ → Book customer" on a phone and a computer alike. */
+async function bookShownDay(page: Page) {
+    await page.locator('[data-test="create-fab"]').click();
+    await page.locator('[data-test="create-job"]').click();
 }
 
 /** The address is required right after the name (owner's fixes, October 19); typed by hand without a Maps key. */
@@ -61,7 +53,7 @@ test('an empty calendar day books a new caller using only name phone and time', 
     const name = `Quick Caller ${info.project.name}`;
     const date = info.project.name === 'desktop' ? '2030-01-15' : '2030-01-16';
     await page.goto(`/calendar?date=${date}`);
-    await bookShownDay(page, info.project.name === 'mobile');
+    await bookShownDay(page);
     await page
         .locator('#booking-phone')
         .fill(

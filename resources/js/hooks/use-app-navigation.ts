@@ -19,7 +19,6 @@ import {
     MessageSquare,
     Package,
     Percent,
-    Plus,
     Receipt,
     Sparkles,
     Star,
@@ -41,11 +40,7 @@ import { edit as companySettings } from '@/routes/company/settings';
 import { index as customers } from '@/routes/customers';
 import { index as expenses } from '@/routes/expenses';
 import { index as invoices } from '@/routes/invoices';
-import {
-    create as bookCustomer,
-    index as jobs,
-    mine as myJobs,
-} from '@/routes/jobs';
+import { index as jobs, mine as myJobs } from '@/routes/jobs';
 import { index as messageInbox } from '@/routes/messages';
 import { index as partsPage } from '@/routes/parts';
 import { index as reports } from '@/routes/reports';
@@ -93,11 +88,6 @@ const pathOf = (href: Href) => new URL(toUrl(href), 'http://x').pathname;
  */
 export function useAppNavigation(): AppNavigation {
     const { auth, unreadMessages } = usePage().props;
-    const pageUrl = usePage().url;
-    // On the calendar, + Book books on the day it shows (UX-REDESIGN §9.1).
-    const shownDay = pageUrl.startsWith('/calendar')
-        ? new URL(pageUrl, 'http://x').searchParams.get('date')
-        : null;
     const can = auth.can ?? {};
     const role = auth.role?.value;
     const isOwner = role === 'owner';
@@ -111,16 +101,6 @@ export function useAppNavigation(): AppNavigation {
         badge?: number,
     ): AppNavItem => ({ key, title, href, icon, badge });
 
-    const book =
-        can.createJobs &&
-        item(
-            'book',
-            'nav.book_customer',
-            bookCustomer({
-                query: shownDay ? { book: 1, date: shownDay } : { book: 1 },
-            }),
-            Plus,
-        );
     const today =
         can.viewMyJobs && item('today', 'nav.today', myJobs(), CalendarCheck);
     const calendarItem =
@@ -165,8 +145,8 @@ export function useAppNavigation(): AppNavigation {
     // People who cannot choose keep the menu of their role.
     const field = !fieldWorker && !!auth.user?.can_choose_menu && !office;
 
+    // Booking (Quick booking · Book customer) lives only in the round "+" (owner's task of November 23).
     const main = [
-        book,
         today && { ...today, title: 'nav.my_jobs' },
         calendarItem,
         map,

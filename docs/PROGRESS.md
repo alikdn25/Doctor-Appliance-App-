@@ -1,3 +1,12 @@
+# November 23 — Owner's task: booking buttons only in "+" (done)
+
+1. Quick booking and Book customer removed from the screens: Jobs (Open tab), Calendar (Day, Week, Map) and the
+   sidebar / More menu. They stay only in the round "+" menu (SPEC §7.22). Today already had none.
+2. Nothing fills the freed space: Day / Week / Map and the date navigation move up right under the header.
+3. Code search: `BookingButtons` is rendered only in `create-fab.tsx`; no `nav.book_customer` menu item is left.
+4. Tests: `zz-quick-booking.spec.ts` checks Today, Jobs and Calendar Day / Week / Map have no booking buttons and
+   opens both from "+"; `workflow-feedback.spec.ts` books from "+" on a computer too (no sidebar item).
+
 # November 22 — Owner's task: fix Tap to Pay / card payments (done)
 
 1. **Cause**: `SquareReaderPlugin.charge` read the amount with `PluginCall.getLong()`, which returns null for any

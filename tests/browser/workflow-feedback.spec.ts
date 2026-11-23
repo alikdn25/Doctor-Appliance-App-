@@ -2,18 +2,10 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
-/** Booking starts on the day the calendar shows ("+ → Job" on a phone, Book customer in the sidebar on a computer). */
-async function bookShownDay(page: Page, mobile: boolean) {
-    if (mobile) {
-        await page.locator('[data-test="create-fab"]').click();
-        await page.locator('[data-test="create-job"]').click();
-    } else {
-        await page
-            .locator('[data-sidebar="content"]')
-            .last()
-            .getByRole('link', { name: 'Book customer', exact: true })
-            .click();
-    }
+/** Booking starts on the day the calendar shows: "+ → Book customer" on a phone and a computer alike. */
+async function bookShownDay(page: Page) {
+    await page.locator('[data-test="create-fab"]').click();
+    await page.locator('[data-test="create-job"]').click();
 }
 
 const fixture = JSON.parse(
@@ -32,15 +24,17 @@ test('visible menu and booking open the first visit directly from any working sc
         const plus = page.locator('[data-test="create-fab"]');
         const bounds = await plus.boundingBox();
         expect(bounds!.height).toBeGreaterThanOrEqual(44);
-        await plus.click();
-        await page.locator('[data-test="create-job"]').click();
     } else {
-        await page
-            .locator('[data-sidebar="content"]')
-            .last()
-            .getByRole('link', { name: 'Book customer', exact: true })
-            .click();
+        // The sidebar has no Book customer: booking lives only in "+".
+        await expect(
+            page
+                .locator('[data-sidebar="content"]')
+                .last()
+                .getByRole('link', { name: 'Book customer', exact: true }),
+        ).toHaveCount(0);
     }
+    await page.locator('[data-test="create-fab"]').click();
+    await page.locator('[data-test="create-job"]').click();
     await expect(page).toHaveURL(/\/jobs\/create\?book=1$/);
     await expect(
         page.getByRole('heading', { name: 'Book customer', exact: true }),
@@ -54,7 +48,7 @@ test('visible menu and booking open the first visit directly from any working sc
         page.getByRole('button', { name: 'Finish booking', exact: true }),
     ).toBeEnabled();
     await page.goto('/calendar?date=2026-10-12');
-    await bookShownDay(page, info.project.name === 'mobile');
+    await bookShownDay(page);
     await expect(page).toHaveURL(/book=1.*date=2026-10-12/);
     // The chosen day shows in the calendar under the day row (in the page, never over the days).
     await page.locator('[data-test="booking-pick-date"]').click();

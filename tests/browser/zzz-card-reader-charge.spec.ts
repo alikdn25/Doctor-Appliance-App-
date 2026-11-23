@@ -14,9 +14,7 @@ test('New charge in the browser: Cash → Paid with Send receipt', async ({
     // other screens show.
     test.skip(info.project.name !== 'mobile', 'Runs once, on the phone');
     await page.goto('/my-jobs');
-    await expect(page.locator('[data-test="start-quick-booking"]')).toHaveCount(
-        0,
-    );
+    await expect(page.locator('[data-test="booking-buttons"]')).toHaveCount(0);
 
     await page.locator('[data-test="create-fab"]').click();
     await page.locator('[data-test="create-charge"]').click();
