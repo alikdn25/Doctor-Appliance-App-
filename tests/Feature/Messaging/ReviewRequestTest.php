@@ -22,7 +22,7 @@ beforeEach(function () {
     $this->travelTo(CarbonImmutable::parse('2026-10-14 10:00', 'America/Vancouver'));
 
     $this->company = Company::factory()->create();
-    $this->owner = memberOf($this->company, UserRole::Owner);
+    $this->owner = memberOf($this->company, UserRole::Owner, ['name' => 'alex Kh']);
     $this->brand = Brand::factory()->create(['company_id' => $this->company->id, 'name' => 'Doctor Appliance']);
     $this->profile = inCompany($this->company, fn () => GoogleProfile::create(['label' => 'Surrey', 'review_url' => 'https://g.page/r/surrey/review']));
     $this->brand->update(['google_profile_id' => $this->profile->id]);
@@ -91,7 +91,7 @@ test('"Send" emails the chosen location\'s link with the review picture; never a
     $message = inCompany($this->company, fn () => Message::sole());
     expect($message)->kind->value->toBe('review_request')->channel->toBe('email')->status->toBe('sent')
         ->to->toBe('jane@example.com')->customer_id->toBe($this->customer->id)->service_job_id->toBe($invoice->service_job_id)
-        ->and($message->body)->toBe('Hi Jane, thank you for choosing Doctor Appliance! Would you take a moment to review us on Google? https://g.page/r/burnaby/review');
+        ->and($message->body)->toBe("<b>Hey Jane, would you take 30 seconds</b> to help me grow my small business by leaving a Google review? https://g.page/r/burnaby/review\n— Alex, Doctor Appliance");
     Http::assertNothingSent();
     Mail::assertQueued(CustomerMessageMail::class, fn (CustomerMessageMail $mail) => $mail->hasTo('jane@example.com') && $mail->reviewUrl === 'https://g.page/r/burnaby/review');
 
@@ -228,4 +228,35 @@ test('the review text can be changed for this customer; the link goes back at th
     // The next customer gets the template text again.
     $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
         ->where('reviewPrompt.profiles.0.text', fn (string $text) => ! str_contains($text, 'thanks for having us')));
+});
+
+test('with a usable first name the request says "Hey <name>"; without one "Thanks for choosing <brand>"', function (array $customer, string $expected) {
+    $this->customer->update($customer);
+    $invoice = invoiceForJob();
+
+    $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
+        ->where('reviewPrompt.profiles.0.text', $expected));
+})->with([
+    'first word, capitalised' => [['first_name' => 'JOSH miller'], "<b>Hey Josh, would you take 30 seconds</b> to help me grow my small business by leaving a Google review? https://g.page/r/surrey/review\n— Alex, Doctor Appliance"],
+    'no name' => [['first_name' => null, 'last_name' => null, 'company_name' => 'Maple Strata'], "Thanks for choosing Doctor Appliance! <b>Would you take 30 seconds</b> to help me grow my small business by leaving a Google review? https://g.page/r/surrey/review\n— Alex"],
+    'a test name' => [['first_name' => 'test'], "Thanks for choosing Doctor Appliance! <b>Would you take 30 seconds</b> to help me grow my small business by leaving a Google review? https://g.page/r/surrey/review\n— Alex"],
+    'digits' => [['first_name' => '123'], "Thanks for choosing Doctor Appliance! <b>Would you take 30 seconds</b> to help me grow my small business by leaving a Google review? https://g.page/r/surrey/review\n— Alex"],
+    'one letter' => [['first_name' => 'J'], "Thanks for choosing Doctor Appliance! <b>Would you take 30 seconds</b> to help me grow my small business by leaving a Google review? https://g.page/r/surrey/review\n— Alex"],
+]);
+
+test('the review email shows the request text with only the <b> words bold, inside the review block', function () {
+    $invoice = invoiceForJob();
+    $this->post(route('invoices.review-request', $invoice), ['google_profile_id' => $this->profile->id, 'email' => 'jane@example.com'])->assertSessionHasNoErrors();
+    $message = inCompany($this->company, fn () => Message::sole());
+
+    $html = (new CustomerMessageMail($message->id, $this->company->id, 'Review', 'https://g.page/r/surrey/review'))->render();
+    expect($html)->toContain('<b>Hey Jane, would you take 30 seconds</b> to help me grow my small business')
+        ->toContain('— Alex, Doctor Appliance')
+        ->not->toContain('&lt;b&gt;')
+        ->not->toContain(__('documents.mail.review.title'));
+});
+
+test('the review request template is not in the messaging settings any more', function () {
+    $this->get(route('company.messaging.edit'))->assertInertia(fn (Assert $page) => $page
+        ->where('templates', fn ($templates) => collect($templates)->doesntContain('kind', 'review_request')));
 });

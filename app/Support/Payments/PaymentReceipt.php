@@ -30,7 +30,7 @@ class PaymentReceipt
     ) {}
 
     /**
-     * @param  array<string, mixed>  $data  email, names, addresses, review, google_profile_id
+     * @param  array<string, mixed>  $data  email, names, addresses, review, google_profile_id, review_text
      * @return array{sent: list<string>}
      */
     public function send(Payment $payment, array $data, User $user): array
@@ -48,11 +48,15 @@ class PaymentReceipt
 
         // The details typed here are kept: a Walk-in invoice moves to the real customer; the email goes on the customer.
         $this->customers->applyToInvoice($invoice, [...$data, 'email' => $email]);
-        $invoice->refresh()->load(['customer', 'job']);
+        $invoice->refresh()->load(['customer', 'job.brand', 'brand']);
         ReviewRequests::keepEmail($invoice->customer, $email);
         PublicDocument::token($invoice);
 
-        Mail::to($email)->queue(new ReceiptMail($invoice, $profile?->id));
+        // The review text as shown (and maybe changed) on the Paid screen; the ready text when none came.
+        $reviewText = $profile === null ? null
+            : (ReviewRequests::personal($data['review_text'] ?? null, $profile) ?? ReviewRequests::text($invoice->customer, $invoice->job?->brand?->name ?? $invoice->brand?->name, $profile));
+
+        Mail::to($email)->queue(new ReceiptMail($invoice, $profile?->id, $reviewText));
 
         if ($profile !== null) {
             ReviewRequest::query()->updateOrCreate(['service_job_id' => $invoice->service_job_id], [

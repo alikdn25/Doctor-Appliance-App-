@@ -483,9 +483,28 @@ describe('Paid screen and the receipt', function () {
             // The email typed is kept on the customer.
             ->and(inCompany($this->company, fn () => $this->customer->emails()->pluck('email')->all()))->toBe(['jane@example.com']);
 
-        $html = (new ReceiptMail($invoice, $this->profile->id))->render();
-        expect($html)->toContain('https://g.page/r/doctor/review')->toContain('Paid')->toContain('$168.00')->toContain('Cash')
+        Mail::assertQueued(ReceiptMail::class, fn (ReceiptMail $mail) => str_contains((string) $mail->reviewText, '30 seconds</b> to help me grow'));
+
+        $html = (new ReceiptMail($invoice, $this->profile->id, '<b>Hey Jane</b>, review us: https://g.page/r/doctor/review'))->render();
+        expect($html)->toContain('<b>Hey Jane</b>, review us:')->not->toContain(__('documents.mail.review.title'))
+            ->toContain('https://g.page/r/doctor/review')->toContain('Paid')->toContain('$168.00')->toContain('Cash')
             ->toContain('GST')->toContain('PST')->toContain($invoice->number);
+    });
+
+    test('the Paid screen shows the ready review text; the text changed there goes into the receipt', function () {
+        $invoice = readerInvoice();
+        $this->postJson(route('charges.store'), ['method' => 'cash', 'invoice_id' => $invoice->id])->assertOk();
+        $payment = inCompany($this->company, fn () => Payment::query()->sole());
+
+        $this->get(route('payments.paid', $payment))->assertInertia(fn (Assert $page) => $page
+            ->where('profiles.0.text', fn (string $text) => str_contains($text, '30 seconds</b> to help me grow my small business by leaving a Google review? https://g.page/r/doctor/review')));
+
+        $this->post(route('payments.send-receipt', $payment), [
+            'email' => 'jane@example.com', 'review' => true, 'google_profile_id' => $this->profile->id,
+            'review_text' => '<b>Thanks Jane!</b> A review would help a lot.',
+        ])->assertSessionHasNoErrors();
+
+        Mail::assertQueued(ReceiptMail::class, fn (ReceiptMail $mail) => $mail->reviewText === "<b>Thanks Jane!</b> A review would help a lot.\nhttps://g.page/r/doctor/review");
     });
 
     test('without the tick the receipt email has no review block', function () {

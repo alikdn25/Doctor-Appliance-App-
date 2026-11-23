@@ -35,6 +35,16 @@ return [
         'unusable' => 'This picture cannot be used. Try a simpler PNG or JPEG.',
     ],
 
+    // The review request text (owner's task of November 23). Placeholders: {first_name}, {brand}, {signer} (the
+    // owner's first name), {link}. Only the words between <b> and </b> are bold in the email.
+    'request' => [
+        'named' => '<b>Hey {first_name}, would you take 30 seconds</b> to help me grow my small business by leaving a Google review? {link}',
+        'unnamed' => 'Thanks for choosing {brand}! <b>Would you take 30 seconds</b> to help me grow my small business by leaving a Google review? {link}',
+        'sign_named' => '— {signer}, {brand}',
+        'sign_unnamed' => '— {signer}',
+        'sign_brand' => '— {brand}',
+    ],
+
     'prompt' => [
         'title' => 'Send Google Review request?',
         'description' => 'The review link goes to the customer by email, with your review picture. You can change the words for this customer.',
@@ -47,7 +57,7 @@ return [
         'sent' => 'Review request sent to :email.',
         'dont_send' => 'Don\'t send',
         'text' => 'Message',
-        'text_hint' => 'Only for this customer; the template in settings stays the same. The review link is added at the end if you remove it.',
+        'text_hint' => 'Only for this customer. The review link is added at the end if you remove it. Words between <b> and </b> are bold.',
         'no_locations' => 'No Google review locations yet. Add them in Company → Google reviews.',
         'sms_off' => 'Texting is off for the company (Company → Messaging), so a review request cannot be sent by SMS.',
         'invalid_phone' => 'Enter a valid phone number.',

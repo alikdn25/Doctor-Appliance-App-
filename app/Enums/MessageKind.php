@@ -35,12 +35,12 @@ enum MessageKind: string
     }
 
     /**
-     * Kinds with a template companies can edit.
+     * Kinds with a template companies can edit. The review request has its own two texts (ReviewText).
      *
      * @return list<self>
      */
     public static function templated(): array
     {
-        return [self::BookingConfirmation, self::VisitReminder, self::OnMyWay, self::OnMyWayEta, self::EstimateLink, self::EstimateFollowup, self::InvoiceLink, self::ReviewRequest, self::General];
+        return [self::BookingConfirmation, self::VisitReminder, self::OnMyWay, self::OnMyWayEta, self::EstimateLink, self::EstimateFollowup, self::InvoiceLink, self::General];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Enums\PaymentMethod;
+use App\Models\Brand;
 use App\Models\Company;
 use App\Models\GoogleProfile;
 use App\Models\Invoice;
@@ -13,6 +14,7 @@ use App\Support\Billing\Money;
 use App\Support\Billing\PublicDocument;
 use App\Support\Mail\MailSender;
 use App\Support\Reviews\ReviewImage;
+use App\Support\Reviews\ReviewText;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -37,7 +39,7 @@ class ReceiptMail extends Mailable implements ShouldQueue
     /**
      * Only ids are queued: tenant-scoped models cannot be restored outside their company.
      */
-    public function __construct(Invoice $invoice, public ?int $reviewProfileId = null)
+    public function __construct(Invoice $invoice, public ?int $reviewProfileId = null, public ?string $reviewText = null)
     {
         $this->invoiceId = $invoice->id;
         $this->companyId = $invoice->company_id;
@@ -78,7 +80,7 @@ class ReceiptMail extends Mailable implements ShouldQueue
                 'reference' => $payment?->reference,
                 'url' => PublicDocument::url($invoice),
                 'pdfUrl' => route('documents.public.pdf', PublicDocument::token($invoice)),
-                'review' => $this->review(),
+                'review' => $this->review($invoice),
             ]);
         });
     }
@@ -97,16 +99,20 @@ class ReceiptMail extends Mailable implements ShouldQueue
     }
 
     /**
-     * "Request review" ticked on the Paid screen: the same review block as invoice emails (link and picture), with
-     * the chosen location's link.
+     * "Request review" ticked on the Paid screen: the review block (picture, stars, link) with the review request
+     * text sent from there and the chosen location's link.
      *
-     * @return array{url: string, image: string|null}|null
+     * @return array{url: string, image: string|null, text: string|null}|null
      */
-    private function review(): ?array
+    private function review(Invoice $invoice): ?array
     {
         $url = $this->reviewProfileId === null ? null : GoogleProfile::query()->whereKey($this->reviewProfileId)->value('review_url');
 
-        return filled($url) ? ['url' => $url, 'image' => ReviewImage::url($this->company())] : null;
+        return filled($url) ? [
+            'url' => $url,
+            'image' => ReviewImage::url($this->company()),
+            'text' => filled($this->reviewText) ? ReviewText::html($this->reviewText, Brand::readableColor($invoice->brand?->primary_color)) : null,
+        ] : null;
     }
 
     private function lastPayment(Invoice $invoice): ?Payment
