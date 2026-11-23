@@ -9,7 +9,8 @@ use App\Support\PhoneNumber;
 use Carbon\CarbonImmutable;
 
 /**
- * Quick booking: a free text (dictated, typed or an SMS from the customer; Russian, English or mixed) read by the AI
+ * Quick booking: a free text (dictated, typed or an SMS from the customer; Russian, English or mixed) and/or up to 5
+ * photos (a screenshot of the customer's message, a rating plate) read by the AI
  * (AI_MODEL_BOOKING) into the booking form's fields. Every value comes back in English: names in Cyrillic are written in
  * Latin letters, numbers said in words become digits, letters of a model or serial number said aloud become Latin
  * letters; "today", "tomorrow", "on Monday" count in the company's time zone; phones in E.164. Anything not in the
@@ -21,24 +22,31 @@ class QuickBookingParser
     /** Field names the AI may list in uncertain_fields. */
     public const FIELDS = [
         'first_name', 'last_name', 'phone', 'email', 'address', 'unit', 'buzzer', 'appliance_type', 'brand', 'model',
-        'problem', 'date', 'arrival', 'notes',
+        'serial_number', 'problem', 'date', 'arrival', 'notes',
     ];
 
     public function __construct(private readonly AiService $ai) {}
 
     /**
+     * @param  list<array{path: string, media_type: string}>  $photos  Stored photos or screenshots to read as well.
      * @return array<string, mixed>
      *
      * @throws AiUnavailable
      */
-    public function parse(string $text, Company $company, User $user): array
+    public function parse(string $text, Company $company, User $user, array $photos = []): array
     {
+        $text = trim($text);
+        $content = $photos === [] ? $text : [
+            ...array_map(fn (array $photo) => ['type' => 'image', 'path' => $photo['path'], 'media_type' => $photo['media_type']], array_slice($photos, 0, 5)),
+            ['type' => 'text', 'text' => '[Photos attached: '.min(count($photos), 5)."]\n".($text === '' ? '(No text: read the booking from the photos.)' : $text)],
+        ];
+
         $raw = $this->ai->send(
             AiFeature::QuickBooking,
             $company,
             $user,
             $this->instructions($company),
-            [['role' => 'user', 'content' => trim($text)]],
+            [['role' => 'user', 'content' => $content]],
             schema: self::schema(),
             maxTokens: 2000,
             effort: 'low',
@@ -71,6 +79,7 @@ class QuickBookingParser
             'appliance_type' => ['type' => 'string', 'enum' => [...array_map(fn (ApplianceType $t) => $t->value, ApplianceType::cases()), 'unknown']],
             'brand' => $text,
             'model' => $text,
+            'serial_number' => $text,
             'problem' => $text,
             'date' => ['type' => 'string', 'description' => 'YYYY-MM-DD, or "" when not given'],
             'arrival_now' => ['type' => 'boolean'],
@@ -141,7 +150,9 @@ class QuickBookingParser
               ай -> I, джей/йот -> J, кей/ка -> K, эл -> L, эм -> M, эн -> N, оу/о -> O, пи/пэ -> P, кью/ку -> Q, ар/эр -> R,
               эс -> S, ти/тэ -> T, ю/у -> U, ви/вэ -> V, дабл ю/дабл в -> W, экс/икс -> X, уай/игрек -> Y, зед/зи/зэт -> Z;
               digits said in words become digits (ноль -> 0). Write the number as one word in capital letters, no spaces
-              ("уай джи пять ноль два эс" -> "YG502S"). Put a serial number, if given, into notes as "Serial: ...".
+              ("уай джи пять ноль два эс" -> "YG502S").
+            - serial_number: only when the text or a photo clearly shows the serial number (S/N), as one word in capitals;
+              "" otherwise.
             - problem: a short description of what is wrong, in English ("нужно отремонтировать духовку" -> "Oven repair").
             - Dates: today is {$today}, the time now is {$time} (company time zone {$company->timezone}). Turn "today",
               "tomorrow", "on Monday", "next Friday" into a date (YYYY-MM-DD); a weekday means the next such day after today.
@@ -152,6 +163,13 @@ class QuickBookingParser
             - uncertain_fields: the names of the fields whose value you are not sure about (an unclear name spelling, a phone
               with a wrong number of digits, a letter of the model number that could be heard two ways, a guessed appliance
               type). "arrival" stands for arrival_now, arrival_start and arrival_end. [] when you are sure of every value.
+
+            Photos and screenshots: the message may come with photos (a screenshot of the customer's SMS, email or web form, a
+            note, an appliance rating plate). Read the customer's first and last name, phone, email, address, appliance, brand,
+            model, serial number, problem, date and time from them and from the text together. Take only what you can
+            actually read: a value that is cut off, blurred or unreadable (e.g. a phone with a digit you cannot read) is ""
+            and never completed or guessed. Ignore the phone's own status bar, the app's buttons and the sender's company
+            signature; the customer is the person asking for the repair. Without photos, use the text only.
 
             Example.
             Text: "Смотри значит забронируй бобби чан только на английском пиши бобби чан телефон двести 30 шесть семь восемь
@@ -180,6 +198,7 @@ class QuickBookingParser
         ] : null;
         $date = $string($raw['date'] ?? null, 10);
         $model = $string($raw['model'] ?? null, 100);
+        $serial = (string) preg_replace('/\s+/u', '', mb_strtoupper((string) $string($raw['serial_number'] ?? null, 100)));
         $time = fn ($value) => is_string($value) && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $value) === 1 ? $value : null;
         $start = $time($raw['arrival_start'] ?? null);
         $end = $time($raw['arrival_end'] ?? null);
@@ -204,6 +223,7 @@ class QuickBookingParser
             'brand' => $string($raw['brand'] ?? null, 100),
             // A model number is one word in capitals ("yg 502 s" -> "YG502S").
             'model' => self::modelNumber($model),
+            'serial_number' => $serial === '' ? null : $serial,
             'problem' => $string($raw['problem'] ?? null, 5000),
             'date' => $date,
             'arrival_now' => ($raw['arrival_now'] ?? false) === true,

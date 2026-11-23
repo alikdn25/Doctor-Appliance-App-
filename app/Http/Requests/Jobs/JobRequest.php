@@ -13,6 +13,7 @@ use App\Models\Brand;
 use App\Models\Customer;
 use App\Models\Property;
 use App\Models\ServiceJob;
+use App\Support\Jobs\BookingPhotos;
 use App\Support\PhoneNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -37,6 +38,18 @@ class JobRequest extends FormRequest
         return $job
             ? $this->user()->can('update', $job)
             : $this->user()->can('create', ServiceJob::class);
+    }
+
+    /**
+     * Photo ids from Quick booking or the assistant to attach to the new job (each checked again on attach).
+     *
+     * @return list<string>
+     */
+    public function bookingPhotos(): array
+    {
+        return $this->creating()
+            ? array_values(array_filter((array) $this->validated('booking_photos', []), fn ($id) => is_string($id) && BookingPhotos::valid($id)))
+            : [];
     }
 
     protected function prepareForValidation(): void
@@ -172,6 +185,9 @@ class JobRequest extends FormRequest
             'open_invoice' => ['boolean'],
             // "Save as draft" on Book customer: no confirmation goes yet.
             'draft' => ['boolean'],
+            // Photos the booking was read from (Quick booking / assistant), attached to the new job.
+            'booking_photos' => ['nullable', 'array', 'max:'.BookingPhotos::MAX],
+            'booking_photos.*' => ['string', 'max:64'],
             // Every field is optional (owner's update, November 16): a job without an address keeps an empty one and
             // shows "No address"; a customer may have no name or phone yet.
             'customer_id' => $newCustomer ? ['nullable'] : ['required', 'integer'],

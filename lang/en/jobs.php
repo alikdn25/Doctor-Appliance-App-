@@ -13,7 +13,7 @@ return [
     'quick_booking' => [
         'title' => 'Quick booking',
         'button' => 'Quick booking',
-        'hint' => 'Type or dictate the booking (the keyboard microphone works), or paste the customer\'s SMS. Russian, English or both.',
+        'hint' => 'Type or dictate the booking (the keyboard microphone works), paste the customer\'s SMS, or attach a photo or screenshot with the paperclip. Russian, English or both.',
         'placeholder' => 'E.g. Anna Kim 604 555 0199, 123 Main St unit 4, buzzer 1234. LG washer not draining. Tomorrow morning.',
         'parse' => 'Parse',
         'failed' => 'The AI did not answer. Your text is kept: try again or book by hand.',
@@ -27,6 +27,12 @@ return [
         'address_unverified' => 'The address was not found in suggestions. Check it.',
         'free_windows' => 'Free windows',
         'back_to_text' => 'Back to the text',
+        'attach' => 'Attach photos',
+        'photo' => 'Photo :number',
+        'remove_photo' => 'Remove photo',
+        'photo_limit' => 'Up to :count photos.',
+        'photo_failed' => 'The photos could not be sent. Try fewer or smaller photos.',
+        'photos_title' => 'Photos to attach to the job',
     ],
     'quick' => [
         'hint' => 'Phone, name and time are enough. Address and problem help the technician.',
