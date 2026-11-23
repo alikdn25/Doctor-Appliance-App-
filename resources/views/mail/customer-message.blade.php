@@ -8,9 +8,11 @@
         <tr>
             <td style="padding:24px;">
                 <p style="margin:0 0 16px;font-size:18px;font-weight:bold;">{{ $brandName }}</p>
-                <div style="font-size:14px;line-height:1.5;white-space:pre-line;">{!! preg_replace('~(https?://[^\s<]+)~', '<a href="$1" style="color:'.e($color).';">$1</a>', e($body)) !!}</div>
                 @if ($review ?? null)
-                <div style="margin-top:20px;">@include('mail.partials.review', ['review' => $review, 'color' => $color])</div>
+                {{-- A review request: its text inside the review block (only <b>…</b> is bold). --}}
+                @include('mail.partials.review', ['review' => [...$review, 'text' => \App\Support\Reviews\ReviewText::html($body, $color)], 'color' => $color])
+                @else
+                <div style="font-size:14px;line-height:1.5;white-space:pre-line;">{!! preg_replace('~(https?://[^\s<]+)~', '<a href="$1" style="color:'.e($color).';">$1</a>', e($body)) !!}</div>
                 @endif
             </td>
         </tr>

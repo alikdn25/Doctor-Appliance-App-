@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Billing;
 
 use App\Http\Controllers\Controller;
+use App\Messaging\ReviewRequests;
 use App\Models\GoogleProfile;
 use App\Models\Payment;
 use App\Payments\PaymentProviderException;
@@ -29,7 +30,7 @@ class PaidController extends Controller
     {
         $invoice = $payment->invoice ?? abort(404);
         Gate::authorize('view', $invoice);
-        $invoice->loadMissing(['customer.primaryEmail', 'job.brand']);
+        $invoice->loadMissing(['customer.primaryEmail', 'job.brand', 'brand']);
         $customer = $invoice->customer;
         $company = currentCompany();
         $profiles = GoogleProfile::query()->orderBy('label')->get(['id', 'label', 'review_url']);
@@ -63,7 +64,11 @@ class PaidController extends Controller
                 'email' => $customer->is_walk_in ? '' : (string) $customer->primaryEmail?->email,
                 'has_address' => ! $customer->is_walk_in && filled($property?->line1),
             ],
-            'profiles' => $profiles->map(fn (GoogleProfile $p) => ['id' => $p->id, 'label' => $p->label])->values(),
+            'profiles' => $profiles->map(fn (GoogleProfile $p) => [
+                'id' => $p->id,
+                'label' => $p->label,
+                'text' => ReviewRequests::text($customer, $invoice->job?->brand?->name ?? $invoice->brand?->name, $p),
+            ])->values(),
             'default_profile_id' => match (true) {
                 $profiles->contains('id', $default) => $default,
                 $profiles->count() === 1 => $profiles->first()->id,
@@ -82,6 +87,7 @@ class PaidController extends Controller
         $data = $request->validate([
             'review' => ['boolean'],
             'google_profile_id' => ['nullable', 'integer'],
+            'review_text' => ['nullable', 'string', 'max:1000'],
             ...ChargeController::customerRules(''),
         ]);
 

@@ -7,6 +7,8 @@ import { create as bookCustomer, quickBooking } from '@/routes/jobs';
 /**
  * The "+" menu only (never on a screen itself): two buttons side by side. Quick booking (violet with a
  * soft glow and ✨: one text field, the AI fills the form) and Book customer (white, a pen: the empty form by hand).
+ * The icon sits above its label (30% larger than the 48 px standard, owner's task of November 23); the label wraps
+ * on a narrow phone instead of being cut.
  */
 export function BookingButtons({
     date,
@@ -27,7 +29,7 @@ export function BookingButtons({
     if (!quick && !manual) return null;
 
     const button =
-        'da-press inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl px-3 text-[15px] font-semibold whitespace-nowrap [&_svg]:size-5 [&_svg]:shrink-0';
+        'da-press inline-flex min-h-[3.9rem] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-center text-[15px] leading-tight font-semibold [&_svg]:size-[1.625rem] [&_svg]:shrink-0';
 
     return (
         <div
@@ -41,7 +43,8 @@ export function BookingButtons({
                     className={cn(button, 'da-quick-booking')}
                     data-test="create-quick-booking"
                 >
-                    <Sparkles /> {t('jobs.quick_booking.button')}
+                    <Sparkles />
+                    <span>{t('jobs.quick_booking.button')}</span>
                 </Link>
             )}
             {manual && (
@@ -53,7 +56,8 @@ export function BookingButtons({
                     className={cn(button, 'da-raised')}
                     data-test="create-job"
                 >
-                    <PenLine /> {t('nav.book_customer')}
+                    <PenLine />
+                    <span>{t('nav.book_customer')}</span>
                 </Link>
             )}
         </div>

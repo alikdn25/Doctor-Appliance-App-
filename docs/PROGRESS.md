@@ -1,3 +1,21 @@
+# November 23 — Owner's task: new Google review text and a larger "+" menu (done)
+
+1. **Review request text** (`ReviewText`, `lang/en/reviews.php` → `request`): with a usable first name
+   "<b>Hey {first_name}, would you take 30 seconds</b> to help me grow my small business by leaving a Google review?
+   {link}" + "— {owner}, {brand}"; without one "Thanks for choosing {brand}! <b>Would you take 30 seconds</b> …
+   {link}" + "— {owner}". First name = first word of the customer's first name, "Josh"-cased; empty, one letter,
+   digits/symbols or a placeholder ("test") → the second text. {owner} = first name of the company's first active
+   Owner (no owner name → "— {brand}"). {link} = the chosen location's review link.
+2. Used in the separate review request email and in the receipt ("Request review" on Paid now has the text field
+   with the ready text; changed text is sent as written, the link is added back when removed). In both emails the
+   text sits in the review block (picture, stars, link) instead of the standard title/line; only `<b>…</b>` is bold.
+3. The single "Review request" template left Company → Messaging (it cannot hold two texts); invoice emails keep
+   their standard review block.
+4. **"+" menu**: rows 62 px high (48 × 1.3), icons 26 px in 47 px circles; Quick booking / Book customer show the
+   icon above the label, the label wraps at 360 px instead of being cut.
+
+- Tests: `ReviewTextTest` (unit), `ReviewRequestTest`, `CardReaderChargeTest` (Paid text → receipt).
+
 # November 23 — Owner's task: booking buttons only in "+" (done)
 
 1. Quick booking and Book customer removed from the screens: Jobs (Open tab), Calendar (Day, Week, Map) and the

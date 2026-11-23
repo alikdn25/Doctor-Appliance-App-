@@ -9,8 +9,8 @@ use App\Models\GoogleProfile;
 use App\Models\Invoice;
 use App\Models\Message;
 use App\Models\ReviewRequest;
-use App\Models\ServiceJob;
 use App\Models\User;
+use App\Support\Reviews\ReviewText;
 
 /**
  * Google review requests (SPEC §8). The only way to send one: after an invoice is sent or paid, the user answers
@@ -41,7 +41,7 @@ class ReviewRequests
             'profiles' => $profiles->map(fn (GoogleProfile $p) => [
                 'id' => $p->id,
                 'label' => $p->label,
-                'text' => $this->text($job, $p),
+                'text' => self::text($invoice->customer, $job->brand?->name, $p),
                 'review_url' => $p->review_url,
             ])->values()->all(),
             'default_profile_id' => match (true) {
@@ -60,7 +60,7 @@ class ReviewRequests
     {
         $invoice->loadMissing(['customer', 'job.brand']);
         $job = $invoice->job;
-        $body = $this->personal($text, $profile) ?? $this->text($job, $profile);
+        $body = self::personal($text, $profile) ?? self::text($invoice->customer, $job->brand?->name, $profile);
         self::keepEmail($invoice->customer, $email);
 
         $message = $this->messenger->emailToAddress(MessageKind::ReviewRequest, $invoice->customer, $job, $email, $body, $user, reviewUrl: $profile->review_url);
@@ -100,7 +100,7 @@ class ReviewRequests
      * The text edited in the prompt for this one customer (the template stays as it is). The review link is what
      * the request is for, so it goes at the end when it was deleted from the text.
      */
-    private function personal(?string $text, GoogleProfile $profile): ?string
+    public static function personal(?string $text, GoogleProfile $profile): ?string
     {
         $text = trim((string) $text);
 
@@ -115,11 +115,14 @@ class ReviewRequests
         return $text;
     }
 
-    public function text(ServiceJob $job, ?GoogleProfile $profile): string
+    /**
+     * The ready text (ReviewText): "Hey Josh, …" with the customer's first name, "Thanks for choosing <brand>! …"
+     * without a usable one; signed by the owner; the location's review link.
+     */
+    public static function text(?Customer $customer, ?string $brand, ?GoogleProfile $profile): string
     {
-        return MessageTemplates::render(currentCompany(), MessageKind::ReviewRequest, [
-            ...MessageContext::for($job->customer, $job),
-            'review_link' => $profile?->review_url,
-        ]);
+        $company = currentCompany();
+
+        return ReviewText::render(ReviewText::customerFirstName($customer), $brand ?? $company->name, ReviewText::signer($company), $profile?->review_url);
     }
 }

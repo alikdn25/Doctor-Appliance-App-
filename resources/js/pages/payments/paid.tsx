@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
 
 type Props = {
@@ -39,7 +40,7 @@ type Props = {
         email: string;
         has_address: boolean;
     };
-    profiles: { id: number; label: string }[];
+    profiles: { id: number; label: string; text: string }[];
     default_profile_id: number | null;
     send_url: string;
 };
@@ -69,6 +70,10 @@ export default function Paid(props: Props) {
     const [profile, setProfile] = useState<string>(
         props.default_profile_id ? String(props.default_profile_id) : '',
     );
+    // The ready review text of the chosen location; once changed by hand it is sent as written.
+    const [reviewText, setReviewText] = useState<string | null>(null);
+    const readyText =
+        props.profiles.find((p) => String(p.id) === profile)?.text ?? '';
     const [sending, setSending] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [sent, setSent] = useState(false);
@@ -82,6 +87,7 @@ export default function Paid(props: Props) {
                 email,
                 review,
                 google_profile_id: review && profile ? Number(profile) : null,
+                review_text: review ? reviewText : null,
             },
             {
                 preserveScroll: true,
@@ -249,6 +255,28 @@ export default function Paid(props: Props) {
                                 )}
                             </label>
                         ))}
+                    {review && profile !== '' && (
+                        <label className="grid gap-1 text-sm">
+                            <span className="text-muted-foreground">
+                                {t('reviews.prompt.text')}
+                            </span>
+                            <Textarea
+                                rows={5}
+                                maxLength={1000}
+                                value={reviewText ?? readyText}
+                                onChange={(e) => setReviewText(e.target.value)}
+                                data-test="receipt-review-text"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                                {t('reviews.prompt.text_hint')}
+                            </span>
+                            {errors.review_text && (
+                                <span className="text-xs text-danger">
+                                    {errors.review_text}
+                                </span>
+                            )}
+                        </label>
+                    )}
 
                     <Button
                         size="lg"

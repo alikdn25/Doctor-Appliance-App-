@@ -111,7 +111,6 @@ export default function MessagingSettings({
         number: 'INV-12',
         amount: formatMoney(10640, currency, locale),
         link: 'https://example.com/d/…',
-        review_link: 'https://g.page/r/…',
     };
 
     return (
@@ -230,11 +229,6 @@ export default function MessagingSettings({
                                 key={tpl.kind}
                                 id={`template-${tpl.kind}`}
                                 label={tpl.label}
-                                hint={
-                                    tpl.kind === 'review_request'
-                                        ? t('messages.review_template_hint')
-                                        : undefined
-                                }
                                 error={errors[`templates.${tpl.kind}`]}
                                 value={form.data.templates[tpl.kind] ?? ''}
                                 fallback={tpl.default}

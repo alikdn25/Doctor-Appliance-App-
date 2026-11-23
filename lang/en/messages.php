@@ -101,13 +101,11 @@ return [
         'estimate_link' => 'Hi {customer_first_name}, here is your estimate {number} from {brand} for {amount}: {link}',
         'estimate_followup' => 'Hi {customer_first_name}, would you like to proceed with estimate {number} from {brand} for {amount}? You can review it here: {link}',
         'invoice_link' => 'Hi {customer_first_name}, here is your invoice {number} from {brand}. Balance due: {amount}. View and pay online: {link}',
-        'review_request' => 'Hi {customer_first_name}, thank you for choosing {brand}! Would you take a moment to review us on Google? {review_link}',
         'general' => 'Hi {customer_first_name}, this is {tech_name} from {brand}. ',
     ],
-    'placeholders' => 'Placeholders: {customer_first_name}, {customer_name}, {brand}, {company}, {tech_name}, {visit_date}, {arrival_window}, {eta_minutes}, {address}, {number}, {amount}, {link}, {review_link}. Leave a text empty to use the default.',
+    'placeholders' => 'Placeholders: {customer_first_name}, {customer_name}, {brand}, {company}, {tech_name}, {visit_date}, {arrival_window}, {eta_minutes}, {address}, {number}, {amount}, {link}. Leave a text empty to use the default.',
     'templates_title' => 'Message templates',
     'templates_saved' => 'Messaging settings saved.',
-    'review_template_hint' => 'Google and the FTC do not allow offering anything for a review, or asking only happy customers. The same request goes to every customer.',
 
     'email_subject' => [
         'booking_confirmation' => 'Your appointment with :brand is booked',

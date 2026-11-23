@@ -15,7 +15,6 @@ const PLACEHOLDERS = [
     'number',
     'amount',
     'link',
-    'review_link',
 ] as const;
 
 // GSM-7 characters: a text with any other character (e.g. an emoji) is sent as UCS-2 with shorter parts.
