@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Paperclip, Sparkles, X } from 'lucide-react';
+import { Camera, Paperclip, Sparkles, X } from 'lucide-react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { ScreenHeader } from '@/components/screen-header';
@@ -19,6 +19,8 @@ import {
     MAX_BOOKING_PHOTOS,
     quickBookingPhotos,
     quickBookingText,
+    quickParsePending,
+    takeQuickParse,
 } from '@/lib/quick-booking';
 import type { QuickBookingPhoto } from '@/lib/quick-booking';
 import { create } from '@/routes/jobs';
@@ -31,8 +33,10 @@ import { parse } from '@/routes/jobs/quick-booking';
  *
  * The paperclip next to the microphone adds up to 5 photos (gallery or camera, shrunk on the phone to 1600 px): a
  * screenshot of the customer's message, a rating plate. Photos only, text only, or both. Their previews sit above the
- * text field, each with ✕; after saving the booking they become the job's photos. "Booking from photo" in "+" opens
- * this screen with the photo picker (`?photo=1`).
+ * text field, each with ✕; after saving the booking they become the job's attachments (Files → Attachments).
+ * "Booking from photo" in "+" opens the picker in the menu itself; this screen then opens with those photos and starts
+ * reading them at once. Opened by a link (`?photo=1`), it shows a big "Choose photo" on top instead (a picker never
+ * opens by itself: a phone only allows it on a tap).
  *
  * The text and photos live in memory only: closing this screen (✕, back, a swipe) empties them; they are kept only
  * on the way to the filled form, for "Back to the text".
@@ -54,10 +58,6 @@ export default function QuickBooking() {
 
     useEffect(() => keepQuickBookingText(text), [text]);
     useEffect(() => keepQuickBookingPhotos(photos), [photos]);
-    // "Booking from photo" ("+"): the photo picker opens right away (the tap in the menu still counts as the user's).
-    useEffect(() => {
-        if (photoFirst) picker.current?.click();
-    }, [photoFirst]);
 
     const addPhotos = async (event: ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(event.target.files ?? []);
@@ -94,13 +94,18 @@ export default function QuickBooking() {
     const empty = text.trim() === '' && photos.length === 0;
     useEffect(
         () => () => {
-            if (!toForm.current) clearBooking();
+            // Photos just picked in "+" are on their way to the new Quick booking screen: keep them.
+            if (!toForm.current && !quickParsePending()) clearBooking();
         },
         [],
     );
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        read();
+    };
+
+    const read = () => {
         if (empty || parsing) return;
         setParsing(true);
         setError(null);
@@ -146,6 +151,12 @@ export default function QuickBooking() {
             });
     };
 
+    // Photos picked in "+" → "Booking from photo": read them right away (once).
+    useEffect(() => {
+        if (takeQuickParse() && photos.length > 0) read();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     return (
         <>
             <Head title={t('jobs.quick_booking.title')} />
@@ -155,6 +166,17 @@ export default function QuickBooking() {
                 className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4 sm:p-6"
                 data-test="quick-booking"
             >
+                {photoFirst && photos.length === 0 && (
+                    <Button
+                        type="button"
+                        size="lg"
+                        className="h-16 w-full text-lg"
+                        onClick={() => picker.current?.click()}
+                        data-test="quick-booking-choose-photo"
+                    >
+                        <Camera /> {t('jobs.quick_booking.choose_photo')}
+                    </Button>
+                )}
                 <label
                     htmlFor="quick-booking-text"
                     className="text-sm text-muted-foreground"

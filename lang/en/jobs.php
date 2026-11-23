@@ -33,6 +33,7 @@ return [
         'photo_limit' => 'Up to :count photos.',
         'photo_failed' => 'The photos could not be sent. Try fewer or smaller photos.',
         'photos_title' => 'Photos to attach to the job',
+        'choose_photo' => 'Choose photo',
     ],
     'quick' => [
         'hint' => 'Phone, name and time are enough. Address and problem help the technician.',
@@ -582,12 +583,14 @@ return [
     'photo_kinds' => [
         'before' => 'Before',
         'after' => 'After',
+        'attachment' => 'Attachments',
     ],
 
     'photos' => [
         'title' => 'Photos',
         'add' => 'Add photo',
         'take' => ':kind photo',
+        'attachments' => 'Attachments',
         'empty' => 'No photos yet.',
         'delete' => 'Delete photo',
         'confirm_delete' => 'Delete this photo?',

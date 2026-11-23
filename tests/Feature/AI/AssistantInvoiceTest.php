@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\JobStatus;
+use App\Enums\PhotoKind;
 use App\Mail\DocumentMail;
 use App\Models\AiRequest;
 use App\Models\AssistantAction;
@@ -10,6 +11,7 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceAttachment;
+use App\Models\JobPhoto;
 use App\Models\Message;
 use App\Models\Property;
 use App\Models\ServiceJob;
@@ -292,6 +294,11 @@ test('photos go to the AI as images and become the invoice attachments; the requ
     $attachments = inCompany($this->company, fn () => InvoiceAttachment::query()->where('invoice_id', $invoice->id)->get());
     expect($attachments)->toHaveCount(2);
     Storage::disk(PrivateMedia::diskName())->assertExists($attachments[0]->path);
+    // The job gets them too, in Files → Attachments (never among Before).
+    $jobPhotos = inCompany($this->company, fn () => JobPhoto::query()->where('service_job_id', $invoice->service_job_id)->get());
+    expect($jobPhotos)->toHaveCount(2)
+        ->and($jobPhotos->pluck('kind')->unique()->all())->toBe([PhotoKind::Attachment]);
+    Storage::disk(PrivateMedia::diskName())->assertExists($jobPhotos[0]->path);
     $this->get(route('invoices.attachment', [$invoice, $attachments[0]]))->assertOk();
 
     // The sender sees their photo; another company's owner does not.

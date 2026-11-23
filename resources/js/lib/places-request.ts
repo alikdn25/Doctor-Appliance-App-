@@ -36,3 +36,25 @@ export function suggestionRequest(
         ...(sessionToken ? { sessionToken } : {}),
     };
 }
+
+/** The part of the Places library that sends the request (AutocompleteSuggestion). */
+export type SuggestionSender<T> = {
+    AutocompleteSuggestion: {
+        fetchAutocompleteSuggestions: (
+            request: SuggestionRequest,
+        ) => Promise<{ suggestions: T[] }>;
+    };
+};
+
+/** Sends the suggestion request (every address field and the Quick booking address check go through here). */
+export function fetchSuggestions<T>(
+    places: SuggestionSender<T>,
+    input: string,
+    country: string,
+    area: ServiceArea | null | undefined,
+    sessionToken?: unknown,
+): Promise<{ suggestions: T[] }> {
+    return places.AutocompleteSuggestion.fetchAutocompleteSuggestions(
+        suggestionRequest(input, country, area, sessionToken),
+    );
+}

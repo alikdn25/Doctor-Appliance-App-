@@ -62,6 +62,11 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
+        // New files and folders are group-writable (folders 0775, files 0664 on the private disk): the web server and
+        // the queue worker share the group and must both write into photo folders. Without it the umask (022) would
+        // cut the private disk's permissions down to 0755 / 0644.
+        umask(0002);
+
         // Buttons on push notifications (owner's task of November 19).
         PushOperations::register();
 

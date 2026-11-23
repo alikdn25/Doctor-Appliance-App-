@@ -133,7 +133,7 @@ class VisitActionController extends Controller
                     'can_delete' => $canUpdate || ($photo->user_id === $user->id && Gate::allows('work', $job)),
                 ])->values(),
             ],
-            'photoKinds' => PhotoKind::options(),
+            'photoKinds' => PhotoKind::takeable(),
             'closureReasons' => [
                 'customer_declined' => currentCompany()->closureReasons(JobOutcome::CustomerDeclined),
                 'unable_to_repair' => currentCompany()->closureReasons(JobOutcome::UnableToRepair),

@@ -17,7 +17,7 @@ test('"+" → Assistant opens the assistant with the question field focused', as
 
     // Nearest the "+": below every other item, Quick booking included.
     const buttons = page.locator(
-        '[data-test="create-menu"] button, [data-test="create-menu"] a',
+        '[data-test="create-menu"] :is(button, label, a)',
     );
     const count = await buttons.count();
     const assistantBox = (await assistant.boundingBox())!;

@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 /**
  * Photos a booking is read from (Quick booking, or the assistant's propose_booking): a screenshot of the customer's
  * message, a rating plate, a note. They wait as private files of the person who sent them until the booking is saved,
- * then become the new job's photos. An id is "<uuid>.<ext>"; it only ever resolves inside the sender's own folder
+ * then become the new job's attachments (Files → Attachments, not Before). An id is "<uuid>.<ext>"; it only ever resolves inside the sender's own folder
  * (company and user), so one person can never attach another's (or another company's) photos.
  */
 class BookingPhotos
@@ -85,7 +85,7 @@ class BookingPhotos
     }
 
     /**
-     * Moves the photos into the job's photo folder as its "before" photos. Ids that are not the person's own are
+     * Moves the photos into the job's photo folder as its attachments (Files → Attachments). Ids that are not the person's own are
      * skipped silently.
      *
      * @param  list<string>  $ids
@@ -106,7 +106,7 @@ class BookingPhotos
             $to = "companies/{$job->company_id}/jobs/{$job->id}/photos/{$id}";
             $disk->move($from, $to);
 
-            $photo = new JobPhoto(['kind' => PhotoKind::Before, 'client_uuid' => $uuid, 'taken_at' => now()]);
+            $photo = new JobPhoto(['kind' => PhotoKind::Attachment, 'client_uuid' => $uuid, 'taken_at' => now()]);
             $photo->service_job_id = $job->id;
             $photo->user_id = $user->id;
             $photo->path = $to;

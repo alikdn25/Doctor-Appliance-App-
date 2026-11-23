@@ -38,7 +38,7 @@ class JobFieldController extends Controller
 
         $validated = $request->validate([
             'photo' => self::IMAGE_RULES,
-            'kind' => ['required', Rule::enum(PhotoKind::class)],
+            'kind' => ['required', Rule::in([PhotoKind::Before->value, PhotoKind::After->value])],
             'client_uuid' => ['required', 'uuid'],
             'visit_id' => ['nullable', 'integer'],
             'taken_at' => ['nullable', 'date'],

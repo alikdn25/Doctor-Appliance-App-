@@ -30,9 +30,16 @@ return [
 
     'disks' => [
 
+        // The private disk (job photos, booking photos, attachments). Folders 0775 and files 0664 whatever the
+        // visibility, so the web server and the queue worker (same group) can both write new photo folders;
+        // app:fix-storage-permissions repairs folders made earlier with 0700.
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
+            'permissions' => [
+                'file' => ['public' => 0664, 'private' => 0664],
+                'dir' => ['public' => 0775, 'private' => 0775],
+            ],
             'serve' => true,
             'throw' => false,
             'report' => false,

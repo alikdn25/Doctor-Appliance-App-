@@ -12,6 +12,7 @@ use App\Actions\Jobs\SaveVisit;
 use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\LineKind;
+use App\Enums\PhotoKind;
 use App\Enums\VisitStatus;
 use App\Messaging\Messenger;
 use App\Models\AssistantAction;
@@ -19,6 +20,7 @@ use App\Models\Brand;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceAttachment;
+use App\Models\JobPhoto;
 use App\Models\ServiceJob;
 use App\Models\User;
 use App\Support\Billing\Money;
@@ -73,7 +75,7 @@ class AssistantInvoice
                 ], $draft['lines']),
             ], $user);
 
-            $this->attach($invoice, (array) ($action->params['photos'] ?? []), $user);
+            $this->attach($invoice, $job, (array) ($action->params['photos'] ?? []), $user);
 
             return $invoice;
         });
@@ -181,11 +183,12 @@ class AssistantInvoice
     }
 
     /**
-     * The photos the invoice was read from, copied into its attachments.
+     * The photos the invoice was read from, copied into its attachments and into the job's Files → Attachments
+     * (never among the Before photos).
      *
      * @param  list<array{path: string, media_type: string}>  $photos
      */
-    private function attach(Invoice $invoice, array $photos, User $user): void
+    private function attach(Invoice $invoice, ServiceJob $job, array $photos, User $user): void
     {
         $disk = PrivateMedia::disk();
 
@@ -204,6 +207,17 @@ class AssistantInvoice
                 'mime_type' => $photo['media_type'],
                 'size' => $disk->size($path),
             ]);
+
+            $uuid = Str::uuid()->toString();
+            $jobPath = "companies/{$job->company_id}/jobs/{$job->id}/photos/{$uuid}.".AssistantPhotos::extension($photo['media_type']);
+            $disk->copy($photo['path'], $jobPath);
+
+            $record = new JobPhoto(['kind' => PhotoKind::Attachment, 'client_uuid' => $uuid, 'taken_at' => now()]);
+            $record->service_job_id = $job->id;
+            $record->user_id = $user->id;
+            $record->path = $jobPath;
+            $record->size = $disk->size($jobPath);
+            $record->save();
         }
     }
 

@@ -2771,3 +2771,23 @@ address is typed by hand as before.
 ✅ Tests: `ServiceAreaTest` (save, clear, validation, reset with/without default, Owner only, per company);
 `tests/js/places-request.test.ts` (`npm run test:js`, in CI); browser `zz-plus-assistant.spec.ts`.
 Next: deploy, migrate, set `GOOGLE_PLACES_DEFAULT_SERVICE_AREA` on the server.
+
+## Booking from photo, photo folders, address test (November 23, 2026)
+
+✅ "+" → "Booking from photo": the tap itself opens the photo picker (camera or gallery) from a hidden input inside
+the menu item; the picked photos (shrunk to 1600 px) open Quick booking, which starts reading them at once.
+✅ `/jobs/quick-booking?photo=1` opened by a link shows a big "Choose photo" on top; the picker never opens by itself.
+✅ Photos a job was booked from (Quick booking or the assistant's booking) are saved in the job's Files → Attachments
+(new photo kind `attachment`), no longer among "Before". The assistant's invoice from photos: the photos stay the
+invoice's attachments and are also copied to the job's Files → Attachments. Camera buttons stay Before / After; an
+upload cannot be filed as an attachment.
+✅ Private disk (`local`, storage/app/private): folders 0775, files 0664 (`permissions` in config/filesystems.php,
+umask 0002 in AppServiceProvider so the umask does not cut them). `php artisan app:fix-storage-permissions` sets
+existing folders to 2775 and files to 0664 once (marker `storage/app/storage-permissions-fixed`, `--force` again);
+it runs in deploy/deploy.sh.
+✅ Address suggestions: the request is sent through `fetchSuggestions` (lib/places-request.ts); a test checks the
+sent request carries `locationRestriction` (the company box) and `includedRegionCodes: ['ca']`.
+
+- Tests: `tests/Feature/Storage/PrivateDiskPermissionsTest.php`, `BookingFromPhotoTest` (attachments, job page),
+  `AssistantInvoiceTest` (job attachments), `tests/js/places-request.test.ts`, browser `zz-booking-from-photo.spec.ts`.
+- No migration. Next: deploy; check a new booking from photo on an Android phone.

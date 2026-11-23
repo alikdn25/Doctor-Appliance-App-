@@ -21,7 +21,8 @@ export type JobPhotoData = {
 
 /**
  * Before/after photos: one tap opens the camera; photos go through the upload queue,
- * so they survive a lost signal and show up here while they wait.
+ * so they survive a lost signal and show up here while they wait. Attachments (the photos a booking or the assistant's
+ * invoice was read from) are listed in their own group, never among Before.
  */
 export function PhotoSection({
     jobId,
@@ -211,7 +212,13 @@ export function PhotoSection({
                 </div>
             )}
 
-            {kinds.map((kind) => {
+            {[
+                ...kinds,
+                {
+                    value: 'attachment',
+                    label: t('jobs.photos.attachments'),
+                },
+            ].map((kind) => {
                 const saved = photos.filter((p) => p.kind === kind.value);
                 const waiting = previews.filter((p) =>
                     p.item.tag.endsWith(`:${kind.value}`),
@@ -222,7 +229,11 @@ export function PhotoSection({
                 }
 
                 return (
-                    <div key={kind.value} className="space-y-1">
+                    <div
+                        key={kind.value}
+                        className="space-y-1"
+                        data-test={`job-photos-${kind.value}`}
+                    >
                         <h3 className="text-sm text-muted-foreground">
                             {kind.label}
                         </h3>

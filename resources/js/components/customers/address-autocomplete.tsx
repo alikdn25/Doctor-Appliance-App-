@@ -4,8 +4,8 @@ import type { ComponentProps, KeyboardEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { loadGoogleMapsLibrary } from '@/lib/google-maps';
 import { Input } from '@/components/ui/input';
-import { suggestionRequest } from '@/lib/places-request';
-import type { SuggestionRequest } from '@/lib/places-request';
+import { fetchSuggestions } from '@/lib/places-request';
+import type { SuggestionSender } from '@/lib/places-request';
 import type { ServiceArea } from '@/types';
 
 /** An address picked from Google Places, split into our fields. */
@@ -58,12 +58,7 @@ type Suggestion = {
         toPlace: () => Place;
     } | null;
 };
-type PlacesLibrary = {
-    AutocompleteSuggestion: {
-        fetchAutocompleteSuggestions: (
-            request: SuggestionRequest,
-        ) => Promise<{ suggestions: Suggestion[] }>;
-    };
+type PlacesLibrary = SuggestionSender<Suggestion> & {
     AutocompleteSessionToken: new () => unknown;
 };
 
@@ -154,10 +149,12 @@ export async function verifyAddress(
 
     try {
         const places = await loadPlaces(key);
-        const { suggestions } =
-            await places.AutocompleteSuggestion.fetchAutocompleteSuggestions(
-                suggestionRequest(text, country, area),
-            );
+        const { suggestions } = await fetchSuggestions(
+            places,
+            text,
+            country,
+            area,
+        );
         const prediction = suggestions.find(
             (s) => s.placePrediction,
         )?.placePrediction;
@@ -227,15 +224,13 @@ export function AddressAutocomplete({
                 const places = library.current ?? (await loadPlaces(key));
                 library.current = places;
                 session.current ??= new places.AutocompleteSessionToken();
-                const { suggestions: found } =
-                    await places.AutocompleteSuggestion.fetchAutocompleteSuggestions(
-                        suggestionRequest(
-                            value,
-                            country,
-                            area,
-                            session.current,
-                        ),
-                    );
+                const { suggestions: found } = await fetchSuggestions(
+                    places,
+                    value,
+                    country,
+                    area,
+                    session.current,
+                );
                 setSuggestions(
                     found.filter((s) => s.placePrediction).slice(0, 5),
                 );

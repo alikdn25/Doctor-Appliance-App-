@@ -689,7 +689,7 @@ class JobController extends Controller
             'applianceTypes' => ApplianceType::options(),
             'manufacturers' => CustomerController::manufacturers(),
             'today' => CarbonImmutable::now($timezone)->format('Y-m-d'),
-            'photoKinds' => PhotoKind::options(),
+            'photoKinds' => PhotoKind::takeable(),
             // "Mark as paid": invoices with money owed that this person may take a payment for.
             'payable' => $job->invoices
                 ->filter(fn (Invoice $i) => ! $i->isVoid() && $i->balance > 0 && Gate::allows('recordPayment', $i))

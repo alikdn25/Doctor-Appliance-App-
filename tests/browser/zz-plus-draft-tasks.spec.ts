@@ -35,7 +35,7 @@ test('the round "+" is on every screen and opens Job, Expense, Trip and Task', a
     }
     await openPlus(page);
     // From the bottom up; the booking pair (Quick booking · Book customer) nearest the thumb.
-    const items = page.locator('[data-test="create-menu"] button');
+    const items = page.locator('[data-test="create-menu"] :is(button, label)');
     await expect(items).toHaveText([
         'Task',
         'Trip',

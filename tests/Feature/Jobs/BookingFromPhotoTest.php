@@ -159,7 +159,7 @@ test('after saving, the photos are attached to the new job', function () {
     $job = inCompany($this->company, fn () => ServiceJob::with('appliances')->sole());
     $saved = inCompany($this->company, fn () => JobPhoto::query()->where('service_job_id', $job->id)->get());
     expect($saved)->toHaveCount(2)
-        ->and($saved[0]->kind)->toBe(PhotoKind::Before)
+        ->and($saved->pluck('kind')->all())->toBe([PhotoKind::Attachment, PhotoKind::Attachment])
         ->and($saved[0]->user_id)->toBe($this->owner->id)
         ->and($saved[0]->path)->toStartWith("companies/{$this->company->id}/jobs/{$job->id}/photos/")
         ->and($job->appliances->first()->serial_number)->toBe('FD980100123');
@@ -177,7 +177,29 @@ test('photos removed in the form are not attached', function () {
 
     $this->post(route('jobs.store'), ['quick_booking' => true, 'booking_photos' => [$photos[1]['id']]])->assertSessionHasNoErrors();
 
-    expect(inCompany($this->company, fn () => JobPhoto::query()->count()))->toBe(1);
+    expect(inCompany($this->company, fn () => JobPhoto::query()->count()))->toBe(1)
+        ->and(inCompany($this->company, fn () => JobPhoto::query()->sole()->kind))->toBe(PhotoKind::Attachment);
+});
+
+test('the job page lists booking photos under Files as attachments, and the camera buttons stay Before / After', function () {
+    $fake = FakeAiTransport::install(photoAnswer());
+    $photos = $this->post(route('jobs.quick-booking.parse'), ['photos' => [screenshot()]], ['Accept' => 'application/json'])
+        ->assertOk()->json('photos');
+    $this->post(route('jobs.store'), [
+        'quick_booking' => true, 'new_customer_mode' => true,
+        'new_customer' => ['first_name' => 'Maria', 'last_name' => 'Lopez', 'phone' => '604 555 0177'],
+        'booking_photos' => array_column($photos, 'id'),
+    ])->assertSessionHasNoErrors();
+    $job = inCompany($this->company, fn () => ServiceJob::query()->sole());
+
+    $this->get(route('jobs.show', $job))->assertOk()->assertInertia(fn ($page) => $page
+        ->where('job.photos.0.kind', 'attachment')
+        ->where('photoKinds', [['value' => 'before', 'label' => 'Before'], ['value' => 'after', 'label' => 'After']]));
+    // A technician's camera upload cannot be filed as an attachment.
+    $this->post(route('jobs.photos.store', $job), [
+        'kind' => 'attachment', 'client_uuid' => (string) Str::uuid(), 'photo' => UploadedFile::fake()->image('a.jpg'),
+    ], ['Accept' => 'application/json'])->assertUnprocessable();
+    expect($fake->requests)->not->toBeEmpty();
 });
 
 test('another person\'s or another company\'s booking photos are never attached', function () {
@@ -234,7 +256,8 @@ test('the assistant proposes a booking from a screenshot and its photos are atta
 
     $this->post(route('jobs.store'), ['quick_booking' => true, 'booking_photos' => array_column($booking['photos'], 'id')])
         ->assertSessionHasNoErrors();
-    expect(inCompany($this->company, fn () => JobPhoto::query()->count()))->toBe(1);
+    expect(inCompany($this->company, fn () => JobPhoto::query()->count()))->toBe(1)
+        ->and(inCompany($this->company, fn () => JobPhoto::query()->sole()->kind))->toBe(PhotoKind::Attachment);
 });
 
 test('the assistant is told to book from photos only when asked, and the tool carries from_photos', function () {
