@@ -3,6 +3,7 @@
 use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Company;
+use App\Support\Tenancy\CurrentCompany;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -21,8 +22,9 @@ test('the owner saves the service area and every page gets it for address sugges
 
     $this->get(route('company.service-area.edit'))->assertInertia(fn (Assert $page) => $page
         ->component('company/service-area')
-        ->where('area', LOWER_MAINLAND)
-        ->where('auth.company.service_area', LOWER_MAINLAND)
+        // JSON writes 49.0 as 49: compared loosely.
+        ->where('area', fn ($area) => collect($area)->all() == LOWER_MAINLAND)
+        ->where('auth.company.service_area', fn ($area) => collect($area)->all() == LOWER_MAINLAND)
         ->where('auth.company.country', 'CA'));
 });
 
@@ -83,6 +85,7 @@ test('only the owner can change the service area', function () {
 test("the service area is per company: another company's box never leaks", function () {
     $this->put(route('company.service-area.update'), LOWER_MAINLAND);
 
+    app(CurrentCompany::class)->forget();
     $other = Company::factory()->create(['country' => 'US']);
     $this->actingAs(memberOf($other, UserRole::Owner));
 

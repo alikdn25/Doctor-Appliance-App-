@@ -29,7 +29,9 @@ test('"+" → Assistant opens the assistant with the question field focused', as
 
     await assistant.click();
     await expect(page).toHaveURL(/\/assistant\?focus=1$/);
-    await expect(page.locator('[data-test="assistant-question"]')).toBeFocused();
+    await expect(
+        page.locator('[data-test="assistant-question"]'),
+    ).toBeFocused();
     // The hidden keyboard holder is gone.
     await expect(page.locator('#da-keyboard-holder')).toHaveCount(0);
 });

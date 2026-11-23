@@ -4,7 +4,7 @@ import { suggestionRequest } from '../../resources/js/lib/places-request.ts';
 
 const lowerMainland = { south: 49.0, north: 49.5, west: -123.35, east: -121.3 };
 
-test('suggestions are limited strictly to the company box and to Canada', () => {
+void test('suggestions are limited strictly to the company box and to Canada', () => {
     const token = { session: 1 };
     const request = suggestionRequest('123 Main', 'CA', lowerMainland, token);
 
@@ -22,7 +22,7 @@ test('suggestions are limited strictly to the company box and to Canada', () => 
     assert.equal('locationBias' in request, false);
 });
 
-test('without a service area only the country limits suggestions', () => {
+void test('without a service area only the country limits suggestions', () => {
     assert.deepEqual(suggestionRequest('Main St', 'US', null), {
         input: 'Main St',
         includedRegionCodes: ['us'],
