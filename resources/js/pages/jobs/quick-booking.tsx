@@ -1,20 +1,26 @@
 import { Head, router } from '@inertiajs/react';
-import { Sparkles } from 'lucide-react';
-import type { FormEvent } from 'react';
+import { Paperclip, Sparkles, X } from 'lucide-react';
+import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
 import { ChatDock } from '@/components/ui/chat-dock';
+import { IconButton } from '@/components/ui/icon-button';
 import { MicButton, micFromShortcut } from '@/components/ui/mic-button';
 import { Textarea } from '@/components/ui/textarea';
 import { xsrfToken } from '@/lib/http';
+import { compressImage } from '@/lib/image';
 import { useTrans } from '@/lib/i18n';
 import {
     clearBooking,
     handQuickResult,
+    keepQuickBookingPhotos,
     keepQuickBookingText,
+    MAX_BOOKING_PHOTOS,
+    quickBookingPhotos,
     quickBookingText,
 } from '@/lib/quick-booking';
+import type { QuickBookingPhoto } from '@/lib/quick-booking';
 import { create } from '@/routes/jobs';
 import { parse } from '@/routes/jobs/quick-booking';
 
@@ -23,17 +29,69 @@ import { parse } from '@/routes/jobs/quick-booking';
  * the keyboard's) or an SMS pasted in — and Parse, docked right on top of the keyboard while typing. The AI reads it and the usual Book customer form opens filled in; nothing is saved until
  * the person presses Save there. When the AI does not answer, the message is shown and the text stays.
  *
- * The text lives in memory only: closing this screen (✕, back, a swipe) empties it; it is kept only on the way to the
- * filled form, for "Back to the text".
+ * The paperclip next to the microphone adds up to 5 photos (gallery or camera, shrunk on the phone to 1600 px): a
+ * screenshot of the customer's message, a rating plate. Photos only, text only, or both. Their previews sit above the
+ * text field, each with ✕; after saving the booking they become the job's photos. "Booking from photo" in "+" opens
+ * this screen with the photo picker (`?photo=1`).
+ *
+ * The text and photos live in memory only: closing this screen (✕, back, a swipe) empties them; they are kept only
+ * on the way to the filled form, for "Back to the text".
  */
 export default function QuickBooking() {
     const t = useTrans();
     const [text, setText] = useState(quickBookingText);
+    const [photos, setPhotos] =
+        useState<QuickBookingPhoto[]>(quickBookingPhotos);
     const [parsing, setParsing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const toForm = useRef(false);
+    const picker = useRef<HTMLInputElement>(null);
+    const [photoFirst] = useState(
+        () =>
+            typeof window !== 'undefined' &&
+            new URLSearchParams(window.location.search).get('photo') === '1',
+    );
 
     useEffect(() => keepQuickBookingText(text), [text]);
+    useEffect(() => keepQuickBookingPhotos(photos), [photos]);
+    // "Booking from photo" ("+"): the photo picker opens right away (the tap in the menu still counts as the user's).
+    useEffect(() => {
+        if (photoFirst) picker.current?.click();
+    }, [photoFirst]);
+
+    const addPhotos = async (event: ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files ?? []);
+        event.target.value = '';
+        const room = MAX_BOOKING_PHOTOS - photos.length;
+        setError(
+            files.length > room
+                ? t('jobs.quick_booking.photo_limit', {
+                      count: MAX_BOOKING_PHOTOS,
+                  })
+                : null,
+        );
+        const added = await Promise.all(
+            files.slice(0, Math.max(0, room)).map(async (file) => {
+                const { blob, filename } = await compressImage(file, 1600);
+
+                return {
+                    id: `${Date.now()}-${Math.random()}`,
+                    blob,
+                    filename,
+                    preview: URL.createObjectURL(blob),
+                };
+            }),
+        );
+        setPhotos((list) => [...list, ...added].slice(0, MAX_BOOKING_PHOTOS));
+    };
+    const removePhoto = (id: string) =>
+        setPhotos((list) => {
+            const photo = list.find((p) => p.id === id);
+            if (photo) URL.revokeObjectURL(photo.preview);
+
+            return list.filter((p) => p.id !== id);
+        });
+    const empty = text.trim() === '' && photos.length === 0;
     useEffect(
         () => () => {
             if (!toForm.current) clearBooking();
@@ -43,28 +101,38 @@ export default function QuickBooking() {
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        if (text.trim() === '' || parsing) return;
+        if (empty || parsing) return;
         setParsing(true);
         setError(null);
+        const body = new FormData();
+        if (text.trim() !== '') body.append('text', text);
+        photos.forEach((photo) =>
+            body.append('photos[]', photo.blob, photo.filename),
+        );
         fetch(parse().url, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
                 Accept: 'application/json',
-                'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-XSRF-TOKEN': xsrfToken(),
             },
-            body: JSON.stringify({ text }),
+            body,
         })
             .then(async (response) => {
-                const body = await response.json().catch(() => null);
+                const answer = await response.json().catch(() => null);
                 if (!response.ok) {
                     throw new Error(
-                        body?.message ?? t('jobs.quick_booking.failed'),
+                        response.status === 413 ||
+                            Object.keys(answer?.errors ?? {}).some((key) =>
+                                key.startsWith('photos'),
+                            )
+                            ? t('jobs.quick_booking.photo_failed')
+                            : (answer?.message ??
+                                  t('jobs.quick_booking.failed')),
                     );
                 }
-                handQuickResult(body);
+                handQuickResult(answer);
                 toForm.current = true;
                 router.visit(create({ query: { book: 1, quick: 1 } }).url, {
                     onCancel: () => {
@@ -95,7 +163,7 @@ export default function QuickBooking() {
                 </label>
                 <Textarea
                     id="quick-booking-text"
-                    autoFocus
+                    autoFocus={!photoFirst}
                     rows={12}
                     maxLength={5000}
                     className="min-h-[calc(var(--app-vvh,100dvh)*0.4)] text-base"
@@ -117,7 +185,59 @@ export default function QuickBooking() {
                     </p>
                 )}
                 <ChatDock scrollOnKeyboard={false}>
+                    {photos.length > 0 && (
+                        <div
+                            className="mb-2 flex gap-2 overflow-x-auto pt-1.5"
+                            data-test="quick-booking-photos"
+                        >
+                            {photos.map((photo, index) => (
+                                <div
+                                    key={photo.id}
+                                    className="relative size-16 shrink-0"
+                                >
+                                    <img
+                                        src={photo.preview}
+                                        alt={t('jobs.quick_booking.photo', {
+                                            number: index + 1,
+                                        })}
+                                        className="size-16 rounded-xl border object-cover shadow-sm"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => removePhoto(photo.id)}
+                                        className="absolute -top-1.5 -right-1.5 inline-flex size-7 items-center justify-center rounded-full bg-slate-900 text-white shadow"
+                                        aria-label={t(
+                                            'jobs.quick_booking.remove_photo',
+                                        )}
+                                        data-test="quick-booking-photo-remove"
+                                    >
+                                        <X className="size-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     <div className="flex items-end gap-2">
+                        <input
+                            ref={picker}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(event) => void addPhotos(event)}
+                            data-test="quick-booking-photo-input"
+                        />
+                        <IconButton
+                            label={t('jobs.quick_booking.attach')}
+                            variant="plain"
+                            disabled={
+                                photos.length >= MAX_BOOKING_PHOTOS || parsing
+                            }
+                            onClick={() => picker.current?.click()}
+                            data-test="quick-booking-attach"
+                        >
+                            <Paperclip />
+                        </IconButton>
                         <MicButton
                             autoStart={micFromShortcut()}
                             value={text}
@@ -131,7 +251,7 @@ export default function QuickBooking() {
                             type="submit"
                             size="lg"
                             className="min-w-0 flex-1"
-                            disabled={text.trim() === ''}
+                            disabled={empty}
                             loading={parsing}
                             data-test="quick-booking-parse"
                         >

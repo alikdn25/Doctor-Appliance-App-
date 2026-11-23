@@ -2734,6 +2734,27 @@ registers for push only when the app reports `push: true` (new field of `AppShel
 without Firebase skip push. The fix takes effect on the installed 1.0.14 after the server deploy (no reinstall).
 Next: create the Firebase project and the secret (docs/ANDROID.md, Push notifications) to turn push on.
 
+## Booking from photo (November 23, 2026)
+
+✅ Quick booking: a paperclip next to the microphone adds up to 5 photos (gallery or camera, shrunk on the phone to
+1600 px). Photos only, text only or both. Previews above the text field, each with ✕. The AI (`AI_MODEL_BOOKING`,
+`QuickBookingParser`) reads name, last name, phone, email, address, appliance, brand, model, serial number (new field),
+problem, date and time from the photos and the text; anything unreadable stays empty, nothing is invented, no field is
+required. The filled form shows the photos above the fields ("Photos to attach to the job", ✕ removes one) and a Serial
+number field when one was read.
+✅ Photos wait in the sender's private folder (`booking-photos/{company}/{user}`, `BookingPhotos`); on Save / Save as
+draft they are moved to the new job as its "Before" photos (`booking_photos` on `jobs.store`). An id resolves only in
+the sender's own folder: another person or company can never attach them. Preview: `jobs.quick-booking.photo`.
+✅ Assistant: told to read a customer's photo or screenshot and call `propose_booking` (new `from_photos`) when asked
+to book, or when the photo is a customer's request and no invoice is asked for; never without a photo and a request.
+Confirm reads the photos again with the booking parser and opens the filled form with them; saved = attached.
+✅ "+" menu: new item "Booking from photo" (Owner/Office) opens Quick booking with the photo picker (`?photo=1`).
+
+- Tests: `BookingFromPhotoTest` (photo without text, photo with text, unreadable phone empty, photos attached, removed
+  photos not attached, other person/company isolation, assistant from a screenshot); browser
+  `zz-booking-from-photo.spec.ts`; menu lists in `navigation` and `zz-plus-draft-tasks` updated.
+- No migration. Next: try on a real Android phone (camera and gallery from the picker, a real SMS screenshot).
+
 ## Assistant in "+" and Service area for address suggestions (November 23, 2026)
 
 ✅ "+" menu: "Assistant" (Sparkles) for those who can use the assistant (Owner), the first item from the button,

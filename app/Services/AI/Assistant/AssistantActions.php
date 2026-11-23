@@ -8,6 +8,7 @@ use App\Enums\MessageKind;
 use App\Enums\SmsMode;
 use App\Enums\VisitStatus;
 use App\Http\Controllers\Jobs\JobController;
+use App\Http\Controllers\Jobs\QuickBookingController;
 use App\Messaging\MessagingPresenter;
 use App\Messaging\Messenger;
 use App\Models\AssistantAction;
@@ -20,6 +21,7 @@ use App\Services\AuditLogger;
 use App\Support\Audit\ActionSource;
 use App\Support\Billing\Money;
 use App\Support\Customers\CustomerFinder;
+use App\Support\Jobs\BookingPhotos;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -44,7 +46,7 @@ class AssistantActions
         [$params, $summary] = match ($type) {
             AssistantAction::PAYMENT_REMINDER => $this->reminderProposal($input),
             AssistantAction::RESCHEDULE => $this->rescheduleProposal($input, $user),
-            AssistantAction::BOOKING => $this->bookingProposal($input),
+            AssistantAction::BOOKING => $this->bookingProposal($input, $conversation),
             AssistantAction::INVOICE => $this->invoiceProposal($input, $conversation),
         };
 
@@ -146,15 +148,23 @@ class AssistantActions
      * @param  array<string, mixed>  $input
      * @return array{0: array<string, mixed>, 1: string}
      */
-    private function bookingProposal(array $input): array
+    private function bookingProposal(array $input, string $conversation): array
     {
         $text = trim((string) ($input['text'] ?? ''));
+        // A booking read from a photo or screenshot: the photos of the latest question with photos go with it, to be
+        // read again for the form and attached to the new job.
+        $photos = ($input['from_photos'] ?? false) === true ? AssistantPhotos::latest($conversation) : [];
 
-        if ($text === '') {
+        if ($text === '' && $photos === []) {
             throw new AssistantError('Say what the booking is.');
         }
 
-        return [['text' => mb_substr($text, 0, 5000)], __('assistant.actions.booking', ['text' => mb_substr($text, 0, 300)])];
+        return [
+            ['text' => mb_substr($text, 0, 5000), 'photos' => $photos],
+            $photos === []
+                ? __('assistant.actions.booking', ['text' => mb_substr($text, 0, 300)])
+                : trans_choice('assistant.actions.booking_photos', count($photos), ['text' => mb_substr($text, 0, 300)]),
+        ];
     }
 
     /**
@@ -256,7 +266,8 @@ class AssistantActions
      */
     private function booking(AssistantAction $action, User $user, QuickBookingParser $parser, CustomerFinder $finder): array
     {
-        $fields = $parser->parse($action->params['text'], currentCompany(), $user);
+        $photos = array_values((array) ($action->params['photos'] ?? []));
+        $fields = $parser->parse((string) $action->params['text'], currentCompany(), $user, $photos);
         $found = $finder->find($fields['phone'], $fields['first_name'], $fields['last_name'], $fields['address']['line1'] ?? null);
 
         return [
@@ -265,6 +276,8 @@ class AssistantActions
                 'fields' => $fields,
                 'customer' => $found === null ? null : JobController::customerOption($found['customer']),
                 'matched_by' => $found['by'] ?? null,
+                // Copies of the chat's photos, attached to the job when the booking is saved.
+                'photos' => QuickBookingController::photoList(BookingPhotos::copy($photos, currentCompany()->id, $user->id)),
             ],
         ];
     }

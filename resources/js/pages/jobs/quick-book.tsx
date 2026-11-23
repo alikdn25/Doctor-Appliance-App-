@@ -141,6 +141,7 @@ type QuickResult = {
         appliance_type: string | null;
         brand: string | null;
         model: string | null;
+        serial_number?: string | null;
         problem: string | null;
         date: string | null;
         arrival_now: boolean;
@@ -150,6 +151,8 @@ type QuickResult = {
         /** Fields the AI is not sure about (QuickBookingParser::FIELDS). */
         uncertain_fields: string[];
     };
+    /** Photos the booking was read from, attached to the job on save. */
+    photos?: { id: string; url: string }[];
 };
 
 /** How a field filled by the AI is marked until the person checks the form. */
@@ -172,6 +175,7 @@ const UNSURE_KEYS: Record<string, string> = {
     appliance_type: 'appliance',
     brand: 'brand_model',
     model: 'brand_model',
+    serial_number: 'brand_model',
     problem: 'problem',
     date: 'when',
     arrival: 'when',
@@ -753,6 +757,12 @@ export default function QuickBook({
     } | null>(null);
     const [applianceBrand, setApplianceBrand] = useState('');
     const [applianceModel, setApplianceModel] = useState('');
+    const [applianceSerial, setApplianceSerial] = useState('');
+    // Photos the booking was read from (Quick booking / assistant): shown above the form, each removable with ✕, and
+    // attached to the new job when it is saved.
+    const [bookingPhotos, setBookingPhotos] = useState<
+        { id: string; url: string }[]
+    >([]);
     const hl = (key: string) =>
         aiUnsure.has(key)
             ? AI_UNSURE
@@ -779,8 +789,13 @@ export default function QuickBook({
                   postal_code: f.address.postal_code ?? '',
               }
             : null;
+        setBookingPhotos(result.photos ?? []);
         const extra = !f.appliance_type
-            ? [f.brand, f.model && `model ${f.model}`]
+            ? [
+                  f.brand,
+                  f.model && `model ${f.model}`,
+                  f.serial_number && `serial ${f.serial_number}`,
+              ]
                   .filter(Boolean)
                   .join(', ')
             : '';
@@ -795,7 +810,8 @@ export default function QuickBook({
             filled.add('appliance');
             setApplianceBrand(f.brand ?? '');
             setApplianceModel(f.model ?? '');
-            mark('brand_model', f.brand ?? f.model);
+            setApplianceSerial(f.serial_number ?? '');
+            mark('brand_model', f.brand ?? f.model ?? f.serial_number);
         }
 
         let verifyTarget: 'new_customer' | 'new_property' | null = null;
@@ -1130,6 +1146,7 @@ export default function QuickBook({
             ...(occupantOn ? { billing } : {}),
             add_visit: booking && slot.kind !== 'none',
             visit: { ...d.visit, start_time: times.start, end_time: times.end },
+            booking_photos: bookingPhotos.map((photo) => photo.id),
             ...(applianceType === ''
                 ? {}
                 : known
@@ -1140,6 +1157,7 @@ export default function QuickBook({
                                 type: applianceType,
                                 manufacturer: applianceBrand.trim() || null,
                                 model_number: applianceModel.trim() || null,
+                                serial_number: applianceSerial.trim() || null,
                             },
                         ],
                     }),
@@ -1334,6 +1352,47 @@ export default function QuickBook({
                             </Button>
                         )}
                     </div>
+                )}
+
+                {bookingPhotos.length > 0 && (
+                    <section className="space-y-1.5" data-test="booking-photos">
+                        <p className="text-sm text-muted-foreground">
+                            {t('jobs.quick_booking.photos_title')}
+                        </p>
+                        <div className="flex gap-2 overflow-x-auto pt-1.5">
+                            {bookingPhotos.map((photo, index) => (
+                                <div
+                                    key={photo.id}
+                                    className="relative size-16 shrink-0"
+                                >
+                                    <img
+                                        src={photo.url}
+                                        alt={t('jobs.quick_booking.photo', {
+                                            number: index + 1,
+                                        })}
+                                        className="size-16 rounded-xl border object-cover shadow-sm"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setBookingPhotos((list) =>
+                                                list.filter(
+                                                    (p) => p.id !== photo.id,
+                                                ),
+                                            )
+                                        }
+                                        className="absolute -top-1.5 -right-1.5 inline-flex size-7 items-center justify-center rounded-full bg-slate-900 text-white shadow"
+                                        aria-label={t(
+                                            'jobs.quick_booking.remove_photo',
+                                        )}
+                                        data-test="booking-photo-remove"
+                                    >
+                                        <X className="size-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
                 )}
 
                 {quickInfo && (
@@ -1789,6 +1848,30 @@ export default function QuickBook({
                                             }
                                         />
                                     </FormField>
+                                    {applianceSerial !== '' && (
+                                        <FormField
+                                            id="booking-appliance-serial"
+                                            label={t(
+                                                'appliances.fields.serial_number',
+                                            )}
+                                            className={cn(
+                                                'col-span-2',
+                                                hl('brand_model'),
+                                            )}
+                                        >
+                                            <Input
+                                                id="booking-appliance-serial"
+                                                maxLength={100}
+                                                value={applianceSerial}
+                                                onChange={(event) =>
+                                                    setApplianceSerial(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                data-test="booking-appliance-serial"
+                                            />
+                                        </FormField>
+                                    )}
                                 </div>
                             )}
                         <InputError

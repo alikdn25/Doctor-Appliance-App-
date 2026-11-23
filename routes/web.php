@@ -208,6 +208,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('jobs/parse-message', BookingTextController::class)->middleware('throttle:30,1')->name('jobs.parse-message');
         Route::get('jobs/quick-booking', [QuickBookingController::class, 'show'])->name('jobs.quick-booking');
         Route::post('jobs/quick-booking/parse', [QuickBookingController::class, 'parse'])->middleware('throttle:quick-booking')->name('jobs.quick-booking.parse');
+        Route::get('jobs/quick-booking/photos/{photo}', [QuickBookingController::class, 'photo'])->name('jobs.quick-booking.photo');
         Route::get('jobs/deleted', [JobController::class, 'trash'])->name('jobs.trash');
         Route::post('jobs/{job}/restore', [JobController::class, 'restore'])->withTrashed()->name('jobs.restore');
         Route::resource('jobs', JobController::class);

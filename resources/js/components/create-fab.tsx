@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react';
 import {
+    Camera,
     Car,
     CreditCard,
     ListTodo,
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { create as createCharge } from '@/routes/charges';
 import { create as createExpense } from '@/routes/expenses';
 import { index as assistantPage } from '@/routes/assistant';
+import { quickBooking } from '@/routes/jobs';
 import { index as trips } from '@/routes/trips';
 
 type Item = {
@@ -30,7 +32,7 @@ type Item = {
 /**
  * The round "+" above the bottom bar on every screen (owner's task, Oct 24), volumetric with the blue glow. A tap
  * opens, from the bottom up next to the thumb, Quick booking and Book customer side by side (Book customer on the day
- * the calendar shows), then Charge reader · Expense · Trip · Task. Expense and Trip open the new expense and the mileage form, Task opens the task sheet here.
+ * the calendar shows), then Booking from photo · Charge reader · Expense · Trip · Task. Expense and Trip open the new expense and the mileage form, Task opens the task sheet here.
  * Assistant (Owner, owner's task of November 23) is the first item from the button, below the booking buttons; it
  * opens the assistant with the cursor in the question field and the keyboard up.
  * Screens with their own pinned actions (forms) hide it, like the bottom bar. Icons and tap areas are 30% larger than
@@ -104,6 +106,16 @@ export function CreateFab() {
                 ),
                 icon: <CreditCard />,
                 onSelect: () => router.visit(createCharge()),
+            },
+            // Booking from photo (owner's task of November 23): Quick booking with the photo picker open at once.
+            can.quickBooking === true && {
+                key: 'booking-photo',
+                label: t('nav.create.booking_from_photo'),
+                icon: <Camera />,
+                onSelect: () =>
+                    router.visit(quickBooking({ query: { photo: 1 } }), {
+                        preserveState: false,
+                    }),
             },
         ] as (Item | false | undefined)[]
     ).filter((item): item is Item => !!item);

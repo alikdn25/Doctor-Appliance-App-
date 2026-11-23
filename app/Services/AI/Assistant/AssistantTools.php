@@ -90,9 +90,10 @@ class AssistantTools
                 'date' => $date,
                 'start_time' => ['type' => 'string', 'description' => 'HH:MM, 24-hour: start of the new arrival window'],
             ], ['visit_id', 'date', 'start_time']),
-            $tool('propose_booking', 'Propose creating a new booking: pass everything the user said about it (customer, phone, address, appliance, problem, time) as text. After Confirm the booking form opens filled in; the user saves it.', [
+            $tool('propose_booking', 'Propose creating a new booking: pass everything about it (customer first and last name, phone, email, address, appliance, brand, model, serial number, problem, date and time) as text, as said by the user or read from the photos. Set from_photos to true when the booking is read from photos or screenshots the user sent: they are read again for the form and attached to the new job. After Confirm the booking form opens filled in; the user saves it.', [
                 'text' => ['type' => 'string'],
-            ], ['text']),
+                'from_photos' => ['type' => 'boolean'],
+            ], ['text', 'from_photos']),
             [
                 'name' => 'create_invoice',
                 'description' => 'Propose an invoice read from the photos/screenshots or the text the user sent: customer name, phone, email, address, work lines with their amounts and whether the amounts include tax. The app finds or creates the customer, calculates the company\'s taxes and the total itself and shows a preview card with Confirm & send, Edit and Cancel. Nothing is saved or sent until the user presses a button. Never invent a phone number or an amount: if one is missing, ask the user instead of calling this tool.',
