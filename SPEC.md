@@ -897,6 +897,16 @@ set up is built, stays off and says what is missing.
   the header.
 - Unchanged: the N key (Book customer on a computer), a tap on an empty calendar slot, New job on a customer's page.
 
+### 7.23 Jobs without tabs (owner's task of November 23)
+
+- Jobs has no Open / All / Deleted tabs. It opens on the open (unfinished) jobs sorted by urgency; search and the
+  filter chips (No time, Overdue, Drafts, No address and the rest) are unchanged.
+- "⋯" in the Jobs header holds the sort and two modes: **All jobs** (every job) and **Deleted** (the trash, with the
+  number of deleted jobs when it is above 0).
+- In All jobs and Deleted a line under the header names the mode; its ✕ goes back to the open jobs.
+- The count under the header ("1 job") is the count of the mode shown.
+- The trash is unchanged: deleted jobs are kept 30 days and restored with one tap.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).

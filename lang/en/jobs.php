@@ -152,6 +152,12 @@ return [
     'confirm_delete_restorable' => 'Delete job #:number? It can be restored from "Deleted jobs" for 30 days.',
     'restored' => 'Job #:number restored.',
     'restore' => 'Restore',
+    // "⋯" on Jobs (owner's task of November 23): the modes besides the open jobs.
+    'modes' => [
+        'all' => 'All jobs',
+        'deleted' => 'Deleted',
+        'back' => 'Back to open jobs',
+    ],
     'trash' => [
         'title' => 'Deleted jobs',
         'hint' => 'Deleted jobs can be restored for :days days.',

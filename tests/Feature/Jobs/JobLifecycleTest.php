@@ -51,7 +51,7 @@ describe('deleting jobs', function () {
         expect($job->trashed())->toBeTrue()->and($job->deleted_by)->toBe($this->owner->id)
             ->and(AuditLog::query()->where('action', 'job.deleted')->where('user_id', $this->owner->id)->exists())->toBeTrue();
 
-        // The old address opens the Deleted tab of Jobs.
+        // The old address opens Deleted (from "⋯" on Jobs).
         $this->get(route('jobs.trash'))->assertRedirect(route('jobs.index', ['tab' => 'deleted']));
         $this->get(route('jobs.index', ['tab' => 'deleted']))->assertInertia(fn (Assert $page) => $page
             ->component('jobs/index')
@@ -61,6 +61,25 @@ describe('deleting jobs', function () {
         $this->post(route('jobs.restore', $this->job))->assertRedirect(route('jobs.show', $this->job));
         expect(ServiceJob::withoutCompanyScope()->find($this->job->id))->not->toBeNull()
             ->and(AuditLog::query()->where('action', 'job.restored')->exists())->toBeTrue();
+    });
+
+    test('Jobs opens on the open jobs; the deleted count for "⋯" comes with it; Deleted lists and restores (owner\'s task of November 23)', function () {
+        $this->actingAs($this->owner)->delete(route('jobs.destroy', $this->job));
+
+        $this->get(route('jobs.index'))->assertInertia(fn (Assert $page) => $page
+            ->component('jobs/index')
+            ->where('tab', 'open')
+            ->where('filters.sort', 'urgency')
+            ->where('deletedCount', 1)
+            ->where('canViewTrash', true)
+            ->has('jobs.data'));
+
+        $this->get(route('jobs.index', ['tab' => 'all']))->assertInertia(fn (Assert $page) => $page->where('tab', 'all')->where('deletedCount', 1));
+        $this->get(route('jobs.index', ['tab' => 'deleted']))->assertInertia(fn (Assert $page) => $page
+            ->where('tab', 'deleted')->has('deleted', 1)->where('days', 30));
+
+        $this->post(route('jobs.restore', $this->job))->assertRedirect(route('jobs.show', $this->job));
+        $this->get(route('jobs.index'))->assertInertia(fn (Assert $page) => $page->where('deletedCount', 0));
     });
 
     test('after 30 days a deleted job can no longer be restored', function () {

@@ -1,3 +1,15 @@
+# November 23 — Owner's task: Jobs without Open / All / Deleted tabs (done)
+
+1. The tab strip under the Jobs header is gone. Jobs opens on the open (unfinished) jobs by urgency; search and the
+   filter chips are unchanged.
+2. "⋯" in the header: the sort, then **All jobs** and **Deleted** (count on the right when above 0). In those modes a
+   line under the header names the mode; ✕ goes back to the open jobs. The header count is the mode's count.
+3. Trash unchanged (30 days, Restore in the row). The URL keeps `?tab=all` / `?tab=deleted`, so old links work.
+4. Docs: SPEC §7.23, UX-REDESIGN §7.4.
+
+- Tests: `JobLifecycleTest` (open by default with the deleted count, All, Deleted, restore), browser
+  `job-page-feedback.spec.ts` (no tabs, All jobs and Deleted from "⋯", ✕ back to the open jobs).
+
 # November 23 — Owner's task: new Google review text and a larger "+" menu (done)
 
 1. **Review request text** (`ReviewText`, `lang/en/reviews.php` → `request`): with a usable first name

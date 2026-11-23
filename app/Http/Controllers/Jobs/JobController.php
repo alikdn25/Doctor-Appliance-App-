@@ -82,7 +82,7 @@ class JobController extends Controller
     {
         $user = $request->user();
         $canAll = Gate::allows('viewAny', ServiceJob::class);
-        // Links with a filter of the full list (status, technician, dates…) open All; otherwise Open.
+        // Links with a filter of the full list (status, technician, dates…) open All jobs; otherwise the open jobs.
         $allFilters = ['status', 'brand', 'technician', 'type', 'visit_type', 'outcome', 'strict', 'from', 'to'];
         $tab = in_array($request->query('tab'), ['open', 'all', 'deleted'], true)
             ? $request->query('tab')
@@ -778,7 +778,7 @@ class JobController extends Controller
      * Jobs deleted in the last 30 days, which the office can restore.
      */
     /**
-     * Deleted jobs: the Deleted tab of Jobs. The old address opens that tab.
+     * Deleted jobs: the Deleted mode of Jobs (opened from "⋯"). The old address opens it.
      */
     public function trash(): RedirectResponse
     {

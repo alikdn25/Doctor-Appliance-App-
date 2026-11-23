@@ -283,22 +283,25 @@ test('the address of a booked job can be corrected on Edit', async ({
     await expect(page).toHaveURL(new RegExp(`/jobs/${fixture.job_id}$`));
 });
 
-test('Jobs: Open · All · Deleted, one line of chips, compact office cards and folded filters', async ({
+test('Jobs: open jobs without tabs, All jobs and Deleted from "⋯" with ✕ back, chips, cards and folded filters', async ({
     page,
 }, info) => {
     await page.goto('/jobs');
-    await expect(page.getByRole('radio', { name: /^Open/ })).toHaveAttribute(
-        'aria-checked',
-        'true',
-    );
+    // No Open · All · Deleted tabs: the open jobs, no mode line.
+    await expect(page.getByRole('radio', { name: /^Open/ })).toHaveCount(0);
+    await expect(page.locator('[data-test="jobs-mode"]')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Overdue/ })).toBeVisible();
     await page.screenshot({
         path: info.outputPath('jobs-open.png'),
         fullPage: true,
     });
 
-    await page.getByRole('radio', { name: 'All', exact: true }).click();
+    await page.locator('[data-test="action-sheet-button"]').click();
+    await page.locator('[data-test="action-all-jobs"]').click();
     await expect(page).toHaveURL(/tab=all/);
+    await expect(page.locator('[data-test="jobs-mode"]')).toHaveText(
+        /All jobs/,
+    );
     await expect(page.getByRole('combobox')).toHaveCount(0);
     if (info.project.name === 'mobile') {
         const card = page
@@ -330,7 +333,15 @@ test('Jobs: Open · All · Deleted, one line of chips, compact office cards and 
     await expect(page.getByRole('combobox').first()).toBeVisible();
     await page.screenshot({ path: info.outputPath('jobs-list.png') });
 
-    await page.getByRole('radio', { name: /^Deleted/ }).click();
+    await page.locator('[data-test="action-sheet-button"]').click();
+    await page.locator('[data-test="action-deleted-jobs"]').click();
     await expect(page).toHaveURL(/tab=deleted/);
+    await expect(page.locator('[data-test="jobs-mode"]')).toHaveText(/Deleted/);
     await expect(page.getByText(/can be restored for 30 days/)).toBeVisible();
+
+    // ✕ goes back to the open jobs.
+    await page.locator('[data-test="jobs-mode-close"]').click();
+    await expect(page).toHaveURL(/\/jobs$/);
+    await expect(page.locator('[data-test="jobs-mode"]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Overdue/ })).toBeVisible();
 });

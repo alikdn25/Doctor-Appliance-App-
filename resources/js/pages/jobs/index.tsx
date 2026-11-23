@@ -1,8 +1,11 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     ArrowDownWideNarrow,
+    List,
     RotateCcw,
     SlidersHorizontal,
+    Trash2,
+    X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { formatMoney } from '@/components/billing/money';
@@ -22,7 +25,6 @@ import type { FilterChip } from '@/components/ui/filter-chips';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { SearchField } from '@/components/ui/search-field';
-import { SegmentedControl } from '@/components/ui/segmented-control';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
@@ -69,9 +71,11 @@ const REASONS: BacklogFilter[] = [
 ];
 
 /**
- * Jobs (UX-REDESIGN §7.4): one screen with Open (the unfinished queue by urgency, with its count) · All · Deleted,
- * a live search, one line of filter chips (zeros muted, at the end), compact office cards, and the sort under "⋯".
- * Deleted rows carry Restore; the 30-day note is said once at the top.
+ * Jobs (UX-REDESIGN §7.4): opens on the open (unfinished) jobs by urgency, with a live search, one line of filter
+ * chips (zeros muted, at the end) and compact office cards. No tabs (owner's task of November 23): "⋯" in the header
+ * holds the sort, All jobs and Deleted (with its count); in those two modes a line under the header names the mode
+ * and its ✕ goes back to the open jobs. The header count is the count of the mode shown. Deleted rows carry Restore;
+ * the 30-day note is said once at the top.
  */
 export default function JobsIndex({
     tab,
@@ -141,23 +145,27 @@ export default function JobsIndex({
     const apply = (next: Record<string, string>) =>
         go({ ...current, ...(sort ? { sort, dir } : {}), ...next });
 
-    const openCount = unfinishedJobs?.total ?? 0;
-    const tabs = [
-        {
-            value: 'open' as const,
-            label: `${t('jobs.tabs.open')} ${openCount}`,
-        },
-        { value: 'all' as const, label: t('jobs.tabs.all') },
-        ...(canViewTrash
-            ? [
-                  {
-                      value: 'deleted' as const,
-                      label: deletedCount
-                          ? `${t('jobs.tabs.deleted')} ${deletedCount}`
-                          : t('jobs.tabs.deleted'),
-                  },
-              ]
-            : []),
+    // All jobs and Deleted are modes opened from "⋯"; ✕ on the mode line goes back to the open jobs.
+    const openMode = (mode: Tab) =>
+        router.get(index().url, mode === 'open' ? {} : { tab: mode }, {
+            preserveScroll: false,
+        });
+    const modeItems = [
+        canViewAll &&
+            tab !== 'all' && {
+                key: 'all-jobs',
+                label: t('jobs.modes.all'),
+                icon: <List />,
+                onSelect: () => openMode('all'),
+            },
+        canViewTrash &&
+            tab !== 'deleted' && {
+                key: 'deleted-jobs',
+                label: t('jobs.modes.deleted'),
+                hint: deletedCount > 0 ? String(deletedCount) : undefined,
+                icon: <Trash2 />,
+                onSelect: () => openMode('deleted'),
+            },
     ];
 
     // One line of chips; a chip with nothing in it is muted and goes to the end.
@@ -233,10 +241,10 @@ export default function JobsIndex({
                                 <SlidersHorizontal className="size-5" />
                             </button>
                         )}
-                        {sortItems.length > 0 && (
-                            <ActionSheet
-                                title={t('jobs.sort.title')}
-                                items={sortItems.map((item) => ({
+                        <ActionSheet
+                            title={t('jobs.title')}
+                            items={[
+                                ...sortItems.map((item) => ({
                                     key: item.key,
                                     label: item.label,
                                     hint:
@@ -251,22 +259,34 @@ export default function JobsIndex({
                                                     ? ''
                                                     : item.key,
                                         }),
-                                }))}
-                            />
-                        )}
+                                })),
+                                'separator',
+                                ...modeItems,
+                            ]}
+                        />
                     </>
                 }
             />
 
             <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6 lg:max-w-[1440px]">
-                {canViewAll && (
-                    <SegmentedControl
-                        label={t('jobs.title')}
-                        className="flex w-full"
-                        value={tab}
-                        onChange={(next) => go({ tab: next }, false)}
-                        options={tabs}
-                    />
+                {tab !== 'open' && (
+                    <div
+                        className="da-card flex min-h-12 items-center gap-2 py-1 pr-1 pl-4"
+                        data-test="jobs-mode"
+                    >
+                        <p className="min-w-0 flex-1 truncate text-base font-semibold">
+                            {t(`jobs.modes.${tab}`)}
+                        </p>
+                        <button
+                            type="button"
+                            className="da-press inline-flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground [&_svg]:size-5"
+                            aria-label={t('jobs.modes.back')}
+                            onClick={() => openMode('open')}
+                            data-test="jobs-mode-close"
+                        >
+                            <X />
+                        </button>
+                    </div>
                 )}
 
                 {tab !== 'deleted' && (
