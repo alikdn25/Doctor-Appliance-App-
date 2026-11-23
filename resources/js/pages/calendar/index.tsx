@@ -1,5 +1,4 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { BookingButtons } from '@/components/jobs/booking-buttons';
 import { NewMessagesBadge } from '@/components/jobs/new-messages-badge';
 import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import {
@@ -452,7 +451,6 @@ export default function CalendarPage({
             />
 
             <div className="space-y-3 p-4">
-                <BookingButtons date={date} className="sm:max-w-md" />
                 {/* One line: Day | Week | Map, ‹ Today ›, and the date (tap to pick one). */}
                 <div className="flex flex-wrap items-center gap-2">
                     <SegmentedControl

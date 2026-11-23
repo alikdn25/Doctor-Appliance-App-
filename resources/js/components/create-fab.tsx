@@ -139,7 +139,6 @@ export function CreateFab() {
                         {booking && (
                             <li className="w-[min(22rem,calc(100vw-2rem))]">
                                 <BookingButtons
-                                    inMenu
                                     date={calendarDay}
                                     onPick={() => setOpen(false)}
                                 />

@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 /**
- * Quick booking on a 390 px phone: the two booking buttons (violet Quick booking, white Book customer) on the
- * calendar and in "+" (no longer on Today); the big text field and Parse; without an AI key the message is shown and the text
+ * Quick booking on a 390 px phone: the two booking buttons (violet Quick booking, white Book customer) only in the
+ * "+" menu (never on Today, Jobs or Calendar Day / Week / Map); the big text field and Parse; without an AI key the message is shown and the text
  * stays. The filled Book customer form marks the AI-filled fields ("Check" on the ones the AI is unsure of) and offers
  * free windows when the text named no time; nothing is saved until Save. Closing either screen keeps nothing.
  */
@@ -49,18 +49,37 @@ async function stubParse(page: Page) {
     );
 }
 
+/** Booking starts only from the "+" menu. */
+async function openFromPlus(page: Page, item: string) {
+    await page.locator('[data-test="create-fab"]').click();
+    await page.locator(`[data-test="${item}"]`).click();
+}
+
 test('Quick booking keeps the text when the AI does not answer', async ({
     page,
 }) => {
-    // Today has no booking buttons any more (they stay in "+" and on the calendar).
-    await page.goto('/my-jobs');
-    await expect(page.locator('[data-test="create-fab"]')).toBeVisible();
-    await expect(page.locator('[data-test="start-quick-booking"]')).toHaveCount(
-        0,
-    );
+    // No screen shows the booking buttons: they live only in the "+" menu (owner's task of November 23).
+    for (const url of [
+        '/my-jobs',
+        '/jobs',
+        '/calendar?view=day',
+        '/calendar?view=week',
+        '/calendar?view=map',
+    ]) {
+        await page.goto(url);
+        await expect(page.locator('[data-test="create-fab"]')).toBeVisible();
+        await expect(page.locator('[data-test="booking-buttons"]')).toHaveCount(
+            0,
+        );
+    }
+    // Calendar: Day / Week / Map moves up right under the header.
     await page.goto('/calendar');
-    const quick = page.locator('[data-test="start-quick-booking"]');
-    const manual = page.locator('[data-test="start-book-customer"]');
+    const views = page.getByRole('radiogroup', { name: 'Calendar' });
+    await expect(views).toBeVisible();
+    expect((await views.boundingBox())!.y).toBeLessThan(180);
+    await page.locator('[data-test="create-fab"]').click();
+    const quick = page.locator('[data-test="create-quick-booking"]');
+    const manual = page.locator('[data-test="create-job"]');
     // Two buttons side by side: Quick booking (violet) and Book customer (white).
     await expect(quick).toBeVisible();
     await expect(manual).toBeVisible();
@@ -81,7 +100,7 @@ test('Quick booking keeps the text when the AI does not answer', async ({
     ).toBeVisible();
     await expect(text).toHaveValue(TEXT);
 
-    // "+" has both buttons too.
+    // "+" on Today has them too.
     await page.goto('/my-jobs');
     await page.locator('[data-test="create-fab"]').click();
     await page.locator('[data-test="create-quick-booking"]').click();
@@ -92,7 +111,7 @@ test('closing Quick booking empties the text; it opens empty again', async ({
     page,
 }) => {
     await page.goto('/calendar');
-    await page.locator('[data-test="start-quick-booking"]').click();
+    await openFromPlus(page, 'create-quick-booking');
     const text = page.locator('[data-test="quick-booking-text"]');
     await text.fill(TEXT);
     // Back (the header arrow or the phone's back): no "Are you sure?".
@@ -103,7 +122,7 @@ test('closing Quick booking empties the text; it opens empty again', async ({
     });
     await page.goBack();
     await expect(page).toHaveURL(/\/calendar/);
-    await page.locator('[data-test="start-quick-booking"]').click();
+    await openFromPlus(page, 'create-quick-booking');
     await expect(text).toHaveValue('');
     expect(asked).toBe(false);
     // Nothing of it is in the browser's storage.
@@ -167,7 +186,7 @@ test('closing Book customer empties the form; a new booking opens empty', async 
     page,
 }) => {
     await page.goto('/calendar');
-    await page.locator('[data-test="start-book-customer"]').click();
+    await openFromPlus(page, 'create-job');
     await expect(page).toHaveURL(/\/jobs\/create\?book=1/);
     await page.locator('#booking-phone').fill('+16045550311');
     await page.locator('#booking-name').fill('Closing Test');
@@ -183,7 +202,7 @@ test('closing Book customer empties the form; a new booking opens empty', async 
     expect(asked).toBe(false);
 
     await page.goto('/calendar');
-    await page.locator('[data-test="start-book-customer"]').click();
+    await openFromPlus(page, 'create-job');
     await expect(page.locator('#booking-phone')).toHaveValue('');
     await expect(page.locator('#booking-name')).toHaveValue('');
     await expect(page.locator('#booking-problem')).toHaveValue('');

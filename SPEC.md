@@ -364,7 +364,7 @@ time. A daily request limit per company is set in `.env` (`AI_DAILY_LIMIT_PER_CO
 
 #### 7.15.1 Quick booking (PR 1)
 
-- "Quick booking" on Today and in the "+" menu; Owner and Office only.
+- "Quick booking" only in the "+" menu (see §7.22); Owner and Office only.
 - One big multi-line text field and Parse. Voice is the phone keyboard's microphone (no own recording); an SMS from
   the customer can be pasted; the text can be edited before Parse.
 - Parse sends the text (Russian, English or mixed) to `AI_MODEL_BOOKING` and gets: first and last name, phone, email,
@@ -808,7 +808,7 @@ set up is built, stays off and says what is missing.
 
 #### 7.18.9 Today
 
-- Quick booking and Book customer are no longer on Today; they stay in "+" and on the calendar.
+- Quick booking and Book customer are no longer on Today; they live only in "+" (§7.22).
 
 ### 7.19 Push in the Android app; invoices, receipts and reviews by email only (owner's task of November 22)
 
@@ -888,6 +888,15 @@ set up is built, stays off and says what is missing.
   changes the invoice.
 - No internet: Card stays pressable and says "No internet — card payment needs connection"; no offline payments.
 
+### 7.22 Booking buttons only in "+" (owner's task of November 23)
+
+- Quick booking and Book customer are shown only in the menu of the round "+" (on every screen, phone and computer;
+  Book customer opens on the day the calendar shows).
+- No screen shows them itself: not Today, not Jobs, not Calendar (Day, Week, Map), not the sidebar or More.
+- The freed space is not filled: on the calendar the Day / Week / Map row and the date navigation sit right under
+  the header.
+- Unchanged: the N key (Book customer on a computer), a tap on an empty calendar slot, New job on a customer's page.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).
@@ -906,7 +915,7 @@ set up is built, stays off and says what is missing.
 
 ## 9. Non-functional requirements
 
-- Mobile-first UI; technician screens usable with one hand. Visible Menu and permanent Book customer actions lead directly to booking, including from Calendar. Login opens the working company for Owners/Admins and My jobs for technicians. Platform administration/support are separate; persistent sign-in is enabled by default.
+- Mobile-first UI; technician screens usable with one hand. Visible Menu; booking (Quick booking · Book customer) starts from the round "+" on every screen, including Calendar (on the day it shows). Login opens the working company for Owners/Admins and My jobs for technicians. Platform administration/support are separate; persistent sign-in is enabled by default.
 - Quick office booking: phone, first and last name, the address (required, right after the name) and the arrival window create the customer, job and visit atomically; an existing customer can be found by name/phone. An address is never saved empty; a customer's first address is the primary one. Other details can be supplied later. Empty calendar days offer booking. New invoice is available from the invoice list and leads to an existing job or short customer entry, then prices. Full job creation cannot save without a customer/property.
 - English UI in v1; all text strings kept in translation files for future languages.
 - Localization per company as in §1.1 (currency, taxes, time zone, regional format, address format, E.164 phones).

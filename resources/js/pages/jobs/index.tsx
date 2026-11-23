@@ -1,5 +1,4 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { BookingButtons } from '@/components/jobs/booking-buttons';
 import {
     ArrowDownWideNarrow,
     RotateCcw,
@@ -91,7 +90,6 @@ export default function JobsIndex({
     days = 30,
     canViewAll,
     canViewTrash,
-    canCreate,
     deletedCount = 0,
 }: {
     tab: Tab;
@@ -110,7 +108,6 @@ export default function JobsIndex({
     days?: number;
     canViewAll: boolean;
     canViewTrash: boolean;
-    canCreate: boolean;
     deletedCount?: number;
 }) {
     const t = useTrans();
@@ -262,9 +259,6 @@ export default function JobsIndex({
             />
 
             <div className="mx-auto w-full max-w-2xl space-y-3 p-4 sm:p-6 lg:max-w-[1440px]">
-                {canCreate && tab === 'open' && (
-                    <BookingButtons className="sm:max-w-md" />
-                )}
                 {canViewAll && (
                     <SegmentedControl
                         label={t('jobs.title')}

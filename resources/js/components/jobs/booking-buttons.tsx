@@ -5,21 +5,18 @@ import { cn } from '@/lib/utils';
 import { create as bookCustomer, quickBooking } from '@/routes/jobs';
 
 /**
- * Where a booking starts ("+", the main screen, the calendar): two buttons side by side. Quick booking (violet with a
+ * The "+" menu only (never on a screen itself): two buttons side by side. Quick booking (violet with a
  * soft glow and ✨: one text field, the AI fills the form) and Book customer (white, a pen: the empty form by hand).
  */
 export function BookingButtons({
     date,
     onPick,
-    inMenu = false,
     className,
 }: {
     /** The day shown (calendar): Book customer opens on it. */
     date?: string | null;
     /** Called before the visit (e.g. to close the "+" menu). */
     onPick?: () => void;
-    /** In the "+" menu (its own test ids). */
-    inMenu?: boolean;
     className?: string;
 }) {
     const t = useTrans();
@@ -42,9 +39,7 @@ export function BookingButtons({
                     href={quickBooking()}
                     onClick={onPick}
                     className={cn(button, 'da-quick-booking')}
-                    data-test={
-                        inMenu ? 'create-quick-booking' : 'start-quick-booking'
-                    }
+                    data-test="create-quick-booking"
                 >
                     <Sparkles /> {t('jobs.quick_booking.button')}
                 </Link>
@@ -56,7 +51,7 @@ export function BookingButtons({
                     })}
                     onClick={onPick}
                     className={cn(button, 'da-raised')}
-                    data-test={inMenu ? 'create-job' : 'start-book-customer'}
+                    data-test="create-job"
                 >
                     <PenLine /> {t('nav.book_customer')}
                 </Link>
