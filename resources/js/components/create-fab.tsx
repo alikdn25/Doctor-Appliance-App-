@@ -1,14 +1,23 @@
 import { router, usePage } from '@inertiajs/react';
-import { Car, CreditCard, ListTodo, Plus, Wallet } from 'lucide-react';
+import {
+    Car,
+    CreditCard,
+    ListTodo,
+    Plus,
+    Sparkles,
+    Wallet,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { BookingButtons } from '@/components/jobs/booking-buttons';
 import { TaskSheet } from '@/components/tasks/task-sheet';
 import { hasCardReader } from '@/lib/card-reader';
+import { holdKeyboard } from '@/lib/keyboard-handoff';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { create as createCharge } from '@/routes/charges';
 import { create as createExpense } from '@/routes/expenses';
+import { index as assistantPage } from '@/routes/assistant';
 import { index as trips } from '@/routes/trips';
 
 type Item = {
@@ -22,6 +31,8 @@ type Item = {
  * The round "+" above the bottom bar on every screen (owner's task, Oct 24), volumetric with the blue glow. A tap
  * opens, from the bottom up next to the thumb, Quick booking and Book customer side by side (Book customer on the day
  * the calendar shows), then Charge reader · Expense · Trip · Task. Expense and Trip open the new expense and the mileage form, Task opens the task sheet here.
+ * Assistant (Owner, owner's task of November 23) is the first item from the button, below the booking buttons; it
+ * opens the assistant with the cursor in the question field and the keyboard up.
  * Screens with their own pinned actions (forms) hide it, like the bottom bar. Icons and tap areas are 30% larger than
  * the 48 px standard (owner's task of November 23): rows 62 px high, icons 26 px; labels wrap instead of being cut.
  */
@@ -98,8 +109,26 @@ export function CreateFab() {
     ).filter((item): item is Item => !!item);
     // A booking starts with two buttons side by side, nearest the "+": Quick booking and Book customer.
     const booking = can.quickBooking === true || can.createJobs === true;
+    const assistant = can.useAssistant === true;
 
-    if (items.length === 0 && !booking) return null;
+    if (items.length === 0 && !booking && !assistant) return null;
+
+    const itemButton = (item: Item) => (
+        <button
+            type="button"
+            className="da-press da-raised flex h-[3.9rem] max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full pr-2 pl-5 text-left text-[15px] leading-tight font-semibold text-navy"
+            onClick={() => {
+                setOpen(false);
+                item.onSelect();
+            }}
+            data-test={`create-${item.key}`}
+        >
+            <span className="min-w-0">{item.label}</span>
+            <span className="da-soft flex size-[2.925rem] shrink-0 items-center justify-center rounded-full [&_svg]:size-[1.625rem]">
+                {item.icon}
+            </span>
+        </button>
+    );
 
     return (
         <>
@@ -120,24 +149,7 @@ export function CreateFab() {
                         data-test="create-menu"
                     >
                         {items.map((item) => (
-                            <li key={item.key}>
-                                <button
-                                    type="button"
-                                    className="da-press da-raised flex h-[3.9rem] max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full pr-2 pl-5 text-left text-[15px] leading-tight font-semibold text-navy"
-                                    onClick={() => {
-                                        setOpen(false);
-                                        item.onSelect();
-                                    }}
-                                    data-test={`create-${item.key}`}
-                                >
-                                    <span className="min-w-0">
-                                        {item.label}
-                                    </span>
-                                    <span className="da-soft flex size-[2.925rem] shrink-0 items-center justify-center rounded-full [&_svg]:size-[1.625rem]">
-                                        {item.icon}
-                                    </span>
-                                </button>
-                            </li>
+                            <li key={item.key}>{itemButton(item)}</li>
                         ))}
                         {booking && (
                             <li className="w-[min(22rem,calc(100vw-2rem))]">
@@ -145,6 +157,24 @@ export function CreateFab() {
                                     date={calendarDay}
                                     onPick={() => setOpen(false)}
                                 />
+                            </li>
+                        )}
+                        {assistant && (
+                            <li>
+                                {itemButton({
+                                    key: 'assistant',
+                                    label: t('nav.create.assistant'),
+                                    icon: <Sparkles />,
+                                    onSelect: () => {
+                                        // During the tap, so the phone opens the keyboard (see keyboard-handoff).
+                                        holdKeyboard();
+                                        router.visit(
+                                            assistantPage({
+                                                query: { focus: 1 },
+                                            }),
+                                        );
+                                    },
+                                })}
                             </li>
                         )}
                     </ul>

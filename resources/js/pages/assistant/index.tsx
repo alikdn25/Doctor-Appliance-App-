@@ -26,6 +26,7 @@ import { scrollToPageEnd } from '@/hooks/use-viewport-keyboard';
 import { xsrfToken } from '@/lib/http';
 import { compressImage } from '@/lib/image';
 import { useTrans } from '@/lib/i18n';
+import { takeKeyboard } from '@/lib/keyboard-handoff';
 import { handQuickResult } from '@/lib/quick-booking';
 import { cn } from '@/lib/utils';
 import { ask, findProblems, newChat } from '@/routes/assistant';
@@ -553,12 +554,20 @@ export default function AssistantIndex({
     >([]);
     const [sentPhotos, setSentPhotos] = useState<string[]>([]);
     const picker = useRef<HTMLInputElement>(null);
+    const questionField = useRef<HTMLTextAreaElement>(null);
     const latestPhotos = useRef(photos);
     latestPhotos.current = photos;
 
     useEffect(() => {
         scrollToPageEnd();
     }, [items, pending]);
+
+    // Opened from Assistant in the "+" menu (?focus=1): the cursor is in the question field, keyboard up.
+    useEffect(() => {
+        if (new URLSearchParams(window.location.search).get('focus') === '1') {
+            takeKeyboard(questionField.current);
+        }
+    }, []);
 
     // Previews are freed when the screen goes.
     useEffect(
@@ -918,6 +927,7 @@ export default function AssistantIndex({
                                 {t('assistant.placeholder')}
                             </Label>
                             <Textarea
+                                ref={questionField}
                                 id="assistant-question"
                                 value={question}
                                 onChange={(event) =>

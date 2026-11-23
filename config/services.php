@@ -50,6 +50,9 @@ return [
         'browser_key' => env('GOOGLE_MAPS_BROWSER_KEY'),
         // Geocoding API key restricted to the server's IP: map positions for addresses typed by hand.
         'server_key' => env('GOOGLE_MAPS_SERVER_KEY'),
+        // Company → Service area → "Reset to default": "south,north,west,east" in degrees. Empty = no box
+        // (address suggestions anywhere in the company's country).
+        'default_service_area' => env('GOOGLE_PLACES_DEFAULT_SERVICE_AREA'),
     ],
 
     /*

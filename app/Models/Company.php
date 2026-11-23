@@ -133,6 +133,10 @@ class Company extends Model
         'estimate_valid_days',
         'estimate_followup_days',
         'parts_stale_days',
+        'service_area_south',
+        'service_area_north',
+        'service_area_west',
+        'service_area_east',
         'estimate_stale_days',
         'technicians_can_delete_jobs',
         'works_alone',
@@ -239,6 +243,10 @@ class Company extends Model
         return [
             'status' => CompanyStatus::class,
             'mileage_rate' => 'integer',
+            'service_area_south' => 'float',
+            'service_area_north' => 'float',
+            'service_area_west' => 'float',
+            'service_area_east' => 'float',
             'subscription_status' => SubscriptionStatus::class,
             'vertical' => Vertical::class,
             'default_payment_terms' => PaymentTerms::class,
@@ -303,6 +311,49 @@ class Company extends Model
      *
      * @return array<string, mixed>
      */
+    /**
+     * The box address suggestions are limited to (Company → Service area), or null for anywhere in the country.
+     *
+     * @return array{south: float, north: float, west: float, east: float}|null
+     */
+    public function serviceArea(): ?array
+    {
+        if ($this->service_area_south === null || $this->service_area_north === null
+            || $this->service_area_west === null || $this->service_area_east === null) {
+            return null;
+        }
+
+        return [
+            'south' => (float) $this->service_area_south,
+            'north' => (float) $this->service_area_north,
+            'west' => (float) $this->service_area_west,
+            'east' => (float) $this->service_area_east,
+        ];
+    }
+
+    /**
+     * The installation's default service area ("south,north,west,east" in GOOGLE_PLACES_DEFAULT_SERVICE_AREA),
+     * or null when none is set or it is malformed.
+     *
+     * @return array{south: float, north: float, west: float, east: float}|null
+     */
+    public static function defaultServiceArea(): ?array
+    {
+        $parts = array_map('trim', explode(',', (string) config('services.google_maps.default_service_area')));
+
+        if (count($parts) !== 4 || array_filter($parts, fn ($p) => ! is_numeric($p)) !== []) {
+            return null;
+        }
+
+        [$south, $north, $west, $east] = array_map('floatval', $parts);
+
+        if ($south < -90 || $north > 90 || $south >= $north || $west < -180 || $east > 180 || $west >= $east) {
+            return null;
+        }
+
+        return compact('south', 'north', 'west', 'east');
+    }
+
     public function formatSettings(): array
     {
         return [

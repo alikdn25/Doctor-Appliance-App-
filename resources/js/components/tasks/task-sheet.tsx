@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import type { TaskDraft, TaskItem } from '@/components/tasks/types';
 import { REMINDERS, TASK_KINDS } from '@/components/tasks/types';
+import { AddressAutocomplete } from '@/components/customers/address-autocomplete';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
@@ -344,13 +345,15 @@ export function TaskSheet({
                         label={t('tasks.fields.address')}
                         error={form.errors.address}
                     >
-                        <Input
+                        <AddressAutocomplete
                             id="task-address"
                             value={form.data.address}
                             maxLength={500}
                             disabled={readOnly}
-                            onChange={(e) =>
-                                form.setData('address', e.target.value)
+                            country={auth.company?.country ?? 'US'}
+                            onChange={(value) => form.setData('address', value)}
+                            onPick={(_, text) =>
+                                form.setData('address', text.slice(0, 500))
                             }
                         />
                     </FormField>

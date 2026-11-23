@@ -32,6 +32,8 @@ export type CurrentCompany = {
     address: { region_label: string; postal_label: string; order: string };
     /** Google Maps browser key for address suggestions; null = type addresses by hand. */
     google_maps_key: string | null;
+    /** Address suggestions are limited to this box (Company → Service area); null = the whole country. */
+    service_area?: ServiceArea | null;
     google_maps_map_id: string;
 };
 
@@ -84,3 +86,11 @@ export type TwoFactorSecretKey = {
 };
 
 export type Option = { value: string; label: string };
+
+/** A south/north/west/east box in degrees (Company → Service area). */
+export type ServiceArea = {
+    south: number;
+    north: number;
+    west: number;
+    east: number;
+};

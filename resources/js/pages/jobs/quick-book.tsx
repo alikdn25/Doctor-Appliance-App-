@@ -934,7 +934,12 @@ export default function QuickBook({
             ]
                 .filter(Boolean)
                 .join(', ');
-            void verifyAddress(mapsKey, text, country).then((found) => {
+            void verifyAddress(
+                mapsKey,
+                text,
+                country,
+                auth.company?.service_area,
+            ).then((found) => {
                 setQuickInfo((info) =>
                     info
                         ? {

@@ -1,7 +1,8 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import { AddressAutocomplete } from '@/components/customers/address-autocomplete';
 import { ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
@@ -47,6 +48,7 @@ export default function Suppliers({ suppliers }: { suppliers: Supplier[] }) {
 
 function SupplierForm({ supplier }: { supplier: Supplier | null }) {
     const t = useTrans();
+    const { auth } = usePage().props;
     const [open, setOpen] = useState(supplier !== null);
     const form = useForm({
         name: supplier?.name ?? '',
@@ -115,11 +117,15 @@ function SupplierForm({ supplier }: { supplier: Supplier | null }) {
                 label={t('parts.suppliers.address')}
                 error={form.errors.address}
             >
-                <Input
+                <AddressAutocomplete
                     id={`supplier-address-${key}`}
                     value={form.data.address}
                     maxLength={500}
-                    onChange={(e) => form.setData('address', e.target.value)}
+                    country={auth.company?.country ?? 'US'}
+                    onChange={(value) => form.setData('address', value)}
+                    onPick={(_, text) =>
+                        form.setData('address', text.slice(0, 500))
+                    }
                 />
             </FormField>
             {supplier && (

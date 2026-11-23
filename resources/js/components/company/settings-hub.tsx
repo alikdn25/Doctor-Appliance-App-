@@ -4,6 +4,7 @@ import {
     BookOpen,
     CloudUpload,
     HandCoins,
+    MapPinned,
     MessageCircleQuestion,
     Building,
     CalendarClock,
@@ -30,6 +31,7 @@ import { edit as autoMessages } from '@/routes/company/auto-messages';
 import { edit as googleProfiles } from '@/routes/company/google-profiles';
 import { edit as answers } from '@/routes/company/answers';
 import { edit as morning } from '@/routes/company/morning';
+import { edit as serviceArea } from '@/routes/company/service-area';
 import { index as suppliers } from '@/routes/company/suppliers';
 import { unpaid } from '@/routes/invoices';
 import { edit as messaging } from '@/routes/company/messaging';
@@ -267,6 +269,15 @@ export function SettingsHub({
                   icon: <MessageCircleQuestion />,
                   title: t('answers.settings.title'),
                   subtitle: t('answers.settings.description'),
+              },
+              {
+                  key: 'service-area',
+                  href: serviceArea(),
+                  icon: <MapPinned />,
+                  title: t('company.service_area.title'),
+                  subtitle: auth.company?.service_area
+                      ? t('company.service_area.description')
+                      : t('company.service_area.whole_country'),
               },
               {
                   key: 'suppliers',
