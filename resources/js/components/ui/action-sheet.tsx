@@ -109,6 +109,7 @@ export function ActionSheet({
                                         setOpen(false);
                                         item.onSelect();
                                     }}
+                                    data-test={`action-${item.key}`}
                                 >
                                     {item.icon}
                                     <span className="flex-1">{item.label}</span>
