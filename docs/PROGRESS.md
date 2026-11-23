@@ -13,6 +13,7 @@
    their standard review block.
 4. **"+" menu**: rows 62 px high (48 × 1.3), icons 26 px in 47 px circles; Quick booking / Book customer show the
    icon above the label, the label wraps at 360 px instead of being cut.
+
 - Tests: `ReviewTextTest` (unit), `ReviewRequestTest`, `CardReaderChargeTest` (Paid text → receipt).
 
 # November 23 — Owner's task: booking buttons only in "+" (done)
