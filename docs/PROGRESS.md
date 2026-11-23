@@ -2754,3 +2754,20 @@ Confirm reads the photos again with the booking parser and opens the filled form
   photos not attached, other person/company isolation, assistant from a screenshot); browser
   `zz-booking-from-photo.spec.ts`; menu lists in `navigation` and `zz-plus-draft-tasks` updated.
 - No migration. Next: try on a real Android phone (camera and gallery from the picker, a real SMS screenshot).
+
+## Assistant in "+" and Service area for address suggestions (November 23, 2026)
+
+✅ "+" menu: "Assistant" (Sparkles) for those who can use the assistant (Owner), the first item from the button,
+below Quick booking / Book customer. A tap focuses a hidden input during the tap (so the phone opens the keyboard),
+then opens `/assistant?focus=1`, where the question field takes the focus. Assistant in the main menu stays.
+✅ Company → Service area (Owner): south / north / west / east in degrees (`companies.service_area_*`, migration
+`2026_11_23_000100`, which also sets the Lower Mainland box 49.00 / 49.50 / -123.35 / -121.30 for CA companies named
+"Doctor Appliance…" or "Duct Works…"). "Reset to default" puts back `GOOGLE_PLACES_DEFAULT_SERVICE_AREA`
+(`south,north,west,east`); without it the reset removes the limit. All four empty = whole country.
+✅ Every address suggestion (customers, jobs, quick booking and its address check, To Do, suppliers, trips and the
+start address) sends `includedRegionCodes: [country]` and, with a service area, `locationRestriction` (a hard
+limit, not `locationBias`). To Do, supplier and trip addresses now get suggestions too. Without a suggestion the
+address is typed by hand as before.
+✅ Tests: `ServiceAreaTest` (save, clear, validation, reset with/without default, Owner only, per company);
+`tests/js/places-request.test.ts` (`npm run test:js`, in CI); browser `zz-plus-assistant.spec.ts`.
+Next: deploy, migrate, set `GOOGLE_PLACES_DEFAULT_SERVICE_AREA` on the server.

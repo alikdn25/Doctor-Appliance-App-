@@ -54,6 +54,8 @@ test('the owner gets Today, Calendar, Map, Jobs, More and the round "+"; Field s
         'Expense',
         'New charge',
         'Booking from photo',
+        // The owner's Assistant, nearest the "+" (below the booking pair).
+        'Assistant',
     ]);
     await expect(page.locator('[data-test="create-menu"] a')).toHaveText([
         'Quick booking',

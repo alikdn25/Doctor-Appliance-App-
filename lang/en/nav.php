@@ -61,6 +61,7 @@ return [
         'expense' => 'Expense',
         'trip' => 'Trip',
         'task' => 'Task',
+        'assistant' => 'Assistant',
     ],
     'more_title' => 'Menu',
     'search_menu' => 'Find in menu',

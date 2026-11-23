@@ -4,6 +4,9 @@ import type { ComponentProps, KeyboardEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { loadGoogleMapsLibrary } from '@/lib/google-maps';
 import { Input } from '@/components/ui/input';
+import { suggestionRequest } from '@/lib/places-request';
+import type { SuggestionRequest } from '@/lib/places-request';
+import type { ServiceArea } from '@/types';
 
 /** An address picked from Google Places, split into our fields. */
 export type PickedAddress = {
@@ -57,12 +60,9 @@ type Suggestion = {
 };
 type PlacesLibrary = {
     AutocompleteSuggestion: {
-        fetchAutocompleteSuggestions: (request: {
-            input: string;
-            includedRegionCodes?: string[];
-            sessionToken?: unknown;
-            language?: string;
-        }) => Promise<{ suggestions: Suggestion[] }>;
+        fetchAutocompleteSuggestions: (
+            request: SuggestionRequest,
+        ) => Promise<{ suggestions: Suggestion[] }>;
     };
     AutocompleteSessionToken: new () => unknown;
 };
@@ -146,6 +146,7 @@ export async function verifyAddress(
     key: string | null | undefined,
     text: string,
     country: string,
+    area?: ServiceArea | null,
 ): Promise<PickedAddress | null> {
     if (!key || text.trim().length < 3) {
         return null;
@@ -154,10 +155,9 @@ export async function verifyAddress(
     try {
         const places = await loadPlaces(key);
         const { suggestions } =
-            await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-                input: text,
-                includedRegionCodes: [country.toLowerCase()],
-            });
+            await places.AutocompleteSuggestion.fetchAutocompleteSuggestions(
+                suggestionRequest(text, country, area),
+            );
         const prediction = suggestions.find(
             (s) => s.placePrediction,
         )?.placePrediction;
@@ -177,7 +177,8 @@ export async function verifyAddress(
 }
 
 /**
- * Street address input with Google Places suggestions in the company's country. Without a Maps key (or when
+ * Street address input with Google Places suggestions in the company's country, limited strictly to the company's
+ * service area when one is set. Without a Maps key (or when
  * Google cannot be reached) it is a plain input, so the address is typed by hand as before.
  */
 export function AddressAutocomplete({
@@ -196,6 +197,7 @@ export function AddressAutocomplete({
 }) {
     const { auth } = usePage().props;
     const key = auth.company?.google_maps_key ?? null;
+    const area = auth.company?.service_area ?? null;
     const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     const [active, setActive] = useState(-1);
     const [open, setOpen] = useState(false);
@@ -227,11 +229,12 @@ export function AddressAutocomplete({
                 session.current ??= new places.AutocompleteSessionToken();
                 const { suggestions: found } =
                     await places.AutocompleteSuggestion.fetchAutocompleteSuggestions(
-                        {
-                            input: value,
-                            includedRegionCodes: [country.toLowerCase()],
-                            sessionToken: session.current,
-                        },
+                        suggestionRequest(
+                            value,
+                            country,
+                            area,
+                            session.current,
+                        ),
                     );
                 setSuggestions(
                     found.filter((s) => s.placePrediction).slice(0, 5),
@@ -243,7 +246,7 @@ export function AddressAutocomplete({
                 setSuggestions([]);
             }
         }, 250);
-    }, [value, key, country]);
+    }, [value, key, country, area]);
 
     const pick = async (suggestion: Suggestion) => {
         const prediction = suggestion.placePrediction;

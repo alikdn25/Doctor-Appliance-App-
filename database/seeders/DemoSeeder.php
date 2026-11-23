@@ -51,7 +51,12 @@ class DemoSeeder extends Seeder
         $this->user('admin@example.com', 'Platform Admin', superAdmin: true);
 
         $bc = ['country' => 'CA', 'currency' => 'CAD', 'locale' => 'en-CA', 'timezone' => 'America/Vancouver'];
-        $group = Company::factory()->create(['name' => 'Doctor Appliance Group', 'slug' => 'doctor-appliance-group', ...$bc]);
+        $group = Company::factory()->create([
+            'name' => 'Doctor Appliance Group', 'slug' => 'doctor-appliance-group', ...$bc,
+            // Address suggestions only in the Lower Mainland (Company → Service area).
+            'service_area_south' => 49.00, 'service_area_north' => 49.50,
+            'service_area_west' => -123.35, 'service_area_east' => -121.30,
+        ]);
         $coastal = Company::factory()->create(['name' => 'Coastal Repair Co', 'slug' => 'coastal-repair-co', ...$bc]);
         $lonestar = Company::factory()->create([
             'name' => 'Lone Star Appliance Repair', 'slug' => 'lone-star-appliance-repair',

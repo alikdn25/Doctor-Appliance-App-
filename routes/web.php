@@ -34,6 +34,7 @@ use App\Http\Controllers\Company\MemberTransitionController;
 use App\Http\Controllers\Company\MessagingSettingsController;
 use App\Http\Controllers\Company\MorningController;
 use App\Http\Controllers\Company\PaymentProviderController;
+use App\Http\Controllers\Company\ServiceAreaController;
 use App\Http\Controllers\Company\ServiceController;
 use App\Http\Controllers\Company\SquareImportController;
 use App\Http\Controllers\Company\SwitchCompanyController;
@@ -429,6 +430,9 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::put('morning', [MorningController::class, 'update'])->name('company.morning.update');
             Route::post('google-drive/connect', [MorningController::class, 'connect'])->name('google-drive.connect');
             Route::delete('google-drive', [MorningController::class, 'disconnect'])->name('google-drive.disconnect');
+            Route::get('service-area', [ServiceAreaController::class, 'edit'])->name('company.service-area.edit');
+            Route::put('service-area', [ServiceAreaController::class, 'update'])->name('company.service-area.update');
+            Route::post('service-area/reset', [ServiceAreaController::class, 'reset'])->name('company.service-area.reset');
             Route::get('google-reviews', [GoogleProfileController::class, 'edit'])->name('company.google-profiles.edit');
             Route::put('google-reviews', [GoogleProfileController::class, 'update'])->name('company.google-profiles.update');
             Route::post('google-reviews/image', [GoogleProfileController::class, 'storeImage'])->name('company.google-profiles.image.store');

@@ -11,6 +11,7 @@ import {
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { useMoney } from '@/components/billing/money';
+import { AddressAutocomplete } from '@/components/customers/address-autocomplete';
 import { FormField } from '@/components/form-field';
 import { QuickTripSheet } from '@/components/jobs/quick-trip-sheet';
 import { ScreenHeader } from '@/components/screen-header';
@@ -358,13 +359,17 @@ export default function Trips({
                             hint={t('trips.start_address_hint')}
                             error={start.errors.address}
                         >
-                            <Input
+                            <AddressAutocomplete
                                 id="start-address"
                                 autoFocus
                                 value={start.data.address}
                                 maxLength={255}
-                                onChange={(e) =>
-                                    start.setData('address', e.target.value)
+                                country={auth.company?.country ?? 'US'}
+                                onChange={(value) =>
+                                    start.setData('address', value)
+                                }
+                                onPick={(_, text) =>
+                                    start.setData('address', text.slice(0, 255))
                                 }
                             />
                         </FormField>
@@ -566,12 +571,19 @@ export default function Trips({
                             label={t('trips.fields.from')}
                             error={form.errors.from_address}
                         >
-                            <Input
+                            <AddressAutocomplete
                                 id="trip-from"
                                 maxLength={255}
                                 value={form.data.from_address}
-                                onChange={(e) =>
-                                    form.setData('from_address', e.target.value)
+                                country={auth.company?.country ?? 'US'}
+                                onChange={(value) =>
+                                    form.setData('from_address', value)
+                                }
+                                onPick={(_, text) =>
+                                    form.setData(
+                                        'from_address',
+                                        text.slice(0, 255),
+                                    )
                                 }
                             />
                         </FormField>
@@ -580,12 +592,19 @@ export default function Trips({
                             label={t('trips.fields.to')}
                             error={form.errors.to_address}
                         >
-                            <Input
+                            <AddressAutocomplete
                                 id="trip-to"
                                 maxLength={255}
                                 value={form.data.to_address}
-                                onChange={(e) =>
-                                    form.setData('to_address', e.target.value)
+                                country={auth.company?.country ?? 'US'}
+                                onChange={(value) =>
+                                    form.setData('to_address', value)
+                                }
+                                onPick={(_, text) =>
+                                    form.setData(
+                                        'to_address',
+                                        text.slice(0, 255),
+                                    )
                                 }
                             />
                         </FormField>
