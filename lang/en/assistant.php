@@ -70,6 +70,7 @@ return [
         'reschedule' => 'Move job #:number (:customer) from :from to :to. The customer is not texted.',
         'rescheduled' => 'Job #:number moved to :when.',
         'booking' => 'Open a new booking from: “:text”',
+        'booking_photos' => '{1} Open a new booking from 1 photo: “:text”|[2,*] Open a new booking from :count photos: “:text”',
         'booking_opened' => 'The booking form is open. Check it and save.',
         'not_possible' => 'This cannot be done now.',
     ],

@@ -4,10 +4,28 @@
  * always opens empty. "Back to the text" from the filled form finds the text while the booking is still open.
  */
 let text = '';
+let photos: QuickBookingPhoto[] = [];
 let result: unknown = null;
 let jobDraft: unknown = null;
 
+/** A photo picked on Quick booking (shrunk on the phone to 1600 px), with its preview. */
+export type QuickBookingPhoto = {
+    id: string;
+    blob: Blob;
+    filename: string;
+    preview: string;
+};
+
+export const MAX_BOOKING_PHOTOS = 5;
+
 export const quickBookingText = () => text;
+
+/** The photos picked on Quick booking, kept like the text for "Back to the text". */
+export const quickBookingPhotos = () => photos;
+
+export const keepQuickBookingPhotos = (value: QuickBookingPhoto[]) => {
+    photos = value;
+};
 
 export const keepQuickBookingText = (value: string) => {
     text = value;
@@ -40,5 +58,7 @@ export const takeJobDraft = <T>(): T | null => {
 /** The booking is closed (✕, back, saved, saved as a draft): nothing of it is kept. */
 export const clearBooking = () => {
     text = '';
+    photos.forEach((photo) => URL.revokeObjectURL(photo.preview));
+    photos = [];
     result = null;
 };

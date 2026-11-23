@@ -50,6 +50,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\JobProfit;
+use App\Support\Jobs\BookingPhotos;
 use App\Support\Jobs\JobBacklog;
 use App\Support\Jobs\JobPresenter;
 use App\Support\Jobs\PossibleWarranty;
@@ -402,6 +403,9 @@ class JobController extends Controller
             $request->billing(),
             $draft,
         );
+
+        // The photos the booking was read from (a screenshot of the customer's message, a rating plate).
+        BookingPhotos::attach($job, $request->bookingPhotos(), $request->user());
 
         $visit = $booking ? $job->visits()->first() : null;
 
