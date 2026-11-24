@@ -35,13 +35,14 @@ enum PaymentMethod: string
     }
 
     /**
-     * Manual methods; cash only when the company takes cash (company setting).
+     * Manual methods (owner's task of November 24): E-transfer, Card, Cash; cash only when the company takes cash
+     * (company setting). Check, crypto and other stay on older payments only.
      *
      * @return list<self>
      */
     public static function manual(?Company $company = null): array
     {
-        $methods = [self::Cash, self::CardTerminal, self::BankTransfer, self::Crypto, self::Other, self::Check];
+        $methods = [self::BankTransfer, self::CardTerminal, self::Cash];
 
         return $company !== null && $company->accepts_cash === false
             ? array_values(array_filter($methods, fn (self $m) => $m !== self::Cash))
@@ -59,5 +60,18 @@ enum PaymentMethod: string
     public function requiresNote(): bool
     {
         return $this === self::Other;
+    }
+
+    /**
+     * The group Statistics counts the payment in: card (reader, terminal, online, Square), e_transfer, cash or other.
+     */
+    public function statsGroup(): string
+    {
+        return match ($this) {
+            self::CardReader, self::CardTerminal, self::Online => 'card',
+            self::BankTransfer => 'e_transfer',
+            self::Cash => 'cash',
+            default => 'other',
+        };
     }
 }

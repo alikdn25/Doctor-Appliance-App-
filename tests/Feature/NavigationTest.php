@@ -34,13 +34,13 @@ test('technicians always use the Field menu and cannot switch', function () {
     expect($tech->fresh()->menu_mode)->toBeNull();
 });
 
-test('Expenses & taxes gathers expenses, mileage and cash for the Owner only', function () {
+test('Expenses & taxes gathers expenses and mileage for the Owner only (no cash on hand)', function () {
     $owner = memberOf($this->company, UserRole::Owner);
 
     $this->actingAs($owner)->get(route('expenses-hub'))->assertInertia(fn (Assert $page) => $page
         ->component('expenses/hub')
         ->where('expenses', 0)
-        ->where('cash', 0)
+        ->missing('cash')
         ->has('distanceUnit'));
 
     $admin = memberOf($this->company, UserRole::Admin);

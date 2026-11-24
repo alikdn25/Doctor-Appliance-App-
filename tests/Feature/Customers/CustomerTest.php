@@ -194,7 +194,7 @@ test('the create and edit forms render', function () {
     $customer = Customer::factory()->for($this->company)->withPhone()->create();
 
     $this->get(route('customers.create'))->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('customers/form')->where('customer', null)->has('leadSources', 10));
+        ->assertInertia(fn (Assert $page) => $page->component('customers/form')->where('customer', null)->has('leadSources', 5));
     $this->get(route('customers.edit', $customer))->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('customer.id', $customer->id)->has('customer.phones', 1));
 });

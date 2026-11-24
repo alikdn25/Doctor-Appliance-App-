@@ -7,6 +7,7 @@ use App\Actions\Billing\SaveBillingDocument;
 use App\Actions\Jobs\ChangeJobStatus;
 use App\Actions\Jobs\CloseJob;
 use App\Actions\Jobs\VisitWorkflow;
+use App\Enums\ApplianceCategory;
 use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\LineKind;
@@ -20,6 +21,7 @@ use App\Models\User;
 use App\Services\AI\Assistant\AssistantActions;
 use App\Support\Audit\ActionSource;
 use App\Support\Billing\ChargeLines;
+use App\Support\Statistics\ApplianceGuess;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -59,7 +61,9 @@ class VoiceCloser
             .'note: what was found and done, short. lines: one line per piece of work, part or material, with its amount as said; never invent an '
             .'amount (no amount said = no line). '
             .'payment: card, cash, e_transfer, or unpaid when not said or not paid. status: completed, or '
-            .'need_to_order_parts when a part must be ordered (part_name = the part, else ""). Currency: '.$company->currency.'.',
+            .'need_to_order_parts when a part must be ordered (part_name = the part, else ""). appliance_type: the appliance '
+            .'worked on (one of the listed values; unknown when not said). brand: its manufacturer in the usual English '
+            .'spelling ("элджи" -> "LG"), else "". Currency: '.$company->currency.'.',
             [['role' => 'user', 'content' => $context]],
             schema: self::schema(),
             maxTokens: 1500,
@@ -88,6 +92,9 @@ class VoiceCloser
             'payment' => in_array($raw['payment'] ?? null, self::PAYMENTS, true) ? $raw['payment'] : 'unpaid',
             'status' => in_array($raw['status'] ?? null, self::STATUSES, true) ? $raw['status'] : 'completed',
             'part_name' => mb_substr(trim((string) ($raw['part_name'] ?? '')), 0, 255),
+            // For Statistics; empty = keep what the job has.
+            'appliance_type' => ApplianceCategory::tryFrom((string) ($raw['appliance_type'] ?? ''))?->value,
+            'brand' => ApplianceGuess::normalizeBrand($raw['brand'] ?? null),
         ];
     }
 
@@ -111,8 +118,10 @@ class VoiceCloser
                 'payment' => ['type' => 'string', 'enum' => self::PAYMENTS],
                 'status' => ['type' => 'string', 'enum' => self::STATUSES],
                 'part_name' => $text,
+                'appliance_type' => ['type' => 'string', 'enum' => [...array_map(fn (ApplianceCategory $c) => $c->value, ApplianceCategory::cases()), 'unknown']],
+                'brand' => $text,
             ],
-            'required' => ['note', 'lines', 'payment', 'status', 'part_name'],
+            'required' => ['note', 'lines', 'payment', 'status', 'part_name', 'appliance_type', 'brand'],
             'additionalProperties' => false,
         ];
     }
@@ -147,6 +156,12 @@ class VoiceCloser
 
             if (trim((string) $data['note']) !== '') {
                 $job->tech_notes = trim(implode("\n", array_filter([$job->tech_notes, trim($data['note'])])));
+            }
+            if (filled($data['appliance_type'] ?? null)) {
+                $job->appliance_category = ApplianceCategory::from($data['appliance_type']);
+            }
+            if (filled($data['brand'] ?? null)) {
+                $job->appliance_brand = ApplianceGuess::normalizeBrand($data['brand']);
             }
             $job->save();
             // The part named goes to the Parts page (Order); the job's status follows when the visit is finished.

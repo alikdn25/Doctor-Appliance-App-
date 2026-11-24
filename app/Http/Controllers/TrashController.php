@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\JobCostItem;
 use App\Models\Payment;
 use App\Models\Property;
+use App\Models\ServiceJob;
 use App\Models\SquareInvoice;
 use App\Support\Jobs\JobPresenter;
 use Illuminate\Database\Eloquent\Builder;
@@ -110,8 +111,21 @@ class TrashController extends Controller
                 ->where('deleted_at', $model->getRawOriginal('deleted_at'))->exists(),
             'square_invoice' => Customer::onlyTrashed()->whereKey($model->getAttribute('customer_id'))
                 ->where('deleted_at', $model->getRawOriginal('deleted_at'))->exists(),
+            // Documents, payments and costs deleted with their job come back with it (Jobs → ⋯ → Deleted).
+            'estimate', 'invoice', 'cost', 'expense' => $this->deletedWithJob($model->getAttribute('service_job_id'), $model),
+            'payment' => $this->deletedWithJob(
+                Invoice::withTrashed()->whereKey($model->getAttribute('invoice_id'))->value('service_job_id')
+                    ?? Estimate::withTrashed()->whereKey($model->getAttribute('estimate_id'))->value('service_job_id'),
+                $model,
+            ),
             default => false,
         };
+    }
+
+    private function deletedWithJob(mixed $jobId, Model $model): bool
+    {
+        return $jobId !== null && ServiceJob::onlyTrashed()->whereKey($jobId)
+            ->where('deleted_at', $model->getRawOriginal('deleted_at'))->exists();
     }
 
     /**

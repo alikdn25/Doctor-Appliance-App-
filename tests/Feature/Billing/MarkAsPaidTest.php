@@ -26,11 +26,11 @@ beforeEach(function () {
     $this->invoice = inCompany($this->company, fn () => Invoice::sole());
 });
 
-test('the job page offers "Mark as paid" for the balance with cash, card, e-transfer and crypto', function () {
+test('the job page offers "Mark as paid" for the balance with e-transfer, card and cash only', function () {
     $this->get(route('jobs.show', $this->job))->assertInertia(fn (Assert $page) => $page
         ->where('payable.0.id', $this->invoice->id)
         ->where('payable.0.balance', $this->invoice->balance)
-        ->where('paymentMethods', fn ($methods) => collect($methods)->pluck('label')->take(5)->all() === ['Cash', 'Card', 'E-transfer', 'Crypto', 'Other']));
+        ->where('paymentMethods', fn ($methods) => collect($methods)->pluck('label')->all() === ['E-transfer', 'Card', 'Cash']));
 
     // Elsewhere the transfer keeps its generic name.
     $this->company->update(['country' => 'US']);
@@ -67,7 +67,7 @@ test('with a visit under way the paid job leads to Finish visit instead', functi
     $visit = inCompany($this->company, fn () => $this->job->visits()->first());
     inCompany($this->company, fn () => $visit->forceFill(['status' => VisitStatus::InProgress, 'started_at' => now()])->save());
 
-    $this->post(route('payments.store', $this->invoice), ['amount' => '280.50', 'method' => 'crypto']);
+    $this->post(route('payments.store', $this->invoice), ['amount' => '280.50', 'method' => 'bank_transfer']);
 
     expect(inertiaFlash('paid_in_full')['complete'])->toBe(['finish_url' => route('visits.finish-screen', $visit)]);
 });

@@ -394,8 +394,7 @@ test('office core screens load without runtime errors at both screen sizes', asy
         '/customers',
         '/jobs',
         '/invoices',
-        '/reports',
-        '/cash',
+        '/statistics',
         '/company/services',
         '/company/settings',
     ]) {

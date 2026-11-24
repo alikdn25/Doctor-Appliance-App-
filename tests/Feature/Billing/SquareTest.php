@@ -278,7 +278,7 @@ describe('paying an invoice', function () {
     });
 
     test('the Square webhook records the payment once, next to manual payments', function () {
-        $this->post(route('payments.store', $this->invoice), ['amount' => '50.00', 'method' => 'check'])->assertSessionHasNoErrors();
+        $this->post(route('payments.store', $this->invoice), ['amount' => '50.00', 'method' => 'bank_transfer'])->assertSessionHasNoErrors();
         $this->post(route('invoices.payment-link', $this->invoice));
 
         $event = squarePayment('PAY1', 23050);

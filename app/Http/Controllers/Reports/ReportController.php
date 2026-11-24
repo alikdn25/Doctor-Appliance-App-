@@ -18,11 +18,10 @@ use App\Support\PrivateMedia;
 use App\Support\Reports\BusinessReport;
 use App\Support\Reports\ProfitReport;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
-use Inertia\Inertia;
-use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use ZipArchive;
@@ -34,11 +33,20 @@ use ZipArchive;
  */
 class ReportController extends Controller
 {
-    public function index(Request $request): Response
+    /** The old address: Reports are part of Statistics now. */
+    public function index(Request $request): RedirectResponse
     {
-        $this->authorizeOffice($request);
-        [$from, $to] = $this->period($request);
+        return to_route('statistics.index', $request->only(['from', 'to']));
+    }
 
+    /**
+     * The earlier reports, shown under Statistics: company profit, revenue by brand, technician and job type,
+     * estimate conversion, callback rate and no-charge jobs (sources and average ticket are Statistics blocks).
+     *
+     * @return array<string, mixed>
+     */
+    public function sections(Request $request, CarbonImmutable $from, CarbonImmutable $to): array
+    {
         $jobs = $this->closedJobs($from, $to);
         $rows = $jobs->map(fn (ServiceJob $job) => [
             'job' => $job,
@@ -57,16 +65,14 @@ class ReportController extends Controller
             ->countBy();
         $noCharge = $rows->filter(fn (array $r) => $r['job']->outcome === JobOutcome::NoCharge);
 
-        return Inertia::render('reports/index', [
-            'from' => $from->toDateString(),
-            'to' => $to->toDateString(),
-            'currency' => currentCompany()->currency,
-            'business' => BusinessReport::for($from, $to, $request->user()),
+        $business = BusinessReport::for($from, $to, $request->user());
+        unset($business['bySource']);
+
+        return [
+            'business' => $business,
             'profit' => ProfitReport::for($jobs, $from, $to, $request->user()),
-            'today' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
             'totals' => $this->sum($billable),
             'byTechnician' => $this->groupProfit($billable, 'technician'),
-            'byAppliance' => $this->groupProfit($billable, 'appliance'),
             'callbacks' => [
                 'total' => $this->rate($originals, $callbacks),
                 'byTechnician' => $this->groupRate($originals, $callbacks, 'technician'),
@@ -80,7 +86,7 @@ class ReportController extends Controller
                     'name' => $name, 'count' => $g->count(), 'loss' => $g->contains(fn ($r) => $r['profit'] === null) ? null : -$g->sum('profit'),
                 ])->values(),
             ],
-        ]);
+        ];
     }
 
     /**
@@ -275,8 +281,9 @@ class ReportController extends Controller
         return [$from, $to];
     }
 
+    /** Statistics and its exports: the Owner only (owner's task of November 24). */
     private function authorizeOffice(Request $request): void
     {
-        abort_unless($request->user()->hasRole(UserRole::Owner, UserRole::Admin), 403);
+        abort_unless($request->user()->hasRole(UserRole::Owner), 403);
     }
 }

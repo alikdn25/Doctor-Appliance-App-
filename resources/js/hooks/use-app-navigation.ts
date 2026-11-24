@@ -2,7 +2,6 @@ import { usePage } from '@inertiajs/react';
 import type { InertiaLinkProps } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
-    Banknote,
     BarChart3,
     BookOpen,
     Bot,
@@ -31,7 +30,6 @@ import { calendar, dashboard, expensesHub, map as mapPage } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
 import { index as assistantPage } from '@/routes/assistant';
 import { index as brands } from '@/routes/brands';
-import { index as cash } from '@/routes/cash';
 import { bookingBot, changeLog } from '@/routes/company';
 import { edit as googleProfiles } from '@/routes/company/google-profiles';
 import { edit as messaging } from '@/routes/company/messaging';
@@ -43,7 +41,7 @@ import { index as invoices } from '@/routes/invoices';
 import { index as jobs, mine as myJobs } from '@/routes/jobs';
 import { index as messageInbox } from '@/routes/messages';
 import { index as partsPage } from '@/routes/parts';
-import { index as reports } from '@/routes/reports';
+import { index as statistics } from '@/routes/statistics';
 import { index as taxes } from '@/routes/taxes';
 import { index as team } from '@/routes/team';
 import { index as trash } from '@/routes/trash';
@@ -168,17 +166,19 @@ export function useAppNavigation(): AppNavigation {
             ? myExpenses
             : can.viewBusinessExpenses &&
               item('expenses', 'nav.business_expenses', expenses(), Wallet),
-        !isOwner &&
-            can.viewInvoices &&
-            item('cash', 'nav.cash', cash(), Banknote),
     ].filter(Boolean) as AppNavItem[];
 
     const money = field
         ? fieldMoney
         : ((isOwner
               ? [
-                    can.viewInvoices &&
-                        item('reports', 'nav.reports', reports(), BarChart3),
+                    // Statistics (owner's task of November 24) holds the reports too; the Owner only.
+                    item(
+                        'statistics',
+                        'nav.statistics',
+                        statistics(),
+                        BarChart3,
+                    ),
                     item(
                         'expenses-hub',
                         'nav.expenses_and_taxes',
@@ -187,10 +187,6 @@ export function useAppNavigation(): AppNavigation {
                     ),
                 ]
               : [
-                    can.viewInvoices &&
-                        item('reports', 'nav.reports', reports(), BarChart3),
-                    can.viewInvoices &&
-                        item('cash', 'nav.cash', cash(), Banknote),
                     fieldWorker
                         ? myExpenses
                         : can.viewBusinessExpenses &&

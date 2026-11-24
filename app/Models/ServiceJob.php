@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ApplianceCategory;
 use App\Enums\ApplianceType;
 use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
@@ -12,6 +13,7 @@ use App\Enums\VisitType;
 use App\Models\Concerns\BelongsToCompany;
 use App\Models\Concerns\RecordsChanges;
 use App\Support\PhoneNumber;
+use App\Support\Statistics\ApplianceGuess;
 use Database\Factories\ServiceJobFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -60,6 +62,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $part_ordered_on
  * @property array<string, mixed>|null $part_suggestion The AI's possible part number ("check")
  * @property int|null $closed_by
+ * @property ApplianceCategory|null $appliance_category Statistics: the appliance type
+ * @property string|null $appliance_brand Statistics: the appliance brand (manufacturer)
+ * @property bool $only_diagnostic Diagnosed only, not repaired
  * @property Carbon|null $deleted_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -89,6 +94,7 @@ class ServiceJob extends Model
     ];
 
     protected $attributes = [
+        'only_diagnostic' => false,
         'status' => 'new',
         'job_type' => 'repair',
         'visit_type' => 'new_diagnosis',
@@ -115,6 +121,8 @@ class ServiceJob extends Model
             'outcome' => JobOutcome::class,
             'visit_type' => VisitType::class,
             'closed_at' => 'datetime',
+            'appliance_category' => ApplianceCategory::class,
+            'only_diagnostic' => 'boolean',
         ];
     }
 
@@ -126,22 +134,104 @@ class ServiceJob extends Model
         return $this->deleted_at !== null && $this->deleted_at->isAfter(now()->subDays(self::RESTORE_DAYS));
     }
 
+    /** Set while restoring: the moment the job was deleted, to bring back what went with it. */
+    private ?string $deletedTogetherAt = null;
+
     /**
-     * Why the job cannot be deleted (invoices and payments are financial records), or null.
+     * A job in any status can be deleted (owner's task of November 24). Its estimates, invoices, payments, costs,
+     * parts, trips, tasks and job expenses go to the trash with it at the same moment and come back with it.
+     * Texts stay in the customer's conversation (they belong to the thread, not the job).
      */
-    public function deleteBlocker(): ?string
+    protected static function booted(): void
     {
-        if ($this->invoices()->withTrashed()->exists()) {
-            return __('jobs.has_invoices');
+        // A customer with an earlier job is a repeat customer (when no source was chosen).
+        static::created(function (ServiceJob $job) {
+            if ($job->customer_id === null) {
+                return;
+            }
+
+            $earlier = self::withoutCompanyScope()->where('company_id', $job->company_id)->where('customer_id', $job->customer_id)->whereKeyNot($job->id)->exists();
+
+            if (! $earlier) {
+                return;
+            }
+
+            if ($job->lead_source === null) {
+                $job->forceFill(['lead_source' => LeadSource::RepeatCustomer])->saveQuietly();
+            }
+
+            Customer::withoutCompanyScope()->where('company_id', $job->company_id)->whereKey($job->customer_id)->whereNull('lead_source')
+                ->update(['lead_source' => LeadSource::RepeatCustomer->value]);
+        });
+
+        static::deleted(function (ServiceJob $job) {
+            if (! $job->isForceDeleting() && $job->deleted_at !== null) {
+                $at = $job->getRawOriginal('deleted_at') ?? $job->deleted_at->toDateTimeString();
+                foreach ($job->dependentQueries() as $query) {
+                    $query->whereNull('deleted_at')->update(['deleted_at' => $at]);
+                }
+            }
+        });
+
+        static::restoring(function (ServiceJob $job) {
+            $job->deletedTogetherAt = $job->getRawOriginal('deleted_at');
+        });
+
+        static::restored(function (ServiceJob $job) {
+            if ($job->deletedTogetherAt !== null) {
+                foreach ($job->dependentQueries() as $query) {
+                    $query->where('deleted_at', $job->deletedTogetherAt)->update(['deleted_at' => null]);
+                }
+                $job->deletedTogetherAt = null;
+            }
+        });
+    }
+
+    /**
+     * Queries (with trashed rows, without events) of the records deleted and restored with the job.
+     *
+     * @return list<Builder<Model>>
+     */
+    private function dependentQueries(): array
+    {
+        $scoped = fn (string $class) => $class::withoutCompanyScope()->withTrashed()->where('company_id', $this->company_id);
+        $estimateIds = $scoped(Estimate::class)->where('service_job_id', $this->id)->pluck('id');
+        $invoiceIds = $scoped(Invoice::class)->where('service_job_id', $this->id)->pluck('id');
+
+        return [
+            $scoped(Payment::class)->where(fn (Builder $q) => $q->whereIn('invoice_id', $invoiceIds)->orWhereIn('estimate_id', $estimateIds)),
+            $scoped(Invoice::class)->whereKey($invoiceIds),
+            $scoped(Estimate::class)->whereKey($estimateIds),
+            $scoped(JobCostItem::class)->where('service_job_id', $this->id),
+            $scoped(JobPart::class)->where('service_job_id', $this->id),
+            $scoped(Trip::class)->where('service_job_id', $this->id),
+            $scoped(Task::class)->where('service_job_id', $this->id),
+            $scoped(BusinessExpense::class)->where('service_job_id', $this->id),
+        ];
+    }
+
+    /**
+     * Fills the Statistics type and brand from an appliance: an empty field, or one that still holds what the
+     * appliance had before ($before) — never what a person chose by hand.
+     */
+    public function takeApplianceInfo(Appliance $appliance, ?Appliance $before = null): void
+    {
+        $category = ApplianceCategory::fromApplianceType($appliance->type);
+        $brand = ApplianceGuess::normalizeBrand($appliance->manufacturer);
+        $oldCategory = $before ? ApplianceCategory::fromApplianceType($before->type) : null;
+        $oldBrand = $before ? ApplianceGuess::normalizeBrand($before->manufacturer) : null;
+
+        if ($category !== null && ($this->appliance_category === null || ($oldCategory !== null && $this->appliance_category === $oldCategory))) {
+            $this->appliance_category = $category;
         }
 
-        $estimateIds = $this->estimates()->withTrashed()->pluck('id');
-
-        if ($estimateIds->isNotEmpty() && Payment::query()->whereIn('estimate_id', $estimateIds)->exists()) {
-            return __('jobs.has_payments');
+        if ($brand !== null && ($this->appliance_brand === null || ($oldBrand !== null && $this->appliance_brand === $oldBrand))) {
+            $this->appliance_brand = $brand;
         }
 
-        return null;
+        if ($this->isDirty(['appliance_category', 'appliance_brand'])) {
+            $this->save();
+        }
     }
 
     public function displayNumber(): string
