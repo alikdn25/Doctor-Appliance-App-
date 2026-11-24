@@ -72,6 +72,16 @@ it('fixes existing folders to 2775 and files to 0664 once', function () {
     }
 });
 
-it('runs on every deploy', function () {
-    expect(file_get_contents(base_path('deploy/deploy.sh')))->toContain('php artisan app:fix-storage-permissions');
+it('runs on every deploy as the web server user', function () {
+    expect(file_get_contents(base_path('deploy/deploy.sh')))->toContain('sudo -n -u www-data php artisan app:fix-storage-permissions');
+});
+
+it('re-runs the new deploy script once after checking out the commit', function () {
+    $script = file_get_contents(base_path('deploy/deploy.sh'));
+    $reset = strpos($script, 'git reset --hard "$deploy_commit"');
+
+    expect($reset)->not->toBeFalse()
+        ->and($script)->toContain('if test "${DEPLOY_REEXEC:-}" != 1; then')
+        ->and(strpos($script, 'DEPLOY_REEXEC=1 DEPLOY_SHA="$deploy_commit"'))->toBeGreaterThan($reset)
+        ->and(strpos($script, 'exec bash deploy/deploy.sh'))->toBeLessThan(strpos($script, 'composer install'));
 });
