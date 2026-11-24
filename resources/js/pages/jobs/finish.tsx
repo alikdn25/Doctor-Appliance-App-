@@ -267,7 +267,7 @@ export default function FinishVisit({
                                 asChild
                                 variant="secondary"
                                 size="sm"
-                                className="h-10"
+                                className="min-h-10"
                             >
                                 <Link href={showAppliance(a.id)}>
                                     {t('jobs.finish_screen.view_details')}
@@ -413,7 +413,7 @@ export default function FinishVisit({
                                         }
                                         aria-pressed={data.no_repair === key}
                                         className={cn(
-                                            'h-12 justify-start',
+                                            'min-h-12 justify-start',
                                             data.no_repair === key &&
                                                 'ring-2 ring-[#0A6CF5]',
                                         )}
@@ -542,7 +542,7 @@ export default function FinishVisit({
 
                 <Button
                     type="submit"
-                    className="h-14 w-full text-lg"
+                    className="min-h-14 w-full text-lg"
                     disabled={
                         form.processing ||
                         (data.result === 'not_completed' && data.reason === '')

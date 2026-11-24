@@ -1,3 +1,25 @@
+# November 24 — Owner's task: closing a job finishes its visit, Finish visit after payment, button labels (done)
+
+1. **Close job finishes the visit.** `CloseJob::close` no longer refuses a job with a visit on the way or in
+   progress: every such visit is finished through `VisitWorkflow::finishForClose` (status completed, finish time now,
+   start time stamped if it was still on the way, a "Visit finished" entry in the job history), then the job is
+   closed as before. Applies to Complete, Customer declined repair, Unable to repair and No charge; Cancelled is
+   unchanged. `jobs.errors.visit_in_progress` removed. "Close job" in "⋯" is shown while a visit is under way.
+2. **Finish visit after payment.** A started visit can be finished whatever the job's status except Cancelled
+   (`JobStatus::allowsFinishingVisit`): job page (Complete), My Jobs card (`can_finish`), the Finish visit screen and
+   `POST visits/{visit}/finish`. On an invoiced/paid job the status stays; the history notes the finished visit.
+   Start and On my way are unchanged.
+3. **Button labels never leave the button.** Base `Button`: minimum height instead of a fixed one, labels wrap by
+   words (`leading-tight`, centred, `py-2`) and the button grows; fixed `h-*` on buttons across the app → `min-h-*`.
+   Close job dialog: outcome buttons wrap beside their icons; the Declined / Unable pair sits two per row when the
+   labels fit and one per row with a large system font (container width in rem). Job page tabs wrap instead of being
+   cut.
+
+- Tests: `JobLifecycleTest` (paid job, visit in progress → Complete / Customer declined / Unable to repair close the
+  job and finish the visit; No charge without an invoice, visit in progress or on the way; Finish visit screen and
+  finishing on a paid job, refused on a cancelled one), `MyJobsCardTest` (`can_finish` on a paid job), browser
+  `zw-button-text.spec.ts` (360 px at 100 % and 130 % font: no button label sticks out or is cut).
+
 # November 23 — Owner's task: Jobs without Open / All / Deleted tabs (done)
 
 1. The tab strip under the Jobs header is gone. Jobs opens on the open (unfinished) jobs by urgency; search and the

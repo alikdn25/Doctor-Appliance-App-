@@ -57,6 +57,14 @@ class ChangeJobStatus
     }
 
     /**
+     * A history entry without a status change (e.g. a visit finished on a job already paid).
+     */
+    public function note(ServiceJob $job, ?User $user, ?JobVisit $visit, string $note): void
+    {
+        $this->log($job, $job->status, $job->status, $user, $visit, $note);
+    }
+
+    /**
      * First log entry of a new job.
      */
     public function created(ServiceJob $job, ?User $user): void

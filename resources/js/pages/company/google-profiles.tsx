@@ -178,7 +178,7 @@ export default function GoogleProfiles({
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        className="h-11 shrink-0"
+                                        className="min-h-11 shrink-0"
                                         disabled={
                                             !/^https?:\/\//.test(row.review_url)
                                         }
@@ -255,7 +255,7 @@ export default function GoogleProfiles({
                 <Button
                     type="button"
                     variant="outline"
-                    className="h-11 w-full"
+                    className="min-h-11 w-full"
                     onClick={() =>
                         form.setData('profiles', [
                             ...rows,

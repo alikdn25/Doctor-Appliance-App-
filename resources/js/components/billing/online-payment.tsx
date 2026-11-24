@@ -105,12 +105,12 @@ export function OnlinePaymentSection({
                         <Button
                             type="button"
                             variant="outline"
-                            className="h-11"
+                            className="min-h-11"
                             onClick={copy}
                         >
                             <Copy /> {t('payments.links.copy')}
                         </Button>
-                        <Button variant="outline" className="h-11" asChild>
+                        <Button variant="outline" className="min-h-11" asChild>
                             <a href={url} target="_blank" rel="noreferrer">
                                 <ExternalLink /> {t('payments.links.open')}
                             </a>
@@ -123,7 +123,7 @@ export function OnlinePaymentSection({
             ) : (
                 <Button
                     type="button"
-                    className="h-12 w-full"
+                    className="min-h-12 w-full"
                     disabled={busy}
                     onClick={create}
                 >

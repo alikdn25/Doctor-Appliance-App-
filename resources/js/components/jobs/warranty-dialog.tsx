@@ -205,7 +205,7 @@ export function WarrantyDialog({
                     </ul>
                     <Button
                         type="submit"
-                        className="h-11 w-full"
+                        className="min-h-11 w-full"
                         disabled={form.processing}
                     >
                         {t('common.save')}

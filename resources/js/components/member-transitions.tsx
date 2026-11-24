@@ -206,7 +206,7 @@ export function MemberTransitions({
                         <Button
                             type="submit"
                             disabled={form.processing}
-                            className="h-11 w-full"
+                            className="min-h-11 w-full"
                         >
                             {t(
                                 mode === 'replace'

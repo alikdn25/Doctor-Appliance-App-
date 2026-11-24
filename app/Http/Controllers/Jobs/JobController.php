@@ -317,6 +317,8 @@ class JobController extends Controller
                     ...JobPresenter::visit($visit, $user, $timezone),
                     // The card's main button: On my way / Start / Finish visit, while field work is allowed.
                     'can_work' => $job->status->allowsVisitWork() && Gate::allows('work', $job),
+                    // Finish visit of a started visit: also once the job is invoiced or paid.
+                    'can_finish' => $job->status->allowsFinishingVisit() && Gate::allows('work', $job),
                     // "Edit by voice": everyone who may edit the job (working alone too).
                     'can_edit' => Gate::allows('update', $job),
                     'on_my_way_sms' => $visit->status === VisitStatus::Scheduled ? $messaging->onMyWayOnPhone($job, $user, $visit) : null,
@@ -532,6 +534,7 @@ class JobController extends Controller
                 'created_at' => JobPresenter::iso($job->created_at),
                 'completed_at' => JobPresenter::iso($job->completed_at),
                 'allows_visit_work' => $job->status->allowsVisitWork(),
+                'allows_visit_finish' => $job->status->allowsFinishingVisit(),
                 'customer' => [
                     'id' => $job->customer->id,
                     'display_name' => $job->customer->display_name,

@@ -39,7 +39,7 @@ export default function Trash({
                     title={t('trash.title')}
                     description={t('trash.hint', { days })}
                     actions={
-                        <Button asChild variant="outline" className="h-11">
+                        <Button asChild variant="outline" className="min-h-11">
                             <Link href={deletedJobs()}>
                                 {t('trash.deleted_jobs')}
                             </Link>
@@ -94,7 +94,7 @@ export default function Trash({
                                 </div>
                                 <Button
                                     variant="outline"
-                                    className="h-11 shrink-0"
+                                    className="min-h-11 shrink-0"
                                     onClick={() =>
                                         router.post(
                                             restore({

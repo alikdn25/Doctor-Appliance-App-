@@ -921,7 +921,7 @@ export function LineEditor({
                                             key={kind}
                                             type="button"
                                             size="sm"
-                                            className="h-11"
+                                            className="min-h-11"
                                             variant={
                                                 line.kind === kind
                                                     ? 'default'
@@ -1043,7 +1043,7 @@ export function LineEditor({
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        className="h-11"
+                                        className="min-h-11"
                                         disabled={saved}
                                         onClick={saveToPriceBook}
                                     >
@@ -1073,7 +1073,7 @@ export function LineEditor({
                         </Button>
                         <Button
                             type="button"
-                            className="h-12 flex-1"
+                            className="min-h-12 flex-1"
                             onClick={() => onOpen(false)}
                             data-test="line-done"
                         >

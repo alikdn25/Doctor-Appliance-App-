@@ -97,11 +97,12 @@ export function SwipeTabs<T extends string>({
                             aria-controls={`${id}-panel`}
                             onClick={() => onChange(tab.value)}
                             className={cn(
-                                'da-press min-h-11 min-w-0 flex-1 truncate rounded-[11px] px-2 text-sm font-semibold',
+                                'da-press min-h-11 min-w-0 flex-1 rounded-[11px] px-2 py-1 text-center text-sm leading-tight font-semibold [overflow-wrap:anywhere]',
                                 // Five tabs share the width by their labels (Job is short, Messages long), so none is
-                                // cut on a 360 px phone.
+                                // cut on a 360 px phone, even with a large system font; a label that still does not
+                                // fit wraps instead of being cut.
                                 tabs.length >= 5 &&
-                                    'flex-auto px-1 text-xs sm:px-2 sm:text-sm',
+                                    'flex-auto px-0.5 text-xs sm:px-2 sm:text-sm',
                                 on ? 'da-raised text-foreground' : 'text-[#3d4b60]',
                             )}
                         >

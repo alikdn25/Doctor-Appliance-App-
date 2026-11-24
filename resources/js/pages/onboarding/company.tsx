@@ -252,7 +252,7 @@ export default function CompanySetup({
                 <Button
                     type="submit"
                     disabled={form.processing}
-                    className="h-12 w-full rounded-xl"
+                    className="min-h-12 w-full rounded-xl"
                     data-test="create-company-button"
                 >
                     {form.processing && <Spinner />}

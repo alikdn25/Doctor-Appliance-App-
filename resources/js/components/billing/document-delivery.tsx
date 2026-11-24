@@ -248,7 +248,7 @@ export function useDocumentDelivery({
                         </FormField>
                         <Button
                             type="submit"
-                            className="h-11 w-full"
+                            className="min-h-11 w-full"
                             disabled={form.processing}
                         >
                             <Send /> {t('documents.send')}
@@ -292,7 +292,7 @@ export function useDocumentDelivery({
                             </FormField>
                             <Button
                                 type="submit"
-                                className="h-11 w-full"
+                                className="min-h-11 w-full"
                                 disabled={receipt.processing}
                             >
                                 <Send /> {t('documents.receipt.send')}
@@ -341,14 +341,14 @@ export function useDocumentDelivery({
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="h-11"
+                                    className="min-h-11"
                                     onClick={() => setSmsOpen(false)}
                                 >
                                     {t('messages.sms_confirm.cancel')}
                                 </Button>
                                 <Button
                                     type="button"
-                                    className="h-11"
+                                    className="min-h-11"
                                     disabled={smsSending}
                                     onClick={confirmSms}
                                 >
@@ -413,7 +413,7 @@ export function SendMenu({
                 <Button
                     type="button"
                     variant={primary ? 'default' : 'outline'}
-                    className="h-12 md:h-11"
+                    className="min-h-12 md:min-h-11"
                     onClick={open}
                     data-test="send-menu"
                 >

@@ -1176,14 +1176,14 @@ export default function BillingForm({
                         <Button
                             type="button"
                             variant="outline"
-                            className="h-12 shrink-0 md:h-11"
+                            className="min-h-12 shrink-0 md:min-h-11"
                             asChild
                         >
                             <Link href={back}>{t('common.cancel')}</Link>
                         </Button>
                         <Button
                             type="submit"
-                            className="h-12 min-w-0 flex-1 md:h-11 md:flex-none"
+                            className="min-h-12 min-w-0 flex-1 md:min-h-11 md:flex-none"
                             disabled={
                                 form.processing ||
                                 Object.keys(blocking).length > 0

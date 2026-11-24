@@ -177,14 +177,14 @@ export function ReviewPromptDialog({
                         <Button
                             type="button"
                             variant="outline"
-                            className="h-11"
+                            className="min-h-11"
                             onClick={() => onOpenChange(false)}
                         >
                             {t('reviews.prompt.dont_send')}
                         </Button>
                         <Button
                             type="submit"
-                            className="h-11"
+                            className="min-h-11"
                             disabled={!canSend}
                         >
                             <Send /> {t('reviews.prompt.send')}

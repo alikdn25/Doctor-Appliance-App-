@@ -158,7 +158,7 @@ export default function CashIndex({
                                 </div>
                                 <Button
                                     variant="outline"
-                                    className="h-11 shrink-0"
+                                    className="min-h-11 shrink-0"
                                     disabled={!owes}
                                     onClick={() => openFor(p)}
                                 >
@@ -304,7 +304,7 @@ export default function CashIndex({
                         </FormField>
                         <Button
                             type="submit"
-                            className="h-11 w-full"
+                            className="min-h-11 w-full"
                             disabled={form.processing}
                         >
                             {t('cash.record_deposit')}

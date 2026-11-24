@@ -82,7 +82,7 @@ export default function BookingBot({
                         <Button
                             type="button"
                             variant="outline"
-                            className="h-11"
+                            className="min-h-11"
                             onClick={() => copy(newToken)}
                         >
                             <Copy /> {t('bot.settings.copy')}
@@ -153,7 +153,7 @@ export default function BookingBot({
                     </div>
                     <Button
                         type="submit"
-                        className="h-11"
+                        className="min-h-11"
                         disabled={form.processing}
                     >
                         <Bot /> {t('bot.settings.create')}
@@ -210,7 +210,7 @@ export default function BookingBot({
                                 {!token.revoked_at && (
                                     <Button
                                         variant="outline"
-                                        className="h-11 shrink-0"
+                                        className="min-h-11 shrink-0"
                                         onClick={() =>
                                             window.confirm(
                                                 t(

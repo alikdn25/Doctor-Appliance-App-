@@ -165,6 +165,7 @@ type Job = {
     created_at: string | null;
     completed_at: string | null;
     allows_visit_work: boolean;
+    allows_visit_finish: boolean;
     customer: JobEditCustomer & {
         id: number;
         display_name: string;
@@ -440,9 +441,6 @@ export default function JobShow({
     const money = useMoney();
     const [warrantyOpen, setWarrantyOpen] = useState(openWarranty);
     const [busy, setBusy] = useState(false);
-    const visitUnderWay = job.visits.some((v) =>
-        ['on_the_way', 'in_progress'].includes(v.status),
-    );
     const [visitDialog, setVisitDialog] = useState<{
         open: boolean;
         visit: Visit | null;
@@ -604,7 +602,21 @@ export default function JobShow({
 
     // Start / Complete of the person's own visit: in the main block, always in view (owner's update, October 24).
     const visitActions: BarAction[] = (() => {
-        if (!myVisit || !job.allows_visit_work) return [];
+        if (!myVisit) return [];
+        // Finish visit stays available once the job is invoiced or paid (not when cancelled).
+        if (myVisit.status === 'in_progress' && !job.allows_visit_work) {
+            return job.allows_visit_finish
+                ? [
+                      {
+                          key: 'complete',
+                          label: t('jobs.actions.complete'),
+                          icon: <CheckCircle2 />,
+                          href: finishScreen(myVisit.id),
+                      },
+                  ]
+                : [];
+        }
+        if (!job.allows_visit_work) return [];
         if (['scheduled', 'on_the_way'].includes(myVisit.status)) {
             return [
                 {
@@ -866,8 +878,7 @@ export default function JobShow({
                         title={t('jobs.job_number', { number: job.number })}
                         items={[
                             can.close &&
-                                !job.outcome &&
-                                !visitUnderWay && {
+                                !job.outcome && {
                                     key: 'close',
                                     label: t('jobs.close.action'),
                                     hint: t('jobs.close.with_reason'),

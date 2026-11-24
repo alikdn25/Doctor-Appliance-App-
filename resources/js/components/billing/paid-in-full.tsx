@@ -110,7 +110,7 @@ export function PaidInFullFlow() {
                             <p className="text-sm text-muted-foreground">
                                 {t('payments.paid_in_full.finish_hint')}
                             </p>
-                            <Button className="h-12 text-base" asChild>
+                            <Button className="min-h-12 text-base" asChild>
                                 <Link
                                     href={paid.complete.finish_url}
                                     onClick={() => setStep(null)}
@@ -121,7 +121,7 @@ export function PaidInFullFlow() {
                         </>
                     ) : (
                         <Button
-                            className="h-12 text-base"
+                            className="min-h-12 text-base"
                             disabled={closing}
                             onClick={complete}
                         >
@@ -130,7 +130,7 @@ export function PaidInFullFlow() {
                     )}
                     <Button
                         variant="outline"
-                        className="h-11"
+                        className="min-h-11"
                         onClick={() => setStep(null)}
                     >
                         {t('payments.paid_in_full.not_now')}

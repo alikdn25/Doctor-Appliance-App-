@@ -43,7 +43,7 @@ export default function ConfirmPassword() {
 
                         <div className="grid gap-2">
                             <Button
-                                className="h-11 w-full"
+                                className="min-h-11 w-full"
                                 disabled={processing}
                                 data-test="confirm-password-button"
                             >
@@ -53,7 +53,7 @@ export default function ConfirmPassword() {
                             <Button
                                 type="button"
                                 variant="ghost"
-                                className="h-11 w-full"
+                                className="min-h-11 w-full"
                                 onClick={cancel}
                             >
                                 {t('auth.confirm.cancel')}

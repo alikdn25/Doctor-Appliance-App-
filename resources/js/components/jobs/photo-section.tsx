@@ -103,7 +103,7 @@ export function PhotoSection({
                                 type="button"
                                 variant="secondary"
                                 size="sm"
-                                className="h-10 text-[#0050D0]"
+                                className="min-h-10 text-[#0050D0]"
                                 onClick={() => inputs.current[kind]?.click()}
                             >
                                 <Plus /> {t('jobs.photos.add')}
@@ -185,7 +185,7 @@ export function PhotoSection({
                                 type="button"
                                 size="lg"
                                 variant="outline"
-                                className="h-12 w-full"
+                                className="min-h-12 w-full"
                                 onClick={() =>
                                     inputs.current[kind.value]?.click()
                                 }

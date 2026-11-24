@@ -130,7 +130,7 @@ export function SignatureSection({
                     type="button"
                     size="lg"
                     variant="outline"
-                    className="h-12 w-full sm:w-auto"
+                    className="min-h-12 w-full sm:w-auto"
                     onClick={() => setOpen(true)}
                 >
                     <PenLine />{' '}

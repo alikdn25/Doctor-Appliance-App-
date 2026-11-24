@@ -1349,14 +1349,14 @@ export default function CompanySettingsPage({
                         <Button
                             type="button"
                             variant="outline"
-                            className="h-12 md:h-11"
+                            className="min-h-12 md:min-h-11"
                             onClick={() => form.reset()}
                         >
                             {t('company.discard')}
                         </Button>
                         <Button
                             type="submit"
-                            className="h-12 md:h-11"
+                            className="min-h-12 md:min-h-11"
                             disabled={form.processing}
                             data-test="settings-save"
                         >

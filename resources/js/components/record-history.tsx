@@ -123,7 +123,7 @@ export function RecordHistory({
             <Button
                 type="button"
                 variant="outline"
-                className="h-11"
+                className="min-h-11"
                 onClick={toggle}
                 aria-expanded={open}
             >

@@ -340,7 +340,7 @@ export default function BillingShow({
                     <>
                         <SendMenu actions={send} />
                         <Button
-                            className="h-12 text-base md:h-11"
+                            className="min-h-12 text-base md:min-h-11"
                             onClick={takePayment}
                             data-test="take-payment"
                         >
@@ -357,7 +357,7 @@ export default function BillingShow({
                     {send.openReceipt && (
                         <Button
                             variant="outline"
-                            className="h-12 md:h-11"
+                            className="min-h-12 md:min-h-11"
                             onClick={send.openReceipt}
                             data-test="send-receipt"
                         >
@@ -375,7 +375,7 @@ export default function BillingShow({
                         {can.update && (
                             <Button
                                 variant="outline"
-                                className="h-12 md:h-11"
+                                className="min-h-12 md:min-h-11"
                                 asChild
                             >
                                 <Link href={editUrl}>
@@ -391,13 +391,13 @@ export default function BillingShow({
                     <>
                         <Button
                             variant="outline"
-                            className="h-12 md:h-11"
+                            className="min-h-12 md:min-h-11"
                             onClick={() => setDecision(false)}
                         >
                             <XCircle /> {t('estimates.mark_declined')}
                         </Button>
                         <Button
-                            className="h-12 text-base md:h-11"
+                            className="min-h-12 text-base md:min-h-11"
                             onClick={() => setDecision(true)}
                         >
                             <CheckCircle2 /> {t('estimates.mark_approved')}
@@ -407,7 +407,7 @@ export default function BillingShow({
             case 'approved':
                 return can.convert ? (
                     <Button
-                        className="h-12 text-base md:h-11"
+                        className="min-h-12 text-base md:min-h-11"
                         onClick={toInvoice}
                         data-test="create-invoice"
                     >
@@ -416,7 +416,11 @@ export default function BillingShow({
                 ) : null;
             case 'declined':
                 return diagnosisUrl ? (
-                    <Button variant="outline" className="h-12 md:h-11" asChild>
+                    <Button
+                        variant="outline"
+                        className="min-h-12 md:min-h-11"
+                        asChild
+                    >
                         <Link href={diagnosisUrl}>
                             <Stethoscope /> {t('estimates.invoice_diagnosis')}
                         </Link>
@@ -845,7 +849,7 @@ export default function BillingShow({
                             {can.revise && (
                                 <Button
                                     variant="outline"
-                                    className="h-11 w-full bg-background sm:w-auto"
+                                    className="min-h-11 w-full bg-background sm:w-auto"
                                     onClick={() => setConfirm('revise')}
                                 >
                                     <FilePen /> {t('estimates.revise')}
@@ -1146,7 +1150,7 @@ export default function BillingShow({
                         />
                         <Button
                             variant="outline"
-                            className="h-12 w-full text-base"
+                            className="min-h-12 w-full text-base"
                             onClick={() => {
                                 setTakeOpen(false);
                                 setPaymentOpen(true);

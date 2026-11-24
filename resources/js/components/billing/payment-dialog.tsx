@@ -174,7 +174,7 @@ export function PaymentDialog({
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="h-11"
+                                    className="min-h-11"
                                     onClick={() =>
                                         form.setData(
                                             'amount',
@@ -294,7 +294,7 @@ export function PaymentDialog({
                     <div className="sticky bottom-0 -mx-6 border-t bg-background px-6 py-3">
                         <Button
                             type="submit"
-                            className="h-12 w-full text-base"
+                            className="min-h-12 w-full text-base"
                             disabled={form.processing || !method || amount <= 0}
                         >
                             {t('payments.record')} · {money(amount)}

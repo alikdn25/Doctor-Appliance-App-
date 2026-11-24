@@ -86,7 +86,7 @@ export function JobMessagingSection({
             {messaging.mode === 'automatic' && canWork && canText && (
                 <Button
                     variant="outline"
-                    className="h-11 w-full"
+                    className="min-h-11 w-full"
                     disabled={messaging.sms_blocked !== null}
                     onClick={() => setOpen(true)}
                 >
@@ -122,7 +122,7 @@ export function JobMessagingSection({
                         )}
                         <Button
                             type="submit"
-                            className="h-11 w-full"
+                            className="min-h-11 w-full"
                             disabled={form.processing}
                         >
                             <Send /> {t('messages.send_sms')}

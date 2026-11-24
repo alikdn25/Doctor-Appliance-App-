@@ -58,24 +58,54 @@ class VisitWorkflow
         }
 
         $this->step($visit, [VisitStatus::InProgress], function (JobVisit $visit) use ($user, $outcome, $note) {
-            $visit->status = VisitStatus::Completed;
-            $visit->finished_at = now();
-            $visit->save();
+            $this->stampFinished($visit);
+            $job = $visit->job;
 
-            $this->changeStatus->handle($visit->job, $outcome, $user, $visit, $note);
+            // Invoiced or paid before the visit was finished: the job keeps its status; the history notes the visit.
+            if ($job->status->isLocked()) {
+                $this->changeStatus->note($job, $user, $visit, $note ?? __('jobs.history_entry.visit_finished'));
+
+                return;
+            }
+
+            $this->changeStatus->handle($job, $outcome, $user, $visit, $note);
 
             // Invoiced or paid already on site: the finished job moves on to invoiced/paid.
-            $this->syncBilling->handle($visit->job, $user);
-        });
+            $this->syncBilling->handle($job, $user);
+        }, fn (JobStatus $status) => $status->allowsFinishingVisit());
+    }
+
+    /**
+     * Closing the job finishes its visit on the way or in progress, as Finish visit does; the job's own status is
+     * left to the caller (CloseJob), which records the outcome.
+     */
+    public function finishForClose(JobVisit $visit, User $user): void
+    {
+        $this->step($visit, [VisitStatus::OnTheWay, VisitStatus::InProgress], function (JobVisit $visit) use ($user) {
+            $this->stampFinished($visit);
+            $this->changeStatus->note($visit->job, $user, $visit, __('jobs.history_entry.visit_finished'));
+        }, fn (JobStatus $status) => $status->allowsFinishingVisit());
+    }
+
+    private function stampFinished(JobVisit $visit): void
+    {
+        $visit->status = VisitStatus::Completed;
+        // Closed while still on the way: the visit took no time on site.
+        $visit->started_at ??= now();
+        $visit->finished_at = now();
+        $visit->save();
     }
 
     /**
      * @param  list<VisitStatus>  $from
      * @param  \Closure(JobVisit): void  $apply
+     * @param  (\Closure(JobStatus): bool)|null  $jobAllows  Job statuses the step may run in (default: active jobs).
      */
-    private function step(JobVisit $visit, array $from, \Closure $apply): void
+    private function step(JobVisit $visit, array $from, \Closure $apply, ?\Closure $jobAllows = null): void
     {
-        DB::transaction(function () use ($visit, $from, $apply) {
+        $jobAllows ??= fn (JobStatus $status) => $status->allowsVisitWork();
+
+        DB::transaction(function () use ($visit, $from, $apply, $jobAllows) {
             // Re-read under a lock so a double tap cannot apply the same step twice.
             $visit = $visit->newQuery()->lockForUpdate()->findOrFail($visit->id);
 
@@ -83,7 +113,7 @@ class VisitWorkflow
                 throw ValidationException::withMessages(['status' => __('jobs.errors.invalid_transition')]);
             }
 
-            if (! $visit->job->status->allowsVisitWork()) {
+            if (! $jobAllows($visit->job->status)) {
                 throw ValidationException::withMessages(['status' => __('jobs.errors.job_not_active')]);
             }
 

@@ -417,7 +417,6 @@ return [
 
     'errors' => [
         'cancelled' => 'This job is cancelled. Reopen it first.',
-        'visit_in_progress' => 'The job is on the way or in progress. Finish it first.',
         'cancel_after_work' => 'Work has started on this job, so it cannot be cancelled. Close it with an outcome instead (customer declined, unable to repair).',
         'reason_required' => 'Pick a reason from the list.',
         'previous_job_required' => 'Pick the earlier job this one follows up.',
@@ -635,6 +634,7 @@ return [
 
     'history_entry' => [
         'created' => 'Job created',
+        'visit_finished' => 'Visit finished',
     ],
     'instructions' => [
         'title' => 'Instructions',

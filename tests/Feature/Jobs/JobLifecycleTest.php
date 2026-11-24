@@ -10,6 +10,7 @@ use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Estimate;
+use App\Models\Invoice;
 use App\Models\JobBringItem;
 use App\Models\JobVisit;
 use App\Models\Payment;
@@ -41,6 +42,22 @@ beforeEach(function () {
 function startVisit(JobVisit $visit, $tech): void
 {
     test()->actingAs($tech)->post(route('visits.start', $visit))->assertSessionHasNoErrors();
+}
+
+/**
+ * Paid on site before the visit is finished: a paid invoice, the job marked Paid.
+ */
+function paidInFull(ServiceJob $job): void
+{
+    inCompany($job->company, function () use ($job) {
+        Invoice::factory()->create(['service_job_id' => $job->id, 'total' => 12000, 'balance' => 0, 'currency' => 'CAD', 'status' => 'paid']);
+        $job->fresh()->forceFill(['status' => JobStatus::Paid])->save();
+    });
+}
+
+function currentReason(Company $company, JobOutcome $outcome): string
+{
+    return inCompany($company, fn () => currentCompany()->closureReasons($outcome)[0]);
 }
 
 describe('deleting jobs', function () {
@@ -194,10 +211,71 @@ describe('closing a job', function () {
         expect($this->job->fresh())->outcome->toBeNull()->status->toBe(JobStatus::Scheduled);
     });
 
-    test('a job cannot be closed while a visit is under way', function () {
+    test('closing a paid job with a visit in progress finishes the visit and closes the job', function (string $outcome) {
+        $reason = JobOutcome::from($outcome)->needsReason() ? currentReason($this->company, JobOutcome::from($outcome)) : null;
         startVisit($this->visit, $this->tech);
+        paidInFull($this->job);
+        expect($this->job->fresh()->status)->toBe(JobStatus::Paid);
 
-        $this->actingAs($this->owner)->post(route('jobs.close', $this->job), ['outcome' => 'repaired'])->assertSessionHasErrors('outcome');
+        $this->actingAs($this->owner)->post(route('jobs.close', $this->job), array_filter(['outcome' => $outcome, 'reason' => $reason]))
+            ->assertSessionHasNoErrors();
+
+        $job = $this->job->fresh();
+        $visit = $this->visit->fresh();
+        expect($job->outcome)->toBe(JobOutcome::from($outcome))
+            ->and($job->closed_at)->not->toBeNull()
+            ->and($job->status)->toBe(JobStatus::Paid)
+            ->and($visit->status)->toBe(VisitStatus::Completed)
+            ->and($visit->finished_at)->not->toBeNull()
+            // Finishing the visit is in the job's history.
+            ->and(inCompany($this->company, fn () => $job->statusChanges()->where('job_visit_id', $visit->id)->where('note', 'Visit finished')->exists()))->toBeTrue();
+    })->with([
+        'complete' => 'repaired',
+        'customer declined repair' => 'customer_declined',
+        'unable to repair' => 'unable_to_repair',
+    ]);
+
+    test('closing as no charge (no invoice) finishes a visit in progress or on the way', function (string $step) {
+        $this->actingAs($this->tech)->post(route('visits.'.$step, $this->visit))->assertSessionHasNoErrors();
+
+        $this->actingAs($this->owner)->post(route('jobs.close', $this->job), ['outcome' => 'no_charge', 'reason' => currentReason($this->company, JobOutcome::NoCharge)])
+            ->assertSessionHasNoErrors();
+
+        $job = $this->job->fresh();
+        $visit = $this->visit->fresh();
+        expect($job->outcome)->toBe(JobOutcome::NoCharge)
+            ->and($job->status)->toBe(JobStatus::Completed)
+            ->and($visit->status)->toBe(VisitStatus::Completed)
+            ->and($visit->started_at)->not->toBeNull()
+            ->and($visit->finished_at)->not->toBeNull();
+    })->with(['in progress' => 'start', 'on the way' => 'on-my-way']);
+
+    test('Finish visit opens and finishes a started visit on a paid job; not on a cancelled one', function () {
+        startVisit($this->visit, $this->tech);
+        paidInFull($this->job);
+
+        $this->actingAs($this->tech)->get(route('jobs.show', $this->job))->assertInertia(fn (Assert $page) => $page
+            ->where('job.allows_visit_work', false)
+            ->where('job.allows_visit_finish', true));
+        $this->get(route('visits.finish-screen', $this->visit))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('jobs/finish')->where('visitId', $this->visit->id));
+
+        $this->post(route('visits.finish', $this->visit), ['outcome' => 'completed'])->assertSessionHasNoErrors();
+
+        $job = $this->job->fresh();
+        expect($this->visit->fresh()->status)->toBe(VisitStatus::Completed)
+            ->and($job->status)->toBe(JobStatus::Paid)
+            ->and($job->outcome)->toBe(JobOutcome::Repaired);
+
+        // A cancelled job: the screen goes back to the job and finishing is refused.
+        $other = ServiceJob::factory()->for($this->property)->withVisit($this->tech)->create(['brand_id' => $this->brand->id]);
+        $otherVisit = JobVisit::withoutCompanyScope()->where('service_job_id', $other->id)->sole();
+        startVisit($otherVisit, $this->tech);
+        inCompany($this->company, fn () => $other->forceFill(['status' => JobStatus::Cancelled])->save());
+
+        $this->get(route('visits.finish-screen', $otherVisit))->assertRedirect(route('jobs.show', $other));
+        $this->post(route('visits.finish', $otherVisit), ['outcome' => 'completed'])->assertSessionHasErrors();
+        expect($otherVisit->fresh()->status)->toBe(VisitStatus::InProgress);
     });
 
     test('cancelling needs a reason and is only possible before any work', function () {

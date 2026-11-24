@@ -171,14 +171,14 @@ export default function Notifications({
                         </p>
                     )}
                     {push.available && state === 'off' && (
-                        <Button className="h-11" onClick={turnOn}>
+                        <Button className="min-h-11" onClick={turnOn}>
                             <Bell /> {t('notifications.page.push_enable')}
                         </Button>
                     )}
                     {push.available && state === 'on' && (
                         <Button
                             variant="outline"
-                            className="h-11"
+                            className="min-h-11"
                             onClick={turnOff}
                         >
                             <BellOff /> {t('notifications.page.push_disable')}
@@ -189,7 +189,7 @@ export default function Notifications({
                 {unread && (
                     <Button
                         variant="outline"
-                        className="h-11"
+                        className="min-h-11"
                         onClick={() =>
                             router.post(
                                 read().url,
