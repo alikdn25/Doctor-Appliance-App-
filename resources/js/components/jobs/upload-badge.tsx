@@ -25,7 +25,7 @@ export function UploadBadge({ item }: { item: UploadItem }) {
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-8"
+                        className="min-h-8"
                         onClick={() => void retryUpload(item.id)}
                     >
                         <RotateCw /> {t('jobs.uploads.retry')}
@@ -34,7 +34,7 @@ export function UploadBadge({ item }: { item: UploadItem }) {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="h-8"
+                        className="min-h-8"
                         onClick={() => void discardUpload(item.id)}
                     >
                         <X /> {t('jobs.uploads.discard')}

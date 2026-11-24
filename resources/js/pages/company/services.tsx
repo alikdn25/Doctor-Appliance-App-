@@ -615,7 +615,7 @@ export default function Services({
                 <Button
                     type="button"
                     variant="outline"
-                    className="h-11 w-full"
+                    className="min-h-11 w-full"
                     onClick={() => {
                         const key = ++rowKey;
                         setOpenKeys((keys) => new Set(keys).add(key));
@@ -650,7 +650,7 @@ export default function Services({
                     <div className="da-pinned sticky bottom-0 z-30 -mx-4 border-t bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:bottom-2 md:mx-0 md:rounded-2xl md:border">
                         <Button
                             type="submit"
-                            className="h-12 w-full"
+                            className="min-h-12 w-full"
                             disabled={form.processing}
                         >
                             {t('services.save_changes')}

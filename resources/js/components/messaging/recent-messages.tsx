@@ -35,7 +35,7 @@ export function RecentMessages({
             )}
             <div className="flex flex-wrap gap-2">
                 {chatUrl && (
-                    <Button variant="outline" className="h-11" asChild>
+                    <Button variant="outline" className="min-h-11" asChild>
                         <Link href={chatUrl} data-test="open-chat">
                             <MessageSquare /> {t('messages.chat.open')}
                         </Link>
@@ -44,7 +44,7 @@ export function RecentMessages({
                 {!all && messages.length > 2 && (
                     <Button
                         variant="ghost"
-                        className="h-11"
+                        className="min-h-11"
                         onClick={() => setAll(true)}
                     >
                         {t('messages.chat.show_all', {

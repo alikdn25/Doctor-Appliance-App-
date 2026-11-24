@@ -76,7 +76,7 @@ export default function AndroidPage({ release }: Props) {
                             {hasAppShell() ? (
                                 <Button
                                     size="lg"
-                                    className="da-fab-glow h-14 text-lg"
+                                    className="da-fab-glow min-h-14 text-lg"
                                     onClick={() =>
                                         downloadAndroidRelease(release.url)
                                     }
@@ -87,7 +87,7 @@ export default function AndroidPage({ release }: Props) {
                             ) : (
                                 <Button
                                     size="lg"
-                                    className="da-fab-glow h-14 text-lg"
+                                    className="da-fab-glow min-h-14 text-lg"
                                     asChild
                                 >
                                     <a

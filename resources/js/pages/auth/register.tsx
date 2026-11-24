@@ -92,7 +92,7 @@ export default function Register({
                         <Button
                             type="submit"
                             disabled={processing}
-                            className="h-12 w-full rounded-xl"
+                            className="min-h-12 w-full rounded-xl"
                             data-test="register-button"
                         >
                             {processing && <Spinner />}

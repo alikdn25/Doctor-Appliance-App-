@@ -291,7 +291,7 @@ export function TakePayment({
                     <div className="grid gap-2">
                         <Button
                             size="lg"
-                            className="da-fab-glow h-16 text-lg"
+                            className="da-fab-glow min-h-16 text-lg"
                             loading={busy === 'card_reader'}
                             disabled={busy !== null && busy !== 'card_reader'}
                             onClick={() => void run('card_reader')}

@@ -111,7 +111,7 @@ export default function AdminCompanyShow({
                             onClick={() =>
                                 router.post(workspace(company.id).url)
                             }
-                            className="h-11"
+                            className="min-h-11"
                         >
                             {t('admin.open_workspace')}
                         </Button>
@@ -366,7 +366,7 @@ export default function AdminCompanyShow({
                     <Button
                         type="submit"
                         form="company-form"
-                        className="h-11"
+                        className="min-h-11"
                         disabled={form.processing}
                     >
                         {t('common.save')}

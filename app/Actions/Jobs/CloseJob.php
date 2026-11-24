@@ -24,6 +24,7 @@ class CloseJob
     public function __construct(
         private readonly ChangeJobStatus $changeStatus,
         private readonly SyncJobBillingStatus $syncBilling,
+        private readonly VisitWorkflow $workflow,
     ) {}
 
     /**
@@ -52,9 +53,12 @@ class CloseJob
                 throw ValidationException::withMessages(['outcome' => __('jobs.errors.cancelled')]);
             }
 
-            if ($job->visits()->whereIn('status', [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value])->exists()) {
-                throw ValidationException::withMessages(['outcome' => __('jobs.errors.visit_in_progress')]);
+            // A visit still on the way or in progress is finished as by Finish visit.
+            $open = $job->visits()->whereIn('status', [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value])->get();
+            foreach ($open as $openVisit) {
+                $this->workflow->finishForClose($openVisit, $user);
             }
+            $visit ??= $open->last();
 
             // Nothing is left on the schedule of a closed job.
             $job->visits()->where('status', VisitStatus::Scheduled->value)->update(['status' => VisitStatus::Cancelled->value]);

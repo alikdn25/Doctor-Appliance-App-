@@ -71,6 +71,15 @@ enum JobStatus: string
     }
 
     /**
+     * A visit already started can be finished whatever the job's status (paid on site before finishing, too),
+     * except on a cancelled job.
+     */
+    public function allowsFinishingVisit(): bool
+    {
+        return $this !== self::Cancelled;
+    }
+
+    /**
      * When a new visit is scheduled the job moves to "scheduled" from these statuses.
      */
     public function reschedulable(): bool

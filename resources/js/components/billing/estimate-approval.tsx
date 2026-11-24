@@ -199,7 +199,7 @@ export function ApproveDialog({
                         <Button
                             type="button"
                             variant={mode === 'drawn' ? 'default' : 'outline'}
-                            className="h-11"
+                            className="min-h-11"
                             onClick={() => setMode('drawn')}
                         >
                             <PenLine /> {t('estimates.online.sign_draw')}
@@ -207,7 +207,7 @@ export function ApproveDialog({
                         <Button
                             type="button"
                             variant={mode === 'typed' ? 'default' : 'outline'}
-                            className="h-11"
+                            className="min-h-11"
                             onClick={() => setMode('typed')}
                         >
                             <Type /> {t('estimates.online.sign_type')}
@@ -259,7 +259,7 @@ export function ApproveDialog({
                     </p>
                     <Button
                         type="submit"
-                        className="h-12 w-full text-base"
+                        className="min-h-12 w-full text-base"
                         style={{ backgroundColor: color }}
                         disabled={processing || name.trim() === ''}
                     >
@@ -333,7 +333,7 @@ export function DeclineDialog({
                     <Button
                         type="submit"
                         variant="outline"
-                        className="h-12 w-full"
+                        className="min-h-12 w-full"
                         disabled={processing}
                     >
                         <XCircle /> {t('estimates.online.confirm_decline')}

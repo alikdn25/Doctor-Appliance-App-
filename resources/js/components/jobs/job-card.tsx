@@ -16,9 +16,12 @@ import { useTrans } from '@/lib/i18n';
 import { isDraftJob } from '@/lib/status';
 import { cn } from '@/lib/utils';
 
-/** The three card buttons share the row on a phone: compact text and icon. */
+/**
+ * The three card buttons share the row on a phone: compact text and icon. A label too wide to sit beside its icon
+ * (large system font) goes under it, and the button grows.
+ */
 export const cardButton =
-    'h-12 gap-1.5 px-1.5 text-sm has-[>svg]:px-1.5 md:text-sm [&_svg]:size-4!';
+    'min-h-12 flex-wrap content-center gap-x-1.5 gap-y-0.5 px-1.5 text-sm has-[>svg]:px-1.5 md:text-sm [&_svg]:size-4!';
 
 export type JobCardData = {
     number: number;
@@ -204,49 +207,54 @@ export function JobCard({
                 </IconButton>
             )}
             {buttons > 0 && (
-                <div
-                    className={cn(
-                        'grid gap-2 px-3 pb-3',
-                        buttons === 3
-                            ? 'grid-cols-3'
-                            : buttons === 2
-                              ? 'grid-cols-2'
-                              : 'grid-cols-1',
-                    )}
-                >
-                    {!job.address && onAddAddress && (
-                        <Button
-                            variant="sky"
-                            className={cardButton}
-                            onClick={onAddAddress}
-                            data-test="card-add-address"
-                        >
-                            <Navigation /> {t('jobs.navigate')}
-                        </Button>
-                    )}
-                    {job.address && (
-                        <Button asChild variant="sky" className={cardButton}>
-                            <a
-                                href={mapsUrl(job.address)}
-                                target="_blank"
-                                rel="noreferrer"
+                // Side by side while the labels fit; one per row with a large system font (the width is in rem, so
+                // it grows with the font).
+                <div className="@container px-3 pb-3">
+                    <div
+                        className={cn(
+                            'grid auto-rows-fr grid-cols-1 gap-2',
+                            buttons === 3 && '@min-[17rem]:grid-cols-3',
+                            buttons === 2 && '@min-[11rem]:grid-cols-2',
+                        )}
+                    >
+                        {!job.address && onAddAddress && (
+                            <Button
+                                variant="sky"
+                                className={cardButton}
+                                onClick={onAddAddress}
+                                data-test="card-add-address"
                             >
                                 <Navigation /> {t('jobs.navigate')}
-                            </a>
-                        </Button>
-                    )}
-                    {job.phone && (
-                        <Button
-                            asChild
-                            variant="success"
-                            className={cardButton}
-                        >
-                            <a href={telUrl(job.phone)}>
-                                <Phone /> {t('jobs.call')}
-                            </a>
-                        </Button>
-                    )}
-                    {action}
+                            </Button>
+                        )}
+                        {job.address && (
+                            <Button
+                                asChild
+                                variant="sky"
+                                className={cardButton}
+                            >
+                                <a
+                                    href={mapsUrl(job.address)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <Navigation /> {t('jobs.navigate')}
+                                </a>
+                            </Button>
+                        )}
+                        {job.phone && (
+                            <Button
+                                asChild
+                                variant="success"
+                                className={cardButton}
+                            >
+                                <a href={telUrl(job.phone)}>
+                                    <Phone /> {t('jobs.call')}
+                                </a>
+                            </Button>
+                        )}
+                        {action}
+                    </div>
                 </div>
             )}
         </li>

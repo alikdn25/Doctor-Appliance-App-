@@ -126,7 +126,7 @@ export function FinishDialog({
                             {callback ? (
                                 <Button
                                     size="lg"
-                                    className="h-12"
+                                    className="h-auto min-h-12 gap-1.5 px-3 py-2 text-center leading-tight whitespace-normal has-[>svg]:px-3"
                                     disabled={form.processing}
                                     onClick={() => send('fixed_under_warranty')}
                                 >
@@ -136,7 +136,7 @@ export function FinishDialog({
                             ) : (
                                 <Button
                                     size="lg"
-                                    className="h-12"
+                                    className="h-auto min-h-12 gap-1.5 px-3 py-2 text-center leading-tight whitespace-normal has-[>svg]:px-3"
                                     disabled={form.processing}
                                     onClick={() =>
                                         send(
@@ -154,7 +154,7 @@ export function FinishDialog({
                                 <Button
                                     size="lg"
                                     variant="outline"
-                                    className="h-12"
+                                    className="h-auto min-h-12 gap-1.5 px-3 py-2 text-center leading-tight whitespace-normal has-[>svg]:px-3"
                                     disabled={form.processing}
                                     onClick={() => send('need_to_order_parts')}
                                 >
@@ -162,33 +162,42 @@ export function FinishDialog({
                                     {t('jobs.actions.waiting_for_parts')}
                                 </Button>
                             )}
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button
-                                    size="lg"
-                                    variant="outline"
-                                    className="h-12 whitespace-normal"
-                                    onClick={() => choose('customer_declined')}
-                                >
-                                    <ThumbsDown />{' '}
-                                    {t('jobs.outcomes.customer_declined')}
-                                </Button>
-                                <Button
-                                    size="lg"
-                                    variant="outline"
-                                    className="h-12 whitespace-normal"
-                                    onClick={() => choose('unable_to_repair')}
-                                >
-                                    <Ban />{' '}
-                                    {t('jobs.outcomes.unable_to_repair')}
-                                </Button>
-                                <Button
-                                    size="lg"
-                                    variant="outline"
-                                    className="col-span-2 h-12"
-                                    onClick={() => choose('no_charge')}
-                                >
-                                    <HandCoins /> {t('jobs.outcomes.no_charge')}
-                                </Button>
+                            {/* Two per row when the labels fit beside their icons; one per row with a large
+                                system font (the width is in rem, so it grows with the font). */}
+                            <div className="@container">
+                                <div className="grid grid-cols-1 gap-2 @min-[17rem]:grid-cols-2">
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="h-auto min-h-12 gap-1.5 px-3 py-2 text-center leading-tight whitespace-normal has-[>svg]:px-3"
+                                        onClick={() =>
+                                            choose('customer_declined')
+                                        }
+                                    >
+                                        <ThumbsDown />{' '}
+                                        {t('jobs.outcomes.customer_declined')}
+                                    </Button>
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="h-auto min-h-12 gap-1.5 px-3 py-2 text-center leading-tight whitespace-normal has-[>svg]:px-3"
+                                        onClick={() =>
+                                            choose('unable_to_repair')
+                                        }
+                                    >
+                                        <Ban />{' '}
+                                        {t('jobs.outcomes.unable_to_repair')}
+                                    </Button>
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="h-auto min-h-12 gap-1.5 px-3 py-2 text-center leading-tight whitespace-normal has-[>svg]:px-3 @min-[17rem]:col-span-2"
+                                        onClick={() => choose('no_charge')}
+                                    >
+                                        <HandCoins />{' '}
+                                        {t('jobs.outcomes.no_charge')}
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -361,7 +370,7 @@ export function FinishDialog({
                         <div className="grid grid-cols-[auto_1fr] gap-2">
                             <Button
                                 variant="ghost"
-                                className="h-12"
+                                className="min-h-12"
                                 onClick={() =>
                                     form.setData({
                                         ...form.data,
@@ -374,7 +383,7 @@ export function FinishDialog({
                             </Button>
                             <Button
                                 size="lg"
-                                className="h-12"
+                                className="min-h-12"
                                 disabled={
                                     form.processing ||
                                     form.data.reason === '' ||

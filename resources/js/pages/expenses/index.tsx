@@ -218,7 +218,7 @@ export default function BusinessExpenses({
                 <div className="flex flex-wrap items-center gap-2">
                     <Button
                         variant="outline"
-                        className="h-10 rounded-full"
+                        className="min-h-10 rounded-full"
                         onClick={() => {
                             setQuery(filters);
                             setFiltersOpen(true);
@@ -853,7 +853,7 @@ export default function BusinessExpenses({
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="h-11"
+                                className="min-h-11"
                                 onClick={() =>
                                     setQuery({
                                         ...query,
@@ -865,7 +865,7 @@ export default function BusinessExpenses({
                             >
                                 {t('expenses.clear')}
                             </Button>
-                            <Button type="submit" className="h-11">
+                            <Button type="submit" className="min-h-11">
                                 {t('expenses.apply_filters')}
                             </Button>
                         </div>

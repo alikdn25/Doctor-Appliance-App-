@@ -48,6 +48,7 @@ import { finishScreen, onMyWay, start } from '@/routes/visits';
 
 type MyVisit = Visit & {
     can_work?: boolean;
+    can_finish?: boolean;
     can_edit?: boolean;
     on_my_way_sms?: { to: string; body: string } | null;
     job: {
@@ -302,7 +303,25 @@ export default function MyJobs({
     };
 
     const step = (visit: MyVisit) => {
-        if (!visit.can_work || tab !== 'day') {
+        if (tab !== 'day') {
+            return undefined;
+        }
+        // Finish visit of a started visit: also once the job is paid.
+        if (visit.status === 'in_progress' && visit.can_finish) {
+            return (
+                <Button
+                    variant="outline"
+                    className={cardButton}
+                    asChild
+                    data-test="card-finish"
+                >
+                    <Link href={finishScreen(visit.id)}>
+                        <CheckCircle2 /> {t('jobs.actions.complete')}
+                    </Link>
+                </Button>
+            );
+        }
+        if (!visit.can_work) {
             return undefined;
         }
         const props = {
@@ -350,16 +369,6 @@ export default function MyJobs({
                     onClick={() => act(visit, start(visit.id).url)}
                 >
                     <Play /> {t('jobs.actions.start')}
-                </Button>
-            );
-        }
-
-        if (visit.status === 'in_progress') {
-            return (
-                <Button {...props} asChild loading={false}>
-                    <Link href={finishScreen(visit.id)}>
-                        <CheckCircle2 /> {t('jobs.actions.complete')}
-                    </Link>
                 </Button>
             );
         }

@@ -262,7 +262,7 @@ export default function TaxReserve({
                             </p>
                             {reserve.left > 0 ? (
                                 <Button
-                                    className="h-12 w-full text-base"
+                                    className="min-h-12 w-full text-base"
                                     onClick={() => setMarkOpen(true)}
                                     data-test="mark-transfer"
                                 >
@@ -530,7 +530,7 @@ function SettingsForm({ settings }: { settings: Settings }) {
             <Button
                 type="submit"
                 variant="outline"
-                className="h-11"
+                className="min-h-11"
                 disabled={form.processing}
             >
                 {t('tax_reserve.settings.save')}
@@ -629,7 +629,7 @@ function MarkTransferDialog({
                     </FormField>
                     <Button
                         type="submit"
-                        className="h-11 w-full"
+                        className="min-h-11 w-full"
                         disabled={form.processing}
                     >
                         {t('tax_reserve.transfer.save')}

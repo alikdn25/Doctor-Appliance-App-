@@ -18,7 +18,7 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 /**
- * Closing a job with its outcome from the job page (when no visit is on the way or in progress). On site the
+ * Closing a job with its outcome from the job page (a visit on the way or in progress is finished with it). On site the
  * technician does the same from "Finish". A warranty callback the customer declined (or that could not be
  * repaired) may refund the original job.
  */

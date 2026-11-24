@@ -108,7 +108,7 @@ export function AiMessageCard({
                 <div key={action.index} className="space-y-2">
                     <Button
                         variant="outline"
-                        className="h-11 w-full justify-start"
+                        className="min-h-11 w-full justify-start"
                         onClick={() =>
                             setOpen(open === action.index ? null : action.index)
                         }

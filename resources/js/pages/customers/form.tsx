@@ -524,7 +524,7 @@ export default function CustomerForm({
                         <Button
                             type="button"
                             variant="link"
-                            className="h-11 px-0"
+                            className="min-h-11 px-0"
                             onClick={addPhone}
                         >
                             <Plus /> {t('customers.add_phone')}
@@ -532,7 +532,7 @@ export default function CustomerForm({
                         <Button
                             type="button"
                             variant="link"
-                            className="h-11 px-0"
+                            className="min-h-11 px-0"
                             onClick={() =>
                                 form.setData('emails', [
                                     ...form.data.emails,
@@ -551,7 +551,7 @@ export default function CustomerForm({
                             <Button
                                 type="button"
                                 variant="link"
-                                className="h-11 px-0"
+                                className="min-h-11 px-0"
                                 onClick={addPhone}
                             >
                                 <UserPlus /> {t('customers.add_second_person')}

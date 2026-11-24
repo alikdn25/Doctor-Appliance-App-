@@ -22,14 +22,14 @@ export default function Workspaces({
                 <Button
                     key={company.id}
                     variant="outline"
-                    className="h-14 w-full justify-start"
+                    className="min-h-14 w-full justify-start"
                     onClick={() => router.post(workspace(company.id).url)}
                 >
                     <Building2 />
                     {company.name}
                 </Button>
             ))}
-            <Button asChild className="h-11">
+            <Button asChild className="min-h-11">
                 <Link href={create()}>{t('onboarding.title')}</Link>
             </Button>
         </div>

@@ -98,3 +98,16 @@ test('part needed marks the job Need to order parts and other technicians cannot
     expect($job->status)->toBe(JobStatus::NeedToOrderParts)
         ->and($job->tech_notes)->toBe('Needs drain pump.');
 });
+
+test('a started visit keeps its Finish visit button on the card once the job is paid', function () {
+    $this->post(route('visits.start', $this->visit))->assertSessionHasNoErrors();
+    inCompany($this->company, fn () => $this->job->fresh()->forceFill(['status' => JobStatus::Paid])->save());
+
+    $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page
+        ->where('visits.0.id', $this->visit->id)
+        ->where('visits.0.can_work', false)
+        ->where('visits.0.can_finish', true));
+
+    inCompany($this->company, fn () => $this->job->fresh()->forceFill(['status' => JobStatus::Cancelled])->save());
+    $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page->where('visits.0.can_finish', false));
+});

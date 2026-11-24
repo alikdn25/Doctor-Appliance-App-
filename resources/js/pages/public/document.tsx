@@ -389,7 +389,7 @@ export default function PublicDocument({
                     )}
                     {estimate?.can_pay_deposit && approval?.deposit_due && (
                         <Button
-                            className="h-12 w-full text-base"
+                            className="min-h-12 w-full text-base"
                             style={{ backgroundColor: doc.brand.color }}
                             disabled={paying}
                             onClick={payDeposit}
@@ -405,7 +405,7 @@ export default function PublicDocument({
                             <div className="grid gap-2 sm:grid-cols-2">
                                 {estimate.can_approve && (
                                     <Button
-                                        className="h-12 text-base"
+                                        className="min-h-12 text-base"
                                         style={{
                                             backgroundColor: doc.brand.color,
                                         }}
@@ -418,7 +418,7 @@ export default function PublicDocument({
                                 {estimate.can_decline && (
                                     <Button
                                         variant="outline"
-                                        className="h-12 text-base"
+                                        className="min-h-12 text-base"
                                         onClick={() => setDeclineOpen(true)}
                                     >
                                         <XCircle />
@@ -442,7 +442,7 @@ export default function PublicDocument({
                         )}
                     {canPay && (
                         <Button
-                            className="h-12 w-full text-base"
+                            className="min-h-12 w-full text-base"
                             style={{ backgroundColor: doc.brand.color }}
                             disabled={paying}
                             onClick={pay}
@@ -457,7 +457,11 @@ export default function PublicDocument({
                         <p className="text-sm text-destructive">{errors.pay}</p>
                     )}
 
-                    <Button variant="outline" className="h-11 w-full" asChild>
+                    <Button
+                        variant="outline"
+                        className="min-h-11 w-full"
+                        asChild
+                    >
                         <a
                             href={pdfRoute(token).url}
                             target="_blank"

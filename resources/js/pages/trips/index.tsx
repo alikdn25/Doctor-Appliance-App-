@@ -639,7 +639,7 @@ export default function Trips({
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="h-12 text-destructive"
+                                    className="min-h-12 text-destructive"
                                     onClick={remove}
                                 >
                                     <Trash2 /> {t('trips.remove')}
@@ -647,7 +647,7 @@ export default function Trips({
                             )}
                             <Button
                                 type="submit"
-                                className="h-12 flex-1"
+                                className="min-h-12 flex-1"
                                 disabled={form.processing}
                             >
                                 {t('common.save')}

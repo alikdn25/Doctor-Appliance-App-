@@ -45,7 +45,7 @@ export default function VerifyEmail({
                     <Button
                         type="submit"
                         disabled={processing}
-                        className="h-12 w-full rounded-xl"
+                        className="min-h-12 w-full rounded-xl"
                     >
                         {processing && <Spinner />}
                         {t('auth.verify.resend')}

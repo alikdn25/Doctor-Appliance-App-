@@ -712,7 +712,7 @@ export default function BusinessExpenseForm({
                     <StickyActionBar>
                         <Button
                             variant="outline"
-                            className="h-12 !flex-none md:h-11"
+                            className="min-h-12 !flex-none md:min-h-11"
                             asChild
                         >
                             <Link href={index()}>{t('common.cancel')}</Link>
@@ -720,7 +720,7 @@ export default function BusinessExpenseForm({
                         <Button
                             type="submit"
                             disabled={form.processing}
-                            className="h-12 md:h-11"
+                            className="min-h-12 md:min-h-11"
                             data-test="save-expense"
                         >
                             {t('common.save')} · {t('expenses.fields.total')}{' '}

@@ -170,7 +170,7 @@ export default function QuickBooking() {
                     <Button
                         type="button"
                         size="lg"
-                        className="h-16 w-full text-lg"
+                        className="min-h-16 w-full text-lg"
                         onClick={() => picker.current?.click()}
                         data-test="quick-booking-choose-photo"
                     >

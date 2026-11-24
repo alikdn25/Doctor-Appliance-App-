@@ -99,7 +99,7 @@ class VisitActionController extends Controller
         $job = JobCloseController::visitJob($visit)->load(['customer.primaryPhone', 'property', 'appliances', 'photos.user', 'previousJob']);
 
         // Only a started visit can be finished; afterwards the screen goes back to the job.
-        if ($visit->status !== VisitStatus::InProgress || ! $job->status->allowsVisitWork()) {
+        if ($visit->status !== VisitStatus::InProgress || ! $job->status->allowsFinishingVisit()) {
             return to_route('jobs.show', $job);
         }
 
