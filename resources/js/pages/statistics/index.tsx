@@ -491,7 +491,12 @@ export default function StatisticsPage({
                     empty={stats.months.every((m) => m.amount === 0)}
                     test="stats-months"
                 >
-                    <div className="-mx-1 flex h-52 items-end gap-1 overflow-x-auto px-1 pb-1">
+                    <div
+                        className="-mx-1 flex h-52 items-end gap-1 overflow-x-auto px-1 pb-1"
+                        tabIndex={0}
+                        role="group"
+                        aria-label={t('statistics.blocks.months')}
+                    >
                         {stats.months.map((m) => (
                             <div
                                 key={m.month}
