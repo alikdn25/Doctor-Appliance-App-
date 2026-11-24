@@ -2799,6 +2799,7 @@ sent request carries `locationRestriction` (the company box) and `includedRegion
 previous commit for messages). Changes to the deploy steps now apply in the same deploy.
 ✅ The permission fix runs as the web server user: `sudo -n -u www-data php artisan app:fix-storage-permissions`
 (the deploy user needs passwordless sudo to www-data for that command).
+
 - Tests: `PrivateDiskPermissionsTest` (sudo line, re-run guard before composer); checked by hand in a scratch clone
   with stubbed php/composer/npm: the new script runs once, no loop. Note: the first deploy of this change still runs
   the old script; the re-run starts from the next deploy.
