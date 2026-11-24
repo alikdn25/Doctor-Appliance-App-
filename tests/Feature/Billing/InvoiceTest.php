@@ -57,7 +57,7 @@ test('an invoice is created from a job with the next number', function () {
             ->where('document.balance', 28050)
             ->where('can.recordPayment', true)
             ->where('can.void', true)
-            ->has('paymentMethods', 6));
+            ->has('paymentMethods', 3));
 });
 
 test('numbers already taken are skipped', function () {
@@ -170,14 +170,6 @@ test('voiding an invoice made from an estimate lets the estimate be invoiced aga
     expect(inCompany($this->company, fn () => Estimate::sole()->status))->toBe(EstimateStatus::Approved);
     $this->post(route('estimates.convert', $estimate))->assertRedirect();
     expect(inCompany($this->company, fn () => Invoice::count()))->toBe(2);
-});
-
-test('a job with invoices cannot be deleted', function () {
-    $this->post(route('invoices.store', $this->job), documentPayload());
-
-    $this->delete(route('jobs.destroy', $this->job))->assertRedirect(route('jobs.show', $this->job));
-
-    expect(ServiceJob::withoutCompanyScope()->find($this->job->id))->not->toBeNull();
 });
 
 test('the invoice list shows outstanding invoices by default', function () {

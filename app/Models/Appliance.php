@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property int $id
@@ -46,6 +47,24 @@ class Appliance extends Model
         'warranty_notes',
         'notes',
     ];
+
+    protected static function booted(): void
+    {
+        // A type or brand set later (rating plate photo, the technician on site) reaches the job's Statistics fields
+        // when they were empty or came from this appliance.
+        static::updated(function (Appliance $appliance) {
+            if (! $appliance->wasChanged(['type', 'manufacturer'])) {
+                return;
+            }
+
+            $before = new Appliance;
+            $before->setRawAttributes($appliance->getRawOriginal());
+            ServiceJob::withoutCompanyScope()->where('company_id', $appliance->company_id)
+                ->whereIn('id', DB::table('job_appliance')->where('appliance_id', $appliance->id)->select('service_job_id'))
+                ->get()
+                ->each(fn (ServiceJob $job) => $job->takeApplianceInfo($appliance, $before));
+        });
+    }
 
     /**
      * @return array<string, string>

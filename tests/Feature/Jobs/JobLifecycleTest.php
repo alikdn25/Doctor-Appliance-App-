@@ -107,14 +107,14 @@ describe('deleting jobs', function () {
         $this->post(route('jobs.restore', $this->job))->assertForbidden();
     });
 
-    test('a job with an invoice or a payment cannot be deleted', function () {
+    test('a job with an invoice or a deposit is deleted with them (owner\'s task of November 24)', function () {
         $this->actingAs($this->owner);
         $this->post(route('invoices.store', $this->job), documentPayload());
 
-        $this->delete(route('jobs.destroy', $this->job))->assertRedirect(route('jobs.show', $this->job));
-        expect(ServiceJob::withoutCompanyScope()->find($this->job->id))->not->toBeNull();
+        $this->delete(route('jobs.destroy', $this->job))->assertRedirect(route('jobs.index'));
+        expect(ServiceJob::withoutCompanyScope()->find($this->job->id))->toBeNull();
 
-        // A deposit paid on an estimate also blocks it.
+        // A deposit paid on an estimate goes to the trash with the job.
         $other = ServiceJob::factory()->for($this->property)->create(['brand_id' => $this->brand->id]);
         $this->post(route('estimates.store', $other), documentPayload());
         inCompany($this->company, function () {
@@ -125,8 +125,10 @@ describe('deleting jobs', function () {
             $payment->save();
         });
 
-        $this->delete(route('jobs.destroy', $other))->assertRedirect(route('jobs.show', $other));
-        expect(ServiceJob::withoutCompanyScope()->find($other->id))->not->toBeNull();
+        $this->delete(route('jobs.destroy', $other))->assertRedirect(route('jobs.index'));
+        expect(ServiceJob::withoutCompanyScope()->find($other->id))->toBeNull()
+            ->and(Payment::withoutCompanyScope()->where('provider_payment_id', 'D1')->exists())->toBeFalse()
+            ->and(Payment::withoutCompanyScope()->onlyTrashed()->where('provider_payment_id', 'D1')->exists())->toBeTrue();
     });
 
     test('technicians delete their own jobs only when the company allows it', function () {

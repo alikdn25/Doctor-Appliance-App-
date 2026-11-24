@@ -13,6 +13,7 @@ use App\Models\Membership;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Models\User;
+use App\Support\Statistics\ApplianceGuess;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -94,6 +95,13 @@ class SaveJob
             $job->save();
 
             $this->syncAppliances($job, $applianceIds, $newAppliances);
+            // No appliance type or brand from an appliance: read them from the problem when the words are clear.
+            $job->refresh();
+            $job->appliance_category ??= ApplianceGuess::type($job->description);
+            $job->appliance_brand ??= ApplianceGuess::brand($job->description);
+            if ($job->isDirty(['appliance_category', 'appliance_brand'])) {
+                $job->save();
+            }
             $this->syncBringItems($job, $bringItems);
             $this->changeStatus->created($job, $user);
 

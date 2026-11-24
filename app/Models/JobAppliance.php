@@ -20,4 +20,17 @@ class JobAppliance extends Pivot
     protected $table = 'job_appliance';
 
     public $incrementing = true;
+
+    protected static function booted(): void
+    {
+        // The job takes the appliance's type and brand for Statistics when it has none yet.
+        static::created(function (JobAppliance $link) {
+            $job = ServiceJob::withoutCompanyScope()->where('company_id', $link->company_id)->find($link->service_job_id);
+            $appliance = Appliance::withoutCompanyScope()->withTrashed()->where('company_id', $link->company_id)->find($link->appliance_id);
+
+            if ($job !== null && $appliance !== null) {
+                $job->takeApplianceInfo($appliance);
+            }
+        });
+    }
 }

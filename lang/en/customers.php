@@ -134,13 +134,14 @@ return [
 
     'lead_sources' => [
         'none' => 'Not specified',
+        'google' => 'Google',
         'google_business_profile' => 'Google Business Profile',
         'google_ads' => 'Google Ads',
         'website' => 'Website',
         'directory' => 'Online directory (Yelp, Angi, HomeStars …)',
         'facebook' => 'Facebook',
         'referral' => 'Referral',
-        'repeat_customer' => 'Repeat customer',
+        'repeat_customer' => 'Repeat',
         'manufacturer' => 'Manufacturer',
         'property_manager' => 'Property manager',
         'other' => 'Other',

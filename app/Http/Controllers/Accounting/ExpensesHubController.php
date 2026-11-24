@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Accounting;
 
-use App\Actions\Billing\CashLedger;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\BusinessExpense;
@@ -33,14 +32,12 @@ class ExpensesHubController extends Controller
             ->where('currency', $company->currency)
             ->sum(DB::raw('amount + tax_amount'));
         $kilometres = (float) Trip::query()->where('is_draft', false)->whereBetween('trip_date', [$from, $to])->sum('distance_km');
-        $cash = collect(CashLedger::balances())->sum(fn (array $byCurrency) => $byCurrency[$company->currency] ?? 0);
 
         return Inertia::render('expenses/hub', [
             'month' => $now->startOfMonth()->toDateString(),
             'expenses' => (int) $expenses,
             'distance' => round($company->distance_unit === 'mi' ? $kilometres / 1.609344 : $kilometres, 1),
             'distanceUnit' => $company->distance_unit,
-            'cash' => (int) $cash,
             // Tax reserve (§17): what is left to move for the month just finished.
             'taxReserve' => $company->tax_reserve_enabled ? (function () use ($now, $request) {
                 $reserve = TaxReserve::month($now->subMonthNoOverflow()->startOfMonth(), $request->user());

@@ -192,8 +192,8 @@ return. Each job counts once; access follows company, brand and technician assig
   Each tax rate sets the line types it is charged on by default (labor / parts / materials, e.g. BC PST on parts and
   materials only); it can still be ticked or unticked on a single line.
 - Line warranty applies to labor and parts only; materials carry no warranty (not shown, printed or counted).
-- Manual "Mark as paid" from the job and the invoice: Cash / Card / E-transfer (Bank transfer outside Canada) /
-  Crypto / Other / Check, amount = balance, date = today; a partial payment leaves the balance visible. When an
+- Manual "Mark as paid" from the job and the invoice: E-transfer (Bank transfer outside Canada) / Card / Cash (§7.24.3;
+  one must be picked), amount = balance, date = today; a partial payment leaves the balance visible. When an
   invoice is paid in full the app asks "Send Google Review request?" (§8) and then offers "Complete job" in one tap.
   Named rates can be activated/deactivated. Existing documents retain their tax names, rates and selections.
 - Configurable taxes per company (§1.1): several named rates, compound taxes, prices with or without tax. Examples:
@@ -906,6 +906,70 @@ set up is built, stays off and says what is missing.
 - In All jobs and Deleted a line under the header names the mode; its ✕ goes back to the open jobs.
 - The count under the header ("1 job") is the count of the mode shown.
 - The trash is unchanged: deleted jobs are kept 30 days and restored with one tap.
+
+### 7.24 Deleting jobs, no Cash on hand, Statistics (owner's task of November 24)
+
+#### 7.24.1 Deleting a job
+
+- Any job in any status (test, completed, with an estimate, invoice, payment, texts, parts) is deleted with one
+  Delete: one confirm "Delete this job?" → Delete; no reason is asked.
+- The job goes to Deleted (Jobs → "⋯" → Deleted) for 30 days. Its estimates, invoices, payments, cost lines, parts,
+  trips (mileage), tasks and job expenses go to the trash with it at the same moment and come back with it on Restore;
+  they are not listed separately in Deleted items. Records deleted on their own earlier stay deleted. Texts stay in the
+  customer's conversation (they belong to the thread). Nothing blocks the delete any more.
+- Deleted jobs and everything deleted with them are out of Statistics, the tax reserve and "Not completed jobs".
+
+#### 7.24.2 No Cash on hand
+
+- The Cash on hand line and page are removed from every screen (My Jobs, More, Expenses & taxes). Cash payments are
+  still recorded; the cash of a period is shown only in Statistics (money by payment method).
+
+#### 7.24.3 Fields for Statistics
+
+- Payment method: Mark as paid offers E-transfer (Bank transfer outside Canada), Card, Cash; one must be picked.
+  The card reader and online payments are Card by themselves; Close by voice fills the method from what was said.
+  Older check / crypto / other payments are counted as "Other".
+- Job appliance type (optional): Washer, Dryer, Dishwasher, Refrigerator, Freezer, Range/Oven, Cooktop, Wall oven,
+  Microwave, Range hood, Other. Job brand (optional, the appliance manufacturer). Both are taken from the job's
+  appliance (quick booking, texts read by the AI and the rating plate photo fill the appliance), read from the
+  problem text when the words are clear, filled by Close by voice, and set by hand on the job page ("For
+  statistics"). A value chosen by hand is never overwritten.
+- Customer source (optional, on the customer): Google, Website, Repeat, Referral, Other. A customer with an earlier
+  job becomes Repeat by itself when no source was chosen. Older finer sources stay and are counted in these groups
+  (Google Business Profile / Google Ads → Google; directories, Facebook, manufacturer, property manager → Other).
+- "Only diagnostic" on the job (diagnosed, not repaired): set by itself when the job is closed as Customer declined
+  or Unable to repair; changed on the job page.
+- City: from the job's address.
+- Existing jobs got the type and brand from their appliance, or from the description, notes and model where the
+  words are clear; the rest stays empty.
+
+#### 7.24.4 Statistics
+
+- More → Statistics, the Owner only. It replaces Reports (the old address opens it); the earlier reports (company
+  profit, revenue by brand / technician / job type, estimate conversion, callbacks, no-charge jobs, expenses CSV,
+  receipts ZIP, tax reserve CSV) are under "More reports". Sources and the average ticket are not repeated there.
+- Period on top: This week (Mon–Sun), This month, Last month, This year, Last year, Custom (from–to). Company time zone.
+- Money is counted from payments by the date received (company currency; voided and deleted ones left out; invoices
+  imported from Square count as Card). Jobs by the date they were completed (cancelled left out).
+- Blocks (volumetric cards; an empty one says "No data for this period"):
+  a) Jobs per day: average for weekdays (Mon–Fri), weekend (Sat–Sun) and the whole week, each over the days with at
+     least one completed job; the number of completed jobs.
+  b) Money by method: E-transfer, Card, Cash and the total; each tax in it by name (e.g. GST, PST); CSV export (one
+     row per payment: date, invoice, method, amount, each tax, currency).
+  c) Repairs by appliance type (only-diagnostic jobs left out), most first.
+  d) Average ticket (invoiced without taxes, jobs with an invoice): overall and by appliance type.
+  e) Brands: jobs by brand, most first.
+  f) Customer sources: new customers (added in the period) and money received, by source.
+  g) Cities: jobs and average ticket by city.
+  h) Repeat customers: share of the period's customers who had an earlier job; jobs marked "Possible warranty"
+     (§7.16.13, at the time the job was booked).
+  i) Revenue by month: 12 bars up to the period's end (payments received), each with the % change to the month before.
+  j) Only diagnostic against repair: count and share.
+  k) Time to complete: average days from booking to completion, without and with waiting for parts.
+  l) Profit per job: invoiced without taxes − the cost of the parts tied to the job (invoice lines, job costs and job
+     expenses); average and total.
+  m) Busy days: completed jobs Mon … Sun.
+  n) Unpaid invoices issued in the period: count and amount still owed.
 
 ## 8. Google review requests
 

@@ -48,41 +48,37 @@ beforeEach(function () {
 });
 
 test('profit = revenue without taxes − parts and materials − expenses − mileage, with the margin', function () {
-    $this->actingAs($this->owner)->get(route('reports.index', ['from' => '2026-10-01', 'to' => '2026-10-31']))
+    $this->actingAs($this->owner)->get(route('statistics.index', ['from' => '2026-10-01', 'to' => '2026-10-31']))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('profit.revenue', 31000)
+            ->where('reports.profit.revenue', 31000)
             // The technician's private part cost is in the Owner's total.
-            ->where('profit.cost', 4000)
+            ->where('reports.profit.cost', 4000)
             // 50.00 + PST 3.50; the recoverable GST is not a cost.
-            ->where('profit.expenses', 5350)
-            ->where('profit.mileage.distance', 20)
-            ->where('profit.mileage.amount', 1000)
-            ->where('profit.profit', 31000 - 4000 - 5350 - 1000)
-            ->where('profit.margin', 66.6)
+            ->where('reports.profit.expenses', 5350)
+            ->where('reports.profit.mileage.distance', 20)
+            ->where('reports.profit.mileage.amount', 1000)
+            ->where('reports.profit.profit', 31000 - 4000 - 5350 - 1000)
+            ->where('reports.profit.margin', 66.6)
             ->where('today', '2026-10-14'));
 });
 
 test('parts and materials without a cost count as 0 and are listed', function () {
-    $this->actingAs($this->owner)->get(route('reports.index'))
+    $this->actingAs($this->owner)->get(route('statistics.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->has('profit.missing_costs', 1)
-            ->where('profit.missing_costs.0.description', 'Hose clamp')
-            ->where('profit.missing_costs.0.kind', 'material'));
+            ->has('reports.profit.missing_costs', 1)
+            ->where('reports.profit.missing_costs.0.description', 'Hose clamp')
+            ->where('reports.profit.missing_costs.0.kind', 'material'));
 });
 
-test('an Admin does not get a profit that would reveal another person\'s private cost', function () {
-    $this->actingAs($this->admin)->get(route('reports.index'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('profit.revenue', 31000)
-            ->where('profit.cost', null)
-            ->where('profit.profit', null));
+test('an Admin cannot open the profit (Statistics is the Owner\'s)', function () {
+    $this->actingAs($this->admin)->get(route('statistics.index'))->assertForbidden();
 });
 
 test('a day with nothing closed shows no revenue', function () {
-    $this->actingAs($this->owner)->get(route('reports.index', ['from' => '2026-10-13', 'to' => '2026-10-13']))
+    $this->actingAs($this->owner)->get(route('statistics.index', ['from' => '2026-10-13', 'to' => '2026-10-13']))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('profit.jobs', 0)
-            ->where('profit.revenue', 0)
-            ->where('profit.expenses', 0)
-            ->where('profit.mileage.distance', 0));
+            ->where('reports.profit.jobs', 0)
+            ->where('reports.profit.revenue', 0)
+            ->where('reports.profit.expenses', 0)
+            ->where('reports.profit.mileage.distance', 0));
 });

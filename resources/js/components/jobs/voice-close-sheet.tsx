@@ -31,6 +31,8 @@ type Draft = {
     payment: 'card' | 'cash' | 'e_transfer' | 'unpaid';
     status: 'completed' | 'need_to_order_parts';
     part_name: string;
+    appliance_type: string | null;
+    brand: string | null;
 };
 
 type Tax = { id: number; name: string; rate: string };
@@ -349,6 +351,23 @@ export function VoiceCloseSheet({
                                 `automation.voice_close.payments.${preview.draft.payment}`,
                             )}
                         </p>
+                        {(preview.draft.appliance_type ||
+                            preview.draft.brand) && (
+                            <p data-test="voice-close-appliance">
+                                <span className="font-semibold">
+                                    {t('statistics.fields.appliance')}:{' '}
+                                </span>
+                                {[
+                                    preview.draft.appliance_type &&
+                                        t(
+                                            `statistics.appliances.${preview.draft.appliance_type}`,
+                                        ),
+                                    preview.draft.brand,
+                                ]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                            </p>
+                        )}
                         <p>
                             <span className="font-semibold">
                                 {t('automation.voice_close.status')}:{' '}

@@ -1,6 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
-    Banknote,
     CalendarDays,
     Car,
     CheckCircle2,
@@ -15,7 +14,6 @@ import {
     Plus,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { formatMoney } from '@/components/billing/money';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { InboxHeaderButton } from '@/components/inbox-header-button';
 import { cardButton, JobCard } from '@/components/jobs/job-card';
@@ -105,7 +103,6 @@ export default function MyJobs({
     today,
     search: initialSearch = '',
     visits,
-    cashOnHand = {},
     othersOnDay = 0,
     tasks = [],
     panes: savedPanes = null,
@@ -120,7 +117,6 @@ export default function MyJobs({
     today: string;
     search?: string;
     visits: MyVisit[];
-    cashOnHand?: Record<string, number>;
 }) {
     const t = useTrans();
     const time = useCompanyTime();
@@ -461,24 +457,6 @@ export default function MyJobs({
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 )}
-
-                {Object.entries(cashOnHand)
-                    .filter(([, amount]) => amount !== 0)
-                    .map(([currency, amount]) => (
-                        <p
-                            key={currency}
-                            className="flex items-center gap-2 rounded-2xl bg-[linear-gradient(90deg,#FFF8DB,#FCD670)] p-3 text-sm font-semibold text-[#78350F] shadow-[inset_0_1px_0_rgba(255,255,255,.7),0_5px_12px_rgba(180,120,0,.22)]"
-                        >
-                            <Banknote className="size-4" />
-                            {t('cash.my_cash', {
-                                amount: formatMoney(
-                                    amount,
-                                    currency,
-                                    auth.company?.locale,
-                                ),
-                            })}
-                        </p>
-                    ))}
 
                 {/* One line: the tab on the left, the day on the right (‹ › and a tap on the date to pick one). */}
                 <div className="flex flex-wrap items-center justify-between gap-2">

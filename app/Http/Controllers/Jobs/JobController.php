@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Jobs;
 
-use App\Actions\Billing\CashLedger;
 use App\Actions\Jobs\RefundOriginalJob;
 use App\Actions\Jobs\SaveJob;
+use App\Enums\ApplianceCategory;
 use App\Enums\ApplianceType;
 use App\Enums\InvoiceStatus;
 use App\Enums\JobOutcome;
@@ -306,8 +306,6 @@ class JobController extends Controller
             'date' => $date->toDateString(),
             'today' => $today->toDateString(),
             'search' => $search,
-            // Cash this person collected and has not handed in yet.
-            'cashOnHand' => CashLedger::balances()[$user->id] ?? [],
             // The person's own tasks of the day: the To Do column.
             'tasks' => $search === '' ? TaskController::between($user, $date, $date->addDay(), onlyOwn: true) : [],
             'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging, $unread) {
@@ -525,6 +523,13 @@ class JobController extends Controller
                 ])->values(),
                 'lead_source_label' => $job->lead_source?->label(),
                 'brand' => $job->brand?->name,
+                // Statistics fields (owner's task of November 24).
+                'stats' => [
+                    'appliance_category' => $job->appliance_category?->value,
+                    'appliance_brand' => $job->appliance_brand,
+                    'only_diagnostic' => (bool) $job->only_diagnostic,
+                    'can_edit' => Gate::any(['update', 'work'], $job),
+                ],
                 'description' => $job->description,
                 'notes' => $job->notes,
                 'tech_notes' => $job->tech_notes,
@@ -699,6 +704,7 @@ class JobController extends Controller
                 ->map(fn (Invoice $i) => ['id' => $i->id, 'number' => $i->number, 'balance' => $i->balance, 'currency' => $i->currency])
                 ->values(),
             'paymentMethods' => PaymentMethod::manualOptions(currentCompany()),
+            'applianceCategories' => ApplianceCategory::options(),
         ]);
     }
 
@@ -756,14 +762,7 @@ class JobController extends Controller
     {
         Gate::authorize('delete', $job);
 
-        // Invoices and payments are financial records: such a job is cancelled or closed instead.
-        $blocker = $job->deleteBlocker();
-        if ($blocker !== null) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => $blocker]);
-
-            return to_route('jobs.show', $job);
-        }
-
+        // Any job can be deleted; its documents, payments, costs, parts and trips go to the trash with it.
         DB::transaction(function () use ($job, $request) {
             $job->forceFill(['deleted_by' => $request->user()->id])->save();
             $job->delete();

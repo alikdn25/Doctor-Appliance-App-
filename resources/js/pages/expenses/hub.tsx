@@ -1,10 +1,9 @@
 import { Head, usePage } from '@inertiajs/react';
-import { Banknote, Car, Landmark, Wallet } from 'lucide-react';
+import { Car, Landmark, Wallet } from 'lucide-react';
 import { useMoney } from '@/components/billing/money';
 import { ScreenHeader } from '@/components/screen-header';
 import { ListRow } from '@/components/ui/list-row';
 import { useTrans } from '@/lib/i18n';
-import { index as cash } from '@/routes/cash';
 import { index as expenses } from '@/routes/expenses';
 import { expensesHub } from '@/routes';
 import { index as taxReserve } from '@/routes/tax-reserve';
@@ -14,20 +13,18 @@ const tile =
     'da-soft inline-flex size-11 items-center justify-center rounded-[14px] [&_svg]:size-5';
 
 /**
- * More → Expenses & taxes (Owner): expenses, mileage and cash on hand, each with this month's figure.
+ * More → Expenses & taxes (Owner): expenses, the tax reserve and mileage, each with this month's figure.
  */
 export default function ExpensesHub({
     expenses: spent,
     distance,
     distanceUnit,
-    cash: onHand,
     taxReserve: reserve = null,
 }: {
     month: string;
     expenses: number;
     distance: number;
     distanceUnit: 'km' | 'mi';
-    cash: number;
     taxReserve?: { month: string; left: number; total: number } | null;
 }) {
     const t = useTrans();
@@ -88,19 +85,6 @@ export default function ExpensesHub({
                         title={t('nav.mileage')}
                         subtitle={t('expenses.hub.this_month', {
                             value: `${distance} ${t(`trips.units.${distanceUnit}`)}`,
-                        })}
-                        chevron
-                    />
-                    <ListRow
-                        href={cash()}
-                        leading={
-                            <span className={tile}>
-                                <Banknote />
-                            </span>
-                        }
-                        title={t('nav.cash')}
-                        subtitle={t('expenses.hub.on_hand', {
-                            value: money(onHand),
                         })}
                         chevron
                     />

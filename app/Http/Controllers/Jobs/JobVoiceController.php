@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Jobs;
 
+use App\Enums\ApplianceCategory;
 use App\Http\Controllers\Controller;
 use App\Models\Membership;
 use App\Models\ServiceJob;
@@ -90,6 +91,8 @@ class JobVoiceController extends Controller
             'payment' => ['required', Rule::in(VoiceCloser::PAYMENTS)],
             'status' => ['required', Rule::in(VoiceCloser::STATUSES)],
             'part_name' => ['nullable', 'string', 'max:255'],
+            'appliance_type' => ['nullable', Rule::enum(ApplianceCategory::class)],
+            'brand' => ['nullable', 'string', 'max:100'],
         ]);
         $data['lines'] ??= [];
 

@@ -1,3 +1,31 @@
+# November 24 — Owner's task: deleting jobs, no Cash on hand, Statistics (done)
+
+1. **Deleting a job.** The error was `ServiceJob::deleteBlocker()` refusing jobs with invoices or payments; it is gone.
+   Any job in any status is deleted with one confirm ("Delete this job?"). `ServiceJob` events soft-delete its
+   estimates, invoices, payments, cost lines, parts, trips, tasks and job expenses with the job's `deleted_at` and
+   restore exactly those with it; Deleted items does not list them separately. Texts stay in the customer's thread.
+2. **Cash on hand removed**: the My Jobs line, the More / Expenses & taxes rows and the Cash page (`CashController`,
+   `pages/cash`, routes) are gone; the cash ledger still records cash payments.
+3. **Fields**: Mark as paid offers E-transfer / Card / Cash only (required); `PaymentMethod::statsGroup()`.
+   `service_jobs.appliance_category` (`ApplianceCategory`), `appliance_brand`, `only_diagnostic` (migration
+   `2026_11_24_000100`, fills older jobs from their appliance or the text via `ApplianceGuess`). Filled from the
+   job's appliance (`JobAppliance` / `Appliance` events — quick booking, texts, rating plate), from the problem text
+   on booking, by Close by voice (`appliance_type`, `brand`) and on the job page (card "For statistics",
+   `PUT jobs/{job}/statistics`). Only diagnostic is set when closing as declined / unable to repair. Customer source
+   pickers offer Google / Website / Repeat / Referral / Other (`LeadSource::offered()`, older values grouped by
+   `group()`); a customer with an earlier job becomes Repeat.
+4. **Statistics** (More → Statistics, Owner only; `StatisticsController`, `Support/Statistics/Statistics`,
+   `pages/statistics`): period chips, blocks a–n of SPEC §7.24.4, money CSV. Reports merged in ("More reports";
+   `/reports` redirects; duplicates by source / by appliance / average ticket removed; exports Owner only).
+5. Docs: SPEC §7.24, §7.6.
+
+- Tests: `JobDeletionTest` (every status, job with estimate + invoice + payment + costs + parts + trip deleted and
+  restored whole, earlier-deleted record stays deleted, backlog, tenant), `StatisticsTest` (per day weekdays /
+  weekend / week, money by method with tax, voided / deleted / other-month payments left out, average ticket,
+  profit per job, months, period presets, CSV, Owner only, tenant), updated report, cash and navigation tests.
+- Next: the owner checks Statistics on the live data; the AI SMS / quick booking prompts can name the brand without
+  a type (now read from the problem text).
+
 # November 24 — Owner's task: closing a job finishes its visit, Finish visit after payment, button labels (done)
 
 1. **Close job finishes the visit.** `CloseJob::close` no longer refuses a job with a visit on the way or in

@@ -69,6 +69,8 @@ import { JobEditSheet } from '@/components/jobs/job-edit-sheet';
 import type { JobEditCustomer } from '@/components/jobs/job-edit-sheet';
 import { JobApplianceDialog } from '@/components/jobs/job-appliance-dialog';
 import { JobCostsSection } from '@/components/jobs/job-costs';
+import { JobStatsCard } from '@/components/jobs/job-stats-card';
+import type { JobStats } from '@/components/jobs/job-stats-card';
 import type { JobCosts } from '@/components/jobs/job-costs';
 import {
     BringList,
@@ -157,6 +159,7 @@ type Job = {
     closed_by: string | null;
     bring_items: BringItemData[];
     lead_source_label: string | null;
+    stats: JobStats;
     brand: string | null;
     description: string | null;
     notes: string | null;
@@ -238,6 +241,7 @@ type Props = {
         currency: string;
     }[];
     paymentMethods: Option[];
+    applianceCategories: Option[];
 };
 
 /** Minutes since an ISO time, refreshed every 30 seconds. */
@@ -404,6 +408,7 @@ export default function JobShow({
     messaging,
     payable,
     paymentMethods,
+    applianceCategories,
     closureReasons,
     callback,
     warrantyLines,
@@ -1424,6 +1429,18 @@ export default function JobShow({
                                             items={job.bring_items}
                                             canTick={can.work}
                                         />
+                                        <Section
+                                            title={t(
+                                                'statistics.fields.section',
+                                            )}
+                                        >
+                                            <JobStatsCard
+                                                jobId={job.id}
+                                                stats={job.stats}
+                                                categories={applianceCategories}
+                                                manufacturers={manufacturers}
+                                            />
+                                        </Section>
                                         {showAppliances && (
                                             <Section
                                                 title={t(
@@ -1815,9 +1832,7 @@ export default function JobShow({
                     open={deleteOpen}
                     onOpenChange={setDeleteOpen}
                     destructive
-                    title={t('jobs.delete_confirm_title', {
-                        number: job.number,
-                    })}
+                    title={t('jobs.delete_confirm_title')}
                     description={t('jobs.delete_confirm_text', { days: 30 })}
                     confirmLabel={t('jobs.delete')}
                     processing={busy}

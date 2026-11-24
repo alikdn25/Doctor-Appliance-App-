@@ -107,7 +107,7 @@ test('the menu shows the everyday sections and opens money and settings on tap',
             more.getByRole('link', { name: 'Customers', exact: true }),
         ).toBeVisible();
         await expect(
-            more.getByRole('link', { name: 'Reports', exact: true }),
+            more.getByRole('link', { name: 'Statistics', exact: true }),
         ).toBeVisible();
         await page.screenshot({ path: info.outputPath('menu.png') });
 
@@ -118,13 +118,13 @@ test('the menu shows the everyday sections and opens money and settings on tap',
         sidebar.getByRole('link', { name: 'Jobs', exact: true }),
     ).toBeVisible();
     await expect(
-        sidebar.getByRole('link', { name: 'Reports', exact: true }),
+        sidebar.getByRole('link', { name: 'Statistics', exact: true }),
     ).toBeHidden();
     await sidebar
         .getByRole('button', { name: 'Money and reports', exact: true })
         .click();
     await expect(
-        sidebar.getByRole('link', { name: 'Reports', exact: true }),
+        sidebar.getByRole('link', { name: 'Statistics', exact: true }),
     ).toBeVisible();
     await page.screenshot({ path: info.outputPath('menu.png') });
 });

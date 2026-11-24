@@ -123,6 +123,8 @@ class CloseJob
             'outcome_note' => filled($note) ? trim((string) $note) : null,
             'closed_at' => now(),
             'closed_by' => $user->id,
+            // Declined or not repairable: only the diagnosis was done (Statistics); the job page can change it.
+            'only_diagnostic' => $outcome->allowsDiagnosisInvoice() ? true : $job->only_diagnostic,
         ])->save();
     }
 

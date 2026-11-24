@@ -143,8 +143,8 @@ test('an expense for a job lands in that job\'s Costs and profit, not the overhe
         ->where('costs.profit.cost', 4200));
 
     // The month's overhead leaves it out (it is in the job's cost).
-    $this->get(route('reports.index', ['from' => '2026-10-01', 'to' => '2026-10-31']))
-        ->assertInertia(fn (Assert $page) => $page->where('profit.expenses', 0));
+    $this->get(route('statistics.index', ['from' => '2026-10-01', 'to' => '2026-10-31']))
+        ->assertInertia(fn (Assert $page) => $page->where('reports.profit.expenses', 0));
 });
 
 test('an expense can be for a job of the person only, never another company\'s', function () {
