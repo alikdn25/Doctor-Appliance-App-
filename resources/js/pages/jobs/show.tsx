@@ -69,6 +69,8 @@ import { JobEditSheet } from '@/components/jobs/job-edit-sheet';
 import type { JobEditCustomer } from '@/components/jobs/job-edit-sheet';
 import { JobApplianceDialog } from '@/components/jobs/job-appliance-dialog';
 import { JobCostsSection } from '@/components/jobs/job-costs';
+import { JobMyExpensesSection } from '@/components/jobs/job-my-expenses';
+import type { JobMyExpenses } from '@/components/jobs/job-my-expenses';
 import { JobStatsCard } from '@/components/jobs/job-stats-card';
 import type { JobStats } from '@/components/jobs/job-stats-card';
 import type { JobCosts } from '@/components/jobs/job-costs';
@@ -225,6 +227,7 @@ type Props = {
     warrantyUnits: Option[];
     openWarranty: boolean;
     costs: JobCosts | null;
+    myExpenses: JobMyExpenses | null;
     assignableUsers: Assignable[];
     otherAppliances: ApplianceItem[];
     applianceTypes: Option[];
@@ -415,6 +418,7 @@ export default function JobShow({
     warrantyUnits,
     openWarranty,
     costs,
+    myExpenses,
     otherAddresses,
     possibleWarranty,
     suppliers = [],
@@ -860,6 +864,9 @@ export default function JobShow({
                         })}
                     </Button>
                 ))}
+            {myExpenses && (
+                <JobMyExpensesSection jobId={job.id} expenses={myExpenses} />
+            )}
             {costs && <JobCostsSection jobId={job.id} costs={costs} />}
         </Section>
     );
@@ -1964,6 +1971,7 @@ export default function JobShow({
                     open={voiceCloseOpen}
                     onOpenChange={setVoiceCloseOpen}
                     jobId={job.id}
+                    applianceCategories={applianceCategories}
                 />
             )}
             {can.work && (

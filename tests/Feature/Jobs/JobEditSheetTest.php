@@ -138,8 +138,8 @@ test('an expense for a job lands in that job\'s Costs and profit, not the overhe
 
     inCompany($this->company, fn () => $this->job->forceFill(['closed_at' => now()])->save());
     $this->get(route('jobs.show', $this->job))->assertInertia(fn (Assert $page) => $page
-        ->where('costs.expenses.0.description', 'Drain pump')
-        ->where('costs.expenses.0.total', 4200)
+        ->where('myExpenses.lines.0.description', 'Drain pump')
+        ->where('myExpenses.lines.0.amount', 4200)
         ->where('costs.profit.cost', 4200));
 
     // The month's overhead leaves it out (it is in the job's cost).

@@ -23,8 +23,8 @@ use Inertia\Inertia;
 
 /**
  * Voice on the job (owner's task of November 18): "Quick edit" of the booking (the AI returns only the fields to
- * change; the form is filled, nothing is saved) and "Close by voice" (the AI fills note, invoice lines, payment and
- * status; a preview; only Confirm saves).
+ * change; the form is filled, nothing is saved) and "Close by voice" (the AI fills note, invoice lines, My expenses,
+ * payment and status; an editable preview; only Confirm & send or Save only saves).
  */
 class JobVoiceController extends Controller
 {
@@ -78,7 +78,7 @@ class JobVoiceController extends Controller
             'amounts_include_tax' => ['required', 'boolean'],
         ]);
 
-        return response()->json(['money' => VoiceCloser::totals(['lines' => $data['lines'] ?? [], 'amounts_include_tax' => $data['amounts_include_tax']], currentCompany())]);
+        return response()->json(['money' => VoiceCloser::totals(['lines' => self::named($data['lines'] ?? []), 'amounts_include_tax' => $data['amounts_include_tax']], currentCompany())]);
     }
 
     public function confirmClose(Request $request, ServiceJob $job, VoiceCloser $closer): RedirectResponse
@@ -93,12 +93,33 @@ class JobVoiceController extends Controller
             'part_name' => ['nullable', 'string', 'max:255'],
             'appliance_type' => ['nullable', Rule::enum(ApplianceCategory::class)],
             'brand' => ['nullable', 'string', 'max:100'],
+            // My expenses: what was paid for the job (never on the invoice).
+            'expenses' => ['array', 'max:20'],
+            'expenses.*.description' => ['nullable', 'string', 'max:255'],
+            'expenses.*.amount' => ['required', 'numeric', 'min:0.01', 'max:1000000'],
+            // Confirm & send (true) texts the invoice or the receipt; Save only (false) sends nothing.
+            'send' => ['boolean'],
         ]);
-        $data['lines'] ??= [];
+        $data['lines'] = self::named($data['lines'] ?? []);
+        $data['expenses'] ??= [];
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => $closer->confirm($job, $data, $request->user())]);
+        Inertia::flash('toast', $closer->confirm($job, $data, $request->user(), $request->boolean('send')));
 
         return back();
+    }
+
+    /**
+     * A line left without a name is "Service".
+     *
+     * @param  list<array<string, mixed>>  $lines
+     * @return list<array<string, mixed>>
+     */
+    private static function named(array $lines): array
+    {
+        return array_values(array_map(fn (array $line) => [
+            ...$line,
+            'description' => trim((string) ($line['description'] ?? '')) ?: __('assistant.invoice.default_line'),
+        ], $lines));
     }
 
     /**
@@ -110,7 +131,7 @@ class JobVoiceController extends Controller
     {
         return [
             'lines' => ['array', 'max:20'],
-            'lines.*.description' => ['required', 'string', 'max:500'],
+            'lines.*.description' => ['nullable', 'string', 'max:500'],
             'lines.*.amount' => ['required', 'numeric', 'min:0.01', 'max:1000000'],
             'lines.*.kind' => ['required', Rule::in(['service', 'part'])],
             'lines.*.tax_rate_ids' => ['nullable', 'array', 'max:10'],

@@ -512,7 +512,8 @@ Google Maps key) is built, stays off, and says what is missing.
 - "Close by voice" on the job page (work in progress): a text field with the microphone (browser speech, EN / RU).
   `AI_MODEL_ASSISTANT` fills the note about the work, invoice lines (work / part, amounts as said, never invented),
   whether the amounts include tax, the payment (card / cash / e-transfer / not paid) and the status (Completed, or Need
-  to order parts with the part). Code calculates taxes and the total. Preview → Confirm: the note is added to Work done,
+  to order parts with the part). Code calculates taxes and the total (since November 24 also My expenses and Confirm &
+  send / Save only, §7.24.6). Preview → Confirm: the note is added to Work done,
   the invoice is created, the payment recorded (card terminal / cash / bank transfer), the visit finished and the job
   closed as repaired (or moved to Need to order parts).
 
@@ -907,7 +908,7 @@ set up is built, stays off and says what is missing.
 - The count under the header ("1 job") is the count of the mode shown.
 - The trash is unchanged: deleted jobs are kept 30 days and restored with one tap.
 
-### 7.24 Deleting jobs, no Cash on hand, Statistics (owner's task of November 24)
+### 7.24 Deleting jobs, no Cash on hand, Statistics, My expenses, Close by voice (owner's task of November 24)
 
 #### 7.24.1 Deleting a job
 
@@ -970,6 +971,33 @@ set up is built, stays off and says what is missing.
      expenses); average and total.
   m) Busy days: completed jobs Mon … Sun.
   n) Unpaid invoices issued in the period: count and amount still owed.
+
+#### 7.24.5 My expenses of a job
+
+- Every job has a "My expenses" block: what the company paid itself for the job (a part bought on the way, parking).
+  Never shown to the customer: not on the invoice, estimate, receipt, texts or PDFs.
+- One total without a name, or several lines (name + amount, e.g. "Pump — 60", "Parking — 10"); the block adds them up.
+  A line without a name is "Expenses for job #N". Amounts are what was paid (taxes included).
+- Each line is an ordinary business expense (Expenses & taxes) with the job's `service_job_id`, in the category
+  "Job expenses" (made on first use): one record, seen in the job and in Expenses & taxes, never counted twice. A
+  receipt photo expense with a job chosen shows in that job's block. The lines go to the trash and back with the job.
+- The Owner sees every line (with who entered it); a technician assigned to the job sees, adds, edits and removes only
+  their own lines; nobody else sees the block. The old expenses list under Costs & profit is gone (profit still counts
+  the lines).
+
+#### 7.24.6 Close by voice: invoice and My expenses, Confirm & send
+
+- From one voice message the AI fills the note, the invoice lines (what the customer pays: work, parts, prices), My
+  expenses lines (what the technician bought themselves and for how much), the status, whether it was paid and how
+  (E-transfer, Card, Cash), the appliance type and the brand. A line the AI is unsure belongs to the invoice or to the
+  expenses is marked "check" in the preview.
+- The preview shows blocks: invoice, my expenses, payment, status (with the part to order, appliance type and brand);
+  every field is editable, lines can be added, removed and moved between the invoice and My expenses. Taxes and totals
+  are calculated by code (the server), never by the AI.
+- One main button "Confirm & send": saves everything; an unpaid invoice is texted to the customer with its online page
+  and payment link; a paid one gets the receipt by text (amount, invoice number, link). Beside it "Save only" saves
+  without sending. Nothing is saved or sent before one of them is pressed. A text that cannot go (no phone, no SMS
+  number) is reported in the message after saving.
 
 ## 8. Google review requests
 

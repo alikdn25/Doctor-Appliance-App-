@@ -55,6 +55,7 @@ use App\Http\Controllers\Jobs\JobCloseController;
 use App\Http\Controllers\Jobs\JobController;
 use App\Http\Controllers\Jobs\JobCostController;
 use App\Http\Controllers\Jobs\JobDetailsController;
+use App\Http\Controllers\Jobs\JobExpenseController;
 use App\Http\Controllers\Jobs\JobFieldController;
 use App\Http\Controllers\Jobs\JobHandoffController;
 use App\Http\Controllers\Jobs\JobMessageController;
@@ -219,6 +220,10 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('jobs/{job}/costs/{cost}', [JobCostController::class, 'updateCost'])->name('jobs.costs.update');
         Route::delete('jobs/{job}/costs/{cost}', [JobCostController::class, 'destroyCost'])->name('jobs.costs.destroy');
         Route::post('jobs/{job}/receipts', [JobCostController::class, 'storeReceipt'])->name('jobs.receipts.store');
+        // My expenses of a job (owner's task of November 24): business expenses linked to the job.
+        Route::post('jobs/{job}/my-expenses', [JobExpenseController::class, 'store'])->name('jobs.my-expenses.store');
+        Route::put('jobs/{job}/my-expenses/{expense}', [JobExpenseController::class, 'update'])->name('jobs.my-expenses.update');
+        Route::delete('jobs/{job}/my-expenses/{expense}', [JobExpenseController::class, 'destroy'])->name('jobs.my-expenses.destroy');
         Route::post('receipts/{receipt}/links', [JobCostController::class, 'linkReceipt'])->name('receipts.link');
         Route::get('receipts/{receipt}', [JobCostController::class, 'showReceipt'])->name('receipts.show');
         Route::delete('receipts/{receipt}', [JobCostController::class, 'destroyReceipt'])->name('receipts.destroy');

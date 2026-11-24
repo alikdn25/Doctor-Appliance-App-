@@ -9,6 +9,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\UserRole;
 use App\Enums\VisitStatus;
 use App\Models\Brand;
+use App\Models\BusinessExpense;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\GoogleProfile;
@@ -330,4 +331,94 @@ test('close by voice: "Price includes tax" starts off in the preview, whatever t
         ->assertOk()
         ->assertJsonPath('draft.amounts_include_tax', false)
         ->assertJsonPath('money.total', 11760);
+});
+
+// ——— Close by voice: My expenses, Confirm & send, Save only (owner's task of November 24) ———
+
+test('close by voice splits what the customer pays from what was spent; unsure lines carry "check"', function () {
+    FakeAiTransport::install(voiceAnswer([
+        'lines' => [
+            ['description' => 'Dishwasher repair', 'amount' => 180, 'kind' => 'service', 'check' => false],
+            ['description' => 'Drain pump', 'amount' => 95, 'kind' => 'part', 'check' => true],
+        ],
+        'expenses' => [
+            ['description' => 'Pump at Reliable Parts', 'amount' => 60, 'check' => false],
+            ['description' => 'Parking', 'amount' => 10, 'check' => false],
+        ],
+        'payment' => 'unpaid',
+        'appliance_type' => 'dishwasher', 'brand' => 'bosch',
+    ]));
+    $this->post(route('visits.start', $this->visit))->assertRedirect();
+
+    $response = $this->postJson(route('jobs.voice-close.read', $this->job), ['text' => 'Ремонт посудомойки Bosch 180, насос клиенту 95, сам купил насос за 60 и парковка 10, не оплатили'])
+        ->assertOk();
+
+    expect(array_column($response->json('draft.lines'), 'description'))->toBe(['Dishwasher repair', 'Drain pump'])
+        ->and(array_column($response->json('draft.lines'), 'check'))->toBe([false, true])
+        ->and(array_column($response->json('draft.expenses'), 'description'))->toBe(['Pump at Reliable Parts', 'Parking'])
+        ->and(array_column($response->json('draft.expenses'), 'amount'))->toBe([60, 10])
+        // Totals come from code: 275 + GST 5 %.
+        ->and($response->json('money.subtotal'))->toBe(27500)
+        ->and($response->json('money.total'))->toBe(28875)
+        ->and($response->json('draft.appliance_type'))->toBe('dishwasher')
+        ->and($response->json('draft.brand'))->toBe('Bosch');
+    // Reading saves nothing.
+    expect(inCompany($this->company, fn () => BusinessExpense::query()->count()))->toBe(0)
+        ->and(inCompany($this->company, fn () => Invoice::query()->count()))->toBe(0);
+});
+
+test('Confirm & send on an unpaid job saves everything and texts the invoice with its payment link', function () {
+    $this->post(route('visits.start', $this->visit))->assertRedirect();
+    $before = outbound();
+
+    $this->post(route('jobs.voice-close', $this->job), voiceAnswer([
+        'payment' => 'unpaid',
+        'expenses' => [['description' => 'Pump', 'amount' => 60], ['description' => '', 'amount' => 10]],
+        'send' => true,
+    ]))->assertRedirect()->assertSessionHasNoErrors();
+
+    $invoice = inCompany($this->company, fn () => Invoice::query()->with('items')->sole());
+    $expenses = inCompany($this->company, fn () => BusinessExpense::query()->orderBy('id')->get());
+    $sms = inCompany($this->company, fn () => Message::query()->where('direction', 'outbound')->latest('id')->first());
+
+    expect($invoice->balance)->toBe(22400)
+        // My expenses never reach the invoice.
+        ->and($invoice->items->pluck('description')->all())->toBe(['Dryer repair', 'Thermal fuse'])
+        ->and($expenses->pluck('description')->all())->toBe(['Pump', 'Expenses for job #'.$this->job->number])
+        ->and($expenses->pluck('amount')->all())->toBe([6000, 1000])
+        ->and($expenses->pluck('service_job_id')->unique()->all())->toBe([$this->job->id])
+        ->and(outbound())->toBe($before + 1)
+        ->and($sms->kind)->toBe(MessageKind::InvoiceLink)
+        ->and($sms->body)->toContain('/d/')
+        ->and($sms->body)->not->toContain('Pump')
+        ->and($invoice->sent_at)->not->toBeNull();
+});
+
+test('Confirm & send on a paid job texts the receipt', function () {
+    $this->post(route('visits.start', $this->visit))->assertRedirect();
+
+    $this->post(route('jobs.voice-close', $this->job), voiceAnswer(['payment' => 'e_transfer', 'send' => true]))
+        ->assertRedirect()->assertSessionHasNoErrors();
+
+    $invoice = inCompany($this->company, fn () => Invoice::query()->sole());
+    $sms = inCompany($this->company, fn () => Message::query()->where('direction', 'outbound')->latest('id')->first());
+    expect($invoice->status->value)->toBe('paid')
+        ->and(inCompany($this->company, fn () => Payment::query()->sole()->method))->toBe(PaymentMethod::BankTransfer)
+        ->and($sms->kind)->toBe(MessageKind::Receipt)
+        ->and($sms->body)->toContain('#'.$invoice->number)
+        ->and($sms->body)->toContain('224.00');
+});
+
+test('Save only saves the invoice, expenses and payment and texts nothing', function () {
+    $this->post(route('visits.start', $this->visit))->assertRedirect();
+    $before = outbound();
+
+    $this->post(route('jobs.voice-close', $this->job), voiceAnswer([
+        'payment' => 'cash', 'expenses' => [['description' => 'Parking', 'amount' => 10]], 'send' => false,
+    ]))->assertRedirect()->assertSessionHasNoErrors();
+
+    expect(outbound())->toBe($before)
+        ->and(inCompany($this->company, fn () => Invoice::query()->sole()->status->value))->toBe('paid')
+        ->and(inCompany($this->company, fn () => BusinessExpense::query()->sole()->amount))->toBe(1000);
+    Mail::assertNothingQueued();
 });

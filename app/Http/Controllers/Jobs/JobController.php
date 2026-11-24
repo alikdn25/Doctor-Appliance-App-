@@ -27,7 +27,6 @@ use App\Messaging\MessagingPresenter;
 use App\Messaging\SmsThreads;
 use App\Models\Appliance;
 use App\Models\Brand;
-use App\Models\BusinessExpense;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\CustomerPhone;
@@ -48,6 +47,7 @@ use App\Models\Supplier;
 use App\Models\SupplierReceipt;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\Accounting\JobExpenses;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\JobProfit;
 use App\Support\Jobs\BookingPhotos;
@@ -655,18 +655,6 @@ class JobController extends Controller
                         'unit_cost' => $item->unit_cost,
                         'total_cost' => $item->totalCost(),
                     ])->values(),
-                // Business expenses entered for this job ("+" → Expense → Job).
-                'expenses' => BusinessExpense::query()->where('service_job_id', $job->id)->with('category')
-                    ->orderBy('spent_on')->orderBy('id')->get()
-                    ->map(fn (BusinessExpense $expense) => [
-                        'id' => $expense->id,
-                        'description' => $expense->description,
-                        'category' => $expense->category?->name,
-                        'merchant' => $expense->merchant,
-                        'spent_on' => $expense->spent_on->toDateString(),
-                        'total' => $expense->total(),
-                        'currency' => $expense->currency,
-                    ])->values(),
                 'receipts' => SupplierReceipt::query()
                     ->whereHas('jobs', fn ($q) => $q->where('service_jobs.id', $job->id))
                     ->with('jobs')
@@ -685,6 +673,8 @@ class JobController extends Controller
                 'supplier_taxes' => BillingPresenter::lineSetup()['supplier_taxes'],
                 'units' => BillingPresenter::lineSetup()['units'],
             ] : null,
+            // My expenses (owner's task of November 24): the Owner and the job's technicians (their own lines).
+            'myExpenses' => JobExpenses::present($user, $job),
             'openWarranty' => $request->boolean('warranty'),
             // "Finish visit" on My Jobs opens the finish dialog straight away.
             'assignableUsers' => $canUpdate ? $this->assignableUsers() : [],
