@@ -2791,3 +2791,14 @@ sent request carries `locationRestriction` (the company box) and `includedRegion
 - Tests: `tests/Feature/Storage/PrivateDiskPermissionsTest.php`, `BookingFromPhotoTest` (attachments, job page),
   `AssistantInvoiceTest` (job attachments), `tests/js/places-request.test.ts`, browser `zz-booking-from-photo.spec.ts`.
 - No migration. Next: deploy; check a new booking from photo on an Android phone.
+
+## Deploy script re-run and storage permissions as www-data (November 24, 2026)
+
+✅ deploy/deploy.sh: after `git fetch` / `git reset --hard` it runs the deploy script of the new commit with `exec`
+(`DEPLOY_REEXEC=1` stops a loop; the second pass checks HEAD is the commit, keeps maintenance mode and the
+previous commit for messages). Changes to the deploy steps now apply in the same deploy.
+✅ The permission fix runs as the web server user: `sudo -n -u www-data php artisan app:fix-storage-permissions`
+(the deploy user needs passwordless sudo to www-data for that command).
+- Tests: `PrivateDiskPermissionsTest` (sudo line, re-run guard before composer); checked by hand in a scratch clone
+  with stubbed php/composer/npm: the new script runs once, no loop. Note: the first deploy of this change still runs
+  the old script; the re-run starts from the next deploy.

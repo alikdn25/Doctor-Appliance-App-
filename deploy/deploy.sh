@@ -13,11 +13,18 @@ exec 9>storage/deploy.lock
 flock -n 9 || { printf 'Another deployment is running.\n' >&2; exit 1; }
 
 deploy_ref="${DEPLOY_REF:-main}"
-git fetch --no-tags origin "$deploy_ref"
-deploy_commit="${DEPLOY_SHA:-FETCH_HEAD}"
-deploy_commit="$(git rev-parse --verify "${deploy_commit}^{commit}")"
-git merge-base --is-ancestor "$deploy_commit" FETCH_HEAD || { printf 'The commit is outside the selected branch.\n' >&2; exit 1; }
-printf 'Deploying %s\n' "$deploy_commit"
+if test "${DEPLOY_REEXEC:-}" = 1; then
+    # Second pass: the new version of this script, already at the commit the first pass checked out.
+    deploy_commit="$(git rev-parse --verify "${DEPLOY_SHA:?}^{commit}")"
+    test "$(git rev-parse HEAD)" = "$deploy_commit" || { printf 'Re-run is not at %s.\n' "$deploy_commit" >&2; exit 1; }
+    printf 'Running the deploy script of %s\n' "$deploy_commit"
+else
+    git fetch --no-tags origin "$deploy_ref"
+    deploy_commit="${DEPLOY_SHA:-FETCH_HEAD}"
+    deploy_commit="$(git rev-parse --verify "${deploy_commit}^{commit}")"
+    git merge-base --is-ancestor "$deploy_commit" FETCH_HEAD || { printf 'The commit is outside the selected branch.\n' >&2; exit 1; }
+    printf 'Deploying %s\n' "$deploy_commit"
+fi
 
 if test -f vendor/autoload.php; then
     php artisan down --retry=15 --refresh=15
@@ -28,8 +35,16 @@ failed() {
 }
 trap failed ERR
 
-previous_commit="$(git rev-parse HEAD)"
-git reset --hard "$deploy_commit"
+if test "${DEPLOY_REEXEC:-}" != 1; then
+    previous_commit="$(git rev-parse HEAD)"
+    git reset --hard "$deploy_commit"
+    # Run the rest with the deploy script of the new commit (once: DEPLOY_REEXEC stops a loop). The lock is taken
+    # again by the new script; maintenance mode stays on.
+    trap - ERR
+    exec 9>&-
+    DEPLOY_REEXEC=1 DEPLOY_SHA="$deploy_commit" DEPLOY_PREVIOUS_COMMIT="$previous_commit" exec bash deploy/deploy.sh
+fi
+previous_commit="${DEPLOY_PREVIOUS_COMMIT:-$deploy_commit}"
 composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
 php artisan optimize:clear
 php artisan app:deployment-check --before-migrate
@@ -46,8 +61,9 @@ if ! php artisan backup:run --reason=deploy; then
 fi
 php artisan migrate --force
 if ! test -L public/storage; then php artisan storage:link; fi
-# Photo folders made before the private disk had permissions: folders 2775, files 0664 (runs once).
-php artisan app:fix-storage-permissions
+# Photo folders made before the private disk had permissions: folders 2775, files 0664 (runs once), as the web
+# server user, who owns most photo folders. Needs sudo for the deploy user to run as www-data without a password.
+sudo -n -u www-data php artisan app:fix-storage-permissions
 php artisan optimize
 php artisan app:deployment-check
 php artisan queue:restart
