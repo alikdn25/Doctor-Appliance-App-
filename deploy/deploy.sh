@@ -46,6 +46,8 @@ if ! php artisan backup:run --reason=deploy; then
 fi
 php artisan migrate --force
 if ! test -L public/storage; then php artisan storage:link; fi
+# Photo folders made before the private disk had permissions: folders 2775, files 0664 (runs once).
+php artisan app:fix-storage-permissions
 php artisan optimize
 php artisan app:deployment-check
 php artisan queue:restart

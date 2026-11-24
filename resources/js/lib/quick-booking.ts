@@ -7,6 +7,7 @@ let text = '';
 let photos: QuickBookingPhoto[] = [];
 let result: unknown = null;
 let jobDraft: unknown = null;
+let parseOnOpen = false;
 
 /** A photo picked on Quick booking (shrunk on the phone to 1600 px), with its preview. */
 export type QuickBookingPhoto = {
@@ -25,6 +26,25 @@ export const quickBookingPhotos = () => photos;
 
 export const keepQuickBookingPhotos = (value: QuickBookingPhoto[]) => {
     photos = value;
+};
+
+/**
+ * "Booking from photo" in "+": the photos were picked in the menu itself, so Quick booking opens with them and starts
+ * reading at once. Peeked while the old screen closes (so it does not clear them), taken once by the new one.
+ */
+export const startQuickBookingFromPhotos = (value: QuickBookingPhoto[]) => {
+    clearBooking();
+    photos = value;
+    parseOnOpen = true;
+};
+
+export const quickParsePending = () => parseOnOpen;
+
+export const takeQuickParse = () => {
+    const value = parseOnOpen;
+    parseOnOpen = false;
+
+    return value;
 };
 
 export const keepQuickBookingText = (value: string) => {

@@ -13,8 +13,13 @@ import { useEffect, useState } from 'react';
 import { BookingButtons } from '@/components/jobs/booking-buttons';
 import { TaskSheet } from '@/components/tasks/task-sheet';
 import { hasCardReader } from '@/lib/card-reader';
+import { compressImage } from '@/lib/image';
 import { holdKeyboard } from '@/lib/keyboard-handoff';
 import { useTrans } from '@/lib/i18n';
+import {
+    MAX_BOOKING_PHOTOS,
+    startQuickBookingFromPhotos,
+} from '@/lib/quick-booking';
 import { cn } from '@/lib/utils';
 import { create as createCharge } from '@/routes/charges';
 import { create as createExpense } from '@/routes/expenses';
@@ -27,12 +32,14 @@ type Item = {
     label: string;
     icon: ReactNode;
     onSelect: () => void;
+    /** A photo picker inside the item: the tap opens the camera / gallery itself, the photos go to onPhotos. */
+    onPhotos?: (files: File[]) => void;
 };
 
 /**
  * The round "+" above the bottom bar on every screen (owner's task, Oct 24), volumetric with the blue glow. A tap
  * opens, from the bottom up next to the thumb, Quick booking and Book customer side by side (Book customer on the day
- * the calendar shows), then Booking from photo · Charge reader · Expense · Trip · Task. Expense and Trip open the new expense and the mileage form, Task opens the task sheet here.
+ * the calendar shows), then Booking from photo (its tap opens the photo picker itself) · Charge reader · Expense · Trip · Task. Expense and Trip open the new expense and the mileage form, Task opens the task sheet here.
  * Assistant (Owner, owner's task of November 23) is the first item from the button, below the booking buttons; it
  * opens the assistant with the cursor in the question field and the keyboard up.
  * Screens with their own pinned actions (forms) hide it, like the bottom bar. Icons and tap areas are 30% larger than
@@ -107,15 +114,33 @@ export function CreateFab() {
                 icon: <CreditCard />,
                 onSelect: () => router.visit(createCharge()),
             },
-            // Booking from photo (owner's task of November 23): Quick booking with the photo picker open at once.
+            // Booking from photo (owner's task of November 23): the tap opens the photo picker (camera or gallery) from
+            // a hidden input inside the item; the picked photos open Quick booking, which starts reading them at once.
             can.quickBooking === true && {
                 key: 'booking-photo',
                 label: t('nav.create.booking_from_photo'),
                 icon: <Camera />,
-                onSelect: () =>
-                    router.visit(quickBooking({ query: { photo: 1 } }), {
-                        preserveState: false,
-                    }),
+                onSelect: () => undefined,
+                onPhotos: (files) => {
+                    void Promise.all(
+                        files.slice(0, MAX_BOOKING_PHOTOS).map(async (file) => {
+                            const { blob, filename } = await compressImage(
+                                file,
+                                1600,
+                            );
+
+                            return {
+                                id: `${Date.now()}-${Math.random()}`,
+                                blob,
+                                filename,
+                                preview: URL.createObjectURL(blob),
+                            };
+                        }),
+                    ).then((photos) => {
+                        startQuickBookingFromPhotos(photos);
+                        router.visit(quickBooking(), { preserveState: false });
+                    });
+                },
             },
         ] as (Item | false | undefined)[]
     ).filter((item): item is Item => !!item);
@@ -125,22 +150,55 @@ export function CreateFab() {
 
     if (items.length === 0 && !booking && !assistant) return null;
 
-    const itemButton = (item: Item) => (
-        <button
-            type="button"
-            className="da-press da-raised flex h-[3.9rem] max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full pr-2 pl-5 text-left text-[15px] leading-tight font-semibold text-navy"
-            onClick={() => {
-                setOpen(false);
-                item.onSelect();
-            }}
-            data-test={`create-${item.key}`}
-        >
+    const itemClass =
+        'da-press da-raised flex h-[3.9rem] max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full pr-2 pl-5 text-left text-[15px] leading-tight font-semibold text-navy';
+    const itemContent = (item: Item) => (
+        <>
             <span className="min-w-0">{item.label}</span>
             <span className="da-soft flex size-[2.925rem] shrink-0 items-center justify-center rounded-full [&_svg]:size-[1.625rem]">
                 {item.icon}
             </span>
-        </button>
+        </>
     );
+    const itemButton = (item: Item) => {
+        const onPhotos = item.onPhotos;
+
+        // The menu stays open while the picker is up (closing it would drop the input before the photos arrive).
+        return onPhotos ? (
+            <label
+                className={cn(itemClass, 'cursor-pointer')}
+                data-test={`create-${item.key}`}
+            >
+                <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                        const files = Array.from(event.target.files ?? []);
+                        event.target.value = '';
+                        if (files.length === 0) return;
+                        setOpen(false);
+                        onPhotos(files);
+                    }}
+                    data-test={`create-${item.key}-input`}
+                />
+                {itemContent(item)}
+            </label>
+        ) : (
+            <button
+                type="button"
+                className={itemClass}
+                onClick={() => {
+                    setOpen(false);
+                    item.onSelect();
+                }}
+                data-test={`create-${item.key}`}
+            >
+                {itemContent(item)}
+            </button>
+        );
+    };
 
     return (
         <>
