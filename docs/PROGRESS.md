@@ -1,3 +1,25 @@
+# November 24 — Owner's task (part 2): My expenses of a job, Close by voice with Confirm & send (done)
+
+Items 1, 2, 5 and 6 of the task (deleting jobs, no Cash on hand, statistics fields, Statistics) were already in
+`main` (PR #98); checked by their tests (`JobDeletionTest`, `StatisticsTest`, navigation tests) and left as they are.
+
+1. **My expenses** (SPEC §7.24.5): block on the job page (`JobMyExpensesSection`, `JobExpenses`,
+   `JobExpenseController`, `POST/PUT/DELETE jobs/{job}/my-expenses`). One total or several lines; each line is a
+   business expense with the job's `service_job_id` (category "Job expenses"), the same record in Expenses & taxes.
+   Owner: every line; a technician on the job: their own lines only. The expenses list under Costs & profit was
+   removed (duplicate). Lines go to the trash and back with the job (already in `ServiceJob::dependentQueries`).
+2. **Close by voice** (SPEC §7.24.6): the AI also returns `expenses` and a `check` flag per line; the preview edits
+   note, invoice lines (name, amount, type, taxes), My expenses, payment, status / part, appliance type and brand, and
+   moves lines between the invoice and My expenses. "Confirm & send" saves and texts the invoice with its link
+   (unpaid) or the receipt (paid); "Save only" saves without sending. Totals from code (`ChargeLines`).
+3. No migrations; no new settings.
+
+- Tests: `JobMyExpensesTest` (lines add up and are business expenses of the job, one total without a name, technician
+  sees only own lines, unassigned technician / other company refused, receipt expense with a job shows in the block),
+  `VoiceAndPartsTest` (AI split of invoice and expenses with "check", Confirm & send unpaid → invoice text, paid →
+  receipt text, Save only sends nothing), `JobDeletionTest` (job expenses deleted and restored with the job).
+- Next: the owner tries Close by voice on a real job; the receipt text wording can be made a company template later.
+
 # November 24 — Owner's task: deleting jobs, no Cash on hand, Statistics (done)
 
 1. **Deleting a job.** The error was `ServiceJob::deleteBlocker()` refusing jobs with invoices or payments; it is gone.

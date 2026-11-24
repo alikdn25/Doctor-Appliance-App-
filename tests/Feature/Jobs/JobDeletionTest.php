@@ -3,6 +3,7 @@
 use App\Enums\JobStatus;
 use App\Enums\UserRole;
 use App\Models\Brand;
+use App\Models\BusinessExpense;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Estimate;
@@ -54,6 +55,8 @@ test('a job with an estimate, an invoice, a payment, costs, parts and a trip goe
         JobPart::create(['service_job_id' => $this->job->id, 'name' => 'Drain pump']);
         Trip::create(['user_id' => $this->tech->id, 'trip_date' => now()->toDateString(), 'type' => 'client', 'distance_km' => 12, 'service_job_id' => $this->job->id]);
     });
+    // My expenses of the job (business expenses linked to it).
+    $this->post(route('jobs.my-expenses.store', $this->job), ['lines' => [['description' => 'Pump', 'amount' => '60']]])->assertSessionHasNoErrors();
 
     $this->delete(route('jobs.destroy', $this->job))->assertRedirect(route('jobs.index'));
 
@@ -65,6 +68,7 @@ test('a job with an estimate, an invoice, a payment, costs, parts and a trip goe
             ->and(JobCostItem::count())->toBe(0)
             ->and(JobPart::count())->toBe(0)
             ->and(Trip::count())->toBe(0)
+            ->and(BusinessExpense::count())->toBe(0)
             ->and(Invoice::onlyTrashed()->count())->toBe(1)
             ->and(Payment::onlyTrashed()->count())->toBe(1);
     });
@@ -83,6 +87,7 @@ test('a job with an estimate, an invoice, a payment, costs, parts and a trip goe
             ->and(JobCostItem::count())->toBe(1)
             ->and(JobPart::count())->toBe(1)
             ->and(Trip::count())->toBe(1)
+            ->and(BusinessExpense::count())->toBe(1)
             ->and(Invoice::find($invoice->id)->amount_paid)->toBe(10000);
     });
 });
