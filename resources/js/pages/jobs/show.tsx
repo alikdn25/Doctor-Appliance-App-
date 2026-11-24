@@ -1125,9 +1125,10 @@ export default function JobShow({
 
                     <CustomerNotes notes={job.customer.notes} />
 
-                    {/* Navigate (blue) · Call (green) · Text (white) · On my way (white), one size. */}
+                    {/* Navigate (blue) · Call (green) · Text (white) · On my way (white), one size: every row as tall
+                        as the tallest; a label too wide for its icon's side (large system font) goes under the icon. */}
                     <div
-                        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                        className="grid auto-rows-fr grid-cols-2 gap-2 sm:grid-cols-4 [&>*]:flex-wrap [&>*]:content-center [&>*]:gap-x-1.5 [&>*]:gap-y-0.5"
                         data-test="job-contact-actions"
                     >
                         {hasAddress ? (

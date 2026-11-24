@@ -84,4 +84,27 @@ for (const scale of [100, 130]) {
             path: info.outputPath(`close-job-${scale}.png`),
         });
     });
+
+    test(`My Jobs card buttons keep their labels inside at 360 px with a ${scale} % font`, async ({
+        browser,
+    }, info) => {
+        test.skip(info.project.name !== 'mobile', 'Phone layout only');
+        const context = await browser.newContext({
+            storageState: 'test-results/auth-tech.json',
+            viewport: { width: 360, height: 780 },
+        });
+        const tech = await context.newPage();
+        await tech.addInitScript((size) => {
+            document.addEventListener('DOMContentLoaded', () => {
+                document.documentElement.style.fontSize = size;
+            });
+        }, `${scale}%`);
+        await tech.goto('/my-jobs');
+        await expect(tech.getByText('Jane Browser').first()).toBeVisible();
+        expect(await overflowingButtons(tech)).toEqual([]);
+        await tech.screenshot({
+            path: info.outputPath(`my-jobs-${scale}.png`),
+        });
+        await context.close();
+    });
 }
