@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\LineKind;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\RecordsChanges;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -28,7 +29,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class JobCostItem extends Model
 {
-    use BelongsToCompany, SoftDeletes;
+    /** Change log type (owner's task of November 25: every correction is logged). */
+    public const AUDIT_TYPE = 'cost';
+
+    use BelongsToCompany, RecordsChanges, SoftDeletes;
 
     protected $fillable = ['kind', 'description', 'part_number', 'supplier', 'quantity', 'unit', 'unit_cost', 'supplier_taxes'];
 

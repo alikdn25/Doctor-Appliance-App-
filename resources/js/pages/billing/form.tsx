@@ -1,5 +1,12 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { CalendarDays, Plus, ShieldCheck } from 'lucide-react';
+import {
+    CalendarDays,
+    Download,
+    FileText,
+    Plus,
+    ShieldCheck,
+    X,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useRef, useState } from 'react';
 import {
@@ -17,6 +24,11 @@ import { TaxIncludedSwitch } from '@/components/billing/tax-included-switch';
 import { NumberHint } from '@/components/billing/number-hint';
 import { depositFor } from '@/components/billing/estimate-approval';
 import { AddItemSheet } from '@/components/billing/add-item-sheet';
+import { ReportPhotos, ReportText } from '@/components/reports/report-editor';
+import type {
+    JobPhotoOption,
+    ReportPhotoItem,
+} from '@/components/reports/report-editor';
 import {
     LineEditor,
     lineWarranty,
@@ -77,6 +89,8 @@ type FormData = {
     estimate_id: number | null;
     /** "Price includes tax" under the lines: off on every new document. */
     prices_include_tax: boolean;
+    /** "+ Add report": text and photos under the lines (owner's task of November 25). */
+    report: { enabled: boolean; text: string; photos: ReportPhotoItem[] };
 };
 
 /**
@@ -100,6 +114,8 @@ export default function BillingForm({
     existingInvoices = [],
     estimates = [],
     fromEstimateId = null,
+    report = { enabled: false, text: '', photos: [] },
+    jobPhotos: initialJobPhotos = [],
 }: {
     kind: DocumentKind;
     document: BillingDocument | null;
@@ -130,6 +146,8 @@ export default function BillingForm({
     estimates?: JobEstimate[];
     /** The approved estimate a new invoice starts from (UX-REDESIGN §21.2). */
     fromEstimateId?: number | null;
+    report?: { enabled: boolean; text: string; photos: ReportPhotoItem[] };
+    jobPhotos?: JobPhotoOption[];
 }) {
     const t = useTrans();
     const time = useCompanyTime();
@@ -267,6 +285,7 @@ export default function BillingForm({
                   ? String(Number(fromEstimate.discount_value))
                   : '',
         notes: document?.notes ?? fromEstimate?.notes ?? '',
+        report,
         // A saved document keeps its tax mode; an invoice from an estimate takes the estimate's (the company's, see
         // approvedEstimate); any other new document opens with the switch off: taxes on top.
         prices_include_tax:
@@ -359,6 +378,12 @@ export default function BillingForm({
     const [datesOpen, setDatesOpen] = useState(false);
     const [discountOpen, setDiscountOpen] = useState(false);
     const [notesOpen, setNotesOpen] = useState(false);
+    const [jobPhotos, setJobPhotos] = useState(initialJobPhotos);
+    const pdfUrl = document
+        ? kind === 'invoice'
+            ? `/invoices/${document.id}/pdf`
+            : `/estimates/${document.id}/pdf`
+        : '';
     const lineTaxOptions = taxRates.map((r) => ({
         id: r.id,
         name: r.name,
@@ -501,6 +526,14 @@ export default function BillingForm({
 
         form.transform((d) => ({
             ...d,
+            report: {
+                enabled: d.report.enabled,
+                text: d.report.text,
+                photos: d.report.photos.map((p) => ({
+                    job_photo_id: p.job_photo_id,
+                    caption: p.caption,
+                })),
+            },
             tax_rate_ids: documentTaxIds,
             valid_until:
                 kind === 'estimate' ? d.valid_until || null : undefined,
@@ -1023,6 +1056,100 @@ export default function BillingForm({
                     )}
                 </section>
 
+                {data.report.enabled ? (
+                    <section
+                        className="da-card space-y-3 p-4"
+                        data-test="document-report"
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            <h2 className="text-base font-semibold">
+                                {t('service_reports.block_title')}
+                            </h2>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-11"
+                                aria-label={t('service_reports.remove')}
+                                onClick={() =>
+                                    form.setData('report', {
+                                        ...data.report,
+                                        enabled: false,
+                                    })
+                                }
+                                data-test="document-report-remove"
+                            >
+                                <X />
+                            </Button>
+                        </div>
+                        <ReportText
+                            id="report-text"
+                            value={data.report.text}
+                            jobId={job.id}
+                            onChange={(text) =>
+                                form.setData('report', { ...data.report, text })
+                            }
+                        />
+                        <h3 className="text-sm font-semibold">
+                            {t('service_reports.photos')}
+                        </h3>
+                        <ReportPhotos
+                            jobId={job.id}
+                            value={data.report.photos}
+                            jobPhotos={jobPhotos}
+                            onJobPhotosChange={setJobPhotos}
+                            onChange={(photos) =>
+                                form.setData('report', {
+                                    ...form.data.report,
+                                    photos,
+                                })
+                            }
+                        />
+                    </section>
+                ) : (
+                    <button
+                        type="button"
+                        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/30 text-base font-semibold text-primary"
+                        onClick={() =>
+                            form.setData('report', {
+                                ...data.report,
+                                enabled: true,
+                            })
+                        }
+                        data-test="document-add-report"
+                    >
+                        {t('service_reports.add')}
+                    </button>
+                )}
+
+                {document && (
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button asChild variant="outline" className="min-h-11">
+                            <a
+                                href={pdfUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                data-test="document-preview-pdf"
+                            >
+                                <FileText /> {t('service_reports.preview_pdf')}
+                            </a>
+                        </Button>
+                        <Button asChild variant="outline" className="min-h-11">
+                            <a
+                                href={`${pdfUrl}?download=1`}
+                                data-test="document-download-pdf"
+                            >
+                                <Download /> {t('service_reports.download_pdf')}
+                            </a>
+                        </Button>
+                        {form.isDirty && (
+                            <p className="col-span-2 text-xs text-muted-foreground">
+                                {t('service_reports.preview_needs_save')}
+                            </p>
+                        )}
+                    </div>
+                )}
+
                 {notesOpen || data.notes !== '' || errors.notes ? (
                     <FormField
                         id="notes"
@@ -1032,6 +1159,7 @@ export default function BillingForm({
                     >
                         <Textarea
                             id="notes"
+                            translatable
                             rows={3}
                             maxLength={5000}
                             value={data.notes}

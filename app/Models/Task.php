@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\RecordsChanges;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -45,7 +46,10 @@ use Illuminate\Support\Carbon;
  */
 class Task extends Model
 {
-    use BelongsToCompany, SoftDeletes;
+    /** Change log type (owner's task of November 25: every correction is logged). */
+    public const AUDIT_TYPE = 'task';
+
+    use BelongsToCompany, RecordsChanges, SoftDeletes;
 
     /** Reminder choices, in minutes before the start. */
     public const REMINDERS = [0, 15, 60, 1440];

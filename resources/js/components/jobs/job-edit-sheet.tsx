@@ -316,6 +316,7 @@ export function JobEditSheet({
                         </label>
                         <div className="flex items-end gap-2">
                             <Textarea
+                                voice={false}
                                 ref={quickRef}
                                 id="quick-edit"
                                 value={quick}

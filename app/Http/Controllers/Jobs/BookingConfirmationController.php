@@ -79,15 +79,34 @@ class BookingConfirmationController extends Controller
      */
     public static function flashResult(array $sent): void
     {
-        if ($sent['channel'] === BookingConfirmation::PHONE) {
+        $channels = self::channels($sent);
+
+        if ($channels === [] && $sent['channel'] === BookingConfirmation::PHONE) {
             return;
         }
 
-        Inertia::flash('toast', match (true) {
-            $sent['channel'] === null || $sent['status'] === 'blocked' => ['type' => 'error', 'message' => __('jobs.confirmation.not_sent', ['reason' => $sent['reason']])],
-            $sent['channel'] === BookingConfirmation::EMAIL => ['type' => 'success', 'message' => __('jobs.confirmation.emailed', ['email' => $sent['to']])],
-            $sent['send_after'] !== null => ['type' => 'success', 'message' => __('messages.sms_queued', ['time' => $sent['send_after']])],
-            default => ['type' => 'success', 'message' => __('jobs.confirmation.texted')],
-        });
+        Inertia::flash('toast', $channels === []
+            ? ['type' => 'error', 'message' => __('jobs.confirmation.not_sent', ['reason' => $sent['reason']])]
+            : ['type' => 'success', 'message' => __('booking_confirmation.status.sent', ['channels' => implode(', ', $channels), 'time' => __('booking_confirmation.status.now')])
+                .(($sent['send_after'] ?? null) !== null ? ' '.__('messages.sms_queued', ['time' => $sent['send_after']]) : '')]);
+    }
+
+    /**
+     * "SMS ✓", "Email ✓" for what went.
+     *
+     * @param  array<string, mixed>  $sent
+     * @return list<string>
+     */
+    public static function channels(array $sent): array
+    {
+        $channels = [];
+        if (($sent['sms'] ?? null) === 'sent') {
+            $channels[] = __('booking_confirmation.status.sms').' '.__('booking_confirmation.status.ok');
+        }
+        if (($sent['email'] ?? null) === 'sent') {
+            $channels[] = __('booking_confirmation.status.email').' '.__('booking_confirmation.status.ok');
+        }
+
+        return $channels;
     }
 }

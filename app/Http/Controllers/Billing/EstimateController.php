@@ -31,6 +31,7 @@ class EstimateController extends Controller
         return Inertia::render('billing/form', [
             'kind' => 'estimate',
             'document' => null,
+            ...BillingPresenter::reportForm(null, $job),
             'job' => BillingPresenter::job($job),
             'taxRates' => BillingPresenter::taxOptions(),
             'services' => BillingPresenter::serviceOptions($job->brand_id),
@@ -83,6 +84,7 @@ class EstimateController extends Controller
         return Inertia::render('billing/form', [
             'kind' => 'estimate',
             'document' => BillingPresenter::document($estimate),
+            ...BillingPresenter::reportForm($estimate, $estimate->job),
             'job' => BillingPresenter::job($estimate->job),
             'taxRates' => BillingPresenter::taxOptions($estimate->taxes),
             'services' => BillingPresenter::serviceOptions($estimate->brand_id),
@@ -119,7 +121,7 @@ class EstimateController extends Controller
      */
     public function decide(Request $request, Estimate $estimate, SaveBillingDocument $save): RedirectResponse
     {
-        Gate::authorize('update', $estimate);
+        Gate::authorize('decide', $estimate);
 
         $data = $request->validate([
             'approved' => ['required', 'boolean'],

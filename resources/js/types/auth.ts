@@ -9,6 +9,8 @@ export type User = {
     /** Bottom menu: Field (works on calls) or Office (runs the team), UX-REDESIGN §22. */
     menu_mode: 'field' | 'office';
     can_choose_menu: boolean;
+    /** Language of the app's microphone. */
+    dictation_language?: 'en' | 'ru';
     [key: string]: unknown;
 };
 

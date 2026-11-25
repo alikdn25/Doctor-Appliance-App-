@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\JobStatus;
+use App\Mail\BookingConfirmationMail;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
@@ -55,7 +56,7 @@ test('Finish booking schedules the job and texts the confirmation by itself', fu
     $job = ($this->latest)();
 
     expect($job->status)->toBe(JobStatus::Scheduled);
-    $message = inCompany($this->company, fn () => Message::query()->sole());
+    $message = inCompany($this->company, fn () => Message::query()->where('channel', Message::SMS)->sole());
     expect($message->kind->value)->toBe('booking_confirmation')
         ->and($message->channel)->toBe(Message::SMS)
         ->and($message->to)->toBe('+16045550142')
@@ -78,16 +79,17 @@ test('Save as draft keeps the booking as a draft and sends nothing', function ()
     Mail::assertNothingQueued();
 });
 
-test('with SMS off Finish booking sends nothing', function () {
+test('with SMS off Finish booking sends no text, only the email', function () {
     $this->company->update(['sms_mode' => 'off']);
 
     ($this->book)()->assertSessionHasNoErrors();
 
     expect(($this->latest)()->status)->toBe(JobStatus::Scheduled)
-        ->and(inCompany($this->company, fn () => Message::query()->count()))->toBe(0)
-        ->and(session('inertia.flash_data.booking_confirmation.sent.channel'))->toBeNull();
+        ->and(inCompany($this->company, fn () => Message::query()->pluck('channel')->all()))->toBe([Message::EMAIL])
+        ->and(session('inertia.flash_data.booking_confirmation.sent.sms'))->toBe('failed')
+        ->and(session('inertia.flash_data.booking_confirmation.sent.email'))->toBe('sent');
     Http::assertNothingSent();
-    Mail::assertNothingQueued();
+    Mail::assertQueued(BookingConfirmationMail::class);
 });
 
 test('drafts are counted in the unfinished-jobs bar and shown as drafts everywhere', function () {
@@ -115,12 +117,13 @@ test('Finish booking on the job page schedules the draft and sends the confirmat
     $this->post(route('jobs.finish-booking', $job))->assertSessionHasNoErrors();
 
     expect($job->fresh()->status)->toBe(JobStatus::Scheduled);
-    expect(inCompany($this->company, fn () => Message::query()->sole()->channel))->toBe(Message::SMS);
+    // SMS and email both go (owner's task of November 25).
+    expect(inCompany($this->company, fn () => Message::query()->pluck('channel')->sort()->values()->all()))->toBe([Message::EMAIL, Message::SMS]);
     expect(session('inertia.flash_data.booking_confirmation.sent.channel'))->toBe('sms');
 
     // Twice does nothing more.
     $this->post(route('jobs.finish-booking', $job));
-    expect(inCompany($this->company, fn () => Message::query()->count()))->toBe(1);
+    expect(inCompany($this->company, fn () => Message::query()->count()))->toBe(2);
 });
 
 test('a draft cannot be resent or set by hand, and another company cannot finish it', function () {
@@ -141,7 +144,7 @@ test('a moved booking texts the client only when "Notify client" is ticked; drag
     $job = ($this->latest)();
     $visit = inCompany($this->company, fn () => JobVisit::query()->where('service_job_id', $job->id)->sole());
     $payload = ['date' => '2026-10-16', 'start_time' => '15:00', 'end_time' => '17:00', 'assignee_ids' => [$this->owner->id], 'back' => true];
-    $sent = fn () => inCompany($this->company, fn () => Message::query()->where('kind', 'booking_confirmation')->count());
+    $sent = fn () => inCompany($this->company, fn () => Message::query()->where('kind', 'booking_confirmation')->where('channel', Message::SMS)->count());
     expect($sent())->toBe(1);
 
     // No box ticked: the new time is saved, nothing goes and nothing asks.
@@ -152,7 +155,7 @@ test('a moved booking texts the client only when "Notify client" is ticked; drag
     // Ticked: the updated confirmation goes now.
     $this->put(route('visits.update', $visit), [...$payload, 'start_time' => '09:00', 'end_time' => '11:00', 'notify' => true])->assertSessionHasNoErrors();
     expect($sent())->toBe(2)
-        ->and(inCompany($this->company, fn () => Message::query()->latest('id')->first()->body))->toContain('9:00 a.m. - 11:00 a.m.');
+        ->and(inCompany($this->company, fn () => Message::query()->where('channel', Message::SMS)->latest('id')->first()->body))->toContain('9:00 a.m. - 11:00 a.m.');
 
     $this->put(route('visits.move', $visit), ['date' => '2026-10-17', 'start_time' => '09:00'])->assertSessionHasNoErrors();
     expect($sent())->toBe(2);
@@ -174,7 +177,7 @@ test('a draft gets no reminder the day before; once finished it does', function 
 
     $this->post(route('jobs.finish-booking', $job));
     $this->artisan('messages:send-visit-reminders', ['--force' => true])->assertSuccessful();
-    expect(inCompany($this->company, fn () => Message::query()->pluck('kind')->map->value->sort()->values()->all()))
+    expect(inCompany($this->company, fn () => Message::query()->where('channel', Message::SMS)->pluck('kind')->map->value->sort()->values()->all()))
         ->toBe(['booking_confirmation', 'visit_reminder']);
 });
 

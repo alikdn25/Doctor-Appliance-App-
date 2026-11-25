@@ -308,6 +308,7 @@ export function VoiceCloseSheet({
                     <>
                         <div className="flex items-end gap-2">
                             <Textarea
+                                voice={false}
                                 id="voice-close-text"
                                 value={text}
                                 rows={4}

@@ -38,6 +38,7 @@ use App\Models\JobCostItem;
 use App\Models\JobNote;
 use App\Models\JobPart;
 use App\Models\JobPhoto;
+use App\Models\JobReport;
 use App\Models\JobVisit;
 use App\Models\Membership;
 use App\Models\Message;
@@ -50,6 +51,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Support\Accounting\JobExpenses;
 use App\Support\Billing\BillingPresenter;
+use App\Support\Billing\DocumentPrint;
 use App\Support\Billing\JobProfit;
 use App\Support\Jobs\BookingPhotos;
 use App\Support\Jobs\JobBacklog;
@@ -413,7 +415,7 @@ class JobController extends Controller
 
     public function store(JobRequest $request, SaveJob $save, BookingConfirmation $confirmation): RedirectResponse
     {
-        $booking = $request->boolean('quick_booking') && ! $request->boolean('open_invoice') && $request->visit() !== null;
+        $booking = $request->boolean('quick_booking') && ! $request->boolean('open_invoice');
         $draft = $booking && $request->boolean('draft');
 
         $job = $save->create(
@@ -438,9 +440,13 @@ class JobController extends Controller
 
         // Booking (UX-REDESIGN §7.1): back to the day's schedule with "Booked #1005 · Tomorrow 9–11". Finish booking
         // sends the confirmation by itself (the company's SMS setting); Save as draft sends nothing.
-        if ($visit !== null) {
-            self::flashBooked($job, $visit, $draft ? null : $confirmation->send($job, $request->user()));
-            $date = CarbonImmutable::parse($visit->scheduled_start)->setTimezone(currentCompany()->timezone)->toDateString();
+        if ($booking) {
+            // A booking without a time or a day gets its confirmation too ("exact time will be confirmed shortly").
+            $sent = $draft ? null : $confirmation->send($job, $request->user());
+            self::flashBooked($job, $visit, $sent);
+            $date = $visit !== null
+                ? CarbonImmutable::parse($visit->scheduled_start)->setTimezone(currentCompany()->timezone)->toDateString()
+                : ($job->planned_date?->toDateString() ?? CarbonImmutable::now(currentCompany()->timezone)->toDateString());
 
             return Gate::allows('dispatch', ServiceJob::class)
                 ? to_route('calendar', ['view' => 'day', 'date' => $date])
@@ -460,12 +466,12 @@ class JobController extends Controller
      *
      * @param  array<string, mixed>|null  $sent
      */
-    public static function flashBooked(ServiceJob $job, JobVisit $visit, ?array $sent): void
+    public static function flashBooked(ServiceJob $job, ?JobVisit $visit, ?array $sent): void
     {
         Inertia::flash('booking_confirmation', [
             'job_id' => $job->id,
             'number' => $job->number,
-            'message' => __($sent === null ? 'jobs.quick.drafted' : 'jobs.quick.booked', ['number' => $job->number, 'when' => self::bookedWhen($visit)]),
+            'message' => __($sent === null ? 'jobs.quick.drafted' : 'jobs.quick.booked', ['number' => $job->number, 'when' => self::bookedWhen($visit, $job)]),
             'url' => route('jobs.show', $job, false),
             'draft' => $sent === null,
             'sent' => $sent,
@@ -475,9 +481,14 @@ class JobController extends Controller
     /**
      * "Today 9–11 a.m.", "Tomorrow 1–3 p.m." or "Fri, Oct 16 9–11 a.m." in the company's time zone and format.
      */
-    public static function bookedWhen(JobVisit $visit): string
+    public static function bookedWhen(?JobVisit $visit, ?ServiceJob $job = null): string
     {
         $company = currentCompany();
+        if ($visit === null) {
+            return $job?->planned_date !== null
+                ? LocalTime::format($job->planned_date, 'UTC', $company->locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, 'EEE, MMM d').' · '.__('calendar.no_time')
+                : (string) __('calendar.no_date');
+        }
         $start = CarbonImmutable::parse($visit->scheduled_start)->setTimezone($company->timezone);
         $end = CarbonImmutable::parse($visit->scheduled_end)->setTimezone($company->timezone);
         $today = CarbonImmutable::now($company->timezone)->startOfDay();
@@ -540,6 +551,22 @@ class JobController extends Controller
                 'outcome_reason' => $job->outcome_reason,
                 'outcome_note' => $job->outcome_note,
                 'closed_at' => JobPresenter::iso($job->closed_at),
+                // The job's own reports, under Files (owner's task of November 25).
+                'reports' => JobReport::query()->where('service_job_id', $job->id)->orderByDesc('id')->get()
+                    ->map(fn (JobReport $report) => [
+                        'id' => $report->id,
+                        'title' => trim(__('service_reports.title').' · '.(DocumentPrint::date($report->report_date) ?? DocumentPrint::date($report->created_at))),
+                        'url' => route('jobs.reports.edit', $report),
+                        'sent_at' => JobPresenter::iso($report->sent_at),
+                        'sent_to' => $report->sent_to,
+                    ])->values(),
+                // "Confirmation sent: SMS ✓, Email ✓, …" or why it did not go (owner's task of November 25).
+                'confirmation' => $job->confirmation_sent_at === null ? null : [
+                    'at' => JobPresenter::iso($job->confirmation_sent_at),
+                    'sms' => $job->confirmation_sms_status,
+                    'email' => $job->confirmation_email_status,
+                    'error' => $job->confirmation_error,
+                ],
                 'closed_by' => $job->closer?->name,
                 'bring_items' => $job->bringItems->map(fn (JobBringItem $item) => [
                     'id' => $item->id,
@@ -643,7 +670,7 @@ class JobController extends Controller
             ],
             // "Hand to technician": the app's people and the outside technicians.
             'handoffOptions' => $canUpdate && Gate::allows('dispatch', ServiceJob::class) ? JobHandoffController::options() : [],
-            'statusOptions' => $canUpdate && ! $job->status->isLocked() ? JobStatus::manualOptions() : [],
+            'statusOptions' => $canUpdate ? JobStatus::manualOptions() : [],
             'closureReasons' => [
                 'customer_declined' => currentCompany()->closureReasons(JobOutcome::CustomerDeclined),
                 'unable_to_repair' => currentCompany()->closureReasons(JobOutcome::UnableToRepair),

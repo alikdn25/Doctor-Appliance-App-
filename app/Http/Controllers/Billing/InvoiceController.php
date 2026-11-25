@@ -148,6 +148,7 @@ class InvoiceController extends Controller
         return Inertia::render('billing/form', [
             'kind' => 'invoice',
             'document' => null,
+            ...BillingPresenter::reportForm($this->approvedEstimate($job), $job),
             'job' => BillingPresenter::job($job),
             'taxRates' => BillingPresenter::taxOptions(),
             'services' => BillingPresenter::serviceOptions($job->brand_id),
@@ -353,6 +354,7 @@ class InvoiceController extends Controller
         return Inertia::render('billing/form', [
             'kind' => 'invoice',
             'document' => BillingPresenter::document($invoice),
+            ...BillingPresenter::reportForm($invoice, $invoice->job),
             'job' => BillingPresenter::job($invoice->job),
             'taxRates' => BillingPresenter::taxOptions($invoice->taxes),
             'services' => BillingPresenter::serviceOptions($invoice->brand_id),

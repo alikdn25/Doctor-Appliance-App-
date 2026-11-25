@@ -14,7 +14,9 @@ use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Jobs\JobPresenter;
+use App\Support\Reports\ServiceReport;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Shapes estimates, invoices and payments for the React pages. Money stays in minor units, with its currency.
@@ -262,6 +264,24 @@ class BillingPresenter
     }
 
     /**
+     * The report block of the invoice / estimate form (owner's task of November 25): text, the report's photos and
+     * every photo of the job to pick from. A new invoice starts from the approved estimate's report.
+     *
+     * @return array{report: array{enabled: bool, text: string, photos: list<array{job_photo_id: int, caption: string, url: string}>}, jobPhotos: list<array{id: int, url: string, kind: string}>}
+     */
+    public static function reportForm(?Model $document, ServiceJob $job): array
+    {
+        return [
+            'report' => $document === null ? ['enabled' => false, 'text' => '', 'photos' => []] : [
+                'enabled' => (bool) $document->has_report,
+                'text' => (string) $document->report_text,
+                'photos' => ServiceReport::forForm($document, $job),
+            ],
+            'jobPhotos' => ServiceReport::jobPhotos($job),
+        ];
+    }
+
+    /**
      * PDF, sending by email and the customer's online page.
      *
      * @return array<string, mixed>
@@ -280,6 +300,8 @@ class BillingPresenter
             'receipt_url' => $invoice && ! $document->isVoid() && $document->amount_paid > 0 ? route('invoices.receipt', $document) : null,
             'can_send' => $invoice ? ! $document->isVoid() : $document->status !== EstimateStatus::Revised,
             'sent_at' => JobPresenter::iso($document->sent_at),
+            // Corrected after it was sent: "Resend" stands out until it goes again.
+            'edited_after_send_at' => JobPresenter::iso($document->edited_after_send_at),
             'sent_to' => $document->sent_to,
             'viewed_at' => JobPresenter::iso($document->viewed_at),
             'email' => $document->customer?->primaryEmail?->email ?? '',

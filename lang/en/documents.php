@@ -30,6 +30,8 @@ return [
     'send_menu' => 'Send',
     'send_email' => 'Send by email',
     'resend' => 'Send again',
+    'resend_button' => 'Resend',
+    'edited_after_send' => 'Changed after it was sent: the customer still has the old version.',
 
     'default_message' => [
         'estimate' => "Hi :name,\n\nThank you for choosing :brand. Please find estimate :number for :total attached. You can also view it online with the link below.\n\nKind regards,\n:brand",

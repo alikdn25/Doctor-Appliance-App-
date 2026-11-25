@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Team notes on a job (the Notes tab): anyone who works on the job adds one; the author or the office removes it.
+ * Team notes on a job (the Notes tab): anyone who works on the job adds one; the author or the office corrects or removes it.
  */
 class JobNoteController extends Controller
 {
@@ -23,6 +23,21 @@ class JobNoteController extends Controller
         $note->job()->associate($job);
         $note->user()->associate($request->user());
         $note->save();
+
+        return back();
+    }
+
+    /** Any note can be corrected later (owner's task of November 25): the author or the office; the change is logged. */
+    public function update(Request $request, JobNote $note): RedirectResponse
+    {
+        Gate::authorize('work', $note->job);
+        abort_unless($note->user_id === $request->user()->id || Gate::allows('update', $note->job), 403);
+        $data = $request->validate(['body' => ['nullable', 'string', 'max:5000']], [], ['body' => __('jobs.notes_tab.note')]);
+
+        $body = trim((string) ($data['body'] ?? ''));
+        if ($body !== '') {
+            $note->forceFill(['body' => $body])->save();
+        }
 
         return back();
     }

@@ -19,6 +19,7 @@ use App\Support\Billing\DocumentTotals;
 use App\Support\Billing\Warranties;
 use App\Support\Billing\Warranty;
 use App\Support\Locale\Currencies;
+use App\Support\Reports\ServiceReport;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -122,6 +123,9 @@ class SaveBillingDocument
             $invoice->currency = $estimate->currency;
             $invoice->prices_include_tax = $estimate->prices_include_tax;
 
+            // The estimate's report and photos come along (owner's task of November 25).
+            $invoice->forceFill(['has_report' => $estimate->has_report, 'report_text' => $estimate->report_text]);
+
             $this->fill($invoice, [
                 'issued_on' => $issuedOn,
                 'due_on' => null,
@@ -136,6 +140,7 @@ class SaveBillingDocument
                     ->all(),
             ], $estimate->taxes, $user, true);
 
+            ServiceReport::copy($estimate, $invoice);
             $this->markInvoiced($estimate, $invoice);
 
             $this->syncInvoice->handle($invoice, $user);
@@ -155,6 +160,11 @@ class SaveBillingDocument
 
             if ($document instanceof Invoice) {
                 $this->syncInvoice->handle($document, $user);
+            }
+
+            // A sent document was corrected: the page offers "Resend" until it goes out again.
+            if ($document->sent_at !== null) {
+                $document->forceFill(['edited_after_send_at' => now()])->saveQuietly();
             }
         });
     }
@@ -259,8 +269,13 @@ class SaveBillingDocument
             throw ValidationException::withMessages(['items' => __('billing.errors.negative_total')]);
         }
 
-        if ($document instanceof Invoice && $document->exists && $totals['total'] < $document->amount_paid) {
-            throw ValidationException::withMessages(['items' => __('invoices.errors.total_below_paid')]);
+        // The report (owner's task of November 25): absent = unchanged; "enabled" off removes it.
+        if (array_key_exists('report', $data) && is_array($data['report'])) {
+            $enabled = (bool) ($data['report']['enabled'] ?? false);
+            $document->forceFill([
+                'has_report' => $enabled,
+                'report_text' => $enabled && filled($data['report']['text'] ?? null) ? trim((string) $data['report']['text']) : null,
+            ]);
         }
 
         $document->fill([
@@ -282,6 +297,10 @@ class SaveBillingDocument
 
         $this->applyTotals($document, $totals);
         $document->save();
+
+        if (array_key_exists('report', $data) && is_array($data['report']) && array_key_exists('photos', $data['report'])) {
+            ServiceReport::sync($document, $document->service_job_id, $document->has_report ? (array) ($data['report']['photos'] ?? []) : []);
+        }
 
         $document->items()->delete();
         foreach ($items as $position => $item) {

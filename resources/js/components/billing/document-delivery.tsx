@@ -40,6 +40,8 @@ export type Delivery = {
     receipt_url: string | null;
     can_send: boolean;
     sent_at: string | null;
+    /** Corrected after it was sent: "Resend" stands out. */
+    edited_after_send_at?: string | null;
     sent_to: string | null;
     viewed_at: string | null;
     email: string;

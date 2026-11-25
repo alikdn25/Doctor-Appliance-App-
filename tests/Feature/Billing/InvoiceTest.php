@@ -113,14 +113,16 @@ test('a job still being worked on keeps its status when invoiced, and moves on w
     expect(jobStatus($this->job))->toBe(JobStatus::Paid);
 });
 
-test('the total of an invoice with payments cannot drop below what was paid', function () {
+test('the total of a paid invoice can be corrected, the balance follows', function () {
     $this->post(route('invoices.store', $this->job), documentPayload());
     $invoice = latestInvoice($this->company);
     $this->post(route('payments.store', $invoice), ['amount' => '200.00', 'method' => 'cash']);
 
+    // Below what was paid: saved, nothing more is owed (owner's task of November 25).
     $this->put(route('invoices.update', $invoice), documentPayload([
         'items' => [['description' => 'Diagnosis', 'quantity' => '1', 'unit_price' => '95.00']],
-    ]))->assertSessionHasErrors('items');
+    ]))->assertSessionHasNoErrors();
+    expect(latestInvoice($this->company))->total->toBe(9500)->status->toBe(InvoiceStatus::Paid);
 
     $this->put(route('invoices.update', $invoice), documentPayload([
         'items' => [['description' => 'Repair', 'quantity' => '1', 'unit_price' => '300.00']],
@@ -130,7 +132,7 @@ test('the total of an invoice with payments cannot drop below what was paid', fu
         ->total->toBe(30000)
         ->balance->toBe(10000)
         ->status->toBe(InvoiceStatus::PartiallyPaid)
-        ->and(inCompany($this->company, fn () => AuditLog::where('action', 'invoice.total_changed')->count()))->toBe(1);
+        ->and(inCompany($this->company, fn () => AuditLog::where('action', 'invoice.total_changed')->count()))->toBe(2);
 });
 
 test('an invoice with payments cannot be voided until the payments are voided', function () {
@@ -155,7 +157,8 @@ test('an invoice with payments cannot be voided until the payments are voided', 
         ->and(inCompany($this->company, fn () => AuditLog::where('action', 'invoice.voided')->count()))->toBe(1);
 
     // A void invoice is final.
-    $this->put(route('invoices.update', $invoice), documentPayload())->assertForbidden();
+    // A void invoice can still be corrected; no payment can be taken on it.
+    $this->put(route('invoices.update', $invoice), documentPayload())->assertRedirect();
     $this->post(route('payments.store', $invoice), ['amount' => '1.00', 'method' => 'cash'])->assertForbidden();
 });
 

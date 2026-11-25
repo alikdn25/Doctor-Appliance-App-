@@ -124,7 +124,7 @@ test('Paste from message fills the form; a booking with an occupant asks to send
         confirmation.locator('[data-test="booking-confirmation-result"]'),
     ).toContainText(
         new RegExp(
-            `Confirmation (texted to|will be texted to|emailed to peter\\.owner${digits}@example\\.com)`,
+            `Confirmation (sent: SMS ✓|texted to|will be texted to|emailed to peter\\.owner${digits}@example\\.com)`,
         ),
     );
     await page.screenshot({

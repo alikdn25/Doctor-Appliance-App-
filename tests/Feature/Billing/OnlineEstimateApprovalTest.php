@@ -186,7 +186,7 @@ test('the customer only approves or declines; the office can mark an estimate ap
 
     // No "Request changes": only Approve (with a signature) and Decline.
     expect(collect(app('router')->getRoutes()->getRoutesByName())->keys()->filter(fn ($name) => str_starts_with($name, 'documents.public.'))->values()->all())
-        ->toEqualCanonicalizing(['documents.public.pdf', 'documents.public.pay', 'documents.public.approve', 'documents.public.decline', 'documents.public.deposit']);
+        ->toEqualCanonicalizing(['documents.public.pdf', 'documents.public.photo', 'documents.public.pay', 'documents.public.approve', 'documents.public.decline', 'documents.public.deposit']);
     $this->get(route('documents.public', $token))->assertInertia(fn (Assert $page) => $page
         ->where('estimate.can_approve', true)
         ->where('estimate.can_decline', true)
@@ -267,14 +267,14 @@ test('a signed estimate is locked for edits and converts to an invoice in one ta
 
     $this->actingAs($this->owner);
     $this->get(route('estimates.show', $estimate))->assertInertia(fn (Assert $page) => $page
-        ->where('can.update', false)
+        // Still correctable (owner's task of November 25); not deletable.
+        ->where('can.update', true)
         ->where('can.delete', false)
         ->where('can.convert', true)
         ->where('document.online_approval.signer_name', 'Maria Garcia')
         ->where('document.items.2.optional', true)
         ->where('document.items.2.selected', false));
-    $this->get(route('estimates.edit', $estimate))->assertForbidden();
-    $this->put(route('estimates.update', $estimate), documentPayload())->assertForbidden();
+    $this->get(route('estimates.edit', $estimate))->assertOk();
     $this->put(route('estimates.decide', $estimate), ['approved' => false])->assertForbidden();
 
     $this->post(route('estimates.convert', $estimate))->assertRedirect();

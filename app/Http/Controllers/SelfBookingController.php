@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\Jobs\DirectBooking;
 use App\Enums\PhotoKind;
 use App\Enums\UserRole;
+use App\Messaging\BookingConfirmation;
 use App\Models\BookingLink;
 use App\Models\Company;
 use App\Models\Customer;
@@ -162,6 +163,13 @@ class SelfBookingController extends Controller
 
             if ($request->hasFile('photo')) {
                 $this->photo($request, $job->id, $company->id);
+            }
+
+            // Every new booking confirms itself to the customer (owner's task of November 25).
+            try {
+                app(BookingConfirmation::class)->send($job, null);
+            } catch (Throwable $e) {
+                report($e);
             }
 
             $when = CarbonImmutable::createFromFormat('Y-m-d', $data['date'], $company->timezone)->isoFormat('ddd MMM D').' '.$data['start'].'–'.$data['end'];

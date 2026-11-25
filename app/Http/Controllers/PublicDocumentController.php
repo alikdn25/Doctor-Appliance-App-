@@ -8,11 +8,13 @@ use App\Enums\EstimateStatus;
 use App\Models\Company;
 use App\Models\Estimate;
 use App\Models\Invoice;
+use App\Models\ReportPhoto;
 use App\Payments\PaymentProviderException;
 use App\Payments\PaymentProviders;
 use App\Support\Billing\DocumentPdf;
 use App\Support\Billing\DocumentPrint;
 use App\Support\Billing\PublicDocument;
+use App\Support\PrivateMedia;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +24,7 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The customer's online page of an estimate or invoice (no login; the long random token in the link is the key).
@@ -53,6 +56,14 @@ class PublicDocumentController extends Controller
                 'canPay' => $canPay,
                 'locale' => $company->locale,
                 'estimate' => $document instanceof Estimate ? $this->estimateActions($document, $company, $providers) : null,
+                // The service report with its photos (owner's task of November 25).
+                'report' => $document->has_report ? [
+                    'text' => $document->report_text,
+                    'photos' => $document->reportPhotos()->get()->map(fn (ReportPhoto $photo) => [
+                        'url' => route('documents.public.photo', [$document->public_token, $photo->id]),
+                        'caption' => $photo->caption,
+                    ])->values(),
+                ] : null,
             ]);
         });
     }
@@ -75,6 +86,19 @@ class PublicDocumentController extends Controller
         }
 
         return redirect()->route('documents.public', $token);
+    }
+
+    /** A photo of the document's report, for the customer's page. */
+    public function photo(string $token, int $photo): StreamedResponse
+    {
+        [$document, $company] = $this->resolve($token);
+
+        return $this->tenancy->runAs($company, function () use ($document, $photo) {
+            $item = $document->reportPhotos()->with('photo')->whereKey($photo)->firstOrFail();
+            abort_unless($document->has_report && $item->photo !== null, 404);
+
+            return PrivateMedia::response($item->photo->path);
+        });
     }
 
     public function pdf(string $token): HttpResponse

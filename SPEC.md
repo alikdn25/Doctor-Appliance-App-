@@ -1085,6 +1085,65 @@ Today. The search finds any job.**
   none), address, city, problem, notes, appliance type, brand, model and serial, job number, invoice and estimate
   number; part of a word, any letter case, from the first letter or digit.
 
+### 7.27 Fix any data, booking confirmation, reports with photos, the app's microphone (owner's task of November 25)
+
+**No field is required anywhere. Any saved field can be corrected at any time; a customer's address is corrected and
+deleted. Every booking automatically sends the customer a confirmation (SMS + email) with the cancellation policy; all
+texts, the hours and the fee are edited in Settings → Company → Booking confirmation. Jobs without a time and without
+a date are always seen in the calendar and on Today. The search finds any job. A report with photos is in the
+invoice / estimate (it goes to the customer in the PDF attachment) and separately per job. The app's microphone with
+RU / EN, independent of the keyboard.**
+
+- **Fix any data.** Every saved field of every record can be corrected in any status: customer, addresses, job (day,
+  time, window, technician, address, problem, appliance, status, notes), estimate, invoice (sent, paid or void),
+  payment (amount, method, date; a provider's payment keeps its amount, method and transaction), expense, mileage,
+  To Do, part, report, note. Nothing is locked by a status; only what came from the payment provider stays as it came.
+  A paid invoice corrected below what was paid owes nothing more. Sending, deleting and taking payments keep their own
+  rules (a void invoice takes no payment; a signed or invoiced estimate is not deleted).
+- **Addresses.** Each address of a customer has a pencil (with address suggestions) and a bin. A correction changes the
+  address on every open job; closed jobs and jobs with a sent invoice keep the address as it was (they move to a
+  hidden copy). Deleting an address of an open job puts the job at the customer's one other address, else no address.
+  On the job page a tap on the address offers the customer's addresses, "Edit this address" and "+ New address".
+- **Resend.** A sent invoice or estimate that was corrected shows a large "Resend" until it goes again.
+- **Change log.** Every correction is logged (who, when, field, old → new): customers, phones, emails, addresses, jobs,
+  visits, notes, parts, cost lines, reports, estimates, invoices, payments, expenses, trips, To Do.
+- **Booking confirmation.** Every new booking (Finish booking, quick booking, the assistant, a booking from an SMS,
+  online booking) sends the confirmation by SMS and by email when there is one; Save as draft sends nothing. A
+  reschedule sends it again only with "Notify client" ticked. Default text: "Hi {first_name}, this is {company_name}.
+  Your appointment is confirmed for {day}, {date}, {time_window} at {address} for {appliance} service.
+  {cancellation_policy} Reply to this message or call {company_phone} if you need to make any changes." The policy:
+  "We require {cancellation_hours} hours cancellation notice to avoid an {cancellation_fee} service call charge.",
+  without a fee "... to avoid a service call charge." No time → "exact time will be confirmed shortly"; no day → "we
+  will confirm the date and time shortly"; no address / appliance → that part of the sentence is left out, never an
+  empty gap or "null". The fee is shown in the company's currency. The email is in the invoice style: logo, the
+  appointment in a block, the policy on its own line. The SMS shows in the customer's SMS chat; how the SMS goes
+  follows the company's SMS setting (Automatic / From technician's phone / Off).
+- **Settings → Company → Booking confirmation:** Send booking confirmation, By SMS, By email (all on), SMS text, email
+  subject ("Appointment confirmed — {company_name}"), email text, the two policy texts, cancellation notice hours (24)
+  and fee (85, may be empty), tap-to-insert placeholders, a live preview of the SMS and the email, "Reset to default"
+  per text and "Send test to me" (the person's own phone and email). The owner's companies have 24 hours and 85.
+- **Job page:** "Confirmation sent: SMS ✓, Email ✓, {time}" with "Resend confirmation"; a red line with the reason
+  when it did not go (no phone and email, an SMS or email error).
+- **Report in the invoice / estimate:** "+ Add report" under the lines opens a Report block (✕ removes it): text with
+  the microphone, "Translate to English" and "Write with AI" (AI_MODEL_ASSISTANT: the job's notes and the text → a
+  clean English report: diagnosis, findings, work performed, recommendations), and photos: "+ Photo" (camera or
+  gallery, several at once) and the job's photos with ticks, a caption under each, remove and reorder. Photos are
+  shrunk to 1600 px JPEG upright (EXIF) and saved among the job's photos too. The PDF gets "Service report" under the
+  totals: the text, then photos two in a row with captions, over as many pages as needed; the PDF stays under 8 MB
+  (photos are shrunk further when needed). The email carries that PDF attached and the link to the online page,
+  which shows the report and photos too. "Preview PDF" and "Download PDF" on the form. An invoice made from an
+  estimate takes its report and photos.
+- **Job report:** "Report" on the job page (next to New estimate / New invoice): location (the company's locations,
+  each with the distance to the job), customer, address, appliance (type, brand, model, serial), date, technician,
+  description and photos as above, an optional customer signature. All filled from the job, all editable. PDF in the
+  invoice style (logo, the location's address, phone and tax number), under 8 MB; sent by email (PDF attached) or
+  SMS (a link to the PDF); kept under the job's Files; a job can have several.
+- **The app's microphone** sits under every multi-line text field (Web Speech API; Android's own recognition in the
+  app). Tap to record, tap again to stop; words go in at the cursor and nothing typed is replaced. RU / EN next to it
+  is saved for the person and used in every field (the owner's companies start on RU). "Translate to English"
+  (AI_MODEL_BOOKING) under fields whose text goes to the customer (report, SMS reply, invoice / estimate notes,
+  booking confirmation texts) replaces the text; "Undo" puts the old text back.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).

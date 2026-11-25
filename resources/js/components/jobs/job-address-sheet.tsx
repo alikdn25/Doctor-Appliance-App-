@@ -1,10 +1,9 @@
 import { router, usePage } from '@inertiajs/react';
-import { Check, MapPin } from 'lucide-react';
+import { Check, MapPin, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import {
     AddressEntry,
-    addressComplete,
     emptyAddress,
 } from '@/components/customers/address-entry';
 import type { AddressData } from '@/components/customers/address-entry';
@@ -18,6 +17,12 @@ import {
 } from '@/components/ui/sheet';
 import { useTrans } from '@/lib/i18n';
 import { address as jobAddress } from '@/routes/jobs';
+import { update as updateProperty } from '@/routes/properties';
+
+/** The job's saved address, for "Edit this address". */
+export type AddressEditable = {
+    id: number;
+} & { [K in keyof AddressData]?: string | null };
 
 /**
  * The job's address: another address of the same customer in one tap, or a new one (saved on the job and on the
@@ -28,12 +33,15 @@ export function JobAddressSheet({
     onOpenChange,
     jobId,
     current,
+    editable = null,
     others,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     jobId: number;
     current: string;
+    /** The job's address as saved: "Edit this address" corrects it (open jobs at it follow, closed ones keep it). */
+    editable?: AddressEditable | null;
     others: { id: number; full_address: string }[];
 }) {
     const t = useTrans();
@@ -42,6 +50,41 @@ export function JobAddressSheet({
     const [address, setAddress] = useState<AddressData>(emptyAddress(country));
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [busy, setBusy] = useState(false);
+    // "pick" = the list; "edit" = correct this address; "new" = a new one.
+    const [mode, setMode] = useState<'pick' | 'edit' | 'new'>('pick');
+    const startEdit = () => {
+        if (!editable) return;
+        const base = emptyAddress(country);
+        setAddress({
+            ...base,
+            ...Object.fromEntries(
+                Object.keys(base).map((key) => [
+                    key,
+                    (editable as Record<string, unknown>)[key] ?? '',
+                ]),
+            ),
+        } as AddressData);
+        setMode('edit');
+    };
+    const close = (next: boolean) => {
+        if (!next) setMode('pick');
+        onOpenChange(next);
+    };
+
+    const saveEdit = (event: FormEvent) => {
+        event.preventDefault();
+        if (!editable) return;
+        setBusy(true);
+        router.put(updateProperty(editable.id).url, address as never, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setErrors({});
+                close(false);
+            },
+            onError: (e) => setErrors(e),
+            onFinish: () => setBusy(false),
+        });
+    };
 
     const send = (data: Record<string, unknown>) => {
         setBusy(true);
@@ -50,7 +93,7 @@ export function JobAddressSheet({
             onSuccess: () => {
                 setAddress(emptyAddress(country));
                 setErrors({});
-                onOpenChange(false);
+                close(false);
             },
             onError: (e) => setErrors(e),
             onFinish: () => setBusy(false),
@@ -58,11 +101,11 @@ export function JobAddressSheet({
     };
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        if (addressComplete(address)) send(address);
+        send(address);
     };
 
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
+        <Sheet open={open} onOpenChange={close}>
             <SheetContent
                 side="bottom"
                 className="mx-auto flex max-h-[90dvh] max-w-xl flex-col gap-3 overflow-y-auto rounded-t-3xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
@@ -78,7 +121,7 @@ export function JobAddressSheet({
                         {current || t('jobs.quick.address_pending')}
                     </SheetDescription>
                 </SheetHeader>
-                {others.length > 0 && (
+                {mode === 'pick' && others.length > 0 && (
                     <section className="space-y-2">
                         <h3 className="text-sm font-semibold">
                             {t('jobs.address.other')}
@@ -104,29 +147,56 @@ export function JobAddressSheet({
                         </ul>
                     </section>
                 )}
-                <form onSubmit={submit} className="space-y-3">
-                    {others.length > 0 && (
-                        <h3 className="text-sm font-semibold">
-                            {t('jobs.address.new')}
-                        </h3>
-                    )}
-                    <AddressEntry
-                        id="job-address"
-                        value={address}
-                        errors={errors}
-                        onChange={(patch) =>
-                            setAddress((a) => ({ ...a, ...patch }))
-                        }
-                    />
-                    <Button
-                        type="submit"
-                        className="w-full"
-                        disabled={!addressComplete(address)}
-                        loading={busy}
+                {mode === 'pick' && (
+                    <div className="grid gap-2">
+                        {editable && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="min-h-12 justify-start"
+                                onClick={startEdit}
+                                data-test="job-address-edit"
+                            >
+                                <Pencil /> {t('jobs.address.edit')}
+                            </Button>
+                        )}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-12 justify-start"
+                            onClick={() => {
+                                setAddress(emptyAddress(country));
+                                setMode('new');
+                            }}
+                            data-test="job-address-new"
+                        >
+                            <Plus /> {t('jobs.address.new_button')}
+                        </Button>
+                    </div>
+                )}
+                {mode !== 'pick' && (
+                    <form
+                        onSubmit={mode === 'edit' ? saveEdit : submit}
+                        className="space-y-3"
                     >
-                        <Check /> {t('jobs.address.save')}
-                    </Button>
-                </form>
+                        <h3 className="text-sm font-semibold">
+                            {mode === 'edit'
+                                ? t('jobs.address.edit')
+                                : t('jobs.address.new')}
+                        </h3>
+                        <AddressEntry
+                            id="job-address"
+                            value={address}
+                            errors={errors}
+                            onChange={(patch) =>
+                                setAddress((a) => ({ ...a, ...patch }))
+                            }
+                        />
+                        <Button type="submit" className="w-full" loading={busy}>
+                            <Check /> {t('jobs.address.save')}
+                        </Button>
+                    </form>
+                )}
             </SheetContent>
         </Sheet>
     );

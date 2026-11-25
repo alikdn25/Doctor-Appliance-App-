@@ -7,6 +7,7 @@ import {
     FilePen,
     Pencil,
     Receipt,
+    Send,
     Stethoscope,
     Trash2,
     Undo2,
@@ -21,6 +22,7 @@ import {
 } from '@/components/billing/document-delivery';
 import type { Delivery } from '@/components/billing/document-delivery';
 import { DocumentStatusBadge } from '@/components/billing/document-status-badge';
+import { EditPaymentDialog } from '@/components/billing/edit-payment-dialog';
 import { fromMinor, useMoney } from '@/components/billing/money';
 import type { OnlinePayment } from '@/components/billing/online-payment';
 import { OnlinePaymentSection } from '@/components/billing/online-payment';
@@ -138,6 +140,7 @@ export default function BillingShow({
     const [takeOpen, setTakeOpen] = useState(false);
     const [voidOpen, setVoidOpen] = useState(false);
     const [refundOpen, setRefundOpen] = useState(false);
+    const [editPayment, setEditPayment] = useState<PaymentData | null>(null);
     const [confirm, setConfirm] = useState<
         null | 'delete' | 'revise' | 'edit-paid'
     >(null);
@@ -470,6 +473,24 @@ export default function BillingShow({
             {/* Desktop (UX-REDESIGN §13): the document as a sheet on the left; payments and history on the right. */}
             <div className="mx-auto w-full max-w-3xl space-y-4 p-4 sm:p-6 lg:grid lg:max-w-[1160px] lg:grid-cols-[minmax(0,800px)_320px] lg:items-start lg:gap-6 lg:space-y-0">
                 <div className="min-w-0 space-y-4">
+                    {delivery?.edited_after_send_at && send.canSend && (
+                        <section
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-amber-950 dark:bg-amber-950 dark:text-amber-50"
+                            data-test="document-resend"
+                        >
+                            <p className="text-sm font-semibold">
+                                {t('documents.edited_after_send')}
+                            </p>
+                            <Button
+                                type="button"
+                                size="lg"
+                                onClick={send.openEmail}
+                                data-test="document-resend-button"
+                            >
+                                <Send /> {t('documents.resend_button')}
+                            </Button>
+                        </section>
+                    )}
                     {/* Where it stands, in large type. */}
                     <section
                         className="da-card space-y-2 p-4"
@@ -840,12 +861,6 @@ export default function BillingShow({
                                 {doc.online_approval.ip &&
                                     ` · ${t('estimates.online.ip', { ip: doc.online_approval.ip })}`}
                             </p>
-                            {doc.status !== 'invoiced' &&
-                                doc.status !== 'revised' && (
-                                    <p className="text-xs text-muted-foreground">
-                                        {t('estimates.locked_signed')}
-                                    </p>
-                                )}
                             {can.revise && (
                                 <Button
                                     variant="outline"
@@ -1082,6 +1097,22 @@ export default function BillingShow({
                                             >
                                                 {money(p.amount)}
                                             </span>
+                                            {can.update && !p.voided_at && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-9"
+                                                    aria-label={t(
+                                                        'payments.edit',
+                                                    )}
+                                                    onClick={() =>
+                                                        setEditPayment(p)
+                                                    }
+                                                    data-test="payment-edit"
+                                                >
+                                                    <Pencil />
+                                                </Button>
+                                            )}
                                             {can.voidPayments &&
                                                 !p.voided_at &&
                                                 !p.provider && (
@@ -1116,6 +1147,11 @@ export default function BillingShow({
 
             {send.dialogs}
 
+            <EditPaymentDialog
+                payment={editPayment}
+                methods={paymentMethods}
+                onOpenChange={(open) => !open && setEditPayment(null)}
+            />
             {can.recordPayment && (
                 <PaymentDialog
                     open={paymentOpen}

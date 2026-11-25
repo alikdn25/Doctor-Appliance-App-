@@ -20,4 +20,12 @@ class PaymentPolicy
             && $payment->provider === null
             && $this->managesJob($user, $payment->invoice->job);
     }
+
+    /** Any saved payment can be corrected (owner's task of November 25); provider data stays as it came. */
+    public function edit(User $user, Payment $payment): bool
+    {
+        return $this->inCurrentCompany($payment)
+            && $payment->invoice !== null
+            && $user->can('view', $payment->invoice);
+    }
 }

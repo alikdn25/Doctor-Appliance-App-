@@ -41,6 +41,7 @@ use App\Models\JobCostItem;
 use App\Models\JobNote;
 use App\Models\JobPart;
 use App\Models\JobPhoto;
+use App\Models\JobReport;
 use App\Models\JobStatusChange;
 use App\Models\JobVisit;
 use App\Models\JobVisitAssignee;
@@ -52,6 +53,7 @@ use App\Models\PaymentProviderConnection;
 use App\Models\ProblemReport;
 use App\Models\Property;
 use App\Models\PushAction;
+use App\Models\ReportPhoto;
 use App\Models\ReviewRequest;
 use App\Models\Service;
 use App\Models\ServiceJob;
@@ -164,6 +166,12 @@ beforeEach(function () {
             $note->service_job_id = $job->id;
             $note->user_id = $owner->id;
             $note->save();
+            $report = new JobReport(['customer_name' => 'Secret report']);
+            $report->service_job_id = $job->id;
+            $report->public_token = Str::random(40);
+            $report->save();
+            ReportPhoto::create(['reportable_type' => 'job_report', 'reportable_id' => $report->id,
+                'job_photo_id' => JobPhoto::query()->where('service_job_id', $job->id)->value('id'), 'position' => 0]);
             TaxReserveTransfer::create(['month' => now()->startOfMonth()->toDateString(), 'amount' => 777, 'currency' => $invoice->currency, 'transferred_on' => now()->toDateString(), 'created_by' => $owner->id]);
             CashMovement::create(['user_id' => $owner->id, 'type' => 'collected', 'amount' => 5000, 'currency' => $invoice->currency, 'occurred_on' => now()->toDateString()]);
             $company = currentCompany();
@@ -238,6 +246,8 @@ dataset('tenant models', [
     'charges' => [Charge::class],
     'job parts' => [JobPart::class],
     'job notes' => [JobNote::class],
+    'job reports' => [JobReport::class],
+    'report photos' => [ReportPhoto::class],
     'tax reserve transfers' => [TaxReserveTransfer::class],
     'business expenses' => [BusinessExpense::class],
     'business expense categories' => [BusinessExpenseCategory::class],
@@ -293,7 +303,7 @@ test('every tenant-owned model is covered by isolation tests', function () {
         JobAppliance::class, JobAssignee::class, JobBringItem::class, JobCostItem::class, SupplierReceipt::class, SupplierReceiptLink::class, CashMovement::class, JobPhoto::class, JobStatusChange::class,
         JobVisit::class, JobVisitAssignee::class,
         Membership::class, Property::class, Service::class, ServiceJob::class, TaxRate::class, TaxReserveTransfer::class, Trip::class, BotToken::class,
-        Task::class, Supplier::class, Charge::class, JobPart::class, JobNote::class, AiRequest::class, AssistantMessage::class, AssistantAction::class, SquareImport::class, SquareImportCustomer::class, SquareInvoice::class, ProblemReport::class, UsageEvent::class, InconvenienceReport::class, AppReview::class, AppReviewSuggestion::class,
+        Task::class, Supplier::class, Charge::class, JobPart::class, JobNote::class, JobReport::class, ReportPhoto::class, AiRequest::class, AssistantMessage::class, AssistantAction::class, SquareImport::class, SquareImportCustomer::class, SquareInvoice::class, ProblemReport::class, UsageEvent::class, InconvenienceReport::class, AppReview::class, AppReviewSuggestion::class,
     ])->sort()->values()->all());
 });
 

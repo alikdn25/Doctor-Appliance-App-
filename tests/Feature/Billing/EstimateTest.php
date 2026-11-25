@@ -170,7 +170,8 @@ test('an estimate turns into an invoice with the same lines, discount and taxes'
 
     // Once invoiced, the estimate is final.
     $this->post(route('estimates.convert', $estimate))->assertForbidden();
-    $this->put(route('estimates.update', $estimate), documentPayload())->assertForbidden();
+    // An invoiced estimate can still be corrected (owner's task of November 25), not deleted.
+    $this->put(route('estimates.update', $estimate), documentPayload())->assertRedirect();
     $this->delete(route('estimates.destroy', $estimate))->assertForbidden();
     expect(inCompany($this->company, fn () => Invoice::count()))->toBe(1);
 });

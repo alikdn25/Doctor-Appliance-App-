@@ -243,6 +243,9 @@ function Composer({
                         {t('messages.chat.message')}
                     </Label>
                     <Textarea
+                        voice={false}
+                        translatable
+                        wrapperClassName="min-w-0 flex-1"
                         id="sms-reply"
                         value={form.data.body}
                         onChange={(event) =>

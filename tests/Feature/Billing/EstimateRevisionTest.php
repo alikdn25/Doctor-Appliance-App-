@@ -92,7 +92,7 @@ test('revising makes a new draft version; the signed one stays in the history', 
         ->and(AuditLog::query()->where('action', 'estimate.revised')->exists())->toBeTrue();
 
     // The signed version is read-only and cannot be sent or converted any more.
-    $this->get(route('estimates.edit', $old))->assertForbidden();
+    $this->get(route('estimates.edit', $old))->assertOk();
     $this->post(route('estimates.convert', $old))->assertForbidden();
     $this->post(route('estimates.send', $old), ['email' => 'maria@example.com', 'message' => 'Hi'])->assertStatus(422);
 

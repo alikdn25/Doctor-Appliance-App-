@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\SmsRegistrationController as AdminSmsRegistrationController;
 use App\Http\Controllers\Admin\WorkspaceController;
+use App\Http\Controllers\AiTextController;
 use App\Http\Controllers\AndroidAppController;
 use App\Http\Controllers\AppReviewController;
 use App\Http\Controllers\AppVersionController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Billing\PaymentLinkController;
 use App\Http\Controllers\Billing\PriceBookController;
 use App\Http\Controllers\Company\AnswersController;
 use App\Http\Controllers\Company\AutoMessagesController;
+use App\Http\Controllers\Company\BookingConfirmationSettingsController;
 use App\Http\Controllers\Company\BotTokenController;
 use App\Http\Controllers\Company\BrandController;
 use App\Http\Controllers\Company\CompanySettingsController;
@@ -63,6 +65,7 @@ use App\Http\Controllers\Jobs\JobMessageController;
 use App\Http\Controllers\Jobs\JobMessageFillController;
 use App\Http\Controllers\Jobs\JobNoteController;
 use App\Http\Controllers\Jobs\JobPartsController;
+use App\Http\Controllers\Jobs\JobReportController;
 use App\Http\Controllers\Jobs\JobStatsFieldsController;
 use App\Http\Controllers\Jobs\JobStatusController;
 use App\Http\Controllers\Jobs\JobVoiceController;
@@ -85,6 +88,7 @@ use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\ReviewLinkController;
 use App\Http\Controllers\SelfBookingController;
 use App\Http\Controllers\ServiceWorkerController;
+use App\Http\Controllers\Settings\DictationLanguageController;
 use App\Http\Controllers\Settings\MenuModeController;
 use App\Http\Controllers\SmsAssistController;
 use App\Http\Controllers\SmsInboxController;
@@ -116,6 +120,8 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('i/{token}', [PublicDocumentController::class, 'open'])->name('invoices.open');
     Route::get('r/{token}/{profile}', ReviewLinkController::class)->whereNumber('profile')->name('reviews.go');
     Route::get('d/{token}/pdf', [PublicDocumentController::class, 'pdf'])->name('documents.public.pdf');
+    Route::get('r/{token}', [JobReportController::class, 'public'])->middleware('throttle:60,1')->name('reports.public');
+    Route::get('d/{token}/photos/{photo}', [PublicDocumentController::class, 'photo'])->whereNumber('photo')->name('documents.public.photo');
     Route::post('d/{token}/pay', [PublicDocumentController::class, 'pay'])->middleware('throttle:10,1')->name('documents.public.pay');
     Route::post('d/{token}/approve', [PublicDocumentController::class, 'approve'])->middleware('throttle:10,1')->name('documents.public.approve');
     Route::post('d/{token}/decline', [PublicDocumentController::class, 'decline'])->middleware('throttle:10,1')->name('documents.public.decline');
@@ -179,6 +185,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('assistant/actions/{action}/confirm', [AssistantController::class, 'confirm'])->name('assistant.actions.confirm');
         Route::post('assistant/actions/{action}/cancel', [AssistantController::class, 'cancel'])->name('assistant.actions.cancel');
 
+        Route::post('ai/translate', [AiTextController::class, 'translate'])->middleware('throttle:30,1')->name('ai.translate');
+        Route::post('ai/report', [AiTextController::class, 'report'])->middleware('throttle:30,1')->name('ai.report');
+
         Route::get('messages', [SmsInboxController::class, 'index'])->name('messages.index');
         Route::get('messages/older', [SmsInboxController::class, 'older'])->name('messages.older');
         Route::post('messages/read', [SmsInboxController::class, 'read'])->name('messages.read');
@@ -237,6 +246,16 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('jobs/{job}/appliances', [JobWorkController::class, 'storeAppliance'])->name('jobs.appliances.store');
         Route::put('jobs/{job}/appliances/{appliance}', [JobWorkController::class, 'updateAppliance'])->name('jobs.appliances.update');
         Route::post('jobs/{job}/photos', [JobFieldController::class, 'storePhoto'])->name('jobs.photos.store');
+        // Reports (owner's task of November 25): photos for any report, and the job's own reports.
+        Route::post('jobs/{job}/report-photos', [JobReportController::class, 'uploadPhotos'])->middleware('throttle:60,1')->name('jobs.report-photos.store');
+        Route::get('jobs/{job}/reports/create', [JobReportController::class, 'create'])->name('jobs.reports.create');
+        Route::post('jobs/{job}/reports', [JobReportController::class, 'store'])->name('jobs.reports.store');
+        Route::get('job-reports/{report}/edit', [JobReportController::class, 'edit'])->name('jobs.reports.edit');
+        Route::put('job-reports/{report}', [JobReportController::class, 'update'])->name('jobs.reports.update');
+        Route::delete('job-reports/{report}', [JobReportController::class, 'destroy'])->name('jobs.reports.destroy');
+        Route::get('job-reports/{report}/pdf', [JobReportController::class, 'pdf'])->name('jobs.reports.pdf');
+        Route::get('job-reports/{report}/signature', [JobReportController::class, 'signature'])->name('jobs.reports.signature');
+        Route::post('job-reports/{report}/send', [JobReportController::class, 'send'])->middleware('throttle:30,1')->name('jobs.reports.send');
         // Windows by area: days with a job near this address.
         Route::get('booking/nearby', [NearbyController::class, 'show'])->name('booking.nearby');
         Route::post('jobs/{job}/handoff/preview', [JobHandoffController::class, 'preview'])->name('jobs.handoff.preview');
@@ -318,6 +337,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('payments/{payment}/receipt', [PaymentController::class, 'receipt'])->name('payments.receipt');
         Route::post('invoices/{invoice}/refund', [PaymentController::class, 'refund'])->name('invoices.refund');
         Route::post('payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
+        Route::patch('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
 
         // Take payment, New charge and the Paid screen (card reader, cash, e-transfer; owner's task of November 21).
         Route::get('charges/new', [ChargeController::class, 'create'])->name('charges.create');
@@ -361,6 +381,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('tasks/{task}/done', [TaskController::class, 'done'])->name('tasks.done');
         Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
         Route::post('jobs/{job}/notes', [JobNoteController::class, 'store'])->name('jobs.notes.store');
+        Route::patch('job-notes/{note}', [JobNoteController::class, 'update'])->name('jobs.notes.update');
         Route::delete('job-notes/{note}', [JobNoteController::class, 'destroy'])->name('jobs.notes.destroy');
         Route::get('pricebook/history', [PriceBookController::class, 'history'])->name('pricebook.history');
         Route::post('pricebook', [PriceBookController::class, 'store'])->name('pricebook.store');
@@ -401,6 +422,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         }
 
         Route::put('settings/menu-mode', MenuModeController::class)->name('menu-mode.update');
+        Route::put('settings/dictation-language', DictationLanguageController::class)->name('dictation-language.update');
         Route::get('expenses-and-taxes', ExpensesHubController::class)->name('expenses-hub');
         // Tax reserve (UX-REDESIGN §17), Owner only.
         Route::get('expenses-and-taxes/tax-reserve', [TaxReserveController::class, 'index'])->name('tax-reserve.index');
@@ -441,6 +463,9 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::put('morning', [MorningController::class, 'update'])->name('company.morning.update');
             Route::post('google-drive/connect', [MorningController::class, 'connect'])->name('google-drive.connect');
             Route::delete('google-drive', [MorningController::class, 'disconnect'])->name('google-drive.disconnect');
+            Route::get('booking-confirmation', [BookingConfirmationSettingsController::class, 'edit'])->name('company.booking-confirmation.edit');
+            Route::put('booking-confirmation', [BookingConfirmationSettingsController::class, 'update'])->name('company.booking-confirmation.update');
+            Route::post('booking-confirmation/test', [BookingConfirmationSettingsController::class, 'test'])->middleware('throttle:6,1')->name('company.booking-confirmation.test');
             Route::get('service-area', [ServiceAreaController::class, 'edit'])->name('company.service-area.edit');
             Route::put('service-area', [ServiceAreaController::class, 'update'])->name('company.service-area.update');
             Route::post('service-area/reset', [ServiceAreaController::class, 'reset'])->name('company.service-area.reset');

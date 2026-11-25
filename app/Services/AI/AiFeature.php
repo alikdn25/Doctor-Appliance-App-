@@ -39,12 +39,18 @@ enum AiFeature: string
     /** A To Do typed or said ("tomorrow buy an element at Marcone on Kingsway") → the task form. */
     case TaskParse = 'task_parse';
 
+    /** "Translate to English" under a text field that goes to the customer (report, SMS reply, documents). */
+    case TranslateText = 'translate_text';
+
+    /** "Write with AI" in a report: the job's notes and the text in the field → a clean English service report. */
+    case ReportWrite = 'report_write';
+
     /** The key in config('ai.models'). */
     public function modelKey(): string
     {
         return match ($this) {
-            self::QuickBooking, self::PasteMessage, self::SmsTriage, self::BookingEdit, self::SmsNudge, self::TaskParse => 'booking',
-            self::Assistant, self::FindProblems, self::SmsPhoto, self::VoiceClose, self::PartLookup, self::Receipt, self::Translate => 'assistant',
+            self::QuickBooking, self::PasteMessage, self::SmsTriage, self::BookingEdit, self::SmsNudge, self::TaskParse, self::TranslateText => 'booking',
+            self::Assistant, self::FindProblems, self::SmsPhoto, self::VoiceClose, self::PartLookup, self::Receipt, self::Translate, self::ReportWrite => 'assistant',
             self::AppReview => 'review',
         };
     }

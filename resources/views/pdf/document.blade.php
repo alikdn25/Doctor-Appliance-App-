@@ -34,6 +34,12 @@
         .approval .title { font-weight: bold; color: #15803d; }
         .signature { max-height: 70px; max-width: 260px; margin: 6px 0 2px; }
         .typed-signature { font-size: 20px; font-style: italic; margin: 6px 0 2px; }
+        .report-title { font-size: 14px; font-weight: bold; margin-top: 22px; padding-bottom: 4px; border-bottom: 1.5px solid {{ $doc['brand']['color'] }}; }
+        .report-text { white-space: pre-line; margin-top: 8px; }
+        .report-photos { margin-top: 10px; table-layout: fixed; }
+        .report-photos td { width: 50%; padding: 4px; vertical-align: top; text-align: center; page-break-inside: avoid; }
+        .report-photos img { max-width: 100%; max-height: 300px; }
+        .report-photos .caption { font-size: 9.5px; color: #4b5563; margin-top: 3px; }
     </style>
 </head>
 <body>
@@ -154,6 +160,11 @@
 
     @if ($doc['notes'])
         <div class="box">{{ $doc['notes'] }}</div>
+    @endif
+
+    @if (! empty($report))
+        <div class="report-title">{{ __('service_reports.pdf_title') }}</div>
+        @include('pdf.partials.report', ['report' => $report])
     @endif
 
     @if ($doc['warranty_terms'] && collect($doc['items'])->contains(fn ($item) => $item['warranty']))

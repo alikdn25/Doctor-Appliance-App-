@@ -184,6 +184,7 @@ export default function QuickBooking() {
                     {t('jobs.quick_booking.hint')}
                 </label>
                 <Textarea
+                    voice={false}
                     id="quick-booking-text"
                     autoFocus={!photoFirst}
                     rows={12}

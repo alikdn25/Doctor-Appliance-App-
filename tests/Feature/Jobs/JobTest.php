@@ -251,14 +251,18 @@ test('a job can be deleted and the deletion is audited', function () {
         ->and(AuditLog::where('action', 'job.deleted')->sole()->auditable_id)->toBe($job->id);
 });
 
-test('customers and properties with jobs cannot be deleted', function () {
-    ServiceJob::factory()->for($this->property)->create(['brand_id' => $this->brand->id]);
+test('a customer with jobs cannot be deleted; an address with an open job can, the job keeps working without it', function () {
+    $job = ServiceJob::factory()->for($this->property)->create(['brand_id' => $this->brand->id]);
 
     $this->delete(route('customers.destroy', $this->customer))->assertRedirect(route('customers.show', $this->customer));
-    $this->delete(route('properties.destroy', $this->property))->assertRedirect(route('customers.show', $this->customer));
+    expect($this->customer->fresh()->trashed())->toBeFalse();
 
-    expect($this->customer->fresh()->trashed())->toBeFalse()
-        ->and($this->property->fresh()->trashed())->toBeFalse();
+    // Owner's task of November 25: any address can be deleted.
+    $this->delete(route('properties.destroy', $this->property))->assertRedirect(route('customers.show', $this->customer));
+    expect($this->property->fresh()->trashed())->toBeTrue();
+    $job->refresh();
+    expect($job->property_id)->not->toBe($this->property->id);
+    $this->get(route('jobs.show', $job))->assertOk();
 });
 
 test('the job page shows customer, address, appliances, visits and history', function () {

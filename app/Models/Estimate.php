@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\EstimateStatus;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\HasReportPhotos;
 use App\Models\Concerns\IsBillingDocument;
 use App\Models\Concerns\RecordsChanges;
 use Carbon\CarbonImmutable;
@@ -67,12 +68,14 @@ use Illuminate\Support\Carbon;
  */
 class Estimate extends Model
 {
-    use BelongsToCompany, IsBillingDocument, RecordsChanges;
+    use BelongsToCompany, HasReportPhotos, IsBillingDocument, RecordsChanges;
 
     /** @use HasFactory<EstimateFactory> */
     use HasFactory, SoftDeletes;
 
     public const AUDIT_TYPE = 'estimate';
+
+    public const REPORT_TYPE = 'estimate';
 
     public const SIGNATURE_DRAWN = 'drawn';
 
@@ -91,6 +94,8 @@ class Estimate extends Model
     protected function casts(): array
     {
         return [
+            'edited_after_send_at' => 'datetime',
+            'has_report' => 'boolean',
             ...$this->documentCasts(),
             'status' => EstimateStatus::class,
             'valid_until' => 'date:Y-m-d',
