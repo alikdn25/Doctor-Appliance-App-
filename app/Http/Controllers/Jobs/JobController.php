@@ -250,8 +250,11 @@ class JobController extends Controller
                 ->when($office && $name === 'day', fn (Builder $o) => $o->orWhereDoesntHave('assignees')))
             ->whereHas('job', fn (Builder $q) => $q->visibleTo($user)->when($search !== '', fn (Builder $j) => $j->search($search)))
             ->when($name === 'day', fn ($q) => $q
-                // Awaiting payment is off the day (it sits in the "Awaiting payment" list).
-                ->whereHas('job', fn (Builder $j) => $j->where('status', '!=', JobStatus::AwaitingPayment->value))
+                // Closed jobs are off the day (owner's task of November 25): they show under Completed only;
+                // awaiting payment also sits in the "Awaiting payment" list. A visit still under way stays (Finish).
+                ->where(fn (Builder $w) => $w
+                    ->whereHas('job', fn (Builder $j) => $j->whereNotIn('status', $finished)->whereNull('closed_at'))
+                    ->orWhereIn('status', $active))
                 ->where(fn ($w) => $w
                     ->whereBetween('scheduled_start', [$dayStart, $dayEnd])
                     ->when($date->equalTo($today), fn ($o) => $o->orWhereIn('status', $active)))
@@ -284,7 +287,7 @@ class JobController extends Controller
                 ->where('status', '!=', VisitStatus::Cancelled->value)
                 ->whereHas('assignees')
                 ->whereDoesntHave('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
-                ->whereHas('job', fn (Builder $q) => $q->visibleTo($user)->where('status', '!=', JobStatus::AwaitingPayment->value))
+                ->whereHas('job', fn (Builder $q) => $q->visibleTo($user)->whereNotIn('status', $finished)->whereNull('closed_at'))
                 ->count()
             : 0;
 

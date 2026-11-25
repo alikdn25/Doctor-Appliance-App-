@@ -45,7 +45,7 @@ class SetJobStatus
             }
 
             $this->changeStatus->handle($job, $to, $user, null, $note);
-            $this->syncBilling->handle($job, $user);
+            $this->syncBilling->handle($job, $user, autoClose: false);
         });
     }
 }

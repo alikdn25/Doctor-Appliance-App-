@@ -70,8 +70,9 @@ class VisitWorkflow
 
             $this->changeStatus->handle($job, $outcome, $user, $visit, $note);
 
-            // Invoiced or paid already on site: the finished job moves on to invoiced/paid.
-            $this->syncBilling->handle($job, $user);
+            // Invoiced or paid already on site: the finished job moves on to invoiced/paid. The caller closes the job
+            // with its outcome (Finish, Close by voice), so it is not closed here as repaired.
+            $this->syncBilling->handle($job, $user, autoClose: false);
         }, fn (JobStatus $status) => $status->allowsFinishingVisit());
     }
 
@@ -79,7 +80,7 @@ class VisitWorkflow
      * Closing the job finishes its visit on the way or in progress, as Finish visit does; the job's own status is
      * left to the caller (CloseJob), which records the outcome.
      */
-    public function finishForClose(JobVisit $visit, User $user): void
+    public function finishForClose(JobVisit $visit, ?User $user): void
     {
         $this->step($visit, [VisitStatus::OnTheWay, VisitStatus::InProgress], function (JobVisit $visit) use ($user) {
             $this->stampFinished($visit);
