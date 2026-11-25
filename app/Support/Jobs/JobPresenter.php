@@ -55,6 +55,10 @@ class JobPresenter
             ] : null,
             // Invoiced so far (not void), when the list loaded the invoices for someone who may see them.
             'total' => $job->relationLoaded('invoices') ? self::invoiced($job) : null,
+            // The day of a job booked without a time ("No time"); null for a job with no day.
+            'planned_date' => $job->planned_date?->toDateString(),
+            // Found by a search in the trash: marked Deleted.
+            'deleted' => $job->trashed(),
         ];
     }
 

@@ -190,7 +190,7 @@ export function QuickTripSheet({
                         <Button
                             type="button"
                             variant="outline"
-                            disabled={empty}
+                            disabled={form.processing}
                             onClick={save}
                         >
                             {t('trips.quick_save')}

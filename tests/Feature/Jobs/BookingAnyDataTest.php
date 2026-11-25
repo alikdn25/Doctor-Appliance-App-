@@ -63,7 +63,7 @@ test('a booking with only a phone saves', function () {
 
     $job = inCompany($this->company, fn () => ServiceJob::with('customer.primaryPhone', 'property')->sole());
     expect($job->customer->primaryPhone->number)->toBe('+16045550101')
-        ->and($job->customer->display_name)->toBe('')
+        ->and($job->customer->display_name)->toBe('Unnamed customer')
         ->and($job->property->hasAddress())->toBeFalse()
         ->and($job->brand_id)->toBe($this->brand->id)
         ->and($job->job_type->value)->toBe('repair');
@@ -142,10 +142,13 @@ test('in a company of one person the job goes to them', function () {
     expect(inCompany($this->company, fn () => ServiceJob::sole()->visits()->sole()->assignees()->count()))->toBe(0);
 });
 
-test('a phone, when given, must be a real number; the full job form still asks for a customer', function () {
+test('a phone, when given, must be a real number; the full job form saves without a customer too', function () {
     $this->post(route('jobs.store'), anyBooking(['new_customer' => ['phone' => '12']]))->assertSessionHasErrors('new_customer.phone');
-    $this->post(route('jobs.store'), ['brand_id' => $this->brand->id, 'job_type' => 'repair'])->assertSessionHasErrors('customer_id');
     expect(inCompany($this->company, fn () => ServiceJob::count()))->toBe(0);
+
+    // No required fields (owner's task of November 25): an "Unnamed customer" is made.
+    $this->post(route('jobs.store'), ['brand_id' => $this->brand->id, 'job_type' => 'repair'])->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => ServiceJob::with('customer')->sole()->customer->display_name))->toBe('Unnamed customer');
 });
 
 test('another company customer is never used by a booking', function () {

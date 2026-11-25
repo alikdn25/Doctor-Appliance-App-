@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'search_deleted' => 'Deleted',
     'columns' => [
         'status' => 'Status',
         'date' => 'Date / window',
@@ -114,7 +115,7 @@ return [
         'paste_phone_owner' => 'This phone belongs to saved customer :name. Use saved customer?',
         'paste_use_saved' => 'Use saved customer',
         'no_time' => 'No time',
-        'no_time_hint' => 'Saved without a visit: it shows under No time in Not completed jobs until it is scheduled.',
+        'no_time_hint' => 'Saved for this day without a time: it shows under No time on that day (calendar, Today, My Jobs) until a time is set.',
         'me' => 'Me',
     ],
     'fill' => [

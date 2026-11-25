@@ -46,8 +46,21 @@ class MorningSms
             ->with(['job.customer.primaryPhone', 'job.property', 'job.appliances'])
             ->orderBy('scheduled_start')->get());
 
-        if ($visits->isEmpty()) {
+        // Today's jobs without a time and the jobs with no day yet (owner's task of November 25).
+        $noTime = UnscheduledJobs::noTime(null, $day, $day->addDay());
+        $noDate = UnscheduledJobs::noDateQuery(null)->with('customer')->orderBy('id')->limit(10)->get();
+        $noDateCount = UnscheduledJobs::noDateQuery(null)->count();
+
+        if ($visits->isEmpty() && $noTime->isEmpty()) {
             $lines[] = __('automation.morning_sms.no_jobs');
+        }
+        if ($noTime->isNotEmpty()) {
+            $lines[] = __('automation.morning_sms.no_time', ['jobs' => $noTime->map(fn (ServiceJob $j) => trim('#'.$j->number.' '.$j->customer?->display_name))->implode(', ')]);
+        }
+        if ($noDateCount > 0) {
+            $lines[] = trans_choice('automation.morning_sms.no_date', $noDateCount, [
+                'jobs' => $noDate->map(fn (ServiceJob $j) => trim('#'.$j->number.' '.$j->customer?->display_name))->implode(', '),
+            ]);
         }
         foreach ($visits->values() as $i => $visit) {
             $job = $visit->job;

@@ -74,14 +74,16 @@ test('a customer can be created without a property', function () {
     expect(inCompany($this->company, fn () => Property::count()))->toBe(0);
 });
 
-test('the property address is required when adding a property', function () {
+test('an empty property address is not an error (no required fields)', function () {
     $this->post(route('customers.store'), customerPayload(['property' => ['country' => 'CA']]))
-        ->assertSessionHasErrors(['property.line1', 'property.city']);
+        ->assertSessionHasNoErrors();
 });
 
-test('a name or company name is required', function () {
+test('a customer without any name saves as "Unnamed customer"', function () {
     $this->post(route('customers.store'), customerPayload(['first_name' => '', 'last_name' => '', 'company_name' => '']))
-        ->assertSessionHasErrors('first_name');
+        ->assertSessionHasNoErrors();
+
+    expect(inCompany($this->company, fn () => Customer::sole()->display_name))->toBe('Unnamed customer');
 });
 
 test('invalid phones, emails and enum values are rejected', function () {

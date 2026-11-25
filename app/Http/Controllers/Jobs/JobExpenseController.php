@@ -10,11 +10,11 @@ use App\Services\AuditLogger;
 use App\Support\Accounting\JobExpenses;
 use App\Support\Billing\MoneyInput;
 use App\Support\Locale\Currencies;
+use App\Support\Ui\SavedToast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 /**
@@ -29,19 +29,20 @@ class JobExpenseController extends Controller
         $currency = currentCompany()->currency;
         $request->replace(MoneyInput::cleanPaths($request->input(), ['lines.*.amount']));
         $data = $request->validate([
-            'lines' => ['required', 'array', 'min:1', 'max:20'],
+            'lines' => ['nullable', 'array', 'max:20'],
             'lines.*.description' => ['nullable', 'string', 'max:255'],
             'lines.*.amount' => ['nullable', 'numeric', 'min:0', DocumentRequest::moneyRule($currency)],
         ]);
-        $lines = collect($data['lines'])
-            ->map(fn (array $line) => ['description' => $line['description'] ?? null, 'amount' => Currencies::toMinor((string) ($line['amount'] ?? '0'), $currency)])
-            ->filter(fn (array $line) => $line['amount'] > 0)->values()->all();
-        if ($lines === []) {
-            throw ValidationException::withMessages(['lines' => __('expenses.job_block.nothing')]);
-        }
+        // Nothing is required (owner's task of November 25): a line with a description or an amount is saved.
+        $lines = collect($data['lines'] ?? [])
+            ->filter(fn (array $line) => filled($line['description'] ?? null) || filled($line['amount'] ?? null))
+            ->map(fn (array $line) => ['description' => $line['description'] ?? null, 'amount' => Currencies::toMinor(filled($line['amount'] ?? null) ? (string) $line['amount'] : '0', $currency)])
+            ->values()->all();
 
-        DB::transaction(fn () => $expenses->add($job, $request->user(), $lines));
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('expenses.job_block.saved')]);
+        if ($lines !== []) {
+            DB::transaction(fn () => $expenses->add($job, $request->user(), $lines));
+        }
+        SavedToast::flash(route('jobs.show', $job), __('expenses.job_block.saved'));
 
         return back();
     }
@@ -52,10 +53,10 @@ class JobExpenseController extends Controller
         $request->replace(MoneyInput::cleanPaths($request->input(), ['amount']));
         $data = $request->validate([
             'description' => ['nullable', 'string', 'max:255'],
-            'amount' => ['required', 'numeric', 'min:0.01', DocumentRequest::moneyRule($expense->currency)],
+            'amount' => ['nullable', 'numeric', 'min:0', DocumentRequest::moneyRule($expense->currency)],
         ]);
 
-        $expenses->update($expense, $data['description'] ?? null, Currencies::toMinor((string) $data['amount'], $expense->currency));
+        $expenses->update($expense, $data['description'] ?? null, Currencies::toMinor(filled($data['amount'] ?? null) ? (string) $data['amount'] : '0', $expense->currency));
 
         return back();
     }

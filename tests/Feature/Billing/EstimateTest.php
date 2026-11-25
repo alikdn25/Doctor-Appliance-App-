@@ -95,20 +95,22 @@ test('an assigned technician creates an estimate on site, others cannot', functi
     expect(inCompany($this->company, fn () => Estimate::count()))->toBe(1);
 });
 
-test('an estimate needs lines with a description, quantity and price', function () {
-    $this->post(route('estimates.store', $this->job), documentPayload(['items' => []]))->assertSessionHasErrors('items');
+test('an estimate saves without lines; typed numbers are still checked', function () {
+    // No field is required (owner's task of November 25).
+    $this->post(route('estimates.store', $this->job), documentPayload(['items' => []]))->assertSessionHasNoErrors();
 
     $this->post(route('estimates.store', $this->job), documentPayload([
         'items' => [['description' => '', 'quantity' => '0', 'unit_price' => '12.345']],
         'discount_type' => 'percent',
         'discount_value' => '150',
-    ]))->assertSessionHasErrors(['items.0.description', 'items.0.quantity', 'items.0.unit_price', 'discount_value']);
+    ]))->assertSessionHasErrors(['items.0.quantity', 'items.0.unit_price', 'discount_value'])
+        ->assertSessionDoesntHaveErrors('items.0.description');
 
     $this->post(route('estimates.store', $this->job), documentPayload([
         'items' => [['description' => 'Credit', 'quantity' => '1', 'unit_price' => '-10.00']],
     ]))->assertSessionHasErrors('items');
 
-    expect(inCompany($this->company, fn () => Estimate::count()))->toBe(0);
+    expect(inCompany($this->company, fn () => Estimate::count()))->toBe(1);
 });
 
 test('editing an estimate keeps the tax rate it was made with', function () {

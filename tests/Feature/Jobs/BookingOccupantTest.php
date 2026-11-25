@@ -129,8 +129,9 @@ test('the customer form saves and clears the billing address', function () {
         ->assertSessionHasNoErrors();
     expect(inCompany($this->company, fn () => $customer->fresh()->billing_line1))->toBe('9 Pay St');
 
+    // A street without a city saves (no required fields).
     $this->put(route('customers.update', $customer), [...$payload, 'billing' => ['line1' => '9 Pay St', 'city' => '']])
-        ->assertSessionHasErrors('billing.city');
+        ->assertSessionHasNoErrors();
 
     $this->put(route('customers.update', $customer), [...$payload, 'billing' => ['line1' => '']])->assertSessionHasNoErrors();
     expect(inCompany($this->company, fn () => $customer->fresh()->billing_line1))->toBeNull();

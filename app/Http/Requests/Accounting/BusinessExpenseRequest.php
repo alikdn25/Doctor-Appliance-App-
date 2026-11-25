@@ -9,6 +9,7 @@ use App\Models\ServiceJob;
 use App\Models\TaxRate;
 use App\Support\Billing\MoneyInput;
 use App\Support\Locale\Currencies;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -40,12 +41,14 @@ class BusinessExpenseRequest extends FormRequest
         $keptTaxes = $expense instanceof BusinessExpense ? array_column($expense->taxes ?? [], 'tax_rate_id') : [];
 
         return [
+            // Nothing is required (owner's task of November 25): no category is "Other", no day is today, no
+            // description is "Untitled", no amount is 0.
             'category_id' => [
-                'nullable', 'required_without:new_category', 'integer',
+                'nullable', 'integer',
                 Rule::exists('business_expense_categories', 'id')->where('company_id', currentCompany()->id)
                     ->where(fn ($query) => $query->where('is_active', true)->orWhere('id', $expense?->category_id ?? 0)),
             ],
-            'new_category' => ['nullable', 'required_without:category_id', 'string', 'max:80'],
+            'new_category' => ['nullable', 'string', 'max:80'],
             // Optional: the job it was for (one the person may see); kept when it is the job saved before.
             'service_job_id' => ['nullable', 'integer', function (string $attribute, mixed $value, \Closure $fail) use ($expense) {
                 $kept = $expense instanceof BusinessExpense && (int) $expense->service_job_id === (int) $value;
@@ -53,18 +56,18 @@ class BusinessExpenseRequest extends FormRequest
                     $fail(__('expenses.job_invalid'));
                 }
             }],
-            'spent_on' => ['required', 'date_format:Y-m-d'],
-            'description' => ['required', 'string', 'max:255'],
+            'spent_on' => ['nullable', 'date_format:Y-m-d'],
+            'description' => ['nullable', 'string', 'max:255'],
             'merchant' => ['nullable', 'string', 'max:150'],
-            'amount' => ['required', 'numeric', DocumentRequest::moneyRule($currency)],
+            'amount' => ['nullable', 'numeric', DocumentRequest::moneyRule($currency)],
             // Technicians enter only what they paid (My expenses has no taxes).
-            'tax_amount' => [$this->user()->hasRole(UserRole::Owner, UserRole::Admin) ? 'required_unless:use_named_taxes,1' : 'nullable', 'nullable', 'numeric', DocumentRequest::moneyRule($currency)],
+            'tax_amount' => ['nullable', 'numeric', DocumentRequest::moneyRule($currency)],
             'use_named_taxes' => ['boolean'],
             'tax_rate_ids' => ['array'],
             'tax_rate_ids.*' => ['integer', 'distinct', Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)
                 ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', $keptTaxes))],
             'tax_amounts' => ['array'],
-            'tax_amounts.*' => ['required', 'numeric', DocumentRequest::moneyRule($currency)],
+            'tax_amounts.*' => ['nullable', 'numeric', DocumentRequest::moneyRule($currency)],
             'notes' => ['nullable', 'string', 'max:5000'],
             'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,heic,pdf', 'max:15360'],
         ];
@@ -77,7 +80,11 @@ class BusinessExpenseRequest extends FormRequest
         $currency = $expense instanceof BusinessExpense ? $expense->currency : currentCompany()->currency;
 
         $data['service_job_id'] = isset($data['service_job_id']) ? (int) $data['service_job_id'] : null;
-        $data['amount'] = Currencies::toMinor($data['amount'], $currency);
+        $data['amount'] = Currencies::toMinor(filled($data['amount'] ?? null) ? (string) $data['amount'] : '0', $currency);
+        $data['description'] = filled($data['description'] ?? null) ? $data['description'] : __('common.untitled');
+        $data['spent_on'] = $data['spent_on'] ?? ($expense instanceof BusinessExpense
+            ? $expense->spent_on->toDateString()
+            : CarbonImmutable::now(currentCompany()->timezone)->toDateString());
 
         // My expenses (technicians): only what was paid; taxes are the office's. Taxes the office split off an
         // entry before are kept out of the total.
@@ -99,12 +106,12 @@ class BusinessExpenseRequest extends FormRequest
                 'name' => $kept[$rate->id]['name'] ?? $rate->name,
                 'rate' => $kept[$rate->id]['rate'] ?? (string) $rate->rate,
                 'compound' => $kept[$rate->id]['compound'] ?? $rate->is_compound,
-                'amount' => Currencies::toMinor($amounts[$rate->id] ?? '0', $currency),
+                'amount' => Currencies::toMinor(filled($amounts[$rate->id] ?? null) ? (string) $amounts[$rate->id] : '0', $currency),
             ])->all();
             $data['tax_amount'] = array_sum(array_column($data['taxes'], 'amount'));
         } else {
             $data['taxes'] = null;
-            $data['tax_amount'] = Currencies::toMinor($data['tax_amount'], $currency);
+            $data['tax_amount'] = Currencies::toMinor(filled($data['tax_amount'] ?? null) ? (string) $data['tax_amount'] : '0', $currency);
         }
 
         return $data;

@@ -16,6 +16,10 @@ import type { DragEvent, TouchEvent } from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DayMap } from '@/components/calendar/day-map';
+import { NoTimeStrip } from '@/components/calendar/no-time-strip';
+import { JobList } from '@/components/jobs/job-list';
+import type { JobRow } from '@/components/jobs/types';
+import { SearchField } from '@/components/ui/search-field';
 import { DayGrid, HOUR_PX } from '@/components/calendar/day-grid';
 import type {
     CalendarVisit,
@@ -72,6 +76,9 @@ import {
 } from '@/routes/visits';
 
 type Props = {
+    /** The same search as Jobs: any job, deleted ones marked. */
+    search?: string;
+    searchResults?: { data: JobRow[] } | null;
     view: 'day' | 'week' | 'map';
     date: string;
     today: string;
@@ -83,6 +90,10 @@ type Props = {
     lanes: Lane[];
     visits: CalendarVisit[];
     unscheduled: UnscheduledJob[];
+    /** Jobs with a day but no time, by day (a strip above the hours). */
+    noTime?: Record<string, UnscheduledJob[]>;
+    /** Jobs with no day and no time (above today). */
+    noDate?: UnscheduledJob[];
     assignableUsers: Assignable[];
     nowMinutes?: number;
     tasks?: TaskItem[];
@@ -93,6 +104,8 @@ const NEW_WINDOW = 120;
 const snap = (minutes: number) => Math.round(minutes / 15) * 15;
 
 export default function CalendarPage({
+    search = '',
+    searchResults = null,
     view,
     date,
     today,
@@ -104,6 +117,8 @@ export default function CalendarPage({
     lanes,
     visits: allVisits,
     unscheduled,
+    noTime = {},
+    noDate = [],
     assignableUsers,
     nowMinutes = 0,
     tasks = [],
@@ -555,6 +570,26 @@ export default function CalendarPage({
                     <div className="border-t p-3">{toSchedule}</div>
                 </details>
 
+                <SearchField
+                    value={search}
+                    placeholder={t('jobs.search')}
+                    onSearch={(value) =>
+                        router.get(
+                            calendar().url,
+                            { view, date, ...(value ? { search: value } : {}) },
+                            { preserveScroll: true, preserveState: true },
+                        )
+                    }
+                />
+                {searchResults && (
+                    <section data-test="calendar-search-results">
+                        <JobList
+                            jobs={searchResults.data}
+                            empty={t('jobs.no_results')}
+                        />
+                    </section>
+                )}
+
                 {/* Tasks ("+ → Task") of the shown day(s), in their own colour; hidden people's too. */}
                 <TaskList
                     tasks={tasks.filter(
@@ -566,7 +601,30 @@ export default function CalendarPage({
                 />
 
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
-                    <div className="min-w-0">
+                    <div className="min-w-0 space-y-3">
+                        {view !== 'map' && (
+                            <NoTimeStrip
+                                days={days}
+                                today={today}
+                                noTime={noTime}
+                                noDate={noDate}
+                                onOpen={(job) =>
+                                    !touch.consumeClick() &&
+                                    router.visit(showJob(job.id).url)
+                                }
+                                onDragStart={(e, job) =>
+                                    startDrag(e, { kind: 'job', job })
+                                }
+                                onDragEnd={endDrag}
+                                onTouchStart={(e, job) =>
+                                    touch.begin(
+                                        e,
+                                        { kind: 'job', job },
+                                        `#${job.number} ${job.customer ?? ''}`,
+                                    )
+                                }
+                            />
+                        )}
                         {view === 'map' ? (
                             <DayMap
                                 visits={visits}

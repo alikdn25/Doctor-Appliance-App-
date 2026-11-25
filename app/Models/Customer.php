@@ -212,7 +212,16 @@ class Customer extends Model
             return $business;
         }
 
-        return $person !== '' ? $person : $business;
+        // No name typed (nothing is required, owner's task of November 25): it still has one to show and find.
+        return $person !== '' ? $person : ($business !== '' ? $business : __('customers.unnamed'));
+    }
+
+    /**
+     * Whether a name was typed (a person's or a business's), not the "Unnamed customer" stand-in.
+     */
+    public function hasName(): bool
+    {
+        return filled($this->first_name) || filled($this->last_name) || filled($this->company_name);
     }
 
     /**
@@ -295,7 +304,7 @@ class Customer extends Model
         $like = '%'.addcslashes($term, '%_\\').'%';
         $digits = PhoneNumber::searchDigits($term);
 
-        $query->where(function (Builder $q) use ($like, $digits) {
+        $query->where(function (Builder $q) use ($like, $digits, $term) {
             $q->where('display_name', 'ilike', $like)
                 ->orWhere('first_name', 'ilike', $like)
                 ->orWhere('last_name', 'ilike', $like)
@@ -313,9 +322,13 @@ class Customer extends Model
                     ->orWhere('serial_number', 'ilike', $like)
                     ->orWhere('manufacturer', 'ilike', $like)));
 
-            if (strlen($digits) >= 3) {
+            // Any format and from the first digit when only a number is typed (owner's task of November 25).
+            if ($digits !== '' && (preg_match('/^[\d\s().+\-]+$/', $term) === 1 || strlen($digits) >= 3)) {
                 $q->orWhereHas('phones', fn (Builder $p) => $p->where('number_normalized', 'like', "%{$digits}%"));
             }
+
+            // The same search as Jobs: a customer whose job matches (problem, notes, job or invoice number…).
+            $q->orWhereHas('jobs', fn (Builder $j) => $j->withTrashed()->search($term));
         });
     }
 }

@@ -53,9 +53,9 @@ class VisitRequest extends FormRequest
     }
 
     /**
-     * @return array{attributes: array<string, mixed>, assignee_ids: list<int>}
+     * @return array{attributes: array<string, mixed>, assignee_ids: list<int>}|null
      */
-    public function visit(): array
+    public function visit(): ?array
     {
         return self::toVisit($this->validated());
     }
@@ -63,12 +63,14 @@ class VisitRequest extends FormRequest
     /**
      * @return array<string, array<mixed>>
      */
-    public static function visitRules(string $prefix = '', string $required = 'required'): array
+    public static function visitRules(string $prefix = ''): array
     {
+        // Nothing is required (owner's task of November 25): a day without a time is a "No time" job, a time without
+        // a day is today, and a start without an end gets the company's usual window length.
         return [
-            "{$prefix}date" => [$required, 'nullable', 'date_format:Y-m-d'],
-            "{$prefix}start_time" => [$required, 'nullable', 'date_format:H:i'],
-            "{$prefix}end_time" => [$required, 'nullable', 'date_format:H:i', "after:{$prefix}start_time"],
+            "{$prefix}date" => ['nullable', 'date_format:Y-m-d'],
+            "{$prefix}start_time" => ['nullable', 'date_format:H:i'],
+            "{$prefix}end_time" => ['nullable', 'date_format:H:i'],
             "{$prefix}estimated_duration_minutes" => ['nullable', 'integer', 'min:5', 'max:1440'],
             "{$prefix}assignee_ids" => ['array', 'max:10'],
             "{$prefix}assignee_ids.*" => ['integer', 'distinct'],
@@ -104,21 +106,52 @@ class VisitRequest extends FormRequest
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array{attributes: array<string, mixed>, assignee_ids: list<int>}
+     * @return array{attributes: array<string, mixed>, assignee_ids: list<int>}|null
      */
-    public static function toVisit(array $data): array
+    public static function toVisit(array $data): ?array
     {
+        // No time: no visit (a day alone is kept on the job as its planned day).
+        if (blank($data['start_time'] ?? null)) {
+            return null;
+        }
+
         $timezone = currentCompany()->timezone;
-        $at = fn (string $time) => CarbonImmutable::createFromFormat('Y-m-d H:i', "{$data['date']} {$time}", $timezone)->utc();
+        $date = filled($data['date'] ?? null) ? $data['date'] : CarbonImmutable::now($timezone)->toDateString();
+        $start = CarbonImmutable::createFromFormat('Y-m-d H:i', "{$date} {$data['start_time']}", $timezone);
+        $end = filled($data['end_time'] ?? null)
+            ? CarbonImmutable::createFromFormat('Y-m-d H:i', "{$date} {$data['end_time']}", $timezone)
+            : null;
+        // An end before the start (or none): the usual window after the start.
+        if ($end === null || $end->lessThanOrEqualTo($start)) {
+            $end = $start->addMinutes(self::defaultWindowMinutes());
+        }
 
         return [
             'attributes' => [
-                'scheduled_start' => $at($data['start_time']),
-                'scheduled_end' => $at($data['end_time']),
+                'scheduled_start' => $start->utc(),
+                'scheduled_end' => $end->utc(),
                 'estimated_duration_minutes' => $data['estimated_duration_minutes'] ?? null,
                 'strict_arrival' => (bool) ($data['strict_arrival'] ?? false),
             ],
             'assignee_ids' => array_values(array_map('intval', $data['assignee_ids'] ?? [])),
         ];
+    }
+
+    /**
+     * Length of the company's first arrival window (two hours when none is set).
+     */
+    public static function defaultWindowMinutes(): int
+    {
+        $window = currentCompany()->arrivalWindows()[0] ?? null;
+
+        if (! is_array($window) || blank($window['start'] ?? null) || blank($window['end'] ?? null)) {
+            return 120;
+        }
+
+        [$sh, $sm] = array_map('intval', explode(':', (string) $window['start']));
+        [$eh, $em] = array_map('intval', explode(':', (string) $window['end']));
+        $minutes = ($eh * 60 + $em) - ($sh * 60 + $sm);
+
+        return $minutes > 0 ? $minutes : 120;
     }
 }

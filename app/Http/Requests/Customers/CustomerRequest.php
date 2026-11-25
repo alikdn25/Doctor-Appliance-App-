@@ -30,9 +30,14 @@ class CustomerRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $primary = fn (array $rows) => collect($rows)
-            ->filter(fn ($row) => is_array($row))
-            ->map(fn (array $row) => [...$row, 'is_primary' => filter_var($row['is_primary'] ?? false, FILTER_VALIDATE_BOOL)])
+        // Empty phone / email rows are dropped: nothing is required (owner's task of November 25).
+        $primary = fn (array $rows, string $value, string $label) => collect($rows)
+            ->filter(fn ($row) => is_array($row) && filled($row[$value] ?? null))
+            ->map(fn (array $row) => [
+                ...$row,
+                'label' => filled($row['label'] ?? null) ? $row['label'] : $label,
+                'is_primary' => filter_var($row['is_primary'] ?? false, FILTER_VALIDATE_BOOL),
+            ])
             ->values()
             ->all();
 
@@ -42,8 +47,9 @@ class CustomerRequest extends FormRequest
         }
 
         $this->merge([
-            'phones' => $primary((array) $this->input('phones', [])),
-            'emails' => $primary((array) $this->input('emails', [])),
+            'type' => $this->input('type') ?: ($this->route('customer')?->type?->value ?? CustomerType::Residential->value),
+            'phones' => $primary((array) $this->input('phones', []), 'number', PhoneLabel::Mobile->value),
+            'emails' => $primary((array) $this->input('emails', []), 'email', EmailLabel::Personal->value),
             'tags' => collect(is_array($tags) ? $tags : [])
                 ->map(fn ($tag) => trim((string) $tag))
                 ->filter()
@@ -66,8 +72,8 @@ class CustomerRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'type' => ['required', Rule::enum(CustomerType::class)],
-            'first_name' => ['nullable', 'required_without_all:last_name,company_name', 'string', 'max:100'],
+            'type' => ['nullable', Rule::enum(CustomerType::class)],
+            'first_name' => ['nullable', 'string', 'max:100'],
             'avatar_style' => ['sometimes', Rule::in(NameAvatar::STYLES)],
             'last_name' => ['nullable', 'string', 'max:100'],
             'company_name' => ['nullable', 'string', 'max:255'],
@@ -80,22 +86,22 @@ class CustomerRequest extends FormRequest
 
             'phones' => ['array', 'max:10'],
             'phones.*.id' => ['nullable', 'integer'],
-            'phones.*.label' => ['required', Rule::enum(PhoneLabel::class)],
-            'phones.*.number' => ['required', 'string', 'max:32'],
+            'phones.*.label' => ['nullable', Rule::enum(PhoneLabel::class)],
+            'phones.*.number' => ['nullable', 'string', 'max:32'],
             'phones.*.contact_name' => ['nullable', 'string', 'max:100'],
             'phones.*.is_primary' => ['boolean'],
 
             'emails' => ['array', 'max:10'],
             'emails.*.id' => ['nullable', 'integer'],
-            'emails.*.label' => ['required', Rule::enum(EmailLabel::class)],
-            'emails.*.email' => ['required', 'email', 'max:255'],
+            'emails.*.label' => ['nullable', Rule::enum(EmailLabel::class)],
+            'emails.*.email' => ['nullable', 'email', 'max:255'],
             'emails.*.is_primary' => ['boolean'],
         ];
 
         // The service address, on create and on edit (the main address is edited in place).
         $rules['add_property'] = ['boolean'];
         $rules['property.id'] = ['nullable', 'integer'];
-        $rules += PropertyRequest::addressRules('property.', 'required_if_accepted:add_property');
+        $rules += PropertyRequest::addressRules('property.');
 
         // Billing address of the payer; sent empty = the same as the primary address.
         if ($this->has('billing')) {
@@ -116,7 +122,7 @@ class CustomerRequest extends FormRequest
             rtrim($prefix, '.') => ['nullable', 'array'],
             "{$prefix}line1" => ['nullable', 'string', 'max:255'],
             "{$prefix}unit" => ['nullable', 'string', 'max:50'],
-            "{$prefix}city" => ['nullable', "required_with:{$prefix}line1", 'string', 'max:100'],
+            "{$prefix}city" => ['nullable', 'string', 'max:100'],
             "{$prefix}region" => ['nullable', 'string', 'max:50'],
             "{$prefix}postal_code" => ['nullable', 'string', 'max:20', new PostalCode],
             "{$prefix}country" => ['nullable', 'string', 'size:2'],

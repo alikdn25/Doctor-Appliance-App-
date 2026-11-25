@@ -32,10 +32,12 @@ class PaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'amount' => ['required', 'numeric', 'gt:0', DocumentRequest::moneyRule($this->currency())],
-            'method' => ['required', Rule::in(array_map(fn (PaymentMethod $m) => $m->value, PaymentMethod::manual(currentCompany())))],
+            // Nothing is required (owner's task of November 25): no amount is the balance, no method is "Other".
+            'amount' => ['nullable', 'numeric', 'gt:0', DocumentRequest::moneyRule($this->currency())],
+            // "Other" is not offered; it is only what a payment marked without a method is saved as.
+            'method' => ['nullable', Rule::in(array_map(fn (PaymentMethod $m) => $m->value, PaymentMethod::manual(currentCompany())))],
             'reference' => ['nullable', 'string', 'max:100'],
-            'note' => ['nullable', 'string', 'max:1000', Rule::requiredIf($this->input('method') === PaymentMethod::Other->value)],
+            'note' => ['nullable', 'string', 'max:1000'],
             'receipt' => ['nullable', 'file', 'image', 'max:8192'],
             'received_on' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:'.$this->today()],
         ];
@@ -59,7 +61,11 @@ class PaymentRequest extends FormRequest
 
     public function amount(): int
     {
-        return Currencies::toMinor($this->validated('amount'), $this->currency());
+        $amount = $this->validated('amount');
+
+        return filled($amount)
+            ? Currencies::toMinor($amount, $this->currency())
+            : max(0, (int) $this->route('invoice')->balance);
     }
 
     private function currency(): string
@@ -69,7 +75,7 @@ class PaymentRequest extends FormRequest
 
     public function paymentMethod(): PaymentMethod
     {
-        return PaymentMethod::from($this->validated('method'));
+        return PaymentMethod::tryFrom((string) $this->validated('method')) ?? PaymentMethod::Other;
     }
 
     /**

@@ -79,9 +79,7 @@ test('a customer without a phone gets one from the job form', function () {
     expect($phone->number)->toBe('+17783186846');
 });
 
-test('the customer correction needs a name and a valid phone, and is optional', function () {
-    $this->put(route('jobs.update', $this->job), editPayload(['customer_edit' => ['first_name' => '', 'last_name' => '']]))
-        ->assertSessionHasErrors('customer_edit.first_name');
+test('the customer correction checks a typed phone, and is optional', function () {
     $this->put(route('jobs.update', $this->job), editPayload(['customer_edit' => ['phone' => 'abc']]))
         ->assertSessionHasErrors('customer_edit.phone');
 
@@ -90,6 +88,10 @@ test('the customer correction needs a name and a valid phone, and is optional', 
     $this->put(route('jobs.update', $this->job), $payload)->assertSessionHasNoErrors();
 
     expect(inCompany($this->company, fn () => $this->customer->fresh()->first_name))->toBe('Olexsandr');
+
+    // No required fields: an emptied name saves ("Unnamed customer").
+    $this->put(route('jobs.update', $this->job), editPayload(['customer_edit' => ['first_name' => '', 'last_name' => '']]))
+        ->assertSessionHasNoErrors();
 });
 
 test('only the job own customer is corrected and a technician cannot edit the job', function () {
@@ -204,9 +206,10 @@ test('editing a job adds the address missing from a quick booking', function () 
         ->and($property->city)->toBe('Port Moody')
         ->and($property->country)->toBe('CA');
 
+    // A street without a city saves (no required fields).
     $this->put(route('jobs.update', $this->job), editPayload(['address_edit' => [
         'line1' => 'Only street', 'city' => '', 'country' => 'CA',
-    ]]))->assertSessionHasErrors('address_edit.city');
+    ]]))->assertSessionHasNoErrors();
 });
 
 test('the job edit form carries the address parts of each place', function () {

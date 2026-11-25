@@ -12,6 +12,7 @@ use App\Models\Estimate;
 use App\Models\ServiceJob;
 use App\Payments\PaymentProviders;
 use App\Support\Billing\BillingPresenter;
+use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,7 +47,7 @@ class EstimateController extends Controller
 
         $estimate = $save->createEstimate($job, $request->document(), $request->user());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('estimates.created', ['number' => $estimate->number])]);
+        SavedToast::flash(route('estimates.show', $estimate), __('estimates.created', ['number' => $estimate->number]));
 
         return to_route('estimates.show', $estimate);
     }
@@ -97,7 +98,7 @@ class EstimateController extends Controller
 
         $save->update($estimate, $request->document(), $request->user());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('estimates.updated')]);
+        SavedToast::flash(route('estimates.show', $estimate), __('estimates.updated'));
 
         return to_route('estimates.show', $estimate);
     }

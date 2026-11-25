@@ -25,8 +25,8 @@ class MessageContext
         $job?->loadMissing(['brand', 'property']);
 
         return [
-            'customer_first_name' => $customer->first_name ?: $customer->display_name,
-            'customer_name' => $customer->display_name,
+            'customer_first_name' => $customer->first_name ?: ($customer->hasName() ? $customer->display_name : ''),
+            'customer_name' => $customer->hasName() ? $customer->display_name : '',
             'brand' => $job?->brand?->name ?? $company->name,
             'company' => $company->name,
             'tech_name' => $tech?->name ? strtok($tech->name, ' ') : null,

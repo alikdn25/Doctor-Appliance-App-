@@ -65,14 +65,20 @@ test('an address typed for a customer with an empty one fills it instead of addi
         ->and($addresses->sole()->line1)->toBe('5 Filled Ave');
 });
 
-test('the first address of a customer is primary and an address is never saved empty', function () {
+test('the first address of a customer is primary; an address saved empty is the one empty address', function () {
     $this->post(route('properties.store', $this->customer), ['line1' => '7 First St', 'city' => 'Delta', 'country' => 'CA', 'is_primary' => false])
         ->assertSessionHasNoErrors();
+    // No field is required (owner's task of November 25): it saves as the customer's single empty address.
     $this->post(route('properties.store', $this->customer), ['line1' => '', 'city' => '', 'country' => 'CA'])
-        ->assertSessionHasErrors(['line1', 'city']);
+        ->assertSessionHasNoErrors();
+    $this->post(route('properties.store', $this->customer), ['line1' => '', 'city' => '', 'country' => 'CA'])
+        ->assertSessionHasNoErrors();
 
-    $addresses = inCompany($this->company, fn () => Property::query()->where('customer_id', $this->customer->id)->get());
-    expect($addresses)->toHaveCount(1)->and($addresses->sole()->is_primary)->toBeTrue();
+    $addresses = inCompany($this->company, fn () => Property::query()->where('customer_id', $this->customer->id)->orderBy('id')->get());
+    expect($addresses)->toHaveCount(2)
+        ->and($addresses->first()->is_primary)->toBeTrue()
+        ->and($addresses->last()->hasAddress())->toBeFalse()
+        ->and($addresses->last()->is_primary)->toBeFalse();
 });
 
 test('"Add address" on the job page saves it on the job and the customer', function () {
@@ -87,7 +93,9 @@ test('"Add address" on the job page saves it on the job and the customer', funct
         ->and($job->property->line1)->toBe('9 Job Lane')
         ->and(inCompany($this->company, fn () => Property::query()->where('customer_id', $this->customer->id)->count()))->toBe(1);
 
-    $this->put(route('jobs.address', $job), ['line1' => '', 'city' => '', 'country' => 'CA'])->assertSessionHasErrors('line1');
+    // Saved with no street: no error, and the job keeps its address.
+    $this->put(route('jobs.address', $job), ['line1' => '', 'city' => '', 'country' => 'CA'])->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => $job->fresh('property')->property->line1))->toBe('9 Job Lane');
 });
 
 test('the job address can move to another address of the same customer only', function () {

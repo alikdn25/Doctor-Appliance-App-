@@ -56,22 +56,29 @@ class JobCostController extends Controller
     {
         $currency = $item->currency ?? currentCompany()->currency;
         $request->replace(MoneyInput::cleanPaths($request->input(), ['unit_cost', 'supplier_taxes.*.amount']));
+        // Nothing is required (owner's task of November 25): an empty line is an "Untitled" part costing 0.
         $data = $request->validate([
-            'kind' => ['required', Rule::in([LineKind::Part->value, LineKind::Material->value])],
-            'description' => ['required', 'string', 'max:255'],
+            'kind' => ['nullable', Rule::in([LineKind::Part->value, LineKind::Material->value])],
+            'description' => ['nullable', 'string', 'max:255'],
             'part_number' => ['nullable', 'string', 'max:100'],
             'supplier' => ['nullable', 'string', 'max:150'],
-            'quantity' => ['required', 'numeric', 'gt:0', 'max:99999'],
+            'quantity' => ['nullable', 'numeric', 'gt:0', 'max:99999'],
             'unit' => ['nullable', 'string', 'max:20'],
-            'unit_cost' => ['required', DocumentRequest::moneyRule($currency)],
+            'unit_cost' => ['nullable', DocumentRequest::moneyRule($currency)],
             'supplier_taxes' => ['nullable', 'array'],
-            'supplier_taxes.*.tax_rate_id' => ['required', 'integer', Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)],
-            'supplier_taxes.*.amount' => ['required', DocumentRequest::moneyRule($currency)],
+            'supplier_taxes.*.tax_rate_id' => ['nullable', 'integer', Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)],
+            'supplier_taxes.*.amount' => ['nullable', DocumentRequest::moneyRule($currency)],
         ], [
-            'description.required' => __('costs.errors.description'),
-            'unit_cost.required' => __('costs.errors.cost'),
             'quantity.*' => __('costs.errors.quantity'),
         ]);
+        $data['kind'] = $data['kind'] ?? $item->kind?->value ?? LineKind::Part->value;
+        $data['description'] = filled($data['description'] ?? null) ? $data['description'] : __('common.untitled');
+        $data['quantity'] = filled($data['quantity'] ?? null) ? $data['quantity'] : 1;
+        $data['unit_cost'] = filled($data['unit_cost'] ?? null) ? $data['unit_cost'] : '0';
+        $data['supplier_taxes'] = array_values(array_filter(
+            $data['supplier_taxes'] ?? [],
+            fn (array $t) => filled($t['tax_rate_id'] ?? null) && filled($t['amount'] ?? null),
+        ));
         $rates = TaxRate::query()->get()->keyBy('id');
 
         $item->fill([

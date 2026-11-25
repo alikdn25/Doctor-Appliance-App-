@@ -43,6 +43,11 @@ class MorningSummary
             ->orderBy('scheduled_start')->get();
         $visits = DayOrder::sort($visits);
 
+        // Jobs of the day without a time come first; jobs with no day yet sit above everything (owner's task of
+        // November 25). A technician sees the ones given to them.
+        $noTime = UnscheduledJobs::noTime($user, $day, $day->addDay(), onlyOwn: ! $office);
+        $noDate = UnscheduledJobs::noDate($user, onlyOwn: ! $office);
+
         $open = ServiceJob::query()->visibleTo($user)
             ->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid, JobStatus::Cancelled])
             ->whereNull('outcome')->whereNull('closed_at');
@@ -85,6 +90,8 @@ class MorningSummary
 
         return [
             'date' => $day->toDateString(),
+            'no_date' => $noDate->map(fn (ServiceJob $job) => UnscheduledJobs::card($job))->values()->all(),
+            'no_time' => $noTime->map(fn (ServiceJob $job) => UnscheduledJobs::card($job))->values()->all(),
             'jobs' => $visits->map(fn (JobVisit $visit) => [
                 'id' => $visit->job->id,
                 'number' => $visit->job->number,
@@ -110,7 +117,8 @@ class MorningSummary
     public static function line(array $summary): string
     {
         return collect([
-            trans_choice('automation.today.line.jobs', count($summary['jobs'])),
+            trans_choice('automation.today.line.jobs', count($summary['jobs']) + count($summary['no_time'] ?? [])),
+            ($summary['no_date'] ?? []) !== [] ? trans_choice('automation.today.line.no_date', count($summary['no_date'])) : null,
             $summary['no_address'] !== [] ? trans_choice('automation.today.line.no_address', count($summary['no_address'])) : null,
             $summary['texts'] !== [] ? trans_choice('automation.today.line.texts', count($summary['texts'])) : null,
             ($summary['unpaid']['count'] ?? 0) > 0 ? trans_choice('automation.today.line.unpaid', $summary['unpaid']['count'], ['total' => implode(' + ', $summary['unpaid']['totals'])]) : null,

@@ -354,7 +354,6 @@ export default function BusinessExpenseForm({
                                 id="spent_on"
                                 className={lit('spent_on')}
                                 type="date"
-                                required
                                 value={form.data.spent_on}
                                 onChange={(event) =>
                                     form.setData('spent_on', event.target.value)
@@ -432,7 +431,6 @@ export default function BusinessExpenseForm({
                             >
                                 <Input
                                     id="new_category"
-                                    required
                                     maxLength={80}
                                     value={form.data.new_category}
                                     onChange={(event) =>
@@ -453,7 +451,6 @@ export default function BusinessExpenseForm({
                             <Input
                                 id="description"
                                 className={lit('description')}
-                                required
                                 maxLength={255}
                                 value={form.data.description}
                                 onChange={(event) =>
@@ -525,7 +522,6 @@ export default function BusinessExpenseForm({
                                 inputMode="decimal"
                                 min="0"
                                 step={step}
-                                required
                                 value={form.data.amount}
                                 onChange={(event) =>
                                     form.setData('amount', event.target.value)
@@ -544,7 +540,6 @@ export default function BusinessExpenseForm({
                                     inputMode="decimal"
                                     min="0"
                                     step={step}
-                                    required
                                     value={form.data.tax_amount}
                                     onChange={(event) =>
                                         form.setData(
@@ -640,7 +635,6 @@ export default function BusinessExpenseForm({
                                                             min="0"
                                                             step={step}
                                                             inputMode="decimal"
-                                                            required
                                                             value={
                                                                 amounts[
                                                                     String(

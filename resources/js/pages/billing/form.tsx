@@ -409,25 +409,34 @@ export default function BillingForm({
         const found: Record<string, string> = {};
         const invalid = t('billing.number.invalid', { example: '150.50' });
 
-        if (data.items.length === 0) {
-            found.items = t('billing.no_items');
-        }
+        // Nothing is required (owner's task of November 25): only a number that was typed is checked.
+        const typed = (value: string | number | null | undefined) =>
+            String(value ?? '').trim() !== '';
 
         data.items.forEach((line, i) => {
-            if (parseNumber(line.quantity).normalized === null) {
+            if (
+                typed(line.quantity) &&
+                parseNumber(line.quantity).normalized === null
+            ) {
                 found[`items.${i}.quantity`] = invalid;
             }
 
-            if (parseNumber(line.unit_price).normalized === null) {
+            if (
+                typed(line.unit_price) &&
+                parseNumber(line.unit_price).normalized === null
+            ) {
                 found[`items.${i}.unit_price`] = invalid;
             }
 
-            if (parseNumber(line.unit_cost).normalized === null) {
+            if (
+                typed(line.unit_cost) &&
+                parseNumber(line.unit_cost).normalized === null
+            ) {
                 found[`items.${i}.unit_cost`] = invalid;
             }
         });
 
-        if (data.discount_type) {
+        if (data.discount_type && typed(data.discount_value)) {
             if (parseNumber(data.discount_value).normalized === null) {
                 found.discount_value = invalid;
             } else if (
@@ -446,7 +455,11 @@ export default function BillingForm({
             }
         }
 
-        if (kind === 'estimate' && data.deposit_type) {
+        if (
+            kind === 'estimate' &&
+            data.deposit_type &&
+            typed(data.deposit_value)
+        ) {
             if (parseNumber(data.deposit_value).normalized === null) {
                 found.deposit_value = invalid;
             } else if (
@@ -1184,10 +1197,7 @@ export default function BillingForm({
                         <Button
                             type="submit"
                             className="min-h-12 min-w-0 flex-1 md:min-h-11 md:flex-none"
-                            disabled={
-                                form.processing ||
-                                Object.keys(blocking).length > 0
-                            }
+                            disabled={form.processing}
                             data-test="document-save"
                         >
                             <span className="truncate">

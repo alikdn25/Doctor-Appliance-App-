@@ -603,11 +603,6 @@ export function JobEditSheet({
                         size="lg"
                         className="w-full"
                         loading={busy}
-                        disabled={
-                            newAddress &&
-                            !addressComplete(address) &&
-                            !!currentAddress
-                        }
                         data-test="job-edit-save"
                     >
                         <Check /> {t('common.save')}

@@ -58,8 +58,9 @@ test('one total without a name gets "Expenses for job #N"', function () {
 
     expect(inCompany($this->company, fn () => BusinessExpense::query()->sole()->description))->toBe('Expenses for job #'.$this->job->number);
 
+    // No required fields: a line without money saves at 0.
     $this->post(route('jobs.my-expenses.store', $this->job), ['lines' => [['description' => 'x', 'amount' => '0']]])
-        ->assertSessionHasErrors('lines');
+        ->assertSessionHasNoErrors();
 });
 
 test('a technician on the job sees and changes only their own lines; others see nothing', function () {

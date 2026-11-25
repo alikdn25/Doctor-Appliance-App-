@@ -28,6 +28,7 @@ use App\Support\Billing\BillingPresenter;
 use App\Support\Locale\Countries;
 use App\Support\NameAvatar;
 use App\Support\PhoneNumber;
+use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -123,7 +124,7 @@ class CustomerController extends Controller
             $request->propertyAttributes(),
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('customers.created')]);
+        SavedToast::flash(route('customers.show', $customer), __('customers.created'));
 
         return to_route('customers.show', $customer);
     }
@@ -321,7 +322,7 @@ class CustomerController extends Controller
             $request->propertyId() ?? $customer->primaryProperty()->value('id'),
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('customers.updated')]);
+        SavedToast::flash(route('customers.show', $customer), __('customers.updated'));
 
         return to_route('customers.show', $customer);
     }

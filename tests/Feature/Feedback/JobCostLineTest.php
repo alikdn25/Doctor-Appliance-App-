@@ -24,12 +24,12 @@ test('a cost typed with a currency sign is accepted', function () {
     expect(inCompany($this->company, fn () => JobCostItem::query()->sole()->unit_cost))->toBe(1550);
 });
 
-test('each missing field gets its own plain message', function () {
+test('a typed amount that is not a number gets a plain message; an empty description does not', function () {
     $this->post(route('jobs.costs.store', $this->job), ['kind' => 'part', 'description' => '', 'quantity' => '1', 'unit_cost' => 'abc'])
         ->assertSessionHasErrors([
-            'description' => __('costs.errors.description'),
             'unit_cost' => __('validation.money_amount', ['example' => '15.55']),
-        ]);
+        ])
+        ->assertSessionDoesntHaveErrors('description');
 });
 
 test('a cost line can be corrected', function () {

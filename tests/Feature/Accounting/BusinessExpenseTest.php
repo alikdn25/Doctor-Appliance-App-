@@ -185,8 +185,14 @@ test('invalid amounts dates categories and receipt files are rejected', function
 })->with([
     [['amount' => '-1.00'], 'amount'], [['tax_amount' => '-0.01'], 'tax_amount'],
     [['amount' => '1.001'], 'amount'], [['spent_on' => '2030-02-30'], 'spent_on'],
-    [['category_id' => null], 'category_id'], [['description' => '   '], 'description'],
 ]);
+
+test('an empty category or description is not an error: "Other" and "Untitled" (no required fields)', function () {
+    $this->post(route('expenses.store'), overheadPayload(['category_id' => null, 'description' => '   ']))->assertSessionHasNoErrors();
+
+    $expense = inCompany($this->company, fn () => BusinessExpense::query()->with('category')->sole());
+    expect($expense->description)->toBe('Untitled')->and($expense->category->name)->toBe('Other');
+});
 
 test('unsupported files and oversized receipts are rejected without storing data', function () {
     $this->post(route('expenses.store'), overheadPayload(['receipt' => UploadedFile::fake()->create('script.html', 1, 'text/html')]))->assertSessionHasErrors('receipt');

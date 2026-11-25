@@ -12,6 +12,7 @@ use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Support\Jobs\JobPresenter;
 use App\Support\PrivateMedia;
+use App\Support\Ui\SavedToast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -25,7 +26,7 @@ class ApplianceController extends Controller
     {
         $appliance = $save->handle($property, null, $request->applianceAttributes(), $request->file('rating_plate'));
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('appliances.created')]);
+        SavedToast::flash(route('appliances.show', $appliance), __('appliances.created'));
 
         return to_route('appliances.show', $appliance);
     }
@@ -119,7 +120,7 @@ class ApplianceController extends Controller
             $request->boolean('remove_rating_plate'),
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('appliances.updated')]);
+        SavedToast::flash(route('appliances.show', $appliance), __('appliances.updated'));
 
         return to_route('appliances.show', $appliance);
     }

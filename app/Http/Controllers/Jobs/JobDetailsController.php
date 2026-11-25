@@ -16,12 +16,12 @@ use App\Models\CustomerPhone;
 use App\Models\JobVisit;
 use App\Models\ServiceJob;
 use App\Support\PhoneNumber;
+use App\Support\Ui\SavedToast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
 
 /**
  * The pencil on the job page's customer card (owner's update, October 24): customer name, address, date, arrival
@@ -42,9 +42,10 @@ class JobDetailsController extends Controller
             // Absent = unchanged; property_id = another address of the customer; "new" = the address fields.
             'address' => ['nullable', 'in:new'],
             'property_id' => ['nullable', 'integer'],
-            'date' => ['nullable', 'required_with:start_time,end_time', 'date_format:Y-m-d'],
-            'start_time' => ['nullable', 'required_with:date', 'date_format:H:i'],
-            'end_time' => ['nullable', 'required_with:date', 'date_format:H:i', 'after:start_time'],
+            // Nothing is required: a day without a time makes a "No time" job, a time without a day is today.
+            'date' => ['nullable', 'date_format:Y-m-d'],
+            'start_time' => ['nullable', 'date_format:H:i'],
+            'end_time' => ['nullable', 'date_format:H:i'],
             'technician_id' => ['sometimes', 'nullable', 'integer'],
             // Quick edit (owner's task of November 18) also changes these.
             'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
@@ -73,10 +74,6 @@ class JobDetailsController extends Controller
                         $customer->{$field} = filled($data[$field] ?? null) ? trim($data[$field]) : null;
                     }
                 }
-                // Every customer keeps a name: a person's first or last name, or a business name.
-                if (blank($customer->first_name) && blank($customer->last_name) && blank($customer->company_name)) {
-                    throw ValidationException::withMessages(['first_name' => __('jobs.details.name_required')]);
-                }
                 $customer->save();
                 self::contacts($customer, $request, $data);
             }
@@ -96,12 +93,17 @@ class JobDetailsController extends Controller
                 JobAddressController::change($job, $request->except(['property_id']), $saveProperty);
             }
 
-            if (filled($data['date'] ?? null)) {
+            // A day without a time on a job with no visit: it shows under No time that day.
+            if (filled($data['date'] ?? null) && blank($data['start_time'] ?? null) && self::currentVisit($job) === null) {
+                $job->forceFill(['planned_date' => $data['date']])->save();
+            }
+
+            if (filled($data['start_time'] ?? null)) {
                 $visit = self::currentVisit($job);
                 $time = VisitRequest::toVisit([
-                    'date' => $data['date'],
+                    'date' => $data['date'] ?? null,
                     'start_time' => $data['start_time'],
-                    'end_time' => $data['end_time'],
+                    'end_time' => $data['end_time'] ?? null,
                     'estimated_duration_minutes' => $visit?->estimated_duration_minutes,
                     'strict_arrival' => $visit?->strict_arrival ?? false,
                 ])['attributes'];
@@ -140,7 +142,7 @@ class JobDetailsController extends Controller
                 BookingConfirmationController::flashResult($sent);
             }
         } else {
-            Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.details.saved')]);
+            SavedToast::flash(route('jobs.show', $job), __('jobs.details.saved'));
         }
 
         return back();

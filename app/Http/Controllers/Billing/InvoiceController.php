@@ -25,6 +25,7 @@ use App\Support\Billing\BillingPresenter;
 use App\Support\Billing\Warranties;
 use App\Support\Jobs\JobPresenter;
 use App\Support\PrivateMedia;
+use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -94,7 +95,7 @@ class InvoiceController extends Controller
                 $q->where(fn (Builder $w) => $w
                     ->where('number', 'ilike', $like)
                     ->orWhereHas('customer', fn (Builder $c) => $c->where('display_name', 'ilike', $like))
-                    ->orWhereHas('job', fn (Builder $j) => $j->search($filters['search'])));
+                    ->orWhereHas('job', fn (Builder $j) => $j->search($filters['search'], false)));
             })
             ->with('customer')
             ->when($sort === 'number', fn ($q) => $q->orderBy('number', $dir))
@@ -269,7 +270,7 @@ class InvoiceController extends Controller
 
         $invoice = $save->createInvoice($job, $data, $request->user(), $from);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('invoices.created', ['number' => $invoice->number])]);
+        SavedToast::flash(route('invoices.show', $invoice), __('invoices.created', ['number' => $invoice->number]));
 
         return to_route('invoices.show', $invoice);
     }
@@ -373,7 +374,7 @@ class InvoiceController extends Controller
             $audit->record('invoice.total_changed', $invoice, ['number' => $invoice->number, 'from' => $before, 'to' => $invoice->total]);
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('invoices.updated')]);
+        SavedToast::flash(route('invoices.show', $invoice), __('invoices.updated'));
 
         return to_route('invoices.show', $invoice);
     }

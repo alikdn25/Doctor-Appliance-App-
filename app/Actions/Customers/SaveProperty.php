@@ -5,7 +5,6 @@ namespace App\Actions\Customers;
 use App\Models\Customer;
 use App\Models\Property;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 /**
  * Creates or updates a customer's property. A customer always has exactly one primary property.
@@ -18,9 +17,12 @@ class SaveProperty
      */
     public function handle(Customer $customer, ?Property $property, array $attributes): Property
     {
-        // There is no address without an address.
-        if (array_key_exists('line1', $attributes) && blank($attributes['line1'])) {
-            throw ValidationException::withMessages(['line1' => __('validation.required', ['attribute' => __('properties.fields.line1')])]);
+        // No street (nothing is required, owner's task of November 25): a new one is the customer's empty address.
+        if ($property === null && blank($attributes['line1'] ?? null)) {
+            $empty = $this->empty($customer);
+            $empty->fill(collect($attributes)->except(['line1', 'is_primary'])->filter(fn ($v) => filled($v))->all())->save();
+
+            return $empty;
         }
 
         return DB::transaction(function () use ($customer, $property, $attributes) {

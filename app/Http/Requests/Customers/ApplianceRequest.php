@@ -25,7 +25,11 @@ class ApplianceRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge(['remove_rating_plate' => $this->boolean('remove_rating_plate')]);
+        $this->merge([
+            'remove_rating_plate' => $this->boolean('remove_rating_plate'),
+            // No type picked: "Other" (nothing is required).
+            'type' => $this->input('type') ?: ($this->route('appliance')?->type?->value ?? ApplianceType::Other->value),
+        ]);
     }
 
     /**
@@ -34,7 +38,7 @@ class ApplianceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['required', Rule::enum(ApplianceType::class)],
+            'type' => ['nullable', Rule::enum(ApplianceType::class)],
             'manufacturer' => ['nullable', 'string', 'max:100'],
             'model_number' => ['nullable', 'string', 'max:100'],
             'serial_number' => ['nullable', 'string', 'max:100'],

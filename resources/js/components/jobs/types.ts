@@ -29,6 +29,10 @@ export type JobRow = {
     } | null;
     /** Invoiced so far, for people who see invoices. */
     total?: { amount: number; currency: string } | null;
+    /** The day of a job without a time ("No time"). */
+    planned_date?: string | null;
+    /** Found by a search in the trash. */
+    deleted?: boolean;
 };
 
 export type ApplianceItem = {

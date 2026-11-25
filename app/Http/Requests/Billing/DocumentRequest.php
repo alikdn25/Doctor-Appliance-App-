@@ -11,6 +11,7 @@ use App\Rules\MoneyAmount;
 use App\Support\Billing\CostAccess;
 use App\Support\Billing\MoneyInput;
 use App\Support\Locale\Currencies;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -33,6 +34,33 @@ class DocumentRequest extends FormRequest
         $this->replace(MoneyInput::cleanPaths($this->input(), [
             'items.*.unit_price', 'items.*.unit_cost', 'items.*.supplier_taxes.*.amount', 'items.*.quantity', 'discount_value', 'deposit_value',
         ]));
+
+        // Nothing is required (owner's task of November 25): no date is today; a line left completely empty is
+        // dropped; a line with something in it gets "Untitled", quantity 1 and price 0 where they are empty.
+        $blank = fn (array $item) => collect(['description', 'quantity', 'unit_price', 'service_id', 'part_number', 'unit_cost'])
+            ->every(fn (string $field) => blank($item[$field] ?? null));
+        $items = collect(is_array($this->input('items')) ? $this->input('items') : [])
+            ->filter(fn ($item) => is_array($item) && ! $blank($item))
+            ->map(fn (array $item) => [
+                ...$item,
+                'description' => filled($item['description'] ?? null) ? $item['description'] : __('common.untitled'),
+                'quantity' => filled($item['quantity'] ?? null) ? $item['quantity'] : '1',
+                'unit_price' => filled($item['unit_price'] ?? null) ? $item['unit_price'] : '0',
+                'supplier_taxes' => array_values(array_filter(
+                    (array) ($item['supplier_taxes'] ?? []),
+                    fn ($tax) => is_array($tax) && filled($tax['tax_rate_id'] ?? null) && filled($tax['amount'] ?? null),
+                )),
+            ])
+            ->values()
+            ->all();
+
+        $this->merge([
+            'items' => $items,
+            'issued_on' => $this->input('issued_on') ?: CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
+        ]);
+        if (blank($this->input('deposit_value'))) {
+            $this->merge(['deposit_type' => null]);
+        }
     }
 
     /**
@@ -50,7 +78,7 @@ class DocumentRequest extends FormRequest
         $existingTaxes = $document instanceof Invoice || $document instanceof Estimate ? array_column($document->taxes, 'tax_rate_id') : [];
 
         return [
-            'issued_on' => ['required', 'date_format:Y-m-d'],
+            'issued_on' => ['nullable', 'date_format:Y-m-d'],
             'valid_until' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:issued_on'],
             'due_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:issued_on'],
             // A new invoice made from the lines of an approved estimate of the job.
@@ -69,10 +97,10 @@ class DocumentRequest extends FormRequest
                 Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)
                     ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', $existingTaxes)),
             ],
-            'items' => ['required', 'array', 'min:1', 'max:100'],
-            'items.*.description' => ['required', 'string', 'max:500'],
-            'items.*.quantity' => ['required', 'numeric', 'gt:0', 'max:99999', 'regex:/^\d+(\.\d{1,2})?$/'],
-            'items.*.unit_price' => ['required', 'numeric', self::moneyRule($this->currency(), negative: true)],
+            'items' => ['array', 'max:100'],
+            'items.*.description' => ['nullable', 'string', 'max:500'],
+            'items.*.quantity' => ['nullable', 'numeric', 'gt:0', 'max:99999', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'items.*.unit_price' => ['nullable', 'numeric', self::moneyRule($this->currency(), negative: true)],
             'items.*.taxable' => ['boolean'],
             'items.*.tax_rate_ids' => ['nullable', 'array'],
             'items.*.tax_rate_ids.*' => ['integer', Rule::in(is_array($this->input('tax_rate_ids')) ? $this->input('tax_rate_ids') : [])],
@@ -88,8 +116,8 @@ class DocumentRequest extends FormRequest
             'items.*.unit' => ['nullable', 'string', 'max:20'],
             'items.*.unit_cost' => ['nullable', 'numeric', self::moneyRule($this->currency())],
             'items.*.supplier_taxes' => ['nullable', 'array'],
-            'items.*.supplier_taxes.*.tax_rate_id' => ['required', 'integer', Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)],
-            'items.*.supplier_taxes.*.amount' => ['required', 'numeric', self::moneyRule($this->currency())],
+            'items.*.supplier_taxes.*.tax_rate_id' => ['nullable', 'integer', Rule::exists('tax_rates', 'id')->where('company_id', currentCompany()->id)],
+            'items.*.supplier_taxes.*.amount' => ['nullable', 'numeric', self::moneyRule($this->currency())],
             'items.*.bill_to_customer' => ['boolean'],
             'items.*.warranty_value' => ['nullable', 'integer', 'min:0', 'max:999'],
             'items.*.warranty_unit' => ['nullable', Rule::enum(WarrantyUnit::class)],
@@ -98,7 +126,7 @@ class DocumentRequest extends FormRequest
                 'items.*.selected' => ['boolean'],
                 'deposit_type' => ['nullable', Rule::in(['amount', 'percent'])],
                 'deposit_value' => [
-                    'nullable', 'required_with:deposit_type', 'numeric', 'min:0',
+                    'nullable', 'numeric', 'min:0',
                     ...($this->input('deposit_type') === 'percent' ? ['max:100'] : [self::moneyRule($this->currency())]),
                 ],
             ] : []),
@@ -169,7 +197,7 @@ class DocumentRequest extends FormRequest
                 'optional' => (bool) ($item['optional'] ?? false),
                 'selected' => ! ($item['optional'] ?? false) || (bool) ($item['selected'] ?? false),
             ] : []),
-        ], $data['items']);
+        ], $data['items'] ?? []);
         $data['tax_rate_ids'] ??= [];
         if (array_key_exists('prices_include_tax', $data)) {
             $data['prices_include_tax'] = (bool) $data['prices_include_tax'];

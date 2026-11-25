@@ -39,6 +39,8 @@ export type UnscheduledJob = {
     customer: string | null;
     address: string | null;
     appliances: string[];
+    /** The day of a job without a time ("No time"); null for "No date". */
+    planned_date?: string | null;
 };
 
 /** What is being dragged: an existing visit (from a lane) or a job waiting to be scheduled. */

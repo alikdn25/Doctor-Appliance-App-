@@ -64,9 +64,10 @@ test('a card payment needs no transaction number; check, crypto and other are no
     foreach (['check', 'crypto', 'other'] as $method) {
         $this->post(route('payments.store', $this->invoice), ['amount' => '10', 'method' => $method, 'note' => 'x'])->assertSessionHasErrors('method');
     }
-    $this->post(route('payments.store', $this->invoice), ['amount' => '10'])->assertSessionHasErrors('method');
+    // No method picked is not an error (no required fields): it is saved as "Other".
+    $this->post(route('payments.store', $this->invoice), ['amount' => '10'])->assertSessionHasNoErrors();
 
-    expect(paymentsOf($this->invoice)->pluck('method')->all())->toBe([PaymentMethod::CardTerminal]);
+    expect(paymentsOf($this->invoice)->pluck('method')->all())->toBe([PaymentMethod::CardTerminal, PaymentMethod::Other]);
 });
 
 test('a payment needs a positive amount, a manual method and no more than the balance', function () {

@@ -44,6 +44,10 @@ class SaveVisit
             $visit->save();
 
             $visit->assignees()->sync($assigneeIds);
+            // The job has a time now: it leaves No time / No date.
+            if ($job->planned_date !== null && $visit->status->isOpen()) {
+                $job->forceFill(['planned_date' => null])->save();
+            }
             if ($job->assignment_is_explicit && $visit->status->isOpen()) {
                 $ids = DB::table('job_visit_user')->whereIn('job_visit_id', $job->visits()->whereIn('status', VisitStatus::openValues())->pluck('id'))->pluck('user_id')->unique()->all();
                 $job->assignees()->sync(array_fill_keys($ids, ['company_id' => $job->company_id]));

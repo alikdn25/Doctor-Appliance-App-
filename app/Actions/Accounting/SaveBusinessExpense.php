@@ -25,11 +25,13 @@ class SaveBusinessExpense
                 $data = $request->expenseData();
 
                 if (empty($data['category_id'])) {
-                    $name = $request->validated('new_category');
+                    // No category picked or typed: "Other" (nothing is required).
+                    $typed = filled($request->validated('new_category'));
+                    $name = $typed ? $request->validated('new_category') : __('expenses.other_category');
                     $category = BusinessExpenseCategory::query()->firstOrCreate(
                         ['normalized_name' => mb_strtolower($name)], ['name' => $name],
                     );
-                    if (! $category->is_active) {
+                    if ($typed && ! $category->is_active) {
                         throw ValidationException::withMessages(['new_category' => __('expenses.category_archived')]);
                     }
                     if ($category->wasRecentlyCreated) {

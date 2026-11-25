@@ -61,9 +61,10 @@ test('a property can be updated', function () {
     expect($property->fresh())->gate_code->toBe('9999')->site_contact_phone->toBe('+16045550000');
 });
 
-test('the address is validated', function () {
+test('a typed country is validated; an empty street and city are not errors', function () {
     $this->post(route('properties.store', $this->customer), propertyPayload(['line1' => '', 'city' => '', 'country' => 'CAN']))
-        ->assertSessionHasErrors(['line1', 'city', 'country']);
+        ->assertSessionHasErrors(['country'])
+        ->assertSessionDoesntHaveErrors(['line1', 'city']);
 });
 
 test('deleting the primary property promotes another one and removes its appliances', function () {

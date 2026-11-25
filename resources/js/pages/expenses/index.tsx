@@ -895,7 +895,6 @@ export default function BusinessExpenses({
                         >
                             <Input
                                 id="category_name"
-                                required
                                 maxLength={80}
                                 value={categoryForm.data.name}
                                 onChange={(event) =>

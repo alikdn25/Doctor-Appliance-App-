@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { AvatarIcon } from '@/components/customers/customer-avatar';
 import { InboxHeaderButton } from '@/components/inbox-header-button';
 import { cardButton, JobCard } from '@/components/jobs/job-card';
+import type { JobCardData } from '@/components/jobs/job-card';
 import { JobAddressSheet } from '@/components/jobs/job-address-sheet';
 import { StrictBadge } from '@/components/jobs/job-outcome';
 import { TechnicianPicker } from '@/components/jobs/technician-picker';
@@ -72,6 +73,9 @@ type MyVisit = Visit & {
 
 type Tab = 'day' | 'completed';
 
+/** A job without a time (owner's task of November 25): it opens the job to set a time. */
+type UntimedJob = JobCardData & { id: number; assignees: string[] };
+
 type Feed = 'all' | 'jobs' | 'todo';
 
 type FeedItem =
@@ -103,8 +107,14 @@ export default function MyJobs({
     othersOnDay = 0,
     tasks = [],
     canTasks = false,
+    noTime = [],
+    noDate = [],
 }: {
     tab: Tab;
+    /** Jobs of the day without a time (first, marked No time). */
+    noTime?: UntimedJob[];
+    /** Jobs with no day yet (today only, marked No date). */
+    noDate?: UntimedJob[];
     canTasks?: boolean;
     tasks?: TaskItem[];
     othersOnDay?: number;
@@ -691,23 +701,51 @@ export default function MyJobs({
                         </div>
                     )}
 
-                    {feedItems.length === 0 && anytimeTasks.length === 0 && (
-                        <p className="da-card p-10 text-center text-sm text-muted-foreground">
-                            {feed === 'todo'
-                                ? t('tasks.feed.empty_todo')
-                                : term
-                                  ? t('jobs.search_empty', {
-                                        search: term,
-                                    })
-                                  : tab === 'completed'
-                                    ? t('jobs.mine_empty.completed')
-                                    : date === today
-                                      ? t('jobs.mine_empty.today')
-                                      : t('jobs.mine_empty.day', {
-                                            date: time.dateOnly(date),
-                                        })}
-                        </p>
+                    {/* Jobs with no day yet, then the day's jobs without a time: first, before the timed ones. */}
+                    {showJobs && (noDate.length > 0 || noTime.length > 0) && (
+                        <ul className="space-y-3" data-test="untimed-jobs">
+                            {[
+                                ...noDate.map((job) => ({
+                                    job,
+                                    label: t('automation.today.no_date'),
+                                })),
+                                ...noTime.map((job) => ({
+                                    job,
+                                    label: t('automation.today.no_time'),
+                                })),
+                            ].map(({ job, label }) => (
+                                <JobCard
+                                    stripe
+                                    key={`untimed-${job.id}`}
+                                    job={job}
+                                    href={show(job.id)}
+                                    time={label}
+                                    assignees={job.assignees}
+                                />
+                            ))}
+                        </ul>
                     )}
+
+                    {feedItems.length === 0 &&
+                        anytimeTasks.length === 0 &&
+                        noDate.length === 0 &&
+                        noTime.length === 0 && (
+                            <p className="da-card p-10 text-center text-sm text-muted-foreground">
+                                {feed === 'todo'
+                                    ? t('tasks.feed.empty_todo')
+                                    : term
+                                      ? t('jobs.search_empty', {
+                                            search: term,
+                                        })
+                                      : tab === 'completed'
+                                        ? t('jobs.mine_empty.completed')
+                                        : date === today
+                                          ? t('jobs.mine_empty.today')
+                                          : t('jobs.mine_empty.day', {
+                                                date: time.dateOnly(date),
+                                            })}
+                            </p>
+                        )}
 
                     <ul className="space-y-3" data-test="feed-list">
                         {feedItems.map((item) =>

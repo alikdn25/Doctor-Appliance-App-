@@ -483,7 +483,7 @@ export function TaskSheet({
                             type="submit"
                             size="lg"
                             className="w-full"
-                            disabled={form.data.title.trim() === ''}
+                            disabled={form.processing}
                             loading={form.processing}
                             data-test="task-save"
                         >

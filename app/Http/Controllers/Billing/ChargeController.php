@@ -18,6 +18,7 @@ use App\Support\Billing\Money;
 use App\Support\Locale\Currencies;
 use App\Support\Payments\ChargeCheckout;
 use App\Support\Payments\PaidCustomer;
+use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +26,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -74,9 +74,6 @@ class ChargeController extends Controller
         Gate::authorize('work', $job);
         $data = $this->validateLines($request);
         $totals = ChargeCheckout::totals($data['lines'], $data['amounts_include_tax']);
-        if ($totals['total'] <= 0) {
-            throw ValidationException::withMessages(['lines' => __('payments.errors.amount_required')]);
-        }
 
         $invoice = $save->createInvoice($job, [
             'issued_on' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
@@ -92,6 +89,13 @@ class ChargeController extends Controller
                 'kind' => LineKind::Service->value,
             ], $totals['lines']),
         ], $request->user());
+
+        // Nothing to charge (no amount typed): the invoice is saved and opens for the prices (nothing is required).
+        if ($totals['total'] <= 0) {
+            SavedToast::flash(route('invoices.show', $invoice));
+
+            return to_route('invoices.show', $invoice);
+        }
 
         return to_route('invoices.take-payment', $invoice);
     }
@@ -370,7 +374,7 @@ class ChargeController extends Controller
     {
         $data = $request->validate($this->lineRules(''));
 
-        return ['lines' => array_values($data['lines']), 'amounts_include_tax' => (bool) $data['amounts_include_tax']];
+        return ['lines' => array_values($data['lines'] ?? []), 'amounts_include_tax' => (bool) ($data['amounts_include_tax'] ?? false)];
     }
 
     /**
@@ -378,16 +382,14 @@ class ChargeController extends Controller
      */
     private function lineRules(string $prefix): array
     {
-        $required = $prefix === '' ? 'required' : 'required_with:'.rtrim($prefix, '.');
-
+        // Nothing is required (owner's task of November 25): a line without an amount is left out.
         return [
-            $prefix.'lines' => [$required, 'array', 'min:1', 'max:20'],
+            $prefix.'lines' => ['nullable', 'array', 'max:20'],
             $prefix.'lines.*.description' => ['nullable', 'string', 'max:500'],
-            // An empty line (no description, no amount) is left out; a description needs an amount.
-            $prefix.'lines.*.amount' => ['nullable', 'required_with:'.$prefix.'lines.*.description', 'numeric', 'min:0', 'max:1000000'],
+            $prefix.'lines.*.amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
             $prefix.'lines.*.tax_rate_ids' => ['nullable', 'array', 'max:10'],
             $prefix.'lines.*.tax_rate_ids.*' => ['integer'],
-            $prefix.'amounts_include_tax' => [$required, 'boolean'],
+            $prefix.'amounts_include_tax' => ['nullable', 'boolean'],
         ];
     }
 
