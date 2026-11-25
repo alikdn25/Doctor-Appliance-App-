@@ -11,6 +11,7 @@ use App\Models\Message;
 use App\Models\ReviewRequest;
 use App\Models\User;
 use App\Support\Reviews\ReviewText;
+use App\Support\Reviews\ReviewTracking;
 
 /**
  * Google review requests (SPEC §8). The only way to send one: after an invoice is sent or paid, the user answers
@@ -63,7 +64,9 @@ class ReviewRequests
         $body = self::personal($text, $profile) ?? self::text($invoice->customer, $job->brand?->name, $profile);
         self::keepEmail($invoice->customer, $email);
 
-        $message = $this->messenger->emailToAddress(MessageKind::ReviewRequest, $invoice->customer, $job, $email, $body, $user, reviewUrl: $profile->review_url);
+        // The links go through our address, so a click is seen on the job (no reminder after it).
+        $message = $this->messenger->emailToAddress(MessageKind::ReviewRequest, $invoice->customer, $job, $email,
+            ReviewTracking::inText($body, $job, $profile), $user, reviewUrl: ReviewTracking::link($job, $profile));
 
         ReviewRequest::query()->updateOrCreate(['service_job_id' => $job->id], [
             'customer_id' => $invoice->customer_id,

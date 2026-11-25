@@ -8,6 +8,7 @@ import {
     CircleX,
     Clock,
     FilePlus,
+    Hourglass,
     Package,
     PackageCheck,
     PackageSearch,
@@ -39,6 +40,7 @@ export type StatusTone =
     | 'on-hold'
     | 'completed'
     | 'invoiced'
+    | 'awaiting-payment'
     | 'paid'
     | 'cancelled'
     | 'draft'
@@ -63,6 +65,7 @@ const looks: Record<string, StatusLook> = {
     completed: { tone: 'completed', icon: CircleCheck },
     done: { tone: 'completed', icon: CircleCheck },
     invoiced: { tone: 'invoiced', icon: Receipt },
+    awaiting_payment: { tone: 'awaiting-payment', icon: Hourglass },
     paid: { tone: 'paid', icon: Banknote },
     cancelled: { tone: 'cancelled', icon: CircleX, strike: true },
     // Estimates and invoices.

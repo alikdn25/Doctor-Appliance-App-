@@ -76,7 +76,7 @@ class SmsTriage
     public static function openJobs(int $customerId): Collection
     {
         return ServiceJob::query()->where('customer_id', $customerId)
-            ->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::Paid, JobStatus::Cancelled])
+            ->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid, JobStatus::Cancelled])
             ->whereNull('outcome')->whereNull('closed_at')
             ->with(['visits' => fn ($q) => $q->orderBy('scheduled_start'), 'appliances'])
             ->latest('id')->limit(5)->get();

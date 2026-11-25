@@ -23,6 +23,8 @@ enum JobStatus: string
     case WaitingForCustomer = 'waiting_for_customer';
     case Completed = 'completed';
     case Invoiced = 'invoiced';
+    /** An invoice was sent and money is still owed on it: off Today and the schedule, in the debtors list. */
+    case AwaitingPayment = 'awaiting_payment';
     case Paid = 'paid';
     case Cancelled = 'cancelled';
     case OnHold = 'on_hold';
@@ -33,7 +35,7 @@ enum JobStatus: string
     }
 
     /**
-     * Statuses the office can set by hand. Invoiced and paid are set by invoices and payments; a draft is finished
+     * Statuses the office can set by hand. Invoiced, awaiting payment and paid are set by invoices and payments; a draft is finished
      * with "Finish booking", never picked from the list.
      *
      * @return list<self>
@@ -42,7 +44,7 @@ enum JobStatus: string
     {
         return array_values(array_filter(
             self::cases(),
-            fn (self $status) => ! in_array($status, [self::Draft, self::Invoiced, self::Paid], true),
+            fn (self $status) => ! in_array($status, [self::Draft, self::Invoiced, self::AwaitingPayment, self::Paid], true),
         ));
     }
 
@@ -59,7 +61,7 @@ enum JobStatus: string
      */
     public function isLocked(): bool
     {
-        return in_array($this, [self::Invoiced, self::Paid], true);
+        return in_array($this, [self::Invoiced, self::AwaitingPayment, self::Paid], true);
     }
 
     /**
@@ -67,7 +69,7 @@ enum JobStatus: string
      */
     public function allowsVisitWork(): bool
     {
-        return ! in_array($this, [self::Cancelled, self::OnHold, self::WaitingForCustomer, self::Invoiced, self::Paid], true);
+        return ! in_array($this, [self::Cancelled, self::OnHold, self::WaitingForCustomer, self::Invoiced, self::AwaitingPayment, self::Paid], true);
     }
 
     /**
@@ -77,6 +79,14 @@ enum JobStatus: string
     public function allowsFinishingVisit(): bool
     {
         return $this !== self::Cancelled;
+    }
+
+    /**
+     * Jobs the parts flow still holds (a diagnosis invoice sent here does not end the job).
+     */
+    public function waitsForParts(): bool
+    {
+        return in_array($this, [self::NeedToOrderParts, self::WaitingForParts, self::PartsReady], true);
     }
 
     /**

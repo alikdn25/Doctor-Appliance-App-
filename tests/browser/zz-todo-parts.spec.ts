@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 /**
- * Owner's task of November 19, part 4, on a 390 px phone: the Jobs / To Do buttons of Today (one always on, two
- * columns with both) and the Parts page with its two tabs. Nothing scrolls sideways.
+ * On a 390 px phone: the Today feed of jobs and to-dos with All / Jobs / To Do (owner's task of November 25) and the
+ * Parts page with its two tabs. Nothing scrolls sideways.
  */
 test.use({ viewport: { width: 390, height: 844 } });
 
@@ -15,50 +15,45 @@ async function noSideScroll(page: Page) {
     expect(width.page).toBeLessThanOrEqual(width.viewport + 1);
 }
 
-test('Today: Jobs and To Do buttons, never both off, two columns with both', async ({
+test('Today: one feed of jobs and to-dos, All / Jobs / To Do with All on every open', async ({
     page,
 }, info) => {
     await page.goto('/my-jobs');
-    const jobs = page.locator('[data-test="pane-jobs"]');
-    const todo = page.locator('[data-test="pane-todo"]');
-    await expect(jobs).toBeVisible();
+    const all = page.getByRole('radio', { name: 'All', exact: true });
+    const jobs = page.getByRole('radio', { name: 'Jobs', exact: true });
+    const todo = page.getByRole('radio', { name: 'To Do', exact: true });
+    await expect(all).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('[data-test="today-feed"]')).toBeVisible();
+    // No two columns and no Jobs / To Do toggles in the header any more.
+    await expect(page.locator('[data-test="today-panes"]')).toHaveCount(0);
 
-    // Start from Jobs only.
-    if ((await todo.getAttribute('aria-pressed')) === 'true') {
-        await todo.click();
-    }
-    if ((await jobs.getAttribute('aria-pressed')) !== 'true') {
-        await jobs.click();
-    }
-    await expect(jobs).toHaveAttribute('aria-pressed', 'true');
-    await expect(todo).toHaveAttribute('aria-pressed', 'false');
-    await expect(page.locator('[data-test="todo-pane"]')).toHaveCount(0);
-
-    // The last one on stays on.
-    await jobs.click();
-    await expect(jobs).toHaveAttribute('aria-pressed', 'true');
-
-    // Both: two columns, the To Do column with "+" and the microphone field.
+    // To Do: only to-dos, with "+" and the microphone field.
     await todo.click();
-    await expect(page.locator('[data-test="todo-pane"]')).toBeVisible();
-    await expect(page.locator('[data-test="jobs-pane"]')).toBeVisible();
+    await expect(page.locator('[data-test="job-card"]')).toHaveCount(0);
     await expect(page.locator('[data-test="todo-add"]')).toBeVisible();
-    await noSideScroll(page);
-    await page.screenshot({ path: info.outputPath('390-today-both.png') });
-
-    // To Do only.
-    await jobs.click();
-    await expect(page.locator('[data-test="jobs-pane"]')).toHaveCount(0);
     await page.locator('[data-test="todo-add"]').click();
     await expect(page.locator('[data-test="task-sheet"]')).toBeVisible();
-    await expect(page.locator('#task-kind')).toBeVisible();
+    // Three types, Personal by default.
+    await expect(page.locator('[data-test="task-kind-home"]')).toHaveAttribute(
+        'aria-checked',
+        'true',
+    );
+    await expect(page.locator('[data-test="task-kind-parts"]')).toBeVisible();
+    await expect(page.locator('[data-test="task-kind-call"]')).toBeVisible();
     await page.keyboard.press('Escape');
 
-    // Back to Jobs only for the other tests.
+    // Jobs: no to-dos.
     await jobs.click();
-    await todo.click();
-    await expect(todo).toHaveAttribute('aria-pressed', 'false');
-    await expect(jobs).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('[data-test="todo-card"]')).toHaveCount(0);
+    await noSideScroll(page);
+
+    // Back on the screen: All again.
+    await page.goto('/my-jobs');
+    await expect(
+        page.getByRole('radio', { name: 'All', exact: true }),
+    ).toHaveAttribute('aria-checked', 'true');
+    await noSideScroll(page);
+    await page.screenshot({ path: info.outputPath('390-today-feed.png') });
 });
 
 test('Parts: Order and Waiting tabs with counts, opened from More', async ({

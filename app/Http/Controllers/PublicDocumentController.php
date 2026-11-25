@@ -57,6 +57,26 @@ class PublicDocumentController extends Controller
         });
     }
 
+    /**
+     * /i/{token}, the invoice link in the email and texts: the first and the last time the customer followed it, then
+     * the invoice page (with Pay online). People signed in to the app (checking the link) are not counted.
+     */
+    public function open(string $token): RedirectResponse
+    {
+        [$document, $company] = $this->resolve($token);
+        abort_unless($document instanceof Invoice, 404);
+
+        if (auth()->guest()) {
+            $this->tenancy->runAs($company, fn () => $document->forceFill([
+                'first_opened_at' => $document->first_opened_at ?? now(),
+                'last_opened_at' => now(),
+                'viewed_at' => $document->viewed_at ?? now(),
+            ])->saveQuietly());
+        }
+
+        return redirect()->route('documents.public', $token);
+    }
+
     public function pdf(string $token): HttpResponse
     {
         [$document, $company] = $this->resolve($token);

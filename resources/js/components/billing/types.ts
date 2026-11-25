@@ -17,6 +17,8 @@ export type DocumentRow = {
     due_in_days?: number | null;
     job_id: number;
     customer: string | null;
+    /** An invoice whose link the customer followed (first time). */
+    opened_at?: string | null;
 };
 
 export type DocumentItem = {

@@ -79,7 +79,7 @@ class PaymentController extends Controller
     {
         $job = $invoice->job()->firstOrFail();
         $open = $job->closed_at === null && $job->outcome === null && Gate::forUser($user)->allows('work', $job)
-            && ! in_array($job->status, [JobStatus::Completed, JobStatus::Invoiced, JobStatus::Paid, JobStatus::Cancelled], true);
+            && ! in_array($job->status, [JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid, JobStatus::Cancelled], true);
         $visit = $open ? $job->visits()->whereIn('status', [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value])->first() : null;
 
         return [

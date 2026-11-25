@@ -36,6 +36,13 @@ class TaskPolicy
         return $this->viewAll($user);
     }
 
+    /** The task's own page: the same people who see it in their lists (Task::visibleTo). */
+    public function view(User $user, Task $task): bool
+    {
+        return $this->inCurrentCompany($task) && $this->viewAny($user)
+            && Task::query()->whereKey($task->id)->visibleTo($user)->exists();
+    }
+
     public function update(User $user, Task $task): bool
     {
         if (! $this->inCurrentCompany($task) || ! $this->viewAny($user)) {

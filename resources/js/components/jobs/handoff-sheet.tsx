@@ -18,7 +18,14 @@ type Option = {
  * "Hand to technician" (owner's task of November 19): pick a technician of the app or an outside one, see the two
  * texts (to the technician and to the customer), Confirm sends both. Nothing is sent before Confirm.
  */
-export function HandoffSheet({ jobId }: { jobId: number }) {
+export function HandoffSheet({
+    jobId,
+    buttonClassName = 'w-full',
+}: {
+    jobId: number;
+    /** The job page's button block sets one size for its buttons. */
+    buttonClassName?: string;
+}) {
     const t = useTrans();
     const { handoffOptions = [], job } = usePage<{
         handoffOptions?: Option[];
@@ -90,8 +97,7 @@ export function HandoffSheet({ jobId }: { jobId: number }) {
             {handoffOptions.length > 0 && (
                 <Button
                     variant="outline"
-                    size="lg"
-                    className="w-full"
+                    className={buttonClassName}
                     onClick={() => setOpen(true)}
                     data-test="handoff-open"
                 >

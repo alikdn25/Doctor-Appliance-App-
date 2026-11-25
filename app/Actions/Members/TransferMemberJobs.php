@@ -25,7 +25,7 @@ class TransferMemberJobs
 
         $jobs = ServiceJob::query()
             ->where(fn ($q) => $q->whereHas('assignees', fn ($a) => $a->where('users.id', $source->user_id))->orWhere(fn ($legacy) => $legacy->where('assignment_is_explicit', false)->whereHas('visits.assignees', fn ($a) => $a->where('users.id', $source->user_id))))
-            ->whereNull('closed_at')->whereNull('outcome')->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::Paid, JobStatus::Cancelled])
+            ->whereNull('closed_at')->whereNull('outcome')->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid, JobStatus::Cancelled])
             ->lockForUpdate()->get();
         $user = User::findOrFail($target->user_id);
         $allowedBrands = $user->brands()->withTrashed()->pluck('brands.id')->all();

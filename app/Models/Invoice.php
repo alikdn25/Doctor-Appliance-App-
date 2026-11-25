@@ -31,6 +31,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $sent_at
  * @property string|null $sent_to
  * @property Carbon|null $viewed_at
+ * @property Carbon|null $first_opened_at The customer first followed the invoice link (/i/{token})
+ * @property Carbon|null $last_opened_at
  * @property InvoiceStatus $status
  * @property Carbon $issued_on
  * @property Carbon|null $due_on
@@ -91,6 +93,8 @@ class Invoice extends Model
             'paid_at' => 'datetime',
             'review_offered_at' => 'datetime',
             'reminder_sent_at' => 'datetime',
+            'first_opened_at' => 'datetime',
+            'last_opened_at' => 'datetime',
             'reminder_answered_at' => 'datetime',
             'voided_at' => 'datetime',
         ];

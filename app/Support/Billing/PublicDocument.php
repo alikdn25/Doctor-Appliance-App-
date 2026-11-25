@@ -8,7 +8,7 @@ use App\Models\Scopes\CompanyScope;
 use Illuminate\Support\Str;
 
 /**
- * The customer's online page of an estimate or invoice: /d/{token}. The token is long and random (the only
+ * The customer's online page of an estimate or invoice: /d/{token} (an invoice's link: /i/{token}, see url()). The token is long and random (the only
  * secret in the link); "e" or "i" in front says which table it belongs to.
  */
 class PublicDocument
@@ -23,9 +23,15 @@ class PublicDocument
         return $document->public_token;
     }
 
+    /**
+     * The link given to the customer. An invoice's goes through /i/{token}, which records the first and the last time
+     * the customer followed it and then opens the page (no open pixels; only a click counts).
+     */
     public static function url(Estimate|Invoice $document): string
     {
-        return route('documents.public', self::token($document));
+        return $document instanceof Invoice
+            ? route('invoices.open', self::token($document))
+            : route('documents.public', self::token($document));
     }
 
     /**

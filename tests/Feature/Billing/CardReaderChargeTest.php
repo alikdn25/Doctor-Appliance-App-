@@ -486,8 +486,10 @@ describe('Paid screen and the receipt', function () {
         Mail::assertQueued(ReceiptMail::class, fn (ReceiptMail $mail) => str_contains((string) $mail->reviewText, '30 seconds</b> to help me grow'));
 
         $html = (new ReceiptMail($invoice, $this->profile->id, '<b>Hey Jane</b>, review us: https://g.page/r/doctor/review'))->render();
+        // The review link goes through our address (a click is seen on the job).
+        $tracked = route('reviews.go', ['token' => inCompany($this->company, fn () => $invoice->job()->value('review_token')), 'profile' => $this->profile->id]);
         expect($html)->toContain('<b>Hey Jane</b>, review us:')->not->toContain(__('documents.mail.review.title'))
-            ->toContain('https://g.page/r/doctor/review')->toContain('Paid')->toContain('$168.00')->toContain('Cash')
+            ->toContain($tracked)->not->toContain('https://g.page/r/doctor/review')->toContain('Paid')->toContain('$168.00')->toContain('Cash')
             ->toContain('GST')->toContain('PST')->toContain($invoice->number);
     });
 

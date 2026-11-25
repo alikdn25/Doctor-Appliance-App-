@@ -62,4 +62,10 @@ return [
         'sms_off' => 'Texting is off for the company (Company → Messaging), so a review request cannot be sent by SMS.',
         'invalid_phone' => 'Enter a valid phone number.',
     ],
+    // On the job page (owner's task of November 25).
+    'state' => [
+        'requested' => 'Review requested',
+        'clicked' => 'Review link clicked :time',
+        'reminder_sent' => 'Reminder sent :time',
+    ],
 ];

@@ -9,6 +9,12 @@ return [
     'media_disk' => env('MEDIA_DISK', 'public'),
 
     /*
+    | The one Google review reminder goes this many minutes after the job was paid in full, when the customer has
+    | not clicked a review link (owner's task of November 25). 24 hours; shorter for a test.
+    */
+    'review_reminder_minutes' => (int) env('REVIEW_REMINDER_DELAY_MINUTES', 1440),
+
+    /*
     | Disk for private media: job photos, signatures, rating plate photos.
     | Never served by URL; files go out only through routes that check access.
     | "local" (storage/app/private) for now; a private S3 bucket later.

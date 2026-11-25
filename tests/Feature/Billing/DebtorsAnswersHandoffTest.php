@@ -164,7 +164,7 @@ test('the answer to a soft reminder gets a reply draft with the amount and the l
 
     $incoming = inboundSms('Oh sorry, how much was it?');
     $draft = $incoming->ai_triage['reply_draft'];
-    expect($draft)->toContain('$180.00')->toContain('/d/')
+    expect($draft)->toContain('$180.00')->toContain('/i/')
         ->and(PaymentReminders::status($invoice->fresh()))->toBe('answered');
     expect(smsSentTo('+16045550142'))->toHaveCount(1);
 

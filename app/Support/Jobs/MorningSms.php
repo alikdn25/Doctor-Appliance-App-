@@ -72,7 +72,7 @@ class MorningSms
         }
 
         $open = ServiceJob::query()
-            ->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::Paid, JobStatus::Cancelled])
+            ->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid, JobStatus::Cancelled])
             ->whereNull('outcome')->whereNull('closed_at');
         $noAddress = (clone $open)->whereHas('property', fn ($q) => $q->where(fn ($p) => $p->whereNull('line1')->orWhere('line1', '')))
             ->with('customer')->latest('id')->limit(10)->get();

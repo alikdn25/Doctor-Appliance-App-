@@ -187,7 +187,7 @@ class JobPresenter
      */
     public static function isOpen(ServiceJob $job): bool
     {
-        return ! in_array($job->status, [JobStatus::Completed, JobStatus::Invoiced, JobStatus::Paid, JobStatus::Cancelled], true)
+        return ! in_array($job->status, [JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid, JobStatus::Cancelled], true)
             && $job->outcome === null && $job->closed_at === null;
     }
 

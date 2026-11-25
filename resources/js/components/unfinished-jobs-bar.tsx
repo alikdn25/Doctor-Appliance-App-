@@ -1,9 +1,9 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ListTodo } from 'lucide-react';
+import { Hourglass, ListTodo } from 'lucide-react';
 import { usePublishedHeight } from '@/hooks/use-published-height';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { unpaid } from '@/routes/invoices';
+import { awaiting, unpaid } from '@/routes/invoices';
 import { index as jobs } from '@/routes/jobs';
 import { index as parts } from '@/routes/parts';
 
@@ -32,7 +32,7 @@ export function UnfinishedJobsBar() {
 
     if (!unfinishedJobs) return null;
 
-    const counts = unfinishedJobs.counts as Record<string, number>;
+    const counts = unfinishedJobs.counts as Record<string, number | null>;
 
     return (
         <nav
@@ -51,6 +51,21 @@ export function UnfinishedJobsBar() {
                     {unfinishedJobs.total}
                 </span>
             </Link>
+            {/* Jobs with a sent invoice still owed: orange, shown even at 0 (owner's task of November 25). */}
+            {counts.awaiting_payment !== null &&
+                counts.awaiting_payment !== undefined && (
+                    <Link
+                        href={awaiting()}
+                        data-test="unfinished-awaiting_payment"
+                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-orange-700 px-3 text-xs font-semibold text-white"
+                    >
+                        <Hourglass className="size-3.5" aria-hidden="true" />
+                        {t('awaiting.chip')}
+                        <span className="tabular-nums">
+                            {counts.awaiting_payment}
+                        </span>
+                    </Link>
+                )}
             {REASONS.filter((reason) => (counts[reason] ?? 0) > 0).map(
                 (reason) => (
                     <Link

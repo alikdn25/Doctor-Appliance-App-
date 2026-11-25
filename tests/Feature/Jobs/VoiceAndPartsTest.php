@@ -389,7 +389,7 @@ test('Confirm & send on an unpaid job saves everything and texts the invoice wit
         ->and($expenses->pluck('service_job_id')->unique()->all())->toBe([$this->job->id])
         ->and(outbound())->toBe($before + 1)
         ->and($sms->kind)->toBe(MessageKind::InvoiceLink)
-        ->and($sms->body)->toContain('/d/')
+        ->and($sms->body)->toContain('/i/')
         ->and($sms->body)->not->toContain('Pump')
         ->and($invoice->sent_at)->not->toBeNull();
 });

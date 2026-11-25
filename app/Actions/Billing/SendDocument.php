@@ -17,7 +17,10 @@ use Illuminate\Support\Facades\Mail;
  */
 class SendDocument
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly SyncJobBillingStatus $syncJob,
+    ) {}
 
     public function handle(Estimate|Invoice $document, string $email, string $message, User $user): void
     {
@@ -32,6 +35,12 @@ class SendDocument
         $this->audit->record($document instanceof Invoice ? 'invoice.sent' : 'estimate.sent', $document, [
             'number' => $document->number, 'to' => $email,
         ]);
+
+        // A sent invoice with money owed puts the job in "Awaiting payment"; a sent estimate changes nothing.
+        $job = $document instanceof Invoice ? $document->job()->first() : null;
+        if ($job !== null) {
+            $this->syncJob->handle($job, $user);
+        }
     }
 
     /**

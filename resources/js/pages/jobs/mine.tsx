@@ -20,7 +20,7 @@ import { cardButton, JobCard } from '@/components/jobs/job-card';
 import { JobAddressSheet } from '@/components/jobs/job-address-sheet';
 import { StrictBadge } from '@/components/jobs/job-outcome';
 import { TechnicianPicker } from '@/components/jobs/technician-picker';
-import { TaskList } from '@/components/tasks/task-list';
+import { TodoCard } from '@/components/tasks/todo-card';
 import { TaskSheet } from '@/components/tasks/task-sheet';
 import type { TaskDraft, TaskItem } from '@/components/tasks/types';
 import { MicButton } from '@/components/ui/mic-button';
@@ -40,7 +40,7 @@ import { useTrans } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { calendar } from '@/routes';
-import { mine, panes as panesRoute, show, technician } from '@/routes/jobs';
+import { mine, show, technician } from '@/routes/jobs';
 import { parse as parseTask } from '@/routes/tasks';
 import { finishScreen, onMyWay, start } from '@/routes/visits';
 
@@ -72,14 +72,11 @@ type MyVisit = Visit & {
 
 type Tab = 'day' | 'completed';
 
-type Panes = 'jobs' | 'todo' | 'both';
+type Feed = 'all' | 'jobs' | 'todo';
 
-/** Tablets and computers start with both columns. */
-const WIDE = 768;
-
-/** "123 Main St, Burnaby, BC V5H 1A1" → "123 Main St". */
-const shortAddress = (address: string | null) =>
-    address ? address.split(',')[0].trim() : null;
+type FeedItem =
+    | { kind: 'task'; task: TaskItem }
+    | { kind: 'job'; visit: MyVisit };
 
 /** Status filter chips appear only on a busy day. */
 const CHIPS_FROM = 4;
@@ -105,11 +102,9 @@ export default function MyJobs({
     visits,
     othersOnDay = 0,
     tasks = [],
-    panes: savedPanes = null,
     canTasks = false,
 }: {
     tab: Tab;
-    panes?: Panes | null;
     canTasks?: boolean;
     tasks?: TaskItem[];
     othersOnDay?: number;
@@ -121,33 +116,10 @@ export default function MyJobs({
     const t = useTrans();
     const time = useCompanyTime();
     const install = useInstallPrompt();
-    const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
-    // Jobs / To Do in the header (owner's task of November 19): one is always on; the last choice is kept.
-    const [panes, setPanes] = useState<Panes>(() =>
-        !canTasks
-            ? 'jobs'
-            : (savedPanes ??
-              (typeof window !== 'undefined' && window.innerWidth >= WIDE
-                  ? 'both'
-                  : 'jobs')),
-    );
-    const showJobs = panes !== 'todo';
-    const showTodo = canTasks && panes !== 'jobs';
-    const both = showJobs && showTodo;
-    const togglePane = (pane: 'jobs' | 'todo') => {
-        const jobsOn = pane === 'jobs' ? !showJobs : showJobs;
-        const todoOn = pane === 'todo' ? !showTodo : showTodo;
-        // Both off is not allowed: the last one on stays on.
-        if (!jobsOn && !todoOn) return;
-        const next: Panes =
-            jobsOn && todoOn ? 'both' : jobsOn ? 'jobs' : 'todo';
-        setPanes(next);
-        router.put(
-            panesRoute().url,
-            { panes: next },
-            { preserveState: true, preserveScroll: true, only: ['panes'] },
-        );
-    };
+    // All / Jobs / To Do over the feed: "All" every time the screen opens (nothing is kept).
+    const [feed, setFeed] = useState<Feed>('all');
+    const showJobs = !canTasks || feed !== 'todo';
+    const showTodo = canTasks && tab === 'day' && feed !== 'jobs';
     const [newTask, setNewTask] = useState<{ draft: TaskDraft | null } | null>(
         null,
     );
@@ -372,45 +344,126 @@ export default function MyJobs({
         return undefined;
     };
 
+    // One job card of the feed (a blue stripe; to-dos have a yellow one).
+    const jobCard = (visit: MyVisit) => (
+        <JobCard
+            stripe
+            key={visit.id}
+            job={visit.job}
+            href={show(visit.job.id)}
+            accent={visit.id === next?.id}
+            overdue={tab === 'day' && overdue(visit)}
+            action={step(visit)}
+            onAddAddress={
+                visit.can_work ? () => setAddressFor(visit.job.id) : undefined
+            }
+            below={
+                <>
+                    {visit.can_edit && (
+                        <Link
+                            href={show(visit.job.id, {
+                                query: {
+                                    voice_edit: 1,
+                                },
+                            })}
+                            className="mx-3 mb-2 flex min-h-10 items-center gap-1.5 text-sm font-semibold text-violet-700 underline-offset-4 hover:underline"
+                            data-test="edit-by-voice"
+                        >
+                            <Mic className="size-4" />
+                            {t('automation.quick_edit.open')}
+                        </Link>
+                    )}
+                    {visit.assignees.length === 0 &&
+                        !auth.company?.works_alone &&
+                        (canAssign ? (
+                            <button
+                                type="button"
+                                className="mx-3 mb-2 flex min-h-10 items-center gap-1.5 text-sm font-semibold text-amber-700 underline-offset-4 hover:underline"
+                                onClick={() => setAssigning(visit)}
+                                data-test="not-assigned"
+                            >
+                                <UserX className="size-4" />
+                                {t('jobs.not_assigned')}
+                            </button>
+                        ) : (
+                            <span className="mx-3 mb-2 flex items-center gap-1.5 text-sm font-semibold text-amber-700">
+                                <UserX className="size-4" />
+                                {t('jobs.not_assigned')}
+                            </span>
+                        ))}
+                </>
+            }
+            time={
+                // Visits of the shown day show only the window; one still open from an earlier day shows its date.
+                tab === 'day' && time.ymd(visit.scheduled_start) === date
+                    ? time.shortRange(
+                          visit.scheduled_start,
+                          visit.scheduled_end,
+                      )
+                    : time.window(visit.scheduled_start, visit.scheduled_end)
+            }
+            extra={
+                (visit.strict_arrival || visit.job.bring) && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5">
+                        {visit.strict_arrival && <StrictBadge />}
+                        {visit.job.bring && (
+                            <span
+                                className={cn(
+                                    'flex items-center gap-1 font-medium',
+                                    visit.job.bring.done < visit.job.bring.total
+                                        ? 'text-amber-700'
+                                        : 'text-emerald-700',
+                                )}
+                            >
+                                <PackageCheck className="size-3.5" />
+                                {t('jobs.bring.title')}:{' '}
+                                {t('jobs.bring.loaded', {
+                                    done: visit.job.bring.done,
+                                    total: visit.job.bring.total,
+                                })}
+                            </span>
+                        )}
+                    </div>
+                )
+            }
+        />
+    );
+
+    // The feed: to-dos without a time on top (anytimeTasks), then jobs in the day's order with each timed to-do
+    // before the first job that starts later, then the to-dos already done at the end of the day.
+    const dayTasks = showTodo ? tasks : [];
+    const anytimeTasks = dayTasks.filter(
+        (task) => !task.done && (task.all_day || !task.start_time),
+    );
+    const timedTasks = dayTasks
+        .filter((task) => !task.done && !task.all_day && !!task.start_time)
+        .sort((a, b) => (a.start_time ?? '').localeCompare(b.start_time ?? ''));
+    const visitClock = (visit: MyVisit) =>
+        time.ymd(visit.scheduled_start) === date ? visit.start_time : '00:00';
+    const feedItems: FeedItem[] = [];
+    let nextTask = 0;
+    for (const visit of showJobs ? shown : []) {
+        while (
+            nextTask < timedTasks.length &&
+            (timedTasks[nextTask].start_time ?? '') < visitClock(visit)
+        ) {
+            feedItems.push({ kind: 'task', task: timedTasks[nextTask++] });
+        }
+        feedItems.push({ kind: 'job', visit });
+    }
+    timedTasks
+        .slice(nextTask)
+        .forEach((task) => feedItems.push({ kind: 'task', task }));
+    dayTasks
+        .filter((task) => task.done)
+        .forEach((task) => feedItems.push({ kind: 'task', task }));
+
     return (
         <>
             <Head title={t('jobs.my_jobs')} />
 
             <ScreenHeader
                 title={t('jobs.my_jobs')}
-                titleControl={
-                    canTasks ? (
-                        <div
-                            className="flex gap-1.5"
-                            role="group"
-                            aria-label={t('tasks.panes.label')}
-                            data-test="today-panes"
-                        >
-                            {(['jobs', 'todo'] as const).map((pane) => {
-                                const on =
-                                    pane === 'jobs' ? showJobs : showTodo;
-
-                                return (
-                                    <button
-                                        key={pane}
-                                        type="button"
-                                        aria-pressed={on}
-                                        onClick={() => togglePane(pane)}
-                                        data-test={`pane-${pane}`}
-                                        className={cn(
-                                            'min-h-9 rounded-full px-3.5 text-sm font-semibold transition-colors',
-                                            on
-                                                ? 'bg-white text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,.8),0_3px_8px_rgba(0,0,0,.25)]'
-                                                : 'bg-white/10 text-white/80 ring-1 ring-white/30',
-                                        )}
-                                    >
-                                        {t(`tasks.panes.${pane}`)}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    ) : undefined
-                }
                 subtitle={plainDay({
                     weekday: 'short',
                     month: 'short',
@@ -435,12 +488,7 @@ export default function MyJobs({
                 }
             />
 
-            <div
-                className={cn(
-                    'mx-auto w-full space-y-3 p-4 pb-24 sm:p-6',
-                    both ? 'max-w-6xl' : 'max-w-2xl',
-                )}
-            >
+            <div className="mx-auto w-full max-w-2xl space-y-3 p-4 pb-24 sm:p-6">
                 {install && (
                     <Button variant="outline" onClick={() => void install()}>
                         <Download /> {t('jobs.install.button')}
@@ -528,287 +576,54 @@ export default function MyJobs({
                     )}
                 </div>
 
-                <div
-                    className={cn(both && 'grid grid-cols-2 items-start gap-3')}
-                >
+                {/* All / Jobs / To Do over one feed (owner's task of November 25); All every time the screen opens. */}
+                {tab === 'day' && canTasks && (
+                    <SegmentedControl
+                        label={t('tasks.feed.label')}
+                        value={feed}
+                        onChange={setFeed}
+                        options={[
+                            { value: 'all', label: t('tasks.feed.all') },
+                            { value: 'jobs', label: t('tasks.feed.jobs') },
+                            { value: 'todo', label: t('tasks.feed.todo') },
+                        ]}
+                    />
+                )}
+
+                <section className="min-w-0 space-y-3" data-test="today-feed">
                     {showJobs && (
-                        <section
-                            className="min-w-0 space-y-3"
-                            data-test="jobs-pane"
+                        <p
+                            className="text-sm text-muted-foreground"
+                            data-test="day-summary"
                         >
-                            <p
-                                className="text-sm text-muted-foreground"
-                                data-test="day-summary"
-                            >
-                                {summary}
-                            </p>
-
-                            {showChips && (
-                                <FilterChips
-                                    label={t('jobs.filters')}
-                                    selected={status === '' ? [''] : [status]}
-                                    onChange={(value) =>
-                                        setStatus(value === status ? '' : value)
-                                    }
-                                    chips={[
-                                        {
-                                            value: '',
-                                            label: t('jobs.all_statuses'),
-                                            count: visits.length,
-                                        },
-                                        ...Object.keys(statusCounts).map(
-                                            (value) => ({
-                                                value,
-                                                label: statusLabels[value],
-                                                count: statusCounts[value],
-                                            }),
-                                        ),
-                                    ]}
-                                />
-                            )}
-
-                            {shown.length === 0 && (
-                                <p className="da-card p-10 text-center text-sm text-muted-foreground">
-                                    {term
-                                        ? t('jobs.search_empty', {
-                                              search: term,
-                                          })
-                                        : tab === 'completed'
-                                          ? t('jobs.mine_empty.completed')
-                                          : date === today
-                                            ? t('jobs.mine_empty.today')
-                                            : t('jobs.mine_empty.day', {
-                                                  date: time.dateOnly(date),
-                                              })}
-                                </p>
-                            )}
-
-                            <ul className="space-y-3">
-                                {both &&
-                                    shown.map((visit) => (
-                                        <li key={visit.id}>
-                                            <Link
-                                                href={show(visit.job.id)}
-                                                className={cn(
-                                                    'da-card block space-y-0.5 p-3',
-                                                    visit.id === next?.id &&
-                                                        'ring-2 ring-[var(--accent)]',
-                                                )}
-                                                data-test="compact-job"
-                                            >
-                                                <span
-                                                    className={cn(
-                                                        'block text-xs font-semibold',
-                                                        tab === 'day' &&
-                                                            overdue(visit)
-                                                            ? 'text-danger'
-                                                            : 'text-muted-foreground',
-                                                    )}
-                                                >
-                                                    {time.shortRange(
-                                                        visit.scheduled_start,
-                                                        visit.scheduled_end,
-                                                    )}
-                                                </span>
-                                                <span className="block truncate font-semibold">
-                                                    {visit.job.customer ??
-                                                        `#${visit.job.number}`}
-                                                </span>
-                                                {shortAddress(
-                                                    visit.job.address,
-                                                ) && (
-                                                    <span className="block truncate text-sm text-muted-foreground">
-                                                        {shortAddress(
-                                                            visit.job.address,
-                                                        )}
-                                                    </span>
-                                                )}
-                                                {visit.job.appliance_types
-                                                    .length > 0 && (
-                                                    <span className="block truncate text-sm">
-                                                        {visit.job.appliance_types.join(
-                                                            ', ',
-                                                        )}
-                                                    </span>
-                                                )}
-                                            </Link>
-                                        </li>
-                                    ))}
-                                {!both &&
-                                    shown.map((visit) => (
-                                        <JobCard
-                                            key={visit.id}
-                                            job={visit.job}
-                                            href={show(visit.job.id)}
-                                            accent={visit.id === next?.id}
-                                            overdue={
-                                                tab === 'day' && overdue(visit)
-                                            }
-                                            action={step(visit)}
-                                            onAddAddress={
-                                                visit.can_work
-                                                    ? () =>
-                                                          setAddressFor(
-                                                              visit.job.id,
-                                                          )
-                                                    : undefined
-                                            }
-                                            below={
-                                                <>
-                                                    {visit.can_edit && (
-                                                        <Link
-                                                            href={show(
-                                                                visit.job.id,
-                                                                {
-                                                                    query: {
-                                                                        voice_edit: 1,
-                                                                    },
-                                                                },
-                                                            )}
-                                                            className="mx-3 mb-2 flex min-h-10 items-center gap-1.5 text-sm font-semibold text-violet-700 underline-offset-4 hover:underline"
-                                                            data-test="edit-by-voice"
-                                                        >
-                                                            <Mic className="size-4" />
-                                                            {t(
-                                                                'automation.quick_edit.open',
-                                                            )}
-                                                        </Link>
-                                                    )}
-                                                    {visit.assignees.length ===
-                                                        0 &&
-                                                        !auth.company
-                                                            ?.works_alone &&
-                                                        (canAssign ? (
-                                                            <button
-                                                                type="button"
-                                                                className="mx-3 mb-2 flex min-h-10 items-center gap-1.5 text-sm font-semibold text-amber-700 underline-offset-4 hover:underline"
-                                                                onClick={() =>
-                                                                    setAssigning(
-                                                                        visit,
-                                                                    )
-                                                                }
-                                                                data-test="not-assigned"
-                                                            >
-                                                                <UserX className="size-4" />
-                                                                {t(
-                                                                    'jobs.not_assigned',
-                                                                )}
-                                                            </button>
-                                                        ) : (
-                                                            <span className="mx-3 mb-2 flex items-center gap-1.5 text-sm font-semibold text-amber-700">
-                                                                <UserX className="size-4" />
-                                                                {t(
-                                                                    'jobs.not_assigned',
-                                                                )}
-                                                            </span>
-                                                        ))}
-                                                </>
-                                            }
-                                            time={
-                                                // Visits of the shown day show only the window; one still open from an earlier day shows its date.
-                                                tab === 'day' &&
-                                                time.ymd(
-                                                    visit.scheduled_start,
-                                                ) === date
-                                                    ? time.shortRange(
-                                                          visit.scheduled_start,
-                                                          visit.scheduled_end,
-                                                      )
-                                                    : time.window(
-                                                          visit.scheduled_start,
-                                                          visit.scheduled_end,
-                                                      )
-                                            }
-                                            extra={
-                                                (visit.strict_arrival ||
-                                                    visit.job.bring) && (
-                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5">
-                                                        {visit.strict_arrival && (
-                                                            <StrictBadge />
-                                                        )}
-                                                        {visit.job.bring && (
-                                                            <span
-                                                                className={cn(
-                                                                    'flex items-center gap-1 font-medium',
-                                                                    visit.job
-                                                                        .bring
-                                                                        .done <
-                                                                        visit
-                                                                            .job
-                                                                            .bring
-                                                                            .total
-                                                                        ? 'text-amber-700'
-                                                                        : 'text-emerald-700',
-                                                                )}
-                                                            >
-                                                                <PackageCheck className="size-3.5" />
-                                                                {t(
-                                                                    'jobs.bring.title',
-                                                                )}
-                                                                :{' '}
-                                                                {t(
-                                                                    'jobs.bring.loaded',
-                                                                    {
-                                                                        done: visit
-                                                                            .job
-                                                                            .bring
-                                                                            .done,
-                                                                        total: visit
-                                                                            .job
-                                                                            .bring
-                                                                            .total,
-                                                                    },
-                                                                )}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )
-                                            }
-                                        />
-                                    ))}
-                            </ul>
-
-                            {othersOnDay > 0 && (
-                                <div className="da-card overflow-hidden">
-                                    <ListRow
-                                        href={calendar({
-                                            query: { view: 'day', date },
-                                        })}
-                                        leading={
-                                            <span className="da-soft inline-flex size-10 items-center justify-center rounded-[12px]">
-                                                <CalendarDays className="size-5" />
-                                            </span>
-                                        }
-                                        title={t('jobs.others_on_day', {
-                                            count: othersOnDay,
-                                        })}
-                                        subtitle={t('nav.calendar')}
-                                        chevron
-                                    />
-                                </div>
-                            )}
-                        </section>
+                            {summary}
+                        </p>
                     )}
-                    {showTodo && (
-                        <section
-                            className="space-y-3"
-                            aria-label={t('tasks.panes.todo')}
-                            data-test="todo-pane"
-                        >
-                            <div className="flex items-center gap-2">
-                                <h2 className="flex-1 text-sm font-semibold text-[var(--task-text)]">
-                                    {t('tasks.panes.todo')}
-                                </h2>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setNewTask({ draft: null })}
-                                    aria-label={t('tasks.add')}
-                                    data-test="todo-add"
-                                >
-                                    <Plus />
-                                </Button>
-                            </div>
+
+                    {showJobs && showChips && (
+                        <FilterChips
+                            label={t('jobs.filters')}
+                            selected={status === '' ? [''] : [status]}
+                            onChange={(value) =>
+                                setStatus(value === status ? '' : value)
+                            }
+                            chips={[
+                                {
+                                    value: '',
+                                    label: t('jobs.all_statuses'),
+                                    count: visits.length,
+                                },
+                                ...Object.keys(statusCounts).map((value) => ({
+                                    value,
+                                    label: statusLabels[value],
+                                    count: statusCounts[value],
+                                })),
+                            ]}
+                        />
+                    )}
+
+                    {feed === 'todo' && (
+                        <>
                             <form
                                 className="flex items-center gap-2"
                                 onSubmit={(e) => {
@@ -830,7 +645,7 @@ export default function MyJobs({
                                     value={quickTask}
                                     onChange={setQuickTask}
                                 />
-                                {quickTask.trim() !== '' && (
+                                {quickTask.trim() !== '' ? (
                                     <Button
                                         type="submit"
                                         size="sm"
@@ -839,6 +654,19 @@ export default function MyJobs({
                                     >
                                         {t('tasks.quick_fill')}
                                     </Button>
+                                ) : (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                            setNewTask({ draft: null })
+                                        }
+                                        aria-label={t('tasks.add')}
+                                        data-test="todo-add"
+                                    >
+                                        <Plus />
+                                    </Button>
                                 )}
                             </form>
                             {quickNote && (
@@ -846,27 +674,76 @@ export default function MyJobs({
                                     {quickNote}
                                 </p>
                             )}
-                            {tasks.length === 0 ? (
-                                <p className="da-card p-6 text-center text-sm text-muted-foreground">
-                                    {t('tasks.empty')}
-                                </p>
-                            ) : (
-                                <TaskList
-                                    tasks={tasks}
-                                    onOpen={setEditingTask}
-                                    bare
-                                />
-                            )}
-                        </section>
+                        </>
                     )}
-                </div>
+
+                    {/* To-dos without a time: their own block at the very top of the day. */}
+                    {anytimeTasks.length > 0 && (
+                        <div className="space-y-2" data-test="todo-anytime">
+                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                {t('tasks.feed.anytime')}
+                            </p>
+                            <ul className="space-y-2">
+                                {anytimeTasks.map((task) => (
+                                    <TodoCard key={task.id} task={task} />
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {feedItems.length === 0 && anytimeTasks.length === 0 && (
+                        <p className="da-card p-10 text-center text-sm text-muted-foreground">
+                            {feed === 'todo'
+                                ? t('tasks.feed.empty_todo')
+                                : term
+                                  ? t('jobs.search_empty', {
+                                        search: term,
+                                    })
+                                  : tab === 'completed'
+                                    ? t('jobs.mine_empty.completed')
+                                    : date === today
+                                      ? t('jobs.mine_empty.today')
+                                      : t('jobs.mine_empty.day', {
+                                            date: time.dateOnly(date),
+                                        })}
+                        </p>
+                    )}
+
+                    <ul className="space-y-3" data-test="feed-list">
+                        {feedItems.map((item) =>
+                            item.kind === 'task' ? (
+                                <TodoCard
+                                    key={`task-${item.task.id}`}
+                                    task={item.task}
+                                />
+                            ) : (
+                                jobCard(item.visit)
+                            ),
+                        )}
+                    </ul>
+
+                    {showJobs && othersOnDay > 0 && (
+                        <div className="da-card overflow-hidden">
+                            <ListRow
+                                href={calendar({
+                                    query: { view: 'day', date },
+                                })}
+                                leading={
+                                    <span className="da-soft inline-flex size-10 items-center justify-center rounded-[12px]">
+                                        <CalendarDays className="size-5" />
+                                    </span>
+                                }
+                                title={t('jobs.others_on_day', {
+                                    count: othersOnDay,
+                                })}
+                                subtitle={t('nav.calendar')}
+                                chevron
+                            />
+                        </div>
+                    )}
+                </section>
             </div>
 
-            <TaskSheet
-                open={editingTask !== null}
-                onOpenChange={(open) => !open && setEditingTask(null)}
-                task={editingTask}
-            />
             <TaskSheet
                 open={newTask !== null}
                 onOpenChange={(open) => !open && setNewTask(null)}

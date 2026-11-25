@@ -34,7 +34,7 @@ class ChangeJobStatus
 
         if ($to === JobStatus::Completed) {
             $job->completed_at ??= now();
-        } elseif (! in_array($to, [JobStatus::Invoiced, JobStatus::Paid], true)) {
+        } elseif (! in_array($to, [JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid], true)) {
             $job->completed_at = null;
         }
 
