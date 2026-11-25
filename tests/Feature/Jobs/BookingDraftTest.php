@@ -56,7 +56,7 @@ test('Finish booking schedules the job and texts the confirmation by itself', fu
     $job = ($this->latest)();
 
     expect($job->status)->toBe(JobStatus::Scheduled);
-    $message = inCompany($this->company, fn () => Message::query()->sole());
+    $message = inCompany($this->company, fn () => Message::query()->where('channel', Message::SMS)->sole());
     expect($message->kind->value)->toBe('booking_confirmation')
         ->and($message->channel)->toBe(Message::SMS)
         ->and($message->to)->toBe('+16045550142')
@@ -117,12 +117,13 @@ test('Finish booking on the job page schedules the draft and sends the confirmat
     $this->post(route('jobs.finish-booking', $job))->assertSessionHasNoErrors();
 
     expect($job->fresh()->status)->toBe(JobStatus::Scheduled);
-    expect(inCompany($this->company, fn () => Message::query()->sole()->channel))->toBe(Message::SMS);
+    // SMS and email both go (owner's task of November 25).
+    expect(inCompany($this->company, fn () => Message::query()->pluck('channel')->sort()->values()->all()))->toBe([Message::EMAIL, Message::SMS]);
     expect(session('inertia.flash_data.booking_confirmation.sent.channel'))->toBe('sms');
 
     // Twice does nothing more.
     $this->post(route('jobs.finish-booking', $job));
-    expect(inCompany($this->company, fn () => Message::query()->count()))->toBe(1);
+    expect(inCompany($this->company, fn () => Message::query()->count()))->toBe(2);
 });
 
 test('a draft cannot be resent or set by hand, and another company cannot finish it', function () {
