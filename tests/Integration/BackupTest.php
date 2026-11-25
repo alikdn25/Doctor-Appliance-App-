@@ -204,9 +204,21 @@ test('before external storage is set up a deployment still gets a local copy; sc
     config(['backup.encryption_key' => null]);
     seedCompany('Alpha');
 
+    // A folder left 2700 by another user is opened to the group (deploy user and web server share it).
+    File::ensureDirectoryExists(storage_path('app/local-backups'));
+    chmod(storage_path('app/local-backups'), 02700);
+
     $this->artisan('backup:run', ['--reason' => 'deploy'])->assertSuccessful();
     $local = File::glob(storage_path('app/local-backups/db-*-deploy.dump'));
-    expect($local)->not->toBeEmpty();
+    expect($local)->not->toBeEmpty()
+        ->and(fileperms(storage_path('app/local-backups')) & 07777)->toBe(02770)
+        ->and(fileperms($local[0]) & 0777)->toBe(0600);
+
+    // backup:list says external storage is not set up and lists the local copies, without an error.
+    $this->artisan('backup:list')
+        ->expectsOutputToContain('External backups are not set up yet')
+        ->expectsOutputToContain(basename($local[0]))
+        ->assertSuccessful();
     File::delete($local);
 
     $this->artisan('backup:run')->assertFailed();

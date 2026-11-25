@@ -52,7 +52,6 @@ return [
     'add_first_property' => 'Add a service address now',
     'duplicate_title' => 'Possible duplicate',
     'duplicate_text' => 'A customer with the same contact already exists. You can still save.',
-    'open' => 'Open',
     'has_jobs' => 'This customer has jobs and cannot be deleted.',
     'no_jobs' => 'No jobs yet.',
 
@@ -99,7 +98,6 @@ return [
         'files' => 'Files',
     ],
     'balance' => 'Balance',
-    'owes' => 'Owes :amount',
     'nothing_owed' => 'Nothing owed',
     'billing_same' => 'Same as the primary address',
     'job_notes' => 'Notes on jobs',
