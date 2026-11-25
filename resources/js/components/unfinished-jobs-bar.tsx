@@ -57,7 +57,7 @@ export function UnfinishedJobsBar() {
                     <Link
                         href={awaiting()}
                         data-test="unfinished-awaiting_payment"
-                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-orange-500 px-3 text-xs font-semibold text-white"
+                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-orange-700 px-3 text-xs font-semibold text-white"
                     >
                         <Hourglass className="size-3.5" aria-hidden="true" />
                         {t('awaiting.chip')}

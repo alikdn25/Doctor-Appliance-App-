@@ -36,7 +36,6 @@ export function TodoCard({ task }: { task: TaskItem }) {
         <li
             className={cn(
                 'da-card da-todo-card flex items-stretch overflow-hidden border-l-4',
-                task.done && 'opacity-70',
             )}
             data-test="todo-card"
             data-done={task.done || undefined}
