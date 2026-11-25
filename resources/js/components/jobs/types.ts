@@ -68,6 +68,6 @@ export const applianceTitle = (a: {
     type_label: string;
 }) => [a.manufacturer, a.type_label].filter(Boolean).join(' ');
 
-/** Work that is over (completed, invoiced or paid): shown greyed out, hidden from the calendar by default. */
+/** Work that is over (completed, invoiced, awaiting payment or paid): shown greyed out, hidden from the calendar by default. */
 export const isFinishedJob = (status: string) =>
-    ['completed', 'invoiced', 'paid'].includes(status);
+    ['completed', 'invoiced', 'awaiting_payment', 'paid'].includes(status);

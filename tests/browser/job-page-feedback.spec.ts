@@ -139,12 +139,6 @@ test('my jobs: Day | Completed with ‹ date ›, the day summary, + Trip button
     });
     const tech = await context.newPage();
     await tech.goto('http://127.0.0.1:8000/my-jobs');
-    // Jobs only (a wide screen starts with Jobs and To Do side by side, with compact cards).
-    const todo = tech.locator('[data-test="pane-todo"]');
-    if ((await todo.getAttribute('aria-pressed')) === 'true') {
-        await todo.click();
-        await expect(todo).toHaveAttribute('aria-pressed', 'false');
-    }
     await expect(tech.getByRole('radio', { name: 'Day' })).toHaveAttribute(
         'aria-checked',
         'true',

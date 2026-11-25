@@ -27,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
+use Inertia\Response;
 
 /**
  * Tasks ("+ → Task", the To Do column of Today): to-dos without a customer, shown in the calendar and on My Jobs —
@@ -53,12 +54,32 @@ class TaskController extends Controller
 
         // A task can be linked to an open job the person sees (newest first).
         $jobs = ServiceJob::query()->visibleTo($user)->with('customer')
-            ->whereNotIn('status', [JobStatus::Invoiced->value, JobStatus::Paid->value, JobStatus::Cancelled->value])
+            ->whereNotIn('status', [JobStatus::Invoiced->value, JobStatus::AwaitingPayment->value, JobStatus::Paid->value, JobStatus::Cancelled->value])
             ->latest('id')->limit(60)->get()
             ->map(fn (ServiceJob $job) => ['value' => (string) $job->id, 'label' => trim('#'.$job->number.' '.($job->customer?->display_name ?? ''))])
             ->values()->all();
 
         return response()->json(['people' => $people, 'me' => $user->id, 'jobs' => $jobs]);
+    }
+
+    /**
+     * A to-do's own page (a tap on it in Today): every detail, Done, Edit and Delete.
+     */
+    public function show(Request $request, Task $task): Response
+    {
+        Gate::authorize('view', $task);
+        $user = $request->user();
+        $task->load(['user', 'creator', 'job.customer']);
+
+        return Inertia::render('tasks/show', [
+            'task' => [
+                ...self::present($task, $user),
+                'on_the_way' => self::onTheWay(collect([$task]))[$task->id] ?? null,
+                'planned_date' => $task->planned_date?->format('Y-m-d'),
+                'completed_at' => $task->completed_at?->toIso8601String(),
+                'can_delete' => $user->can('delete', $task),
+            ],
+        ]);
     }
 
     public function store(TaskRequest $request): RedirectResponse

@@ -38,13 +38,13 @@ class MorningSummary
             ->whereBetween('scheduled_start', [$day->utc(), $day->endOfDay()->utc()])
             ->where('status', '!=', VisitStatus::Cancelled->value)
             ->when(! $office, fn ($q) => $q->whereHas('assignees', fn ($a) => $a->where('users.id', $user->id)))
-            ->whereHas('job', fn ($q) => $q->visibleTo($user))
+            ->whereHas('job', fn ($q) => $q->visibleTo($user)->where('status', '!=', JobStatus::AwaitingPayment->value))
             ->with(['job.customer', 'job.property', 'assignees'])
             ->orderBy('scheduled_start')->get();
         $visits = DayOrder::sort($visits);
 
         $open = ServiceJob::query()->visibleTo($user)
-            ->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::Paid, JobStatus::Cancelled])
+            ->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid, JobStatus::Cancelled])
             ->whereNull('outcome')->whereNull('closed_at');
 
         $noAddress = (clone $open)->whereHas('property', fn ($q) => $q->where(fn ($p) => $p->whereNull('line1')->orWhere('line1', '')))

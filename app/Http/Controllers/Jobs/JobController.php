@@ -42,6 +42,7 @@ use App\Models\JobVisit;
 use App\Models\Membership;
 use App\Models\Message;
 use App\Models\Property;
+use App\Models\ReviewRequest;
 use App\Models\ServiceJob;
 use App\Models\Supplier;
 use App\Models\SupplierReceipt;
@@ -218,18 +219,6 @@ class JobController extends Controller
     }
 
     /**
-     * The Today screen's Jobs / To Do buttons: one of them is always on; the choice is kept for the person.
-     */
-    public function panes(Request $request): RedirectResponse
-    {
-        Gate::authorize('viewMine', ServiceJob::class);
-        $panes = $request->validate(['panes' => ['required', 'in:jobs,todo,both']])['panes'];
-        $request->user()->currentMembership()?->update(['today_panes' => $panes]);
-
-        return back();
-    }
-
-    /**
      * "My jobs": the visits assigned to the current user (technicians, and Owners/Admins who go on calls).
      */
     public function mine(Request $request): Response
@@ -248,7 +237,7 @@ class JobController extends Controller
         $dayEnd = $date->endOfDay()->utc();
         $search = trim((string) $request->query('search', ''));
         $active = [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value];
-        $finished = [JobStatus::Completed->value, JobStatus::Invoiced->value, JobStatus::Paid->value];
+        $finished = [JobStatus::Completed->value, JobStatus::Invoiced->value, JobStatus::AwaitingPayment->value, JobStatus::Paid->value];
 
         // The office (owner, admin, dispatcher) also sees the day's jobs nobody is assigned to yet.
         $office = Gate::allows('dispatch', ServiceJob::class);
@@ -261,6 +250,8 @@ class JobController extends Controller
                 ->when($office && $name === 'day', fn (Builder $o) => $o->orWhereDoesntHave('assignees')))
             ->whereHas('job', fn (Builder $q) => $q->visibleTo($user)->when($search !== '', fn (Builder $j) => $j->search($search)))
             ->when($name === 'day', fn ($q) => $q
+                // Awaiting payment is off the day (it sits in the "Awaiting payment" list).
+                ->whereHas('job', fn (Builder $j) => $j->where('status', '!=', JobStatus::AwaitingPayment->value))
                 ->where(fn ($w) => $w
                     ->whereBetween('scheduled_start', [$dayStart, $dayEnd])
                     ->when($date->equalTo($today), fn ($o) => $o->orWhereIn('status', $active)))
@@ -293,20 +284,18 @@ class JobController extends Controller
                 ->where('status', '!=', VisitStatus::Cancelled->value)
                 ->whereHas('assignees')
                 ->whereDoesntHave('assignees', fn (Builder $q) => $q->where('users.id', $user->id))
-                ->whereHas('job', fn (Builder $q) => $q->visibleTo($user))
+                ->whereHas('job', fn (Builder $q) => $q->visibleTo($user)->where('status', '!=', JobStatus::AwaitingPayment->value))
                 ->count()
             : 0;
 
         return Inertia::render('jobs/mine', [
             'tab' => $tab,
-            // Jobs / To Do / both, as the person left it (null = by screen width).
-            'panes' => $user->currentMembership()?->today_panes,
             'canTasks' => Gate::allows('viewAny', Task::class),
             'othersOnDay' => $othersOnDay,
             'date' => $date->toDateString(),
             'today' => $today->toDateString(),
             'search' => $search,
-            // The person's own tasks of the day: the To Do column.
+            // The person's own to-dos of the day, in one feed with the jobs (All / Jobs / To Do on the screen).
             'tasks' => $search === '' ? TaskController::between($user, $date, $date->addDay(), onlyOwn: true) : [],
             'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging, $unread) {
                 $job = $visit->job;
@@ -584,6 +573,8 @@ class JobController extends Controller
                 ])->values(),
                 'estimates' => $job->estimates->map(fn (Estimate $e) => BillingPresenter::row($e))->values(),
                 'invoices' => $job->invoices->map(fn (Invoice $i) => BillingPresenter::row($i))->values(),
+                // Google review of this job: requested by hand, link clicked, the one reminder sent.
+                'review' => self::reviewState($job),
                 'signature' => JobPresenter::signature($job),
                 // The job's person when it has no open visit (the visits carry their own).
                 'assignees' => $job->assignment_is_explicit
@@ -1099,5 +1090,23 @@ class JobController extends Controller
         };
 
         $query->orderByDesc('id');
+    }
+
+    /**
+     * @return array{requested: bool, clicked_at: string|null, reminder_sent_at: string|null}|null
+     */
+    private static function reviewState(ServiceJob $job): ?array
+    {
+        $request = ReviewRequest::query()->where('service_job_id', $job->id)->where('status', ReviewRequest::SENT)->first();
+
+        if ($request === null && $job->review_clicked_at === null) {
+            return null;
+        }
+
+        return [
+            'requested' => $request !== null,
+            'clicked_at' => JobPresenter::iso($job->review_clicked_at),
+            'reminder_sent_at' => JobPresenter::iso($request?->reminder_sent_at),
+        ];
     }
 }

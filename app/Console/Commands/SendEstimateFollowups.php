@@ -41,7 +41,7 @@ class SendEstimateFollowups extends Command
                             return;
                         }
                         $job = $estimate->job()->lockForUpdate()->first();
-                        if ($job === null || $job->closed_at !== null || in_array($job->status, [JobStatus::Completed, JobStatus::Invoiced, JobStatus::Paid, JobStatus::Cancelled, JobStatus::OnHold], true)) {
+                        if ($job === null || $job->closed_at !== null || in_array($job->status, [JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid, JobStatus::Cancelled, JobStatus::OnHold], true)) {
                             return;
                         }
                         $job->load(['customer', 'brand']);

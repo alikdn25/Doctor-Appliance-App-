@@ -41,7 +41,7 @@ class JobBacklog
         $open = fn (Builder $visits) => $visits->whereIn('status', VisitStatus::openValues());
         $facts = ServiceJob::query()
             ->visibleTo($user)
-            ->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::Paid, JobStatus::Cancelled])
+            ->whereNotIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid, JobStatus::Cancelled])
             ->whereNull('outcome')
             ->whereNull('closed_at')
             ->select('service_jobs.*')
@@ -64,7 +64,7 @@ class JobBacklog
     /**
      * One aggregate query; never loads the entire queue into memory.
      *
-     * @return array{total: int, counts: array<string, int>, no_address: int}
+     * @return array{total: int, counts: array<string, int|null>, no_address: int}
      */
     public static function summary(User $user): array
     {
@@ -85,6 +85,10 @@ class JobBacklog
         // Completed jobs that still have no invoice (owner's task of November 19): their own counter, not in the total.
         $counts['no_invoice'] = $user->can('viewAny', Invoice::class)
             ? MorningSms::completedWithoutInvoice()->visibleTo($user)->count() : 0;
+
+        // Jobs with a sent invoice still owed (owner's task of November 25): an orange chip, shown even at 0.
+        $counts['awaiting_payment'] = $user->can('viewAny', Invoice::class)
+            ? ServiceJob::query()->visibleTo($user)->where('status', JobStatus::AwaitingPayment->value)->count() : null;
 
         return ['total' => array_sum(array_intersect_key($counts, array_flip(self::REASONS))), 'counts' => $counts, 'no_address' => $counts['no_address']];
     }

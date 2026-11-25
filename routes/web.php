@@ -12,6 +12,7 @@ use App\Http\Controllers\AndroidAppController;
 use App\Http\Controllers\AppReviewController;
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AssistantController;
+use App\Http\Controllers\Billing\AwaitingPaymentController;
 use App\Http\Controllers\Billing\ChargeController;
 use App\Http\Controllers\Billing\DebtorsController;
 use App\Http\Controllers\Billing\DocumentDeliveryController;
@@ -81,6 +82,7 @@ use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PublicDocumentController;
 use App\Http\Controllers\PushActionController;
 use App\Http\Controllers\Reports\ReportController;
+use App\Http\Controllers\ReviewLinkController;
 use App\Http\Controllers\SelfBookingController;
 use App\Http\Controllers\ServiceWorkerController;
 use App\Http\Controllers\Settings\MenuModeController;
@@ -111,6 +113,8 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('shared/jobs/{job}/photos', [JobHandoffController::class, 'photos'])->whereNumber('job')->name('shared.job-photos');
     Route::get('shared/jobs/{job}/photos/{photo}', [JobHandoffController::class, 'photo'])->whereNumber('job')->whereNumber('photo')->name('shared.job-photo');
     Route::get('d/{token}', [PublicDocumentController::class, 'show'])->name('documents.public');
+    Route::get('i/{token}', [PublicDocumentController::class, 'open'])->name('invoices.open');
+    Route::get('r/{token}/{profile}', ReviewLinkController::class)->whereNumber('profile')->name('reviews.go');
     Route::get('d/{token}/pdf', [PublicDocumentController::class, 'pdf'])->name('documents.public.pdf');
     Route::post('d/{token}/pay', [PublicDocumentController::class, 'pay'])->middleware('throttle:10,1')->name('documents.public.pay');
     Route::post('d/{token}/approve', [PublicDocumentController::class, 'approve'])->middleware('throttle:10,1')->name('documents.public.approve');
@@ -204,7 +208,6 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('appliances/{appliance}', [ApplianceController::class, 'destroy'])->name('appliances.destroy');
 
         Route::get('my-jobs', [JobController::class, 'mine'])->name('jobs.mine');
-        Route::put('my-jobs/panes', [JobController::class, 'panes'])->name('jobs.panes');
         Route::get('jobs/not-completed', JobBacklogController::class)->name('jobs.backlog');
         Route::get('jobs/customers', [JobController::class, 'lookup'])->name('jobs.lookup');
         Route::post('jobs/parse-message', BookingTextController::class)->middleware('throttle:30,1')->name('jobs.parse-message');
@@ -298,6 +301,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('invoices/create', [InvoiceController::class, 'start'])->name('invoices.start');
         // Debtors: import, Unpaid, soft payment reminders (owner's task of November 19).
         Route::get('invoices/unpaid', [DebtorsController::class, 'unpaid'])->name('invoices.unpaid');
+        Route::get('invoices/awaiting-payment', AwaitingPaymentController::class)->name('invoices.awaiting');
         Route::get('invoices/import-debtors', [DebtorsController::class, 'import'])->name('invoices.debtors.import');
         Route::post('invoices/import-debtors/preview', [DebtorsController::class, 'preview'])->middleware('throttle:20,1')->name('invoices.debtors.preview');
         Route::post('invoices/import-debtors', [DebtorsController::class, 'store'])->name('invoices.debtors.store');
@@ -352,6 +356,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('tasks/people', [TaskController::class, 'people'])->name('tasks.people');
         Route::post('tasks', [TaskController::class, 'store'])->name('tasks.store');
         Route::post('tasks/parse', [TaskController::class, 'parse'])->middleware('throttle:assistant')->name('tasks.parse');
+        Route::get('tasks/{task}', [TaskController::class, 'show'])->whereNumber('task')->name('tasks.show');
         Route::put('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
         Route::post('tasks/{task}/done', [TaskController::class, 'done'])->name('tasks.done');
         Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');

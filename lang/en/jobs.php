@@ -553,6 +553,7 @@ return [
         'waiting_for_customer' => 'Waiting for customer',
         'completed' => 'Completed',
         'invoiced' => 'Invoiced',
+        'awaiting_payment' => 'Awaiting payment',
         'paid' => 'Paid',
         'cancelled' => 'Cancelled',
         'on_hold' => 'On hold',

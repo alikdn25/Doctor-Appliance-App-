@@ -43,3 +43,14 @@ export type TaskDraft = {
 };
 
 export const REMINDERS = [0, 15, 60, 1440] as const;
+
+/** The three types offered for a new task (owner's task of November 25); Home ("Personal") by default. */
+export const TASK_TYPE_CHOICES: TaskKind[] = ['parts', 'home', 'call'];
+
+/** The type's icon on Today: 🛒 shop / parts, 🏠 personal, 📞 call. */
+export const taskIcon = (kind: TaskKind | null | undefined) => {
+    if (kind === 'parts' || kind === 'materials') return '🛒';
+    if (kind === 'call') return '📞';
+
+    return '🏠';
+};

@@ -25,7 +25,7 @@ use Illuminate\Support\Collection;
 class InvoiceDraft
 {
     /** Job statuses that count as closed: an invoice is never attached to these. */
-    public const OPEN_JOB_EXCLUDED = [JobStatus::Draft, JobStatus::Invoiced, JobStatus::Paid, JobStatus::Cancelled];
+    public const OPEN_JOB_EXCLUDED = [JobStatus::Draft, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid, JobStatus::Cancelled];
 
     /**
      * The tool's input schema (no nullable enums: missing text is "").

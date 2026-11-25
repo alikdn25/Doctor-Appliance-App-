@@ -57,6 +57,7 @@ export function JobCard({
     office = false,
     assignees = [],
     onAddAddress,
+    stripe = false,
 }: {
     job: JobCardData;
     href: NonNullable<InertiaLinkProps['href']>;
@@ -74,6 +75,8 @@ export function JobCard({
     assignees?: string[];
     /** A job without an address: Navigate opens the address entry instead of the map. */
     onAddAddress?: () => void;
+    /** The Today feed: a blue stripe on the left (to-dos have a yellow one). */
+    stripe?: boolean;
 }) {
     const t = useTrans();
     const worksAlone = usePage().props.auth.company?.works_alone ?? false;
@@ -109,6 +112,7 @@ export function JobCard({
             data-draft={isDraftJob(job.status) || undefined}
             className={cn(
                 'da-card overflow-hidden',
+                stripe && 'da-job-stripe',
                 office && 'flex items-center pr-3',
                 accent && 'ring-2 ring-link',
                 isDraftJob(job.status) && 'da-draft',

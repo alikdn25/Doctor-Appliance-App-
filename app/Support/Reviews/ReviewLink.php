@@ -14,12 +14,20 @@ class ReviewLink
 {
     public static function for(?Brand $brand): ?string
     {
+        return self::profileFor($brand)?->review_url;
+    }
+
+    /**
+     * The location whose link that is (null when it has no link).
+     */
+    public static function profileFor(?Brand $brand): ?GoogleProfile
+    {
         $profiles = GoogleProfile::query()->orderBy('id')->get(['id', 'brand_id', 'review_url']);
 
         $profile = $profiles->firstWhere('id', $brand?->google_profile_id)
             ?? ($brand ? $profiles->firstWhere('brand_id', $brand->id) : null)
             ?? $profiles->firstWhere('brand_id', null);
 
-        return filled($profile?->review_url) ? $profile->review_url : null;
+        return filled($profile?->review_url) ? $profile : null;
     }
 }

@@ -58,6 +58,14 @@ export function DocumentList({
                                     {[
                                         showCustomer ? d.customer : null,
                                         time.dateOnly(d.issued_on),
+                                        // The customer followed the invoice link.
+                                        d.opened_at
+                                            ? t('awaiting.states.opened', {
+                                                  time: time.dateTime(
+                                                      d.opened_at,
+                                                  ),
+                                              })
+                                            : null,
                                     ]
                                         .filter(Boolean)
                                         .join(' · ')}

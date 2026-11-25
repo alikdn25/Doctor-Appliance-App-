@@ -91,9 +91,10 @@ test('"Send" emails the chosen location\'s link with the review picture; never a
     $message = inCompany($this->company, fn () => Message::sole());
     expect($message)->kind->value->toBe('review_request')->channel->toBe('email')->status->toBe('sent')
         ->to->toBe('jane@example.com')->customer_id->toBe($this->customer->id)->service_job_id->toBe($invoice->service_job_id)
-        ->and($message->body)->toBe("<b>Hey Jane, would you take 30 seconds</b> to help me grow my small business by leaving a Google review? https://g.page/r/burnaby/review\n— Alex, Doctor Appliance");
+        // The link goes through our address (a click is seen on the job), then to the location's page.
+        ->and($message->body)->toBe('<b>Hey Jane, would you take 30 seconds</b> to help me grow my small business by leaving a Google review? '.trackedReview($invoice, $burnaby)."\n— Alex, Doctor Appliance");
     Http::assertNothingSent();
-    Mail::assertQueued(CustomerMessageMail::class, fn (CustomerMessageMail $mail) => $mail->hasTo('jane@example.com') && $mail->reviewUrl === 'https://g.page/r/burnaby/review');
+    Mail::assertQueued(CustomerMessageMail::class, fn (CustomerMessageMail $mail) => $mail->hasTo('jane@example.com') && $mail->reviewUrl === trackedReview($invoice, $burnaby));
 
     expect(inCompany($this->company, fn () => ReviewRequest::sole()))
         ->status->toBe('sent')->channel->toBe('email')->google_profile_id->toBe($burnaby->id)->message_id->toBe($message->id);
@@ -213,7 +214,7 @@ test('the review text can be changed for this customer; the link goes back at th
     ])->assertSessionHasNoErrors();
 
     $message = inCompany($this->company, fn () => Message::query()->sole());
-    expect($message->body)->toBe("Jane, thanks for having us over today!\nhttps://g.page/r/surrey/review")
+    expect($message->body)->toBe("Jane, thanks for having us over today!\n".trackedReview($invoice, $this->profile))
         ->and($message->service_job_id)->toBe($invoice->service_job_id);
 
     // Kept as written when the link is still in the text.
@@ -223,7 +224,7 @@ test('the review text can be changed for this customer; the link goes back at th
         'text' => 'Review us: https://g.page/r/surrey/review please',
     ])->assertSessionHasNoErrors();
     expect(inCompany($this->company, fn () => Message::query()->latest('id')->first()->body))
-        ->toBe('Review us: https://g.page/r/surrey/review please');
+        ->toBe('Review us: '.trackedReview($invoice, $this->profile).' please');
 
     // The next customer gets the template text again.
     $this->get(route('invoices.show', $invoice))->assertInertia(fn (Assert $page) => $page
@@ -260,3 +261,11 @@ test('the review request template is not in the messaging settings any more', fu
     $this->get(route('company.messaging.edit'))->assertInertia(fn (Assert $page) => $page
         ->where('templates', fn ($templates) => collect($templates)->doesntContain('kind', 'review_request')));
 });
+
+/** The job's tracked review link for a location (/r/{token}/{location}). */
+function trackedReview(Invoice $invoice, GoogleProfile $profile): string
+{
+    $token = inCompany(test()->company, fn () => ServiceJob::query()->whereKey($invoice->service_job_id)->value('review_token'));
+
+    return route('reviews.go', ['token' => $token, 'profile' => $profile->id]);
+}

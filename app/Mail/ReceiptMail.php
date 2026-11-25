@@ -15,6 +15,7 @@ use App\Support\Billing\PublicDocument;
 use App\Support\Mail\MailSender;
 use App\Support\Reviews\ReviewImage;
 use App\Support\Reviews\ReviewText;
+use App\Support\Reviews\ReviewTracking;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -106,12 +107,16 @@ class ReceiptMail extends Mailable implements ShouldQueue
      */
     private function review(Invoice $invoice): ?array
     {
-        $url = $this->reviewProfileId === null ? null : GoogleProfile::query()->whereKey($this->reviewProfileId)->value('review_url');
+        $profile = $this->reviewProfileId === null ? null : GoogleProfile::query()->find($this->reviewProfileId);
+        // Through our address, so a click is seen on the job (no review reminder after it).
+        $job = $invoice->job()->first();
+        $url = $profile === null ? null : ReviewTracking::link($job, $profile);
+        $text = filled($this->reviewText) && $profile !== null ? ReviewTracking::inText($this->reviewText, $job, $profile) : null;
 
         return filled($url) ? [
             'url' => $url,
             'image' => ReviewImage::url($this->company()),
-            'text' => filled($this->reviewText) ? ReviewText::html($this->reviewText, Brand::readableColor($invoice->brand?->primary_color)) : null,
+            'text' => $text !== null ? ReviewText::html($text, Brand::readableColor($invoice->brand?->primary_color)) : null,
         ] : null;
     }
 

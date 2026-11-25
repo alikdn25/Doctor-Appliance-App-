@@ -53,6 +53,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $outcome_reason
  * @property string|null $outcome_note
  * @property Carbon|null $closed_at
+ * @property string|null $review_token Key of the job's Google review links (/r/{token}/{location})
+ * @property Carbon|null $review_clicked_at The customer first followed one of them
  * @property string|null $part_name The part the job waits for
  * @property string|null $part_number
  * @property string|null $part_supplier
@@ -121,6 +123,7 @@ class ServiceJob extends Model
             'outcome' => JobOutcome::class,
             'visit_type' => VisitType::class,
             'closed_at' => 'datetime',
+            'review_clicked_at' => 'datetime',
             'appliance_category' => ApplianceCategory::class,
             'only_diagnostic' => 'boolean',
         ];

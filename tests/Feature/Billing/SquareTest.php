@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\InvoiceStatus;
+use App\Enums\JobStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
@@ -17,6 +18,7 @@ use App\Models\ServiceJob;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -299,6 +301,20 @@ describe('paying an invoice', function () {
             ->and(inCompany($this->company, fn () => InvoicePaymentLink::sole())->status)->toBe('paid');
 
         $this->get(route('invoices.show', $this->invoice))->assertInertia(fn (Assert $page) => $page->where('online', null));
+    });
+
+    test('a sent invoice paid online through Square closes the job by itself (Awaiting payment → Paid)', function () {
+        Mail::fake();
+        $this->post(route('invoices.send', $this->invoice), ['email' => 'maria@example.com', 'message' => 'Hi'])->assertSessionHasNoErrors();
+        expect($this->job->fresh()->status)->toBe(JobStatus::AwaitingPayment);
+
+        $this->post(route('invoices.payment-link', $this->invoice));
+        squareWebhook(squarePayment('PAY1', 10000))->assertNoContent();
+        expect($this->job->fresh()->status)->toBe(JobStatus::AwaitingPayment);
+
+        squareWebhook(squarePayment('PAY2', 18050))->assertNoContent();
+        expect($this->invoice->fresh()->balance)->toBe(0)
+            ->and($this->job->fresh()->status)->toBe(JobStatus::Paid);
     });
 
     test('a partial online payment leaves the rest due', function () {

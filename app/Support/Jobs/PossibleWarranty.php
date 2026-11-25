@@ -31,7 +31,7 @@ class PossibleWarranty
         $since = $at->subDays($days);
         $job = ServiceJob::query()->where('customer_id', $customerId)
             ->when($exceptJobId !== null, fn ($q) => $q->whereKeyNot($exceptJobId))
-            ->whereIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::Paid])
+            ->whereIn('status', [JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid])
             ->whereNotNull('completed_at')
             ->whereBetween('completed_at', [$since, $at])
             ->latest('completed_at')

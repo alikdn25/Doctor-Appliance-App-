@@ -4,6 +4,7 @@ namespace App\Services\AI;
 
 use App\Actions\Billing\RecordPayment;
 use App\Actions\Billing\SaveBillingDocument;
+use App\Actions\Billing\SyncJobBillingStatus;
 use App\Actions\Jobs\ChangeJobStatus;
 use App\Actions\Jobs\CloseJob;
 use App\Actions\Jobs\VisitWorkflow;
@@ -272,6 +273,7 @@ class VoiceCloser
             $message = $messenger->sms(MessageKind::InvoiceLink, $invoice->customer, $invoice->job, MessagingPresenter::documentText($invoice), $user);
             if ($message->status !== 'blocked') {
                 $invoice->forceFill(['sent_at' => now(), 'sent_to' => $message->to])->saveQuietly();
+                app(SyncJobBillingStatus::class)->handle($invoice->job()->firstOrFail(), $user);
             }
 
             return $message;

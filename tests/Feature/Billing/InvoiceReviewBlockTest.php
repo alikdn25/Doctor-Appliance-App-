@@ -56,34 +56,39 @@ test('the invoice message has no balance or due date in brackets', function () {
 });
 
 test('the review block sits between the first sentence and the pay line when a review link is set', function () {
-    inCompany($this->company, fn () => GoogleProfile::create(['label' => 'Austin', 'review_url' => 'https://g.page/r/austin/review']));
+    $austin = inCompany($this->company, fn () => GoogleProfile::create(['label' => 'Austin', 'review_url' => 'https://g.page/r/austin/review']));
 
     $html = (new DocumentMail($this->invoice, $this->message))->render();
+    // Through our address, so a click is seen on the job.
+    $tracked = route('reviews.go', ['token' => $this->invoice->job()->value('review_token'), 'profile' => $austin->id]);
 
     expect($html)
         ->toContain('Every review helps a local family business grow.')
         ->toContain('⭐⭐⭐⭐⭐')
         ->toContain('Leave a review →')
-        ->and(substr_count($html, 'href="https://g.page/r/austin/review" target="_blank"'))->toBe(3)
+        ->and(substr_count($html, 'href="'.$tracked.'" target="_blank"'))->toBe(3)
         ->and(strpos($html, 'attached.'))->toBeLessThan(strpos($html, 'Every review helps'))
         ->and(strpos($html, 'Every review helps'))->toBeLessThan(strpos($html, 'You can view it and pay online'))
         ->and($html)->not->toContain('<img');
 });
 
 test('the brand default location is used and the picture links to it', function () {
-    inCompany($this->company, function () {
+    $dallas = inCompany($this->company, function () {
         GoogleProfile::create(['label' => 'Austin', 'review_url' => 'https://g.page/r/austin/review']);
         $dallas = GoogleProfile::create(['label' => 'Dallas', 'review_url' => 'https://g.page/r/dallas/review']);
         $this->brand->update(['google_profile_id' => $dallas->id]);
         ReviewImage::store($this->company, reviewPng());
+
+        return $dallas;
     });
 
     $html = (new DocumentMail($this->invoice, $this->message))->render();
     $url = ReviewImage::url($this->company->fresh());
+    $tracked = route('reviews.go', ['token' => $this->invoice->job()->value('review_token'), 'profile' => $dallas->id]);
 
     expect($url)->toStartWith(url('/storage/companies/'.$this->company->id.'/review-image-'))
         ->and($html)->toContain('src="'.$url.'" width="110" height="110" alt="Leave us a Google review"')
-        ->and(substr_count($html, 'href="https://g.page/r/dallas/review" target="_blank"'))->toBe(4)
+        ->and(substr_count($html, 'href="'.$tracked.'" target="_blank"'))->toBe(4)
         ->and($html)->not->toContain('austin');
 });
 

@@ -3,7 +3,11 @@ import { Check, ListTodo, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import type { TaskDraft, TaskItem } from '@/components/tasks/types';
-import { REMINDERS, TASK_KINDS } from '@/components/tasks/types';
+import {
+    REMINDERS,
+    TASK_TYPE_CHOICES,
+    taskIcon,
+} from '@/components/tasks/types';
 import { AddressAutocomplete } from '@/components/customers/address-autocomplete';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
@@ -19,6 +23,7 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import {
     destroy,
     done as doneRoute,
@@ -117,7 +122,8 @@ export function TaskSheet({
                         ? ''
                         : '15'
                     : String(task.remind_minutes),
-            kind: task?.kind ?? draft?.kind ?? '',
+            // A new to-do is "Personal" (🏠) unless another type is picked.
+            kind: task ? (task.kind ?? '') : (draft?.kind ?? 'home'),
             address: task?.address ?? draft?.address ?? '',
             service_job_id: task?.job ? String(task.job.id) : '',
             repeat: task?.repeat ?? 'none',
@@ -287,31 +293,43 @@ export function TaskSheet({
                             </FormField>
                         </div>
                     )}
-                    <div className="grid grid-cols-2 gap-2">
-                        <FormField
+                    {/* Type (owner's task of November 25): 🛒 shop / parts, 🏠 personal, 📞 call. */}
+                    <FormField
+                        id="task-kind"
+                        label={t('tasks.types.label')}
+                        error={form.errors.kind}
+                    >
+                        <div
                             id="task-kind"
-                            label={t('tasks.fields.kind')}
-                            error={form.errors.kind}
+                            role="radiogroup"
+                            aria-label={t('tasks.types.label')}
+                            className="grid grid-cols-3 gap-2"
+                            data-test="task-kind"
                         >
-                            <NativeSelect
-                                id="task-kind"
-                                value={form.data.kind}
-                                disabled={readOnly}
-                                onChange={(e) =>
-                                    form.setData('kind', e.target.value)
-                                }
-                                data-test="task-kind"
-                            >
-                                <option value="">
-                                    {t('tasks.kinds.none')}
-                                </option>
-                                {TASK_KINDS.map((kind) => (
-                                    <option key={kind} value={kind}>
-                                        {t(`tasks.kinds.${kind}`)}
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                        </FormField>
+                            {TASK_TYPE_CHOICES.map((kind) => (
+                                <button
+                                    key={kind}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={form.data.kind === kind}
+                                    disabled={readOnly}
+                                    onClick={() => form.setData('kind', kind)}
+                                    data-test={`task-kind-${kind}`}
+                                    className={cn(
+                                        'da-press flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-sm font-medium',
+                                        form.data.kind === kind &&
+                                            'border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-500/20 dark:text-amber-100',
+                                    )}
+                                >
+                                    <span aria-hidden="true">
+                                        {taskIcon(kind)}
+                                    </span>
+                                    {t(`tasks.types.${kind}`)}
+                                </button>
+                            ))}
+                        </div>
+                    </FormField>
+                    <div className="grid grid-cols-2 gap-2">
                         <FormField
                             id="task-repeat"
                             label={t('tasks.fields.repeat')}

@@ -164,7 +164,9 @@ test('only the Owner can run or see reviews', function () {
 });
 
 test('the review never runs on a schedule', function () {
-    $events = collect(app(Schedule::class)->events())->map(fn ($e) => (string) ($e->command ?? $e->description ?? ''))->implode("\n");
+    // The customers' Google review reminder (reviews:send-reminders) is another thing: the app review is never scheduled.
+    $events = collect(app(Schedule::class)->events())->map(fn ($e) => (string) ($e->command ?? $e->description ?? ''))
+        ->reject(fn (string $command) => str_contains($command, 'reviews:send-reminders'))->implode("\n");
 
     expect($events)->not->toContain('review')->not->toContain('Review')
         ->and($events)->toContain('usage:prune');

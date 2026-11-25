@@ -289,7 +289,7 @@ class Messenger
      * An email to an address typed for this customer (receipt, review request): kept on the customer's record. A
      * review request carries the Google review block ($reviewUrl).
      */
-    public function emailToAddress(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $email, string $body, User $user, ?string $subject = null, ?string $reviewUrl = null): Message
+    public function emailToAddress(MessageKind $kind, Customer $customer, ?ServiceJob $job, string $email, string $body, ?User $user, ?string $subject = null, ?string $reviewUrl = null): Message
     {
         $brand = $job?->brand?->name ?? currentCompany()->name;
         $message = Message::query()->create([
@@ -302,7 +302,7 @@ class Messenger
             'body' => $body,
             'status' => 'sent',
             'sent_at' => now(),
-            'user_id' => $user->id,
+            'user_id' => $user?->id,
         ]);
 
         Mail::to($email)->queue(new CustomerMessageMail($message->id, currentCompany()->id,

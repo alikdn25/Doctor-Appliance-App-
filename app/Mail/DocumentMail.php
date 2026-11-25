@@ -11,6 +11,7 @@ use App\Support\Billing\PublicDocument;
 use App\Support\Mail\MailSender;
 use App\Support\Reviews\ReviewImage;
 use App\Support\Reviews\ReviewLink;
+use App\Support\Reviews\ReviewTracking;
 use App\Support\Tenancy\CurrentCompany;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -114,7 +115,9 @@ class DocumentMail extends Mailable implements ShouldQueue
             return null;
         }
 
-        $url = ReviewLink::for($document->brand);
+        $profile = ReviewLink::profileFor($document->brand);
+        // Through our address, so a click is seen on the job (no review reminder after it).
+        $url = $profile === null ? null : ReviewTracking::link($document->job()->first(), $profile);
 
         return $url === null ? null : ['url' => $url, 'image' => ReviewImage::url($this->company())];
     }

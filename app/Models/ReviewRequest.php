@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $send_after
  * @property Carbon|null $sent_at
  * @property int|null $message_id
+ * @property Carbon|null $reminder_sent_at The one reminder (24 hours after the job was paid, no click on a review link)
  * @property-read ServiceJob $job
  * @property-read GoogleProfile|null $profile
  */
@@ -42,7 +43,7 @@ class ReviewRequest extends Model
      */
     protected function casts(): array
     {
-        return ['send_after' => 'datetime', 'sent_at' => 'datetime'];
+        return ['send_after' => 'datetime', 'sent_at' => 'datetime', 'reminder_sent_at' => 'datetime'];
     }
 
     /**

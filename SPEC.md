@@ -999,6 +999,53 @@ set up is built, stays off and says what is missing.
   without sending. Nothing is saved or sent before one of them is pressed. A text that cannot go (no phone, no SMS
   number) is reported in the message after saving.
 
+### 7.25 Awaiting payment, invoice opens, the review reminder, one Today feed (owner's task of November 25)
+
+#### 7.25.1 Job buttons
+- At the bottom of the Job tab, after My expenses: one block of five buttons of one size and style (about 44 px), each
+  with its icon — New estimate | New invoice, Take payment | Close by voice, Hand to technician. Nothing else on the
+  job page offers them. The Job tab ends with room for the round "+", which covers no button and no Total.
+
+#### 7.25.2 Status "Awaiting payment"
+- When an invoice is sent (email, or text from Close by voice) and money is owed on it, the job moves to **Awaiting
+  payment** by itself; a visit still on the way or under way is finished. A job in the parts flow (Need to order parts,
+  Waiting for parts, Parts ready) keeps its status. Sending an estimate changes nothing.
+- An awaiting-payment job is not on Today (My Jobs) or the calendar.
+- When every invoice of the job is paid in full (balance 0; online through Square, the reader, cash, e-transfer), the
+  job becomes **Paid** by itself, with no manual step. While one sent invoice is still owed, it stays Awaiting payment.
+  A voided invoice no longer counts.
+
+#### 7.25.3 Awaiting payment in the top strip
+- An orange chip "Awaiting payment N" beside the other counters, shown even at 0, for people who see invoices.
+- Its list: the sent invoices of those jobs, oldest sent first; each row: customer, invoice number, amount owed, days
+  since it was sent ("5 days") and Sent / Opened {date, time} / Paid. A tap opens the job. A paid job leaves the list
+  and the counter by itself.
+
+#### 7.25.4 Invoice opened
+- The invoice link given to the customer is /i/{token}: it records the first and the last time it was followed, then
+  opens the invoice page with Pay online. No open pixels; only a click counts; people signed in to the app are not
+  counted. "Opened {date, time}" shows on the invoice in the job and in the Awaiting payment list. Paid / Unpaid come
+  from payments in the app and Square webhooks.
+
+#### 7.25.5 Review reminder
+- Only for jobs where a review was requested by hand (the review request, or "Request review" on the Paid screen).
+- Every review link in the invoice, receipt and review emails goes through /r/{token}/{location}; the first click is
+  kept on the job.
+- 24 hours after the job was paid in full (and after the request), one separate email with the same text, picture and
+  location goes to the customer, only if no review link of that job was clicked in any email. Once; email only; no
+  other reminders. The wait is `REVIEW_REMINDER_DELAY_MINUTES` (1440) for tests.
+- The job shows Review requested / Review link clicked / Reminder sent.
+
+#### 7.25.6 Today: one feed of jobs and to-dos
+- No two columns and no Jobs / To Do toggles. One feed in time order with All / Jobs / To Do above it; All every time
+  the screen opens.
+- A to-do card: light yellow with a yellow stripe (job cards have a blue one), "TO DO" on top, a round tick (done
+  without opening; done ones are crossed out and go to the end of the day), the type icon (🛒 shop / parts, 🏠
+  personal, 📞 call; picked when it is made, 🏠 by default), the title, the time or "Anytime", the address with
+  Navigate. No customer, phone or amount.
+- To-dos without a time are a block at the very top of the day. An undone to-do moves to the next day at midnight with a
+  red "Carried over". A tap opens the to-do's own page with every detail (Done, Edit, Delete).
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).

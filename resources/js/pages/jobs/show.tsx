@@ -23,6 +23,7 @@ import {
     Phone,
     Play,
     Plus,
+    Star,
     Receipt,
     Send,
     ShieldCheck,
@@ -194,6 +195,12 @@ type Job = {
     assignees: { id: number; name: string }[];
     estimates: DocumentRow[];
     invoices: DocumentRow[];
+    /** Google review: requested by hand, link clicked, the one reminder sent. */
+    review: {
+        requested: boolean;
+        clicked_at: string | null;
+        reminder_sent_at: string | null;
+    } | null;
     minutes_on_job: number;
     team_notes: TeamNote[];
     history: {
@@ -493,7 +500,13 @@ export default function JobShow({
     const canVoiceClose =
         can.work &&
         job.allows_visit_work &&
-        !['completed', 'invoiced', 'paid', 'cancelled'].includes(job.status);
+        ![
+            'completed',
+            'invoiced',
+            'awaiting_payment',
+            'paid',
+            'cancelled',
+        ].includes(job.status);
     const textFromPhone =
         messaging.mode === 'technician_phone' &&
         messaging.phone &&
@@ -748,17 +761,7 @@ export default function JobShow({
             ];
         }
 
-        if (job.status === 'paid' && can.close && !job.outcome) {
-            return [
-                {
-                    key: 'close',
-                    label: t('jobs.actions.complete_job'),
-                    icon: <Flag />,
-                    onClick: () => setCloseOpen(true),
-                },
-            ];
-        }
-
+        // A paid job is closed by itself (owner's task of November 25); "⋯ → Close job" can still note an outcome.
         return [];
     })();
 
@@ -821,32 +824,45 @@ export default function JobShow({
     })();
 
     const documents = (
-        <Section
-            id="documents"
-            title={t('billing.section')}
-            action={
-                can.work && (
-                    <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" asChild>
-                            <Link href={createEstimate(job.id)}>
-                                <Plus /> {t('billing.new_estimate')}
-                            </Link>
-                        </Button>
-                        <Button variant="ghost" size="sm" asChild>
-                            <Link href={createInvoice(job.id)}>
-                                <Plus /> {t('billing.new_invoice')}
-                            </Link>
-                        </Button>
-                    </div>
-                )
-            }
-        >
+        <Section id="documents" title={t('billing.section')}>
             {job.estimates.length + job.invoices.length === 0 ? (
                 <p className="da-card p-4 text-sm text-muted-foreground">
                     {t('billing.empty')}
                 </p>
             ) : (
                 <DocumentList documents={[...job.invoices, ...job.estimates]} />
+            )}
+            {job.review && (
+                <p
+                    className="flex flex-wrap items-center gap-2 text-xs font-semibold"
+                    data-test="job-review-state"
+                >
+                    <Star
+                        className="size-4 text-amber-500"
+                        aria-hidden="true"
+                    />
+                    {job.review.requested && (
+                        <span className="rounded-full bg-muted px-2 py-0.5">
+                            {t('reviews.state.requested')}
+                        </span>
+                    )}
+                    {job.review.clicked_at && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">
+                            {t('reviews.state.clicked', {
+                                time: time.dateTime(job.review.clicked_at),
+                            })}
+                        </span>
+                    )}
+                    {job.review.reminder_sent_at && (
+                        <span className="rounded-full bg-sky-100 px-2 py-0.5 text-sky-800">
+                            {t('reviews.state.reminder_sent', {
+                                time: time.dateTime(
+                                    job.review.reminder_sent_at,
+                                ),
+                            })}
+                        </span>
+                    )}
+                </p>
             )}
             {/* Several invoices with money owed: Mark as paid for each (the bar takes the first). */}
             {payable.length > 1 &&
@@ -869,6 +885,67 @@ export default function JobShow({
             )}
             {costs && <JobCostsSection jobId={job.id} costs={costs} />}
         </Section>
+    );
+
+    // The job's buttons, at the bottom of the Job tab (owner's task of November 25): one size and style, each with
+    // its icon — New estimate | New invoice, Take payment | Close by voice, Hand to technician.
+    const canTakePayment =
+        can.work &&
+        !!auth.can?.takeCharges &&
+        !['paid', 'cancelled', 'draft'].includes(job.status);
+    const jobButton = 'min-h-11 w-full px-2 text-sm';
+    const jobButtons = (
+        <div className="grid grid-cols-2 gap-2" data-test="job-buttons">
+            {can.work && (
+                <>
+                    <Button
+                        variant="outline"
+                        className={jobButton}
+                        asChild
+                        data-test="job-new-estimate"
+                    >
+                        <Link href={createEstimate(job.id)}>
+                            <FileText /> {t('billing.new_estimate')}
+                        </Link>
+                    </Button>
+                    <Button
+                        variant="outline"
+                        className={jobButton}
+                        asChild
+                        data-test="job-new-invoice"
+                    >
+                        <Link href={createInvoice(job.id)}>
+                            <Receipt /> {t('billing.new_invoice')}
+                        </Link>
+                    </Button>
+                </>
+            )}
+            {canTakePayment && (
+                <Button
+                    variant="outline"
+                    className={jobButton}
+                    asChild
+                    data-test="job-take-payment"
+                >
+                    <Link href={`/jobs/${job.id}/take-payment`}>
+                        <CreditCard /> {t('charges.take.title')}
+                    </Link>
+                </Button>
+            )}
+            {canVoiceClose && (
+                <Button
+                    variant="outline"
+                    className={jobButton}
+                    onClick={() => setVoiceCloseOpen(true)}
+                    data-test="voice-close"
+                >
+                    <Mic /> {t('automation.voice_close.open')}
+                </Button>
+            )}
+            <div className="col-span-2 space-y-2 empty:hidden">
+                <HandoffSheet jobId={job.id} buttonClassName={jobButton} />
+            </div>
+        </div>
     );
 
     return (
@@ -1316,39 +1393,13 @@ export default function JobShow({
                         </ul>
                     )}
                 </section>
-                <HandoffSheet jobId={job.id} />
-                {can.work &&
-                    auth.can?.takeCharges &&
-                    !['paid', 'cancelled', 'draft'].includes(job.status) && (
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            className="w-full"
-                            asChild
-                            data-test="job-take-payment"
-                        >
-                            <Link href={`/jobs/${job.id}/take-payment`}>
-                                <CreditCard /> {t('charges.take.title')}
-                            </Link>
-                        </Button>
-                    )}
-                {canVoiceClose && (
-                    <Button
-                        variant="outline"
-                        size="lg"
-                        className="w-full border-violet-300"
-                        onClick={() => setVoiceCloseOpen(true)}
-                        data-test="voice-close"
-                    >
-                        <Mic /> {t('automation.voice_close.open')}
-                    </Button>
-                )}
                 {(job.parts.length > 0 ||
                     (can.work &&
                         job.allows_visit_work &&
                         ![
                             'completed',
                             'invoiced',
+                            'awaiting_payment',
                             'paid',
                             'cancelled',
                             'booking_draft',
@@ -1359,9 +1410,12 @@ export default function JobShow({
                         suppliers={suppliers}
                         canAdd={
                             can.work &&
-                            !['invoiced', 'paid', 'cancelled'].includes(
-                                job.status,
-                            )
+                            ![
+                                'invoiced',
+                                'awaiting_payment',
+                                'paid',
+                                'cancelled',
+                            ].includes(job.status)
                         }
                         canTextArrived={
                             can.update &&
@@ -1396,7 +1450,8 @@ export default function JobShow({
                                 label: t('jobs.page_tabs.job'),
                                 content: (
                                     <div
-                                        className="flex flex-col gap-5"
+                                        // Room under the last buttons for the round "+" (it covers nothing).
+                                        className="flex flex-col gap-5 pb-44 md:pb-24"
                                         data-test="job-tab-job"
                                     >
                                         {job.outcome && job.outcome_label && (
@@ -1616,6 +1671,7 @@ export default function JobShow({
                                                 canSign={false}
                                             />
                                         )}
+                                        {jobButtons}
                                     </div>
                                 ),
                             },

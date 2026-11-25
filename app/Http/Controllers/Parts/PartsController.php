@@ -54,7 +54,7 @@ class PartsController extends Controller
             'suppliers' => Supplier::options(),
             // "+": a part for one of the open jobs.
             'jobs' => ServiceJob::query()->visibleTo($user)->with('customer')
-                ->whereNotIn('status', [JobStatus::Invoiced->value, JobStatus::Paid->value, JobStatus::Cancelled->value, JobStatus::Draft->value])
+                ->whereNotIn('status', [JobStatus::Invoiced->value, JobStatus::AwaitingPayment->value, JobStatus::Paid->value, JobStatus::Cancelled->value, JobStatus::Draft->value])
                 ->latest('id')->limit(80)->get()
                 ->map(fn (ServiceJob $job) => ['value' => (string) $job->id, 'label' => trim('#'.$job->number.' '.($job->customer?->display_name ?? ''))])
                 ->values(),

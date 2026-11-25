@@ -99,7 +99,7 @@ test('the invoice is emailed with the PDF and a link to its online page', functi
         $mail->assertFrom(config('mail.from.address'), 'Lone Star Billing');
         $mail->assertHasReplyTo('office@lonestar.example.com');
         $mail->assertSeeInHtml('Hi Maria, here is your invoice.');
-        $mail->assertSeeInHtml(route('documents.public', $invoice->public_token));
+        $mail->assertSeeInHtml(route('invoices.open', $invoice->public_token));
 
         return $mail->hasTo('maria@example.com') && count($mail->attachments()) === 1;
     });
@@ -112,7 +112,7 @@ test('the queued email renders without a tenant', function () {
     $html = $mail->render();
     $pdf = $mail->attachments()[0];
 
-    expect($html)->toContain('Hello')->toContain('/d/i')
+    expect($html)->toContain('Hello')->toContain('/i/i')
         ->and($pdf->as)->toBe("{$this->invoice->number}.pdf");
 });
 
@@ -213,7 +213,7 @@ test('"Copy link" makes the customer link on first use, and only for people who 
     app(CurrentCompany::class)->forget();
 
     $url = $this->postJson(route('invoices.link', $this->invoice))->assertOk()->json('url');
-    expect($url)->toBe(route('documents.public', $this->invoice->fresh()->public_token))
+    expect($url)->toBe(route('invoices.open', $this->invoice->fresh()->public_token))
         ->and($this->postJson(route('invoices.link', $this->invoice))->json('url'))->toBe($url);
 
     app(CurrentCompany::class)->forget();

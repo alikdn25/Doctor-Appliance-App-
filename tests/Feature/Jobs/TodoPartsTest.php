@@ -18,9 +18,11 @@ use App\Models\Supplier;
 use App\Models\Task;
 use App\Services\AI\TaskParser;
 use App\Support\Jobs\MorningSms;
+use App\Support\Tenancy\CurrentCompany;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Fakes\FakeAiTransport;
 
@@ -71,27 +73,55 @@ function todoJob(): ServiceJob
     return test()->job->fresh();
 }
 
-// ——— Today: Jobs / To Do ———
+// ——— Today: one feed of jobs and to-dos ———
 
-test('Jobs / To Do: the choice is kept for the person and both cannot be off', function () {
-    $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page->where('panes', null)->where('canTasks', true));
+test('Today has one feed: the day\'s jobs and to-dos together, nothing kept about a column choice', function () {
+    $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page->missing('panes')->where('canTasks', true));
+    expect(Route::has('jobs.panes'))->toBeFalse();
+});
 
-    $this->put(route('jobs.panes'), ['panes' => 'todo'])->assertRedirect();
-    $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page->where('panes', 'todo'));
+test('the feed gets the day\'s jobs and to-dos; a tap on a to-do opens its own page', function () {
+    $task = inCompany($this->company, fn () => Task::create([
+        'user_id' => $this->owner->id, 'title' => 'Buy belt at Marcone', 'task_date' => '2026-10-14', 'all_day' => false,
+        'start_time' => '11:00', 'kind' => 'parts', 'address' => '4300 Kingsway, Burnaby', 'note' => 'Ask for the 4392065',
+    ]));
+    $anytime = inCompany($this->company, fn () => Task::create(['user_id' => $this->owner->id, 'title' => 'Call the bank', 'task_date' => '2026-10-14', 'all_day' => true, 'kind' => 'call']));
 
-    $this->put(route('jobs.panes'), ['panes' => 'both'])->assertRedirect();
-    expect($this->owner->membershipFor($this->company)->today_panes)->toBe('both');
+    $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page
+        ->has('visits', 1)
+        ->where('tasks', fn ($tasks) => collect($tasks)->pluck('id')->sort()->values()->all() === collect([$task->id, $anytime->id])->sort()->values()->all()));
 
-    // Neither Jobs nor To Do is not a choice.
-    foreach (['none', '', 'off'] as $bad) {
-        $this->put(route('jobs.panes'), ['panes' => $bad])->assertSessionHasErrors('panes');
-    }
-    expect($this->owner->membershipFor($this->company)->today_panes)->toBe('both');
+    $this->get(route('tasks.show', $task))->assertInertia(fn (Assert $page) => $page
+        ->component('tasks/show')
+        ->where('task.title', 'Buy belt at Marcone')
+        ->where('task.kind', 'parts')
+        ->where('task.start_time', '11:00')
+        ->where('task.address', '4300 Kingsway, Burnaby')
+        ->where('task.note', 'Ask for the 4392065')
+        ->where('task.can_edit', true)
+        ->where('task.can_delete', true));
+});
 
-    // Per person: the technician's choice is their own.
-    $this->actingAs($this->tech)->put(route('jobs.panes'), ['panes' => 'jobs'])->assertRedirect();
-    expect($this->tech->membershipFor($this->company)->today_panes)->toBe('jobs')
-        ->and($this->owner->membershipFor($this->company)->today_panes)->toBe('both');
+test('an undone to-do carried over to the next day says so; its page shows the day it was planned', function () {
+    $task = inCompany($this->company, fn () => Task::create(['user_id' => $this->owner->id, 'title' => 'Return core', 'task_date' => '2026-10-14', 'all_day' => true]));
+
+    // Just after midnight the undone to-do moves to the new day.
+    $this->travelTo(CarbonImmutable::parse('2026-10-15 00:05', 'America/Vancouver'));
+    $this->artisan('tasks:roll')->assertSuccessful();
+
+    expect($task->fresh()->task_date->format('Y-m-d'))->toBe('2026-10-15');
+    $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page
+        ->where('tasks.0.id', $task->id)->where('tasks.0.carried_days', 1));
+    $this->get(route('tasks.show', $task))->assertInertia(fn (Assert $page) => $page->where('task.planned_date', '2026-10-14'));
+});
+
+test('a to-do page is only for those who see the to-do', function () {
+    $home = inCompany($this->company, fn () => Task::forceCreate(['user_id' => $this->owner->id, 'created_by' => $this->owner->id, 'title' => 'Dentist', 'task_date' => '2026-10-14', 'all_day' => true, 'kind' => 'home']));
+
+    $this->actingAs($this->tech)->get(route('tasks.show', $home))->assertForbidden();
+
+    app(CurrentCompany::class)->forget();
+    $this->actingAs(memberOf(Company::factory()->create()))->get(route('tasks.show', $home))->assertNotFound();
 });
 
 // ——— To Do ———

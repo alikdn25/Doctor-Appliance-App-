@@ -210,6 +210,10 @@
     --status-invoiced-from: #ebfdfa;
     --status-invoiced-to: #9fffed;
     --status-invoiced-text: #115e59;
+    /* Awaiting payment: orange, as its chip in the top strip. */
+    --status-awaiting-payment-from: #fff7ed;
+    --status-awaiting-payment-to: #fdba74;
+    --status-awaiting-payment-text: #9a3412;
     --status-paid-from: #dcfce7;
     --status-paid-to: #86efac;
     --status-paid-text: #14532d;
@@ -506,6 +510,20 @@
     .da-task {
         border-left-color: var(--task-to);
         background: linear-gradient(90deg, var(--task-from), transparent 70%);
+    }
+
+    /* A to-do in the Today feed: light yellow with a yellow stripe; job cards there have a blue one. */
+    .da-todo-card {
+        border-left-color: #eab308;
+        background: #fefce8;
+    }
+
+    .dark .da-todo-card {
+        background: rgb(113 63 18 / 0.25);
+    }
+
+    .da-job-stripe {
+        border-left: 4px solid #3b82f6;
     }
 
     /* The round "+" on every screen: the primary volume plus a wider glow, so it reads as the main action. */

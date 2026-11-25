@@ -46,6 +46,8 @@ class BillingPresenter
             'due_in_days' => $invoice ? self::dueInDays($document) : null,
             'job_id' => $document->service_job_id,
             'customer' => $document->relationLoaded('customer') ? $document->customer?->display_name : null,
+            // The customer first followed the invoice link (/i/{token}).
+            'opened_at' => $invoice ? JobPresenter::iso($document->first_opened_at) : null,
         ];
     }
 

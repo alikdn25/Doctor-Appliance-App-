@@ -1,3 +1,36 @@
+# November 25 — Owner's task: job buttons, Awaiting payment, invoice opens, review reminder, one Today feed (done)
+
+1. **Job buttons** (SPEC §7.25.1): the "+ New estimate / + New invoice" links and the Hand to technician, Take payment
+   and Close by voice buttons above the tabs are gone; one block of five buttons of one size (`min-h-11`) with icons
+   at the bottom of the Job tab; the tab ends with `pb-44` so the round "+" covers nothing.
+2. **Awaiting payment** (`JobStatus::AwaitingPayment`, SPEC §7.25.2): `SyncJobBillingStatus` moves a job with a sent,
+   owed invoice there (finishing an open visit), and to Paid when every invoice is settled; called by `SendDocument`
+   and Close by voice's text. Parts-flow jobs keep their status. Off My Jobs (day), the calendar and the morning
+   summary. The "Complete job" bar of a paid job is gone (it closes by itself).
+3. **Orange chip and list** (`JobBacklog::summary` → `awaiting_payment`, `AwaitingPaymentController`,
+   `invoices/awaiting-payment`).
+4. **Invoice opened**: `PublicDocument::url` gives invoices `/i/{token}` (`PublicDocumentController::open`):
+   `first_opened_at` / `last_opened_at` for guests only, then the invoice page. Shown in the job's invoice row and the list.
+5. **Review reminder**: review links in invoice, receipt and review emails go through `/r/{token}/{location}`
+   (`ReviewTracking`, `ReviewLinkController`, `service_jobs.review_clicked_at`). `reviews:send-reminders` (every 5
+   minutes) sends one email 24 h after full payment where a review was requested by hand and nothing was clicked
+   (`review_requests.reminder_sent_at`; wait `REVIEW_REMINDER_DELAY_MINUTES`). Job page: Review requested / clicked /
+   Reminder sent.
+6. **Today**: one feed of jobs and to-dos (`TodoCard`), All / Jobs / To Do (All on every open), to-dos without a time
+   on top, done at the end, "Carried over" in red (carry-over by `tasks:roll` as before). New to-do types 🛒 / 🏠 / 📞
+   with 🏠 by default. A to-do opens its page `tasks/{task}` (`TaskController::show`). The saved Jobs / To Do choice
+   (`jobs.panes`) is removed (the `today_panes` column stays, unused).
+7. Migration `2026_11_25_000100_add_awaiting_payment_and_link_tracking` (new nullable columns; finished jobs with a
+   sent, owed invoice move to awaiting_payment). New `.env` key `REVIEW_REMINDER_DELAY_MINUTES` (default 1440).
+
+- Tests: `AwaitingPaymentTest` (send → Awaiting payment, off Today and the calendar, counter and list; estimate changes
+  nothing; /i/ opens; paid in full by cash / e-transfer / card → Paid; two invoices; visit finished; parts flow;
+  void; tenant and technician), `SquareTest` (online payment closes the job), `ReviewReminderTest` (reminder once after
+  24 h, a click in any email stops it, nothing without a request or before payment, short wait, foreign links),
+  `TodoPartsTest` (feed, to-do page, carried over, access), browser `zz-job-buttons`, `zz-todo-parts`,
+  `zz-plus-draft-tasks`, updated delivery / review / receipt tests.
+- Next: the owner checks the flow on a real job (send → Opened → paid → Paid; review reminder a day later).
+
 # November 24 — Owner's task (part 2): My expenses of a job, Close by voice with Confirm & send (done)
 
 Items 1, 2, 5 and 6 of the task (deleting jobs, no Cash on hand, statistics fields, Statistics) were already in

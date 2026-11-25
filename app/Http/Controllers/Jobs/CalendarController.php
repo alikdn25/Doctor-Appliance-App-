@@ -46,7 +46,8 @@ class CalendarController extends Controller
             // A visit belongs to the day it starts on.
             ->where('scheduled_start', '>=', $from->utc())
             ->where('scheduled_start', '<', $to->utc())
-            ->whereHas('job', fn ($q) => $q->visibleTo($user))
+            // Awaiting payment is off the schedule (owner's task of November 25).
+            ->whereHas('job', fn ($q) => $q->visibleTo($user)->where('status', '!=', JobStatus::AwaitingPayment->value))
             ->with(['assignees', 'job.customer', 'job.property', 'job.appliances'])
             ->orderBy('scheduled_start')
             ->orderBy('id')
