@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\EmailLabel;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\RecordsChanges;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,7 +19,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class CustomerEmail extends Model
 {
-    use BelongsToCompany;
+    /** Change log type (owner's task of November 25: every correction is logged). */
+    public const AUDIT_TYPE = 'email';
+
+    use BelongsToCompany, RecordsChanges;
 
     protected $fillable = ['label', 'email', 'is_primary'];
 

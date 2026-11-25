@@ -927,6 +927,7 @@ export default function AssistantIndex({
                                 {t('assistant.placeholder')}
                             </Label>
                             <Textarea
+                                voice={false}
                                 ref={questionField}
                                 id="assistant-question"
                                 value={question}

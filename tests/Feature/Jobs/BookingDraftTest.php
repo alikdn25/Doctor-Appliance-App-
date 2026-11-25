@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\JobStatus;
+use App\Mail\BookingConfirmationMail;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
@@ -78,16 +79,17 @@ test('Save as draft keeps the booking as a draft and sends nothing', function ()
     Mail::assertNothingQueued();
 });
 
-test('with SMS off Finish booking sends nothing', function () {
+test('with SMS off Finish booking sends no text, only the email', function () {
     $this->company->update(['sms_mode' => 'off']);
 
     ($this->book)()->assertSessionHasNoErrors();
 
     expect(($this->latest)()->status)->toBe(JobStatus::Scheduled)
-        ->and(inCompany($this->company, fn () => Message::query()->count()))->toBe(0)
-        ->and(session('inertia.flash_data.booking_confirmation.sent.channel'))->toBeNull();
+        ->and(inCompany($this->company, fn () => Message::query()->pluck('channel')->all()))->toBe([Message::EMAIL])
+        ->and(session('inertia.flash_data.booking_confirmation.sent.sms'))->toBe('failed')
+        ->and(session('inertia.flash_data.booking_confirmation.sent.email'))->toBe('sent');
     Http::assertNothingSent();
-    Mail::assertNothingQueued();
+    Mail::assertQueued(BookingConfirmationMail::class);
 });
 
 test('drafts are counted in the unfinished-jobs bar and shown as drafts everywhere', function () {
@@ -141,7 +143,7 @@ test('a moved booking texts the client only when "Notify client" is ticked; drag
     $job = ($this->latest)();
     $visit = inCompany($this->company, fn () => JobVisit::query()->where('service_job_id', $job->id)->sole());
     $payload = ['date' => '2026-10-16', 'start_time' => '15:00', 'end_time' => '17:00', 'assignee_ids' => [$this->owner->id], 'back' => true];
-    $sent = fn () => inCompany($this->company, fn () => Message::query()->where('kind', 'booking_confirmation')->count());
+    $sent = fn () => inCompany($this->company, fn () => Message::query()->where('kind', 'booking_confirmation')->where('channel', Message::SMS)->count());
     expect($sent())->toBe(1);
 
     // No box ticked: the new time is saved, nothing goes and nothing asks.
@@ -152,7 +154,7 @@ test('a moved booking texts the client only when "Notify client" is ticked; drag
     // Ticked: the updated confirmation goes now.
     $this->put(route('visits.update', $visit), [...$payload, 'start_time' => '09:00', 'end_time' => '11:00', 'notify' => true])->assertSessionHasNoErrors();
     expect($sent())->toBe(2)
-        ->and(inCompany($this->company, fn () => Message::query()->latest('id')->first()->body))->toContain('9:00 a.m. - 11:00 a.m.');
+        ->and(inCompany($this->company, fn () => Message::query()->where('channel', Message::SMS)->latest('id')->first()->body))->toContain('9:00 a.m. - 11:00 a.m.');
 
     $this->put(route('visits.move', $visit), ['date' => '2026-10-17', 'start_time' => '09:00'])->assertSessionHasNoErrors();
     expect($sent())->toBe(2);
@@ -174,7 +176,7 @@ test('a draft gets no reminder the day before; once finished it does', function 
 
     $this->post(route('jobs.finish-booking', $job));
     $this->artisan('messages:send-visit-reminders', ['--force' => true])->assertSuccessful();
-    expect(inCompany($this->company, fn () => Message::query()->pluck('kind')->map->value->sort()->values()->all()))
+    expect(inCompany($this->company, fn () => Message::query()->where('channel', Message::SMS)->pluck('kind')->map->value->sort()->values()->all()))
         ->toBe(['booking_confirmation', 'visit_reminder']);
 });
 

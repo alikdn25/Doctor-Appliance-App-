@@ -81,7 +81,7 @@ class DocumentDeliveryController extends Controller
         );
 
         if ($message->status !== 'blocked') {
-            $document->forceFill(['sent_at' => now(), 'sent_to' => $message->to,
+            $document->forceFill(['sent_at' => now(), 'edited_after_send_at' => null, 'sent_to' => $message->to,
                 ...($document instanceof Estimate ? ['followup_processed_at' => null] : []),
             ])->saveQuietly();
         }
@@ -95,7 +95,8 @@ class DocumentDeliveryController extends Controller
 
         return response(DocumentPdf::render($document), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="'.DocumentPdf::filename($document).'"',
+            // "Download PDF" (?download=1) saves the file; "Preview PDF" opens it.
+            'Content-Disposition' => (request()->boolean('download') ? 'attachment' : 'inline').'; filename="'.DocumentPdf::filename($document).'"',
             'Cache-Control' => 'private, no-store',
         ]);
     }

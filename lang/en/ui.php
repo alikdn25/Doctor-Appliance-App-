@@ -29,4 +29,15 @@ return [
         'denied' => 'The microphone is blocked. In Chrome: tap the icon left of the address → Permissions → Microphone → Allow. In the installed app: hold the app icon → App info → Permissions → Microphone → Allow. Then tap the microphone again.',
         'failed' => 'Dictation stopped: speech recognition is not available right now. Check the connection and try again.',
     ],
+    'translate' => [
+        'button' => 'Translate to English',
+        'working' => 'Translating…',
+        'undo' => 'Undo',
+        'failed' => 'Could not translate. Try again.',
+    ],
+    'ai_write' => [
+        'button' => 'Write with AI',
+        'working' => 'Writing…',
+        'failed' => 'Could not write the report. Try again.',
+    ],
 ];

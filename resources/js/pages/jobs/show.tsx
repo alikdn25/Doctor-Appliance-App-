@@ -8,6 +8,7 @@ import {
     Car,
     Check,
     CheckCircle2,
+    ClipboardList,
     FileText,
     Flag,
     KeyRound,
@@ -49,7 +50,10 @@ import { CustomerNotes } from '@/components/customers/customer-notes';
 import { mapsUrl, telUrl } from '@/components/customers/types';
 import type { PropertyData } from '@/components/customers/types';
 import InputError from '@/components/input-error';
-import { ConfirmationSendSheet } from '@/components/jobs/booking-confirmation-sheet';
+import {
+    ConfirmationLine,
+    ConfirmationSendSheet,
+} from '@/components/jobs/booking-confirmation-sheet';
 import { JobNotesTab } from '@/components/jobs/job-notes-tab';
 import type { TeamNote } from '@/components/jobs/job-notes-tab';
 import { FinishDialog } from '@/components/jobs/finish-dialog';
@@ -58,6 +62,7 @@ import type {
     ClosureReasons,
 } from '@/components/jobs/finish-dialog';
 import { JobAddressSheet } from '@/components/jobs/job-address-sheet';
+import type { AddressEditable } from '@/components/jobs/job-address-sheet';
 import { JobPasteSheet } from '@/components/jobs/job-paste-sheet';
 import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import { PartCard } from '@/components/jobs/part-card';
@@ -159,6 +164,19 @@ type Job = {
     outcome_reason: string | null;
     outcome_note: string | null;
     closed_at: string | null;
+    reports: {
+        id: number;
+        title: string;
+        url: string;
+        sent_at: string | null;
+        sent_to: string | null;
+    }[];
+    confirmation: {
+        at: string | null;
+        sms: string | null;
+        email: string | null;
+        error: string | null;
+    } | null;
     closed_by: string | null;
     bring_items: BringItemData[];
     lead_source_label: string | null;
@@ -918,6 +936,16 @@ export default function JobShow({
                             <Receipt /> {t('billing.new_invoice')}
                         </Link>
                     </Button>
+                    <Button
+                        variant="outline"
+                        className={jobButton}
+                        asChild
+                        data-test="job-new-report"
+                    >
+                        <Link href={`/jobs/${job.id}/reports/create`}>
+                            <ClipboardList /> {t('service_reports.button')}
+                        </Link>
+                    </Button>
                 </>
             )}
             {canTakePayment && (
@@ -1105,9 +1133,24 @@ export default function JobShow({
                                 </span>
                             )}
                             {hasAddress ? (
-                                <p className="text-sm leading-relaxed text-muted-foreground">
-                                    {property.full_address}
-                                </p>
+                                can.work ? (
+                                    <button
+                                        type="button"
+                                        className="flex items-start gap-1.5 text-left text-sm leading-relaxed text-muted-foreground underline-offset-4 hover:underline"
+                                        onClick={() => setAddressOpen(true)}
+                                        data-test="job-address"
+                                    >
+                                        <span>{property.full_address}</span>
+                                        <Pencil
+                                            className="mt-1 size-3.5 shrink-0"
+                                            aria-label={t('jobs.address.edit')}
+                                        />
+                                    </button>
+                                ) : (
+                                    <p className="text-sm leading-relaxed text-muted-foreground">
+                                        {property.full_address}
+                                    </p>
+                                )
                             ) : (
                                 <NoAddressBadge className="mt-1" />
                             )}
@@ -1270,6 +1313,13 @@ export default function JobShow({
                             <Car /> {t('jobs.actions.on_my_way')}
                         </Button>
                     </div>
+                    {!isDraftJob(job.status) && (
+                        <ConfirmationLine
+                            confirmation={job.confirmation}
+                            canSend={can.work}
+                            onResend={() => setConfirmationOpen(true)}
+                        />
+                    )}
                     {can.work && missingData && (
                         <div
                             className="grid grid-cols-2 gap-2"
@@ -1711,7 +1761,52 @@ export default function JobShow({
                                 label: t('jobs.page_tabs.files'),
                                 count: job.photos.length,
                                 content: (
-                                    <div data-test="job-tab-files">
+                                    <div
+                                        className="space-y-4"
+                                        data-test="job-tab-files"
+                                    >
+                                        {job.reports.length > 0 && (
+                                            <section
+                                                className="space-y-2"
+                                                data-test="job-reports"
+                                            >
+                                                <h3 className="text-sm font-semibold">
+                                                    {t('service_reports.list')}
+                                                </h3>
+                                                <ul className="space-y-2">
+                                                    {job.reports.map((r) => (
+                                                        <li key={r.id}>
+                                                            <Link
+                                                                href={r.url}
+                                                                className="da-chip da-press flex min-h-12 items-center gap-3 rounded-2xl px-4 text-sm"
+                                                            >
+                                                                <ClipboardList className="size-4 shrink-0" />
+                                                                <span className="min-w-0 flex-1">
+                                                                    {r.title}
+                                                                </span>
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {r.sent_at
+                                                                        ? t(
+                                                                              'service_reports.sent_at',
+                                                                              {
+                                                                                  date: time.date(
+                                                                                      r.sent_at,
+                                                                                  ),
+                                                                                  to:
+                                                                                      r.sent_to ??
+                                                                                      '',
+                                                                              },
+                                                                          )
+                                                                        : t(
+                                                                              'service_reports.not_sent_yet',
+                                                                          )}
+                                                                </span>
+                                                            </Link>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </section>
+                                        )}
                                         <PhotoSection
                                             jobId={job.id}
                                             visitId={myVisitId}
@@ -2043,6 +2138,11 @@ export default function JobShow({
                     onOpenChange={setAddressOpen}
                     jobId={job.id}
                     current={hasAddress ? property.full_address : ''}
+                    editable={
+                        hasAddress
+                            ? (property as unknown as AddressEditable)
+                            : null
+                    }
                     others={otherAddresses}
                 />
             )}

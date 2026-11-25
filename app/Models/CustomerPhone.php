@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PhoneLabel;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\RecordsChanges;
 use App\Support\PhoneNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,7 +23,10 @@ use Illuminate\Support\Carbon;
  */
 class CustomerPhone extends Model
 {
-    use BelongsToCompany;
+    /** Change log type (owner's task of November 25: every correction is logged). */
+    public const AUDIT_TYPE = 'phone';
+
+    use BelongsToCompany, RecordsChanges;
 
     protected $fillable = ['label', 'contact_name', 'number', 'is_primary'];
 

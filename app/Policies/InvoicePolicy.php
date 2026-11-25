@@ -29,12 +29,13 @@ class InvoicePolicy
 
     public function update(User $user, Invoice $invoice): bool
     {
-        return $this->view($user, $invoice) && ! $invoice->isVoid();
+        // Sent, paid and void invoices can be corrected too (owner's task of November 25).
+        return $this->view($user, $invoice);
     }
 
     public function recordPayment(User $user, Invoice $invoice): bool
     {
-        return $this->update($user, $invoice) && $invoice->balance > 0;
+        return $this->view($user, $invoice) && ! $invoice->isVoid() && $invoice->balance > 0;
     }
 
     /**

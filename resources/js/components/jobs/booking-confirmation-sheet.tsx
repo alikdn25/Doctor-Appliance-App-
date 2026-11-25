@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { CheckCircle2, MessageSquare, TriangleAlert } from 'lucide-react';
+import { CheckCircle2, MessageSquare, Send, TriangleAlert } from 'lucide-react';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +10,7 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { Spinner } from '@/components/ui/spinner';
+import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { usePhone } from '@/lib/phone';
 import { smsUrl } from '@/lib/sms';
@@ -31,7 +32,28 @@ export type ConfirmationSent = ConfirmationPlan & {
     body: string;
     status: string | null;
     send_after: string | null;
+    /** sent / failed / none / off / phone */
+    sms?: string | null;
+    email?: string | null;
+    email_to?: string | null;
 };
+
+/** "SMS ✓, Email ✓" for what went. */
+export function sentChannels(
+    t: ReturnType<typeof useTrans>,
+    sent: { sms?: string | null; email?: string | null },
+): string[] {
+    const ok = t('booking_confirmation.status.ok');
+
+    return [
+        sent.sms === 'sent'
+            ? `${t('booking_confirmation.status.sms')} ${ok}`
+            : null,
+        sent.email === 'sent'
+            ? `${t('booking_confirmation.status.email')} ${ok}`
+            : null,
+    ].filter((v): v is string => v !== null);
+}
 
 type Booked = {
     job_id: number;
@@ -120,31 +142,42 @@ export function BookingConfirmationPrompt() {
     };
 
     const sent = booked?.sent ?? null;
+    const went = sent ? sentChannels(t, sent) : [];
     const failed =
-        sent !== null && (sent.channel === null || sent.status === 'blocked');
+        sent !== null &&
+        went.length === 0 &&
+        (sent.channel === null || sent.status === 'blocked');
     const line =
         booked === null
             ? ''
             : booked.draft || sent === null
               ? t('jobs.confirmation.draft_not_sent')
-              : failed
-                ? t('jobs.confirmation.wont_send', {
-                      reason: sent.reason ?? '',
-                  })
-                : sent.channel === 'email'
-                  ? t('jobs.confirmation.sent_email', { to: sent.to ?? '' })
-                  : sent.channel === 'phone'
-                    ? t('jobs.confirmation.will_phone', {
-                          to: phone(sent.to ?? ''),
-                      })
-                    : sent.send_after
-                      ? t('jobs.confirmation.queued_sms', {
+              : went.length > 0
+                ? t('booking_confirmation.status.sent', {
+                      channels: went.join(', '),
+                      time: t('booking_confirmation.status.now'),
+                  }) +
+                  (sent.send_after
+                      ? ` ${t('messages.sms_queued', { time: sent.send_after })}`
+                      : '')
+                : failed
+                  ? t('jobs.confirmation.wont_send', {
+                        reason: sent.reason ?? '',
+                    })
+                  : sent.channel === 'email'
+                    ? t('jobs.confirmation.sent_email', { to: sent.to ?? '' })
+                    : sent.channel === 'phone'
+                      ? t('jobs.confirmation.will_phone', {
                             to: phone(sent.to ?? ''),
-                            time: sent.send_after,
                         })
-                      : t('jobs.confirmation.sent_sms', {
-                            to: phone(sent.to ?? ''),
-                        });
+                      : sent.send_after
+                        ? t('jobs.confirmation.queued_sms', {
+                              to: phone(sent.to ?? ''),
+                              time: sent.send_after,
+                          })
+                        : t('jobs.confirmation.sent_sms', {
+                              to: phone(sent.to ?? ''),
+                          });
     const close = () => setBooked(null);
 
     return (
@@ -316,5 +349,79 @@ export function ConfirmationSendSheet({
                 )}
             </SheetContent>
         </Sheet>
+    );
+}
+
+/**
+ * On the job page (owner's task of November 25): "Confirmation sent: SMS ✓, Email ✓, Nov 25, 3:10 p.m." with
+ * "Resend confirmation"; a red line with the reason when it did not go.
+ */
+export function ConfirmationLine({
+    confirmation,
+    canSend,
+    onResend,
+}: {
+    confirmation: {
+        at: string | null;
+        sms: string | null;
+        email: string | null;
+        error: string | null;
+    } | null;
+    canSend: boolean;
+    onResend: () => void;
+}) {
+    const t = useTrans();
+    const time = useCompanyTime();
+    const went = confirmation ? sentChannels(t, confirmation) : [];
+    const failed =
+        confirmation !== null &&
+        confirmation.error !== null &&
+        confirmation.sms !== 'phone';
+
+    return (
+        <div
+            className="flex flex-wrap items-center justify-between gap-2"
+            data-test="confirmation-line"
+        >
+            <p
+                className={
+                    failed
+                        ? 'text-sm font-semibold text-red-600 dark:text-red-400'
+                        : 'text-sm text-muted-foreground'
+                }
+                data-test="confirmation-status"
+            >
+                {confirmation === null
+                    ? t('booking_confirmation.status.none')
+                    : went.length > 0
+                      ? t('booking_confirmation.status.sent', {
+                            channels: went.join(', '),
+                            time: confirmation.at
+                                ? time.dateTime(confirmation.at)
+                                : '',
+                        })
+                      : confirmation.sms === 'phone'
+                        ? t('booking_confirmation.status.phone')
+                        : ''}
+                {failed && (
+                    <span className="block">
+                        {t('booking_confirmation.status.failed', {
+                            reason: confirmation.error ?? '',
+                        })}
+                    </span>
+                )}
+            </p>
+            {canSend && (
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onResend}
+                    data-test="confirmation-resend"
+                >
+                    <Send /> {t('booking_confirmation.status.resend')}
+                </Button>
+            )}
+        </div>
     );
 }

@@ -1,5 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import {
+    CalendarCheck,
     BellRing,
     BookOpen,
     CloudUpload,
@@ -31,6 +32,7 @@ import { edit as autoMessages } from '@/routes/company/auto-messages';
 import { edit as googleProfiles } from '@/routes/company/google-profiles';
 import { edit as answers } from '@/routes/company/answers';
 import { edit as morning } from '@/routes/company/morning';
+import { edit as bookingConfirmation } from '@/routes/company/booking-confirmation';
 import { edit as serviceArea } from '@/routes/company/service-area';
 import { index as suppliers } from '@/routes/company/suppliers';
 import { unpaid } from '@/routes/invoices';
@@ -269,6 +271,13 @@ export function SettingsHub({
                   icon: <MessageCircleQuestion />,
                   title: t('answers.settings.title'),
                   subtitle: t('answers.settings.description'),
+              },
+              {
+                  key: 'booking-confirmation',
+                  href: bookingConfirmation(),
+                  icon: <CalendarCheck />,
+                  title: t('booking_confirmation.settings.title'),
+                  subtitle: t('booking_confirmation.settings.description'),
               },
               {
                   key: 'service-area',

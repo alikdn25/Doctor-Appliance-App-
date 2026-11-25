@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\UserRole;
-use App\Mail\CustomerMessageMail;
+use App\Mail\BookingConfirmationMail;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
@@ -52,7 +52,7 @@ test('the preview names the day, window and address and says how it goes', funct
         ->assertJsonPath('reason', null)
         ->assertJson(fn ($json) => $json->where('body', fn (string $body) => str_contains($body, 'Hi Paula')
             && str_contains($body, 'Doctor Appliance')
-            && str_contains($body, 'Thursday, Oct 15')
+            && str_contains($body, 'Thursday, October 15')
             && str_contains($body, '9:00 a.m. - 11:00 a.m.')
             && str_contains($body, '500 Rental Ave'))->etc());
 });
@@ -60,7 +60,7 @@ test('the preview names the day, window and address and says how it goes', funct
 test('Resend goes by SMS to the customer\'s phone, not the occupant\'s', function () {
     $this->post(route('jobs.booking-confirmation.send', $this->job))->assertSessionHasNoErrors();
 
-    $message = inCompany($this->company, fn () => Message::query()->sole());
+    $message = inCompany($this->company, fn () => Message::query()->where('channel', Message::SMS)->sole());
     expect($message->kind->value)->toBe('booking_confirmation')
         ->and($message->to)->toBe('+16045550142')
         ->and($message->channel)->toBe(Message::SMS);
@@ -78,7 +78,7 @@ test('when a text cannot go it is emailed instead', function () {
 
     $message = inCompany($this->company, fn () => Message::query()->sole());
     expect($message->channel)->toBe(Message::EMAIL)->and($message->to)->toBe('payer@example.com');
-    Mail::assertQueued(CustomerMessageMail::class, fn (CustomerMessageMail $mail) => $mail->hasTo('payer@example.com'));
+    Mail::assertQueued(BookingConfirmationMail::class, fn (BookingConfirmationMail $mail) => $mail->hasTo('payer@example.com'));
 });
 
 test('without a phone that can be texted or an email nothing goes and the reason is said', function () {
@@ -95,15 +95,15 @@ test('without a phone that can be texted or an email nothing goes and the reason
     Mail::assertNothingQueued();
 });
 
-test('with SMS off nothing is sent', function () {
+test('with SMS off no text goes; the email still does', function () {
     $this->company->update(['sms_mode' => 'off']);
 
     $this->getJson(route('jobs.booking-confirmation.show', $this->job))
-        ->assertJsonPath('channel', null)->assertJsonPath('reason', __('jobs.confirmation.sms_off'));
+        ->assertJsonPath('channel', 'email')->assertJsonPath('reason', __('jobs.confirmation.sms_off'));
     $this->post(route('jobs.booking-confirmation.send', $this->job));
 
-    expect(inCompany($this->company, fn () => Message::query()->count()))->toBe(0);
-    Mail::assertNothingQueued();
+    expect(inCompany($this->company, fn () => Message::query()->pluck('channel')->all()))->toBe([Message::EMAIL]);
+    Mail::assertQueued(BookingConfirmationMail::class);
     Http::assertNothingSent();
 });
 

@@ -6,7 +6,6 @@ use App\Messaging\BookingConfirmation;
 use App\Models\Brand;
 use App\Models\Company;
 use App\Models\Customer;
-use App\Models\Message;
 use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Services\AI\QuickBookingParser;
@@ -89,14 +88,14 @@ test('a booking without a time has no visit and counts under No time', function 
     ]));
 
     $job = inCompany($this->company, fn () => ServiceJob::sole());
-    $response->assertSessionHasNoErrors()->assertRedirect(route('jobs.show', $job));
+    // A booking without a time goes back to the day like any booking, and confirms itself (owner's task of Nov 25).
+    $response->assertSessionHasNoErrors()->assertRedirect();
+    expect($job->fresh()->confirmation_sent_at)->not->toBeNull();
     $summary = JobBacklog::summary($this->owner);
     expect($job->visits()->count())->toBe(0)
         ->and($summary['counts']['needs_schedule'])->toBe(1)
         ->and($summary['counts']['no_address'])->toBe(0)
         ->and(__('jobs.backlog.reasons.needs_schedule'))->toBe('No time');
-    // Nothing went to the customer: there is no visit to confirm.
-    expect(inCompany($this->company, fn () => Message::count()))->toBe(0);
 
     $this->get(route('jobs.index', ['tab' => 'open', 'reason' => 'needs_schedule']))
         ->assertInertia(fn (Assert $page) => $page->where('jobs.data.0.id', $job->id));
@@ -166,13 +165,13 @@ test('the confirmation leaves the address line out and nothing goes without a ph
         ->assertSessionHasNoErrors();
     $job = inCompany($this->company, fn () => ServiceJob::sole());
     $body = inCompany($this->company, fn () => app(BookingConfirmation::class)->body($job));
-    expect($body)->toContain('Arrival window')->not->toContain('Address:');
+    expect($body)->toContain('Hi Anna')->toContain('9:00 a.m.')->not->toContain(' at ')->not->toContain('null')->not->toContain('  ');
 
     $this->post(route('jobs.store'), anyBooking(bookingVisit()))->assertSessionHasNoErrors()
         ->assertSessionMissing('errors');
     $noPhone = inCompany($this->company, fn () => ServiceJob::query()->latest('id')->first());
     $plan = inCompany($this->company, fn () => app(BookingConfirmation::class)->plan($noPhone));
-    expect($plan)->toBe(['channel' => null, 'to' => null, 'reason' => null]);
+    expect($plan)->toBe(['channel' => null, 'to' => null, 'reason' => __('booking_confirmation.status.no_contact')]);
 });
 
 test('a job without an address is not on the map', function () {

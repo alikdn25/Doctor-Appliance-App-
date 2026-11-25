@@ -107,6 +107,7 @@ export function JobMessagingSection({
                     </DialogHeader>
                     <form onSubmit={submit} className="space-y-3">
                         <Textarea
+                            translatable
                             rows={5}
                             maxLength={1000}
                             aria-label={t('documents.message')}

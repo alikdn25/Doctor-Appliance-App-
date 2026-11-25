@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\InvoiceStatus;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\HasReportPhotos;
 use App\Models\Concerns\IsBillingDocument;
 use App\Models\Concerns\RecordsChanges;
 use Carbon\CarbonImmutable;
@@ -64,12 +65,14 @@ use Illuminate\Support\Carbon;
  */
 class Invoice extends Model
 {
-    use BelongsToCompany, IsBillingDocument, RecordsChanges;
+    use BelongsToCompany, HasReportPhotos, IsBillingDocument, RecordsChanges;
 
     /** @use HasFactory<InvoiceFactory> */
     use HasFactory, SoftDeletes;
 
     public const AUDIT_TYPE = 'invoice';
+
+    public const REPORT_TYPE = 'invoice';
 
     protected $fillable = ['issued_on', 'due_on', 'discount_type', 'discount_value', 'notes'];
 
@@ -84,6 +87,8 @@ class Invoice extends Model
     protected function casts(): array
     {
         return [
+            'edited_after_send_at' => 'datetime',
+            'has_report' => 'boolean',
             ...$this->documentCasts(),
             'status' => InvoiceStatus::class,
             'due_on' => 'date:Y-m-d',

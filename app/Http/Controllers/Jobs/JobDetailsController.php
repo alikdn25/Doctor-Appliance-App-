@@ -112,9 +112,6 @@ class JobDetailsController extends Controller
                     || ! $visit->scheduled_end->equalTo($time['scheduled_end']);
 
                 if ($moved) {
-                    if ($visit === null && $job->status->isLocked()) {
-                        throw ValidationException::withMessages(['date' => __('jobs.details.locked')]);
-                    }
                     $ids = $visit?->assignees()->pluck('users.id')->map(fn ($id) => (int) $id)->all()
                         ?? $job->assignees()->pluck('users.id')->map(fn ($id) => (int) $id)->all();
                     $saveVisit->handle($job, $visit, $time, $ids, $request->user());

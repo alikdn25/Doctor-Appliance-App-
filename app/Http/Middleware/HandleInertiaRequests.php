@@ -117,6 +117,8 @@ class HandleInertiaRequests extends Middleware
                 'can_choose_menu' => $company !== null && $user->canChooseMenu(),
                 'is_super_admin' => $user->is_super_admin,
                 'two_factor_enabled' => $user->hasEnabledTwoFactorAuthentication(),
+                // The language of the app's microphone (RU / EN), the person's own choice, else the company's.
+                'dictation_language' => $user->dictation_language ?? $company?->default_dictation_language ?? 'en',
             ],
             'company' => $company ? [
                 ...$company->only(['id', 'name']),

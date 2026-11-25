@@ -83,7 +83,7 @@ test('the change log page shows only the company\'s own entries, for the Owner o
     $this->actingAs($this->owner)->get(route('company.change-log'))->assertInertia(fn (Assert $page) => $page
         ->component('company/change-log')
         ->where('entries.data', fn ($entries) => collect($entries)->every(fn ($e) => ! str_contains((string) $e['record'], 'Secret')))
-        ->where('entries.data.0.type', 'customer'));
+        ->where('entries.data', fn ($entries) => collect($entries)->contains(fn ($e) => $e['type'] === 'customer')));
 
     $this->actingAs($this->owner)->get(route('company.change-log', ['type' => 'job']))
         ->assertInertia(fn (Assert $page) => $page->has('entries.data', 0));

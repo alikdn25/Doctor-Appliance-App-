@@ -5,9 +5,17 @@ namespace App\Http\Controllers;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Customer;
+use App\Models\CustomerEmail;
+use App\Models\CustomerPhone;
 use App\Models\Estimate;
 use App\Models\Invoice;
+use App\Models\JobCostItem;
+use App\Models\JobNote;
+use App\Models\JobPart;
+use App\Models\JobReport;
+use App\Models\JobVisit;
 use App\Models\Payment;
+use App\Models\Property;
 use App\Models\ServiceJob;
 use App\Support\Audit\HistoryPresenter;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,6 +39,22 @@ class HistoryController extends Controller
         'invoice' => Invoice::class,
     ];
 
+    /** type => [model class, column pointing at the record] whose changes show in the record's history. */
+    private const RELATED = [
+        'job' => [
+            [JobVisit::class, 'service_job_id'],
+            [JobPart::class, 'service_job_id'],
+            [JobCostItem::class, 'service_job_id'],
+            [JobNote::class, 'service_job_id'],
+            [JobReport::class, 'service_job_id'],
+        ],
+        'customer' => [
+            [Property::class, 'customer_id'],
+            [CustomerPhone::class, 'customer_id'],
+            [CustomerEmail::class, 'customer_id'],
+        ],
+    ];
+
     public function show(Request $request, string $type, int $id): JsonResponse
     {
         $this->authorizeOwner($request);
@@ -49,6 +73,16 @@ class HistoryController extends Controller
                     $paymentIds = Payment::withTrashed()->where('invoice_id', $record->getKey())->pluck('id');
                     $query->orWhere(fn (Builder $q) => $q->where('auditable_type', (new Payment)->getMorphClass())->whereIn('auditable_id', $paymentIds));
                 }
+
+                // A job's history includes its visits, parts, cost lines, notes and reports; a customer's its
+                // addresses, phones and emails (owner's task of November 25: every correction is logged).
+                foreach (self::RELATED[$type] ?? [] as [$class, $column]) {
+                    $ids = $class::query()->when(method_exists($class, 'bootSoftDeletes'), fn ($q) => $q->withTrashed())
+                        ->where($column, $record->getKey())->pluck('id');
+                    if ($ids->isNotEmpty()) {
+                        $query->orWhere(fn (Builder $q) => $q->where('auditable_type', (new $class)->getMorphClass())->whereIn('auditable_id', $ids));
+                    }
+                }
             })
             ->limit(200)
             ->get();
@@ -61,7 +95,7 @@ class HistoryController extends Controller
         $this->authorizeOwner($request);
 
         $filters = $request->validate([
-            'type' => ['nullable', Rule::in(['customer', 'job', 'estimate', 'invoice', 'payment', 'assistant', 'square_import'])],
+            'type' => ['nullable', Rule::in(['customer', 'job', 'estimate', 'invoice', 'payment', 'assistant', 'square_import', 'property', 'visit', 'task', 'part', 'expense', 'trip', 'note', 'cost', 'report', 'phone', 'email'])],
             'source' => ['nullable', Rule::in(['web', 'bot', 'ai_assistant', 'public', 'console'])],
             'user' => ['nullable', 'integer'],
         ]);

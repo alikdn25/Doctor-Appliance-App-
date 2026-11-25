@@ -201,6 +201,8 @@ return [
         'title' => 'Job address',
         'other' => 'Other addresses of this customer',
         'new' => 'New address',
+        'new_button' => '+ New address',
+        'edit' => 'Edit this address',
         'save' => 'Save address',
         'saved' => 'Address saved for the job and the customer',
         'changed' => 'Job address changed',

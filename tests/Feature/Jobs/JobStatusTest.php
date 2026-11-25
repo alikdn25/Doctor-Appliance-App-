@@ -166,7 +166,7 @@ test('cancelling a job cancels its scheduled visits and blocks new ones', functi
     expect(JobVisit::withoutCompanyScope()->where('service_job_id', $this->job->id)->count())->toBe(1);
 });
 
-test('invoiced and paid cannot be set by hand, and locked jobs cannot change', function () {
+test('invoiced and paid cannot be set by hand, but a paid job can still be changed by hand', function () {
     $this->actingAs($this->owner);
 
     $this->put(route('jobs.status', $this->job), ['status' => 'invoiced'])->assertSessionHasErrors('status');
@@ -174,8 +174,9 @@ test('invoiced and paid cannot be set by hand, and locked jobs cannot change', f
 
     inCompany($this->company, fn () => $this->job->forceFill(['status' => JobStatus::Paid])->save());
 
-    $this->put(route('jobs.status', $this->job), ['status' => 'new'])->assertSessionHasErrors('status');
-    expect($this->job->fresh()->status)->toBe(JobStatus::Paid);
+    // Owner's task of November 25: any saved field can be corrected in any status.
+    $this->put(route('jobs.status', $this->job), ['status' => 'new'])->assertSessionHasNoErrors();
+    expect($this->job->fresh()->status)->toBe(JobStatus::New);
 });
 
 test('reopening a completed job clears the completion time', function () {

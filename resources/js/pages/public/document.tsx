@@ -99,11 +99,16 @@ export default function PublicDocument({
     document: doc,
     canPay,
     estimate = null,
+    report = null,
 }: {
     token: string;
     document: PrintedDocument;
     canPay: boolean;
     estimate?: EstimateActions | null;
+    report?: {
+        text: string | null;
+        photos: { url: string; caption: string | null }[];
+    } | null;
 }) {
     const t = useTrans();
     const { errors } = usePage().props as { errors?: Record<string, string> };
@@ -475,6 +480,49 @@ export default function PublicDocument({
                         <p className="rounded-md bg-muted/50 p-3 text-sm whitespace-pre-line">
                             {doc.notes}
                         </p>
+                    )}
+                    {report && (
+                        <section
+                            className="space-y-3"
+                            data-test="public-report"
+                        >
+                            <h2 className="border-b pb-1 text-base font-semibold">
+                                {t('service_reports.pdf_title')}
+                            </h2>
+                            {report.text && (
+                                <p className="text-sm whitespace-pre-line">
+                                    {report.text}
+                                </p>
+                            )}
+                            {report.photos.length > 0 && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {report.photos.map((photo) => (
+                                        <figure
+                                            key={photo.url}
+                                            className="space-y-1"
+                                        >
+                                            <a
+                                                href={photo.url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            >
+                                                <img
+                                                    src={photo.url}
+                                                    alt={photo.caption ?? ''}
+                                                    loading="lazy"
+                                                    className="aspect-[4/3] w-full rounded-md object-cover"
+                                                />
+                                            </a>
+                                            {photo.caption && (
+                                                <figcaption className="text-xs text-muted-foreground">
+                                                    {photo.caption}
+                                                </figcaption>
+                                            )}
+                                        </figure>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
                     )}
                     {doc.warranty_terms &&
                         doc.items.some((item) => item.warranty) && (

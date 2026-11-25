@@ -89,6 +89,13 @@ class DocumentRequest extends FormRequest
                 $this->input('discount_type') === 'percent' ? 'max:100' : 'max:9999999',
             ],
             'notes' => ['nullable', 'string', 'max:5000'],
+            // "+ Add report" (owner's task of November 25): text and the job's photos with captions, in order.
+            'report' => ['nullable', 'array'],
+            'report.enabled' => ['nullable', 'boolean'],
+            'report.text' => ['nullable', 'string', 'max:20000'],
+            'report.photos' => ['nullable', 'array', 'max:40'],
+            'report.photos.*.job_photo_id' => ['nullable', 'integer'],
+            'report.photos.*.caption' => ['nullable', 'string', 'max:300'],
             // "Price includes tax" switch under the lines: off = taxes added on top of the line amounts.
             'prices_include_tax' => ['sometimes', 'boolean'],
             'tax_rate_ids' => ['array'],

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Billing;
 use App\Actions\Billing\CashLedger;
 use App\Actions\Billing\RecordPayment;
 use App\Actions\Billing\RefundInvoice;
+use App\Actions\Billing\SyncInvoice;
 use App\Actions\Billing\VoidBillingRecord;
 use App\Enums\JobStatus;
 use App\Enums\PaymentMethod;
@@ -17,13 +18,16 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
 use App\Support\Billing\Money;
+use App\Support\Billing\MoneyInput;
 use App\Support\Locale\Currencies;
 use App\Support\PrivateMedia;
 use App\Support\Ui\SavedToast;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -142,6 +146,75 @@ class PaymentController extends Controller
         $cash->paymentVoided($payment->fresh(), $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('payments.voided')]);
+
+        return back();
+    }
+
+    /**
+     * Corrects a saved payment at any time (owner's task of November 25): amount, method, date, reference and note.
+     * What came from the payment provider (a Square card payment: its amount, method and transaction) stays as it
+     * came; its date and note can still be corrected. The invoice's balance is worked out again.
+     */
+    public function update(Request $request, Payment $payment, SyncInvoice $sync, CashLedger $cash): RedirectResponse
+    {
+        Gate::authorize('edit', $payment);
+        $invoice = $payment->invoice()->firstOrFail();
+        $fromProvider = $payment->provider !== null;
+
+        $request->replace(MoneyInput::cleanPaths($request->input(), ['amount']));
+        $data = $request->validate([
+            'amount' => ['nullable', 'numeric', DocumentRequest::moneyRule($payment->currency)],
+            'method' => ['nullable', Rule::in(array_map(fn (PaymentMethod $m) => $m->value, PaymentMethod::cases()))],
+            'received_on' => ['nullable', 'date_format:Y-m-d'],
+            'reference' => ['nullable', 'string', 'max:100'],
+            'note' => ['nullable', 'string', 'max:1000'],
+        ], [], [
+            'amount' => __('payments.fields.amount'),
+            'method' => __('payments.fields.method'),
+            'received_on' => __('payments.fields.received_on'),
+        ]);
+
+        DB::transaction(function () use ($request, $data, $payment, $invoice, $fromProvider, $sync, $cash) {
+            $wasCash = $payment->method === PaymentMethod::Cash;
+
+            if (! $fromProvider) {
+                if ($request->has('amount') && filled($data['amount'] ?? null)) {
+                    $payment->amount = Currencies::toMinor($data['amount'], $payment->currency);
+                }
+                if ($request->has('method')) {
+                    $payment->method = PaymentMethod::tryFrom((string) ($data['method'] ?? '')) ?? PaymentMethod::Other;
+                }
+                if ($request->has('reference')) {
+                    $payment->reference = filled($data['reference'] ?? null) ? trim($data['reference']) : null;
+                }
+            }
+            if ($request->has('note')) {
+                $payment->note = filled($data['note'] ?? null) ? trim($data['note']) : null;
+            }
+            if (filled($data['received_on'] ?? null)) {
+                $timezone = currentCompany()->timezone;
+                $time = $payment->received_at->copy()->setTimezone($timezone)->format('H:i:s');
+                $payment->received_at = CarbonImmutable::parse($data['received_on'].' '.$time, $timezone)->utc();
+            }
+
+            if (! $payment->isDirty()) {
+                return;
+            }
+            $moneyChanged = $payment->isDirty(['amount', 'method', 'received_at']);
+            $payment->save();
+
+            // Cash on hand follows the corrected payment.
+            if ($moneyChanged && ($wasCash || $payment->method === PaymentMethod::Cash)) {
+                $cash->paymentVoided($payment, $request->user());
+                if ($payment->method === PaymentMethod::Cash && $payment->voided_at === null) {
+                    $cash->collected($payment, $payment->user ?? $request->user());
+                }
+            }
+
+            $sync->handle($invoice->refresh(), $request->user());
+        });
+
+        SavedToast::flash(route('invoices.show', $invoice), __('payments.updated'));
 
         return back();
     }

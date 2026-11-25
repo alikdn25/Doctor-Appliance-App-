@@ -28,7 +28,7 @@ class SendDocument
 
         Mail::to($email)->queue(new DocumentMail($document, $message));
 
-        $document->forceFill(['sent_at' => now(), 'sent_to' => $email,
+        $document->forceFill(['sent_at' => now(), 'edited_after_send_at' => null, 'sent_to' => $email,
             ...($document instanceof Estimate ? ['followup_processed_at' => null] : []),
         ])->saveQuietly();
 

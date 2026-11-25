@@ -1,3 +1,44 @@
+# November 25 — Owner's task: fix any data, booking confirmation, reports with photos, the app's microphone (done)
+
+Parts 1–7 (no required fields), 24–29 (No time / No date) and 30–33 (search) were done in PR #103; this task adds:
+
+1. **Fix any data** (SPEC §7.27): no status locks for corrections — `InvoicePolicy::update`, `EstimatePolicy::update`
+   (new `decide` keeps Mark approved / declined to open, unsigned estimates), `SetJobStatus` (paid / invoiced jobs
+   change status by hand), `JobDetailsController` (no "invoiced: cannot be booked again"), `SaveBillingDocument`
+   (a total below what was paid is saved). Payments: `PATCH payments/{payment}` (amount, method, date, reference,
+   note; a provider's payment keeps amount / method / transaction; cash on hand follows); pencil on each payment.
+   Job notes: `PATCH job-notes/{note}` with a pencil. Corrected sent documents get `edited_after_send_at` and a large
+   "Resend" until sent again.
+2. **Addresses** (`App\Support\Customers\AddressHistory`): a correction moves closed jobs (and jobs with a sent
+   invoice) to a hidden copy of the old address; open jobs follow. Deleting an address puts open jobs at the
+   customer's one other address, else the empty one. Job page: tap the address → the customer's addresses, "Edit this
+   address", "+ New address".
+3. **Change log**: `RecordsChanges` on addresses, phones, emails, visits, notes, parts, cost lines, reports, expenses,
+   trips, To Do; a job's history includes its visits / notes / parts / reports, a customer's its addresses and contacts.
+4. **Booking confirmation** (`BookingConfirmationTexts`, `BookingConfirmation`, `BookingConfirmationMail`): SMS and
+   email by Settings → Company → Booking confirmation (`companies.booking_confirmation`; page `company/booking-
+confirmation` with placeholders, live preview, Reset to default, Send test to me). Sent after every new booking
+   (quick booking with or without a day / time, Finish booking, assistant, SMS booking, online booking); the result is
+   on the job (`confirmation_*` columns) with "Resend confirmation" or a red reason.
+5. **Reports**: "+ Add report" in the invoice / estimate form (`has_report`, `report_text`, `report_photos`);
+   `POST jobs/{job}/report-photos` (1600 px JPEG, EXIF, saved as the job's After photos); PDF "Service report" with
+   photos two in a row, kept under 8 MB (`DocumentPdf::PHOTO_STEPS`); online page shows it; estimate → invoice copies
+   it; Preview / Download PDF. Separate job reports (`job_reports`, `JobReportController`, page `reports/form`, PDF
+   `pdf/job-report`, email with PDF, SMS with `/r/{token}`), listed under the job's Files.
+6. **The app's microphone** in every `Textarea` (insert at the cursor), RU / EN saved per person
+   (`users.dictation_language`, `PUT settings/dictation-language`; `companies.default_dictation_language` = ru for the
+   owner's companies). "Translate to English" (`POST ai/translate`, AI_MODEL_BOOKING) with Undo; "Write with AI"
+   (`POST ai/report`, AI_MODEL_ASSISTANT).
+7. Migration `2026_11_27_000100_add_booking_confirmation_reports_and_dictation`: new columns and tables; the owner's
+   companies (named "Doctor Appliance…" / "Duct Works…") get RU, 24 hours and 85.
+
+- Tests: `EditAnythingTest`, `BookingConfirmationSettingsTest`, `ServiceReportTest`, updated booking / billing tests,
+  tenant isolation for `JobReport` and `ReportPhoto`.
+- Not built: pencils next to every single field of the job page — fields are corrected through the existing sheets
+  (customer card pencil, appliance, status, address, notes); invoice line descriptions (one-line inputs) have no
+  Translate button, the document notes have.
+- Next: Grok Bot deploys and runs the migration.
+
 # November 25 — Owner's task: no required fields, jobs without a time, one search (done)
 
 1. **No required fields** (SPEC §7.26): `required` → `nullable` in every form request and inline validator of

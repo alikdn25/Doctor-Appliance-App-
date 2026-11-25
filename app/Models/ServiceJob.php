@@ -126,6 +126,7 @@ class ServiceJob extends Model
             'outcome' => JobOutcome::class,
             'visit_type' => VisitType::class,
             'closed_at' => 'datetime',
+            'confirmation_sent_at' => 'datetime',
             'review_clicked_at' => 'datetime',
             'appliance_category' => ApplianceCategory::class,
             'only_diagnostic' => 'boolean',

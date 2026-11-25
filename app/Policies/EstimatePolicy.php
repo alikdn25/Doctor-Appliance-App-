@@ -26,12 +26,19 @@ class EstimatePolicy
      */
     public function update(User $user, Estimate $estimate): bool
     {
-        return $this->view($user, $estimate) && $estimate->status->isOpen() && ! $estimate->approvedOnline();
+        // Any saved estimate can be corrected at any time, in any status (owner's task of November 25).
+        return $this->view($user, $estimate);
     }
 
     /**
      * Turning it into an invoice (approved online or not).
      */
+    /** Mark approved / declined by hand: only while open and not signed by the customer online. */
+    public function decide(User $user, Estimate $estimate): bool
+    {
+        return $this->view($user, $estimate) && $estimate->status->isOpen() && ! $estimate->approvedOnline();
+    }
+
     public function convert(User $user, Estimate $estimate): bool
     {
         return $this->view($user, $estimate) && $estimate->status->isOpen() && $this->worksOn($user, $estimate);
@@ -42,7 +49,7 @@ class EstimatePolicy
      */
     public function delete(User $user, Estimate $estimate): bool
     {
-        return $this->update($user, $estimate) && $estimate->depositPayments()->doesntExist();
+        return $this->view($user, $estimate) && $estimate->status->isOpen() && ! $estimate->approvedOnline() && $estimate->depositPayments()->doesntExist();
     }
 
     /**

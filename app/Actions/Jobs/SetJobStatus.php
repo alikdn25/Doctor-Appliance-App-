@@ -30,7 +30,8 @@ class SetJobStatus
             return;
         }
 
-        if ($job->status->isLocked() || ! in_array($to, JobStatus::manual(), true)) {
+        // Any job's status can be changed by hand, invoiced and paid ones too (owner's task of November 25).
+        if (! in_array($to, JobStatus::manual(), true)) {
             throw ValidationException::withMessages(['status' => __('jobs.errors.invalid_transition')]);
         }
 

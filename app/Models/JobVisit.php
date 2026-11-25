@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\VisitStatus;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\RecordsChanges;
 use Database\Factories\JobVisitFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,7 +32,10 @@ use Illuminate\Support\Carbon;
  */
 class JobVisit extends Model
 {
-    use BelongsToCompany;
+    /** Change log type (owner's task of November 25: every correction is logged). */
+    public const AUDIT_TYPE = 'visit';
+
+    use BelongsToCompany, RecordsChanges;
 
     /** @use HasFactory<JobVisitFactory> */
     use HasFactory;

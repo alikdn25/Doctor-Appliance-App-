@@ -93,10 +93,13 @@ export function useDictation({
     value,
     onChange,
     language,
+    selection,
 }: {
     value: string;
     onChange: (value: string) => void;
     language: DictationLanguage;
+    /** Where the cursor is in the field: words go in there, nothing typed is replaced. Default: the end. */
+    selection?: () => [number, number] | null;
 }) {
     const [supported] = useState(() => speechRecognitionClass() !== null);
     const [listening, setListening] = useState(false);
@@ -106,21 +109,23 @@ export function useDictation({
     const wanted = useRef(false);
     // Text in the field when recording started, phrases of earlier sessions, and this session's phrases.
     const base = useRef('');
+    // Text after the cursor when recording started: it stays after the dictated words.
+    const tail = useRef('');
     const committed = useRef('');
     const session = useRef({ final: '', interim: '' });
     const failures = useRef(0);
-    const latest = useRef({ value, onChange });
-    latest.current = { value, onChange };
+    const latest = useRef({ value, onChange, selection });
+    latest.current = { value, onChange, selection };
 
     const emit = useCallback(() => {
-        latest.current.onChange(
-            join(
-                base.current,
-                committed.current,
-                session.current.final,
-                session.current.interim,
-            ),
+        const head = join(
+            base.current,
+            committed.current,
+            session.current.final,
+            session.current.interim,
         );
+        const after = tail.current.trim();
+        latest.current.onChange(after === '' ? head : `${head} ${after}`);
     }, []);
 
     const stop = useCallback(() => {
@@ -135,7 +140,13 @@ export function useDictation({
         setError(null);
         wanted.current = true;
         failures.current = 0;
-        base.current = latest.current.value;
+        const text = latest.current.value;
+        const [from, to] = latest.current.selection?.() ?? [
+            text.length,
+            text.length,
+        ];
+        base.current = text.slice(0, from);
+        tail.current = text.slice(to);
         committed.current = '';
         session.current = { final: '', interim: '' };
 

@@ -1,20 +1,41 @@
 import { usePage } from "@inertiajs/react";
 import { Mic, Square, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { DictationLanguage } from "@/hooks/use-dictation";
 import { useDictation } from "@/hooks/use-dictation";
+import { sendJson } from "@/lib/http";
 import { useTrans } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-const storageKey = (userId: number | undefined) =>
-    `dictation-language:${userId ?? "guest"}`;
+/**
+ * The microphone's language, one for every field on the screen (and saved for the person on the server, so it is the
+ * same on every device). RU / EN next to any microphone changes it everywhere.
+ */
+let chosen: DictationLanguage | null = null;
+const listeners = new Set<() => void>();
+const subscribe = (listener: () => void) => {
+    listeners.add(listener);
 
-function readLanguage(userId: number | undefined): DictationLanguage {
-    try {
-        return localStorage.getItem(storageKey(userId)) === "ru" ? "ru" : "en";
-    } catch {
-        return "en";
-    }
+    return () => listeners.delete(listener);
+};
+
+export function setDictationLanguage(language: DictationLanguage): void {
+    chosen = language;
+    listeners.forEach((listener) => listener());
+    void sendJson("/settings/dictation-language", "PUT", { language }).catch(
+        () => undefined,
+    );
+}
+
+export function useDictationLanguage(): DictationLanguage {
+    const { auth } = usePage().props;
+    const saved = auth.user?.dictation_language === "ru" ? "ru" : "en";
+
+    return useSyncExternalStore(
+        subscribe,
+        () => chosen ?? saved,
+        () => saved,
+    );
 }
 
 /**
@@ -30,7 +51,7 @@ export function micFromShortcut(): boolean {
 /**
  * The microphone next to Send, as in WhatsApp: tap to record (the button turns red and pulses), tap again to stop.
  * Words are added to the field as they are recognised; nothing is sent by itself. EN / RU next to it picks the
- * language, remembered for the person (English by default). Not shown when the browser cannot recognise speech.
+ * language, saved for the person (the company's default at first). Not shown when the browser cannot recognise speech.
  */
 export function MicButton({
     value,
@@ -38,6 +59,7 @@ export function MicButton({
     disabled = false,
     className,
     autoStart = false,
+    selection,
 }: {
     value: string;
     onChange: (value: string) => void;
@@ -45,14 +67,12 @@ export function MicButton({
     className?: string;
     /** Start listening at once (a home-screen shortcut opened the page with ?mic=1). */
     autoStart?: boolean;
+    /** The field's cursor: words go in there. */
+    selection?: () => [number, number] | null;
 }) {
     const t = useTrans();
-    const { auth } = usePage().props;
-    const userId = auth.user?.id;
-    const [language, setLanguage] = useState<DictationLanguage>(() =>
-        readLanguage(userId),
-    );
-    const dictation = useDictation({ value, onChange, language });
+    const language = useDictationLanguage();
+    const dictation = useDictation({ value, onChange, language, selection });
     const started = useRef(false);
     useEffect(() => {
         if (autoStart && dictation.supported && !started.current) {
@@ -66,12 +86,7 @@ export function MicButton({
     const switchLanguage = () => {
         const next: DictationLanguage = language === "en" ? "ru" : "en";
         if (dictation.listening) dictation.stop();
-        setLanguage(next);
-        try {
-            localStorage.setItem(storageKey(userId), next);
-        } catch {
-            // Without storage the choice lasts for this screen only.
-        }
+        setDictationLanguage(next);
     };
 
     return (

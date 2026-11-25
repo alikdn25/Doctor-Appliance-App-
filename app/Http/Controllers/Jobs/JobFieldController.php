@@ -9,6 +9,7 @@ use App\Models\Appliance;
 use App\Models\JobBringItem;
 use App\Models\JobPhoto;
 use App\Models\JobVisit;
+use App\Models\ReportPhoto;
 use App\Models\ServiceJob;
 use App\Support\PrivateMedia;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -104,6 +105,8 @@ class JobFieldController extends Controller
             403,
         );
 
+        // Reports that showed it simply lose it.
+        ReportPhoto::query()->where('job_photo_id', $photo->id)->delete();
         $photo->delete();
 
         return back();

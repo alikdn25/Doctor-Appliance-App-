@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Jobs\GeocodeProperty;
 use App\Models\Concerns\BelongsToCompany;
+use App\Models\Concerns\RecordsChanges;
 use App\Support\Locale\AddressFormatter;
 use App\Support\Maps\Geocoder;
 use App\Support\PhoneNumber;
@@ -41,7 +42,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Property extends Model
 {
-    use BelongsToCompany;
+    /** Change log type (owner's task of November 25: every correction is logged). */
+    public const AUDIT_TYPE = 'property';
+
+    use BelongsToCompany, RecordsChanges;
 
     /** @use HasFactory<PropertyFactory> */
     use HasFactory, SoftDeletes;
