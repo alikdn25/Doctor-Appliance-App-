@@ -634,6 +634,7 @@ return [
     'history_entry' => [
         'created' => 'Job created',
         'visit_finished' => 'Visit finished',
+        'closed_fix' => 'Closed earlier; status set to Completed',
     ],
     'instructions' => [
         'title' => 'Instructions',

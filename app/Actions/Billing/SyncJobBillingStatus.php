@@ -3,7 +3,9 @@
 namespace App\Actions\Billing;
 
 use App\Actions\Jobs\ChangeJobStatus;
+use App\Actions\Jobs\CloseJob;
 use App\Enums\InvoiceStatus;
+use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\VisitStatus;
 use App\Models\Invoice;
@@ -18,18 +20,31 @@ use Illuminate\Support\Collection;
  * - a finished job without a sent invoice: completed → invoiced → paid as before.
  * Sending an estimate changes nothing. Jobs still in progress without a sent invoice (e.g. a diagnosis fee paid on
  * site) and jobs in the parts flow keep their status; they are synced again when the work is completed.
+ * A job not closed yet whose invoices are all paid closes by itself as repaired (owner's task of November 25), unless
+ * a visit is under way or booked ahead, or the job waits for parts, the customer or is on hold.
  */
 class SyncJobBillingStatus
 {
     public function __construct(private readonly ChangeJobStatus $changeStatus) {}
 
-    public function handle(ServiceJob $job, ?User $user): void
+    /**
+     * @param  bool  $autoClose  False where the caller sets the status itself (a status set by hand, Finish visit).
+     */
+    public function handle(ServiceJob $job, ?User $user, bool $autoClose = true): void
     {
         if (in_array($job->status, [JobStatus::Cancelled, JobStatus::Draft], true)) {
             return;
         }
 
-        $invoices = $job->invoices()->where('status', '!=', InvoiceStatus::Void->value)->get(['id', 'status', 'balance', 'sent_at']);
+        $invoices = $job->invoices()->where('status', '!=', InvoiceStatus::Void->value)->get(['id', 'status', 'balance', 'sent_at', 'total']);
+
+        if ($autoClose && $this->closesItself($job, $invoices)) {
+            // CloseJob records the outcome, sets the status and syncs again (Paid).
+            app(CloseJob::class)->close($job, JobOutcome::Repaired, null, null, $user);
+            $job->refresh();
+
+            return;
+        }
         $sentOwed = $invoices->contains(fn (Invoice $invoice) => $invoice->sent_at !== null && ! self::settled($invoice));
 
         if ($job->status === JobStatus::AwaitingPayment || ($sentOwed && ! $job->status->waitsForParts())) {
@@ -60,6 +75,27 @@ class SyncJobBillingStatus
         };
 
         $this->changeStatus->handle($job, $target, $user);
+    }
+
+    /**
+     * Paid in full and nothing more planned on it: the job is over.
+     *
+     * @param  Collection<int, Invoice>  $invoices
+     */
+    private function closesItself(ServiceJob $job, Collection $invoices): bool
+    {
+        $closable = [JobStatus::New, JobStatus::Scheduled, JobStatus::OnTheWay, JobStatus::InProgress,
+            JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid];
+
+        return $job->outcome === null
+            && $job->closed_at === null
+            && in_array($job->status, $closable, true)
+            && $invoices->contains(fn (Invoice $invoice) => $invoice->total > 0)
+            && $this->allSettled($invoices)
+            && ! $job->visits()->where(fn ($q) => $q
+                ->whereIn('status', [VisitStatus::OnTheWay->value, VisitStatus::InProgress->value])
+                ->orWhere(fn ($s) => $s->where('status', VisitStatus::Scheduled->value)->where('scheduled_start', '>', now())))
+                ->exists();
     }
 
     /**

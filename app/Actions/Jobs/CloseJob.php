@@ -30,7 +30,7 @@ class CloseJob
     /**
      * Records the outcome of a job whose work is over. $visit is the visit just finished on site, if any.
      */
-    public function close(ServiceJob $job, JobOutcome $outcome, ?string $reason, ?string $note, User $user, ?JobVisit $visit = null): void
+    public function close(ServiceJob $job, JobOutcome $outcome, ?string $reason, ?string $note, ?User $user, ?JobVisit $visit = null): void
     {
         if ($outcome === JobOutcome::Cancelled) {
             $this->cancel($job, (string) $reason, $note, $user);
@@ -60,7 +60,11 @@ class CloseJob
             }
             $visit ??= $open->last();
 
-            // Nothing is left on the schedule of a closed job.
+            // Today's visit not marked as started is done with the job (it shows under Completed); later ones are
+            // called off, so nothing is left on the schedule of a closed job.
+            $endOfToday = now(currentCompany()->timezone)->endOfDay()->utc();
+            $job->visits()->where('status', VisitStatus::Scheduled->value)->where('scheduled_start', '<=', $endOfToday)
+                ->update(['status' => VisitStatus::Completed->value, 'started_at' => now(), 'finished_at' => now()]);
             $job->visits()->where('status', VisitStatus::Scheduled->value)->update(['status' => VisitStatus::Cancelled->value]);
 
             $this->record($job, $outcome, $reason, $note, $user);
@@ -78,7 +82,7 @@ class CloseJob
     /**
      * Calls a job off before any work: no visit may have been started.
      */
-    public function cancel(ServiceJob $job, string $reason, ?string $note, User $user): void
+    public function cancel(ServiceJob $job, string $reason, ?string $note, ?User $user): void
     {
         $this->validateReason(JobOutcome::Cancelled, $reason);
 
@@ -115,14 +119,14 @@ class CloseJob
         $job->forceFill(['outcome' => null, 'outcome_reason' => null, 'outcome_note' => null, 'closed_at' => null, 'closed_by' => null])->save();
     }
 
-    private function record(ServiceJob $job, JobOutcome $outcome, ?string $reason, ?string $note, User $user): void
+    private function record(ServiceJob $job, JobOutcome $outcome, ?string $reason, ?string $note, ?User $user): void
     {
         $job->forceFill([
             'outcome' => $outcome,
             'outcome_reason' => $outcome->needsReason() ? $reason : null,
             'outcome_note' => filled($note) ? trim((string) $note) : null,
             'closed_at' => now(),
-            'closed_by' => $user->id,
+            'closed_by' => $user?->id,
             // Declined or not repairable: only the diagnosis was done (Statistics); the job page can change it.
             'only_diagnostic' => $outcome->allowsDiagnosisInvoice() ? true : $job->only_diagnostic,
         ])->save();

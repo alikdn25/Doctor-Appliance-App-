@@ -300,7 +300,10 @@ test('a finished job shows no badge', function () {
     $this->job->forceFill(['status' => JobStatus::Completed, 'completed_at' => now()])->save();
     incomingSms('Thanks!');
 
+    // A finished job is off the day; the schedule still shows it, without a badge.
     $this->actingAs($this->owner)->get(route('jobs.mine', ['date' => '2026-10-16']))
+        ->assertInertia(fn (Assert $page) => $page->has('visits', 0));
+    $this->get(route('calendar', ['date' => '2026-10-16']))
         ->assertInertia(fn (Assert $page) => $page->where('visits.0.job.new_messages', 0));
 });
 

@@ -65,9 +65,6 @@ test('my jobs lists only the user\'s own visits by day', function () {
         // Completed lists only finished jobs.
         ->and($ids(['tab' => 'completed']))->toBe([]);
 
-    inCompany($this->company, fn () => $this->job->forceFill(['status' => JobStatus::Completed])->save());
-    expect($ids(['tab' => 'completed']))->toBe([$today->id, $past->id]);
-
     $this->get(route('jobs.mine'))
         ->assertInertia(fn (Assert $page) => $page
             ->component('jobs/mine')
@@ -75,6 +72,11 @@ test('my jobs lists only the user\'s own visits by day', function () {
             ->where('visits.0.job.customer', 'Mine Owner')
             ->where('visits.0.job.phone', '+16045550101')
             ->where('visits.0.job.appliances', ['LG Washer']));
+
+    // A closed job leaves the day and shows under Completed only.
+    inCompany($this->company, fn () => $this->job->forceFill(['status' => JobStatus::Completed])->save());
+    expect($ids(['tab' => 'completed']))->toBe([$today->id, $past->id])
+        ->and($ids([]))->toBe([]);
 });
 
 test('a visit already under way stays on today\'s list', function () {

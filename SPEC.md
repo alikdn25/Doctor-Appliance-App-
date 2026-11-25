@@ -1046,6 +1046,18 @@ set up is built, stays off and says what is missing.
 - To-dos without a time are a block at the very top of the day. An undone to-do moves to the next day at midnight with a
   red "Carried over". A tap opens the to-do's own page with every detail (Done, Edit, Delete).
 
+#### 7.25.7 Closed jobs leave Today
+- "Close job" writes Completed into the job itself (then Paid / Awaiting payment by its invoices). Today's visit not
+  marked as started is marked done with it; visits on later days are called off.
+- Today (My Jobs, any day) shows only jobs not closed; closed jobs (Completed, Invoiced, Awaiting payment, Paid, or with
+  a close date) show under Completed only; a visit still on the way / in progress stays (for Finish). The open jobs
+  list already leaves them out.
+- A job whose invoices are all paid in full closes by itself as Repaired, unless a visit is on the way or in progress,
+  a visit is booked later, or the job waits for parts / the customer or is on hold. A status set by hand and Finish
+  visit (which closes with the technician's outcome) do not trigger it.
+- `jobs:close-finished` (once, `--dry-run` first): moves closed jobs whose status stayed open to Completed and closes
+  fully paid jobs not closed yet; prints the job numbers.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).

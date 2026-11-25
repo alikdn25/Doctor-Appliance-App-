@@ -1,3 +1,24 @@
+# November 25 — Owner's task: closed jobs stay on Today (done)
+
+1. **Close job** (`CloseJob`): records outcome, `closed_at`, `closed_by`; finishes a visit on the way / in progress;
+   writes Completed into the job, then `SyncJobBillingStatus` moves it to Invoiced / Awaiting payment / Paid by its
+   invoices. New: today's visit not marked as started is marked Completed (was Cancelled, so the job vanished from
+   both tabs); later visits are cancelled as before.
+2. **Today** (`JobController::mine`, day tab and the "others on this day" count): jobs in Completed / Invoiced /
+   Awaiting payment / Paid or with `closed_at` are left out (a visit still on the way / in progress stays, for
+   Finish); they show under Completed. Calendar and morning summary unchanged.
+3. **Auto-close on full payment** (`SyncJobBillingStatus::closesItself`): all non-void invoices settled, at least one
+   with a total, no visit on the way / in progress, none booked later, status not parts flow / on hold / waiting for
+   customer → `CloseJob` as Repaired. Off for a status set by hand and inside Finish visit.
+4. **`jobs:close-finished`** (`--dry-run`): one-off fix of jobs closed earlier with an open status and of fully paid
+   jobs never closed (a visit left in progress on an earlier day is finished); prints company, job number, from, to.
+5. No migrations; no new settings.
+
+- Tests: `ClosedJobsOffTodayTest` (close → Completed, off Today, under Completed, off the open list; later visit
+  cancelled; invoice → payment → close; paid in full by cash / e-transfer / card closes by itself; parts flow and
+  visit ahead stay open; Finish keeps the technician's outcome; the command: dry run, real run, every company, rerun).
+- Next: Grok Bot backs up the database and runs `jobs:close-finished` on the server; the owner checks a real job.
+
 # November 25 — Owner's task: job buttons, Awaiting payment, invoice opens, review reminder, one Today feed (done)
 
 1. **Job buttons** (SPEC §7.25.1): the "+ New estimate / + New invoice" links and the Hand to technician, Take payment
