@@ -1,3 +1,18 @@
+# November 25 — Grok Bot notes after PR #101: backup:list, local backup folder, translation keys (done)
+
+1. **`backup:list`** without external storage no longer crashes (S3 bucket null): it says "External backups are not
+   set up yet" and lists the local copies (`BackupManager::localList`); `--files` only prints the notice.
+2. **Local backup folder** `storage/app/local-backups`: made and repaired as 2770 (deploy user and www-data share the
+   group; a 2700 folder made by one stopped the other). Dumps stay 0600.
+3. **Translations**: the second `jobs.details` group replaced the first (job page showed `jobs.details.created`); merged
+   into one. New test `TranslationKeysUniqueTest` finds a key repeated in one array of a lang file; it also found
+   `jobs.all_statuses`, `customers.open`, `customers.owes`, `nav.tab_calendar` (earlier copies removed; the texts on
+   screen do not change).
+4. No migrations; no new settings.
+
+- Tests: `TranslationKeysUniqueTest`, `BackupTest` (folder 2700 → 2770, dump 0600, backup:list without storage).
+- Next: nothing for the owner; the server picks it up with the next deploy.
+
 # November 25 — Owner's task: closed jobs stay on Today (done)
 
 1. **Close job** (`CloseJob`): records outcome, `closed_at`, `closed_by`; finishes a visit on the way / in progress;

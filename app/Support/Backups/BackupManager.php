@@ -48,12 +48,14 @@ class BackupManager
 
     /**
      * A plain dump on this server before a deployment, while external storage is not set up yet. Keeps the newest
-     * five. Only the application's user can read them.
+     * five. Only the user who made a copy can read it; the folder is 2770 so the deploy user and the web server user
+     * (one group) can both add copies and prune old ones (a 2700 folder made by one stopped the other).
      */
     public function localDump(string $reason): string
     {
-        $directory = storage_path('app/local-backups');
-        File::ensureDirectoryExists($directory, 0700);
+        $directory = self::localDirectory();
+        File::ensureDirectoryExists($directory, 02770);
+        @chmod($directory, 02770);
         $target = "{$directory}/db-".now('UTC')->format('Ymd-His')."-{$reason}.dump";
         $this->pgDump($this->liveDatabase(), $target);
         @chmod($target, 0600);
@@ -64,6 +66,33 @@ class BackupManager
             ->each(fn ($file) => File::delete($file->getPathname()));
 
         return $target;
+    }
+
+    public static function localDirectory(): string
+    {
+        return storage_path('app/local-backups');
+    }
+
+    /**
+     * The local copies, newest first (shown by backup:list while external storage is not set up).
+     *
+     * @return list<array{at: CarbonImmutable, class: string, size: int, path: string}>
+     */
+    public function localList(): array
+    {
+        if (! is_dir(self::localDirectory())) {
+            return [];
+        }
+
+        return collect(File::files(self::localDirectory()))
+            ->sortByDesc(fn ($file) => $file->getFilename())
+            ->map(fn ($file) => [
+                'at' => CarbonImmutable::createFromTimestampUTC($file->getMTime()),
+                'class' => 'local',
+                'size' => (int) $file->getSize(),
+                'path' => $file->getPathname(),
+            ])
+            ->values()->all();
     }
 
     public function disk(): Filesystem

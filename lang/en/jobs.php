@@ -176,7 +176,6 @@ return [
     'search' => 'Job #, customer, phone, address, brand, model or serial number',
     'search_empty' => 'No jobs match “:search”.',
     'invoice_chip' => 'Invoice :number · :status',
-    'all_statuses' => 'All statuses',
     'open_jobs' => 'Open jobs',
     'all_types' => 'All job types',
     'all_brands' => 'All brands',
@@ -228,10 +227,6 @@ return [
     'subtitle' => [
         'started' => 'Started :time · :elapsed on job',
         'completed' => 'Completed :time',
-    ],
-    'details' => [
-        'created' => 'Created',
-        'time_on_job' => 'Time on job',
     ],
     'minutes' => ':count min',
     'hours_minutes' => ':hours h :minutes min',
@@ -661,7 +656,10 @@ return [
         'delete' => 'Delete note',
         'confirm_delete' => 'Delete this note?',
     ],
+    // One "details" group: a second one would replace this one (Created / Time on job showed as keys).
     'details' => [
+        'created' => 'Created',
+        'time_on_job' => 'Time on job',
         'edit' => 'Edit job details',
         'name' => 'Customer name',
         'address' => 'Address',

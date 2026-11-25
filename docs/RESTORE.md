@@ -23,7 +23,8 @@ and "Replace the whole database" (section 6), and both make a fresh backup first
   phone, Telegram if set, email once mail works) and is written to `storage/logs/laravel.log`.
 - Every deployment backs up the database before migrations (`deploy/deploy.sh`); if that backup fails, the deployment
   stops before any migration and maintenance mode stays on. Until external storage is set up, the deployment keeps a
-  local copy in `storage/app/local-backups` (newest five).
+  local copy in `storage/app/local-backups` (newest five; folder 2770, files 0600). `php artisan backup:list` then
+  lists these local copies.
 
 **The encryption key is the only way to read the backups.** Keep a copy outside the server (password manager). If the
 server is lost together with `.env` and there is no other copy of the key, the backups cannot be opened.
