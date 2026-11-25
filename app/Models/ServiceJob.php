@@ -93,6 +93,7 @@ class ServiceJob extends Model
         'tech_notes',
         'visit_type',
         'previous_job_id',
+        'planned_date',
     ];
 
     protected $attributes = [
@@ -115,6 +116,8 @@ class ServiceJob extends Model
             'assignment_is_explicit' => 'boolean',
             'completed_at' => 'datetime',
             'part_ordered_on' => 'date',
+            // The day of a job booked without a time ("No time"); null once a visit has a time, or for "No date".
+            'planned_date' => 'date',
             'handed_at' => 'datetime',
             'self_booked' => 'boolean',
             'part_suggestion' => 'array',
@@ -439,11 +442,13 @@ class ServiceJob extends Model
     }
 
     /**
-     * Search by number, customer name, phone (any format), address, model or serial number.
+     * Search (owner's task of November 25): part of a word, any letter case, from the first letter or digit. Finds by
+     * job number, customer name, phone (any format: spaces, brackets, +1 or none), address and city, problem, notes,
+     * appliance type, brand and model (and serial), invoice and estimate number.
      *
      * @param  Builder<ServiceJob>  $query
      */
-    public function scopeSearch(Builder $query, string $term): void
+    public function scopeSearch(Builder $query, string $term, bool $documents = true): void
     {
         $term = trim($term);
 
@@ -453,33 +458,51 @@ class ServiceJob extends Model
 
         $number = ltrim($term, '#');
         $like = '%'.addcslashes($term, '%_\\').'%';
+        $numberLike = '%'.addcslashes($number, '%_\\').'%';
         $digits = PhoneNumber::searchDigits($term);
+        // Only digits and phone punctuation: a phone number (or a job / invoice number) being typed.
+        $phoneLike = preg_match('/^[\d\s().+\-]+$/', $term) === 1;
         $types = ApplianceType::matching($term);
 
-        $query->where(function (Builder $q) use ($number, $like, $digits, $types) {
+        $query->where(function (Builder $q) use ($number, $like, $numberLike, $digits, $phoneLike, $types, $documents) {
             if (ctype_digit($number) && strlen($number) <= 9) {
-                $q->orWhere('service_jobs.number', (int) $number);
+                $q->orWhere('service_jobs.number', (int) $number)
+                    ->orWhereRaw('cast(service_jobs.number as text) like ?', [$numberLike]);
             }
 
-            $q->orWhereHas('customer', fn (Builder $c) => $c->where(fn (Builder $n) => $n
+            $q->orWhereHas('customer', fn (Builder $c) => $c->withTrashed()->where(fn (Builder $n) => $n
                 ->where('display_name', 'ilike', $like)
                 ->orWhere('first_name', 'ilike', $like)
                 ->orWhere('last_name', 'ilike', $like)
-                ->orWhere('company_name', 'ilike', $like)))
-                ->orWhereHas('property', fn (Builder $p) => $p->where(fn (Builder $a) => $a
+                ->orWhere('company_name', 'ilike', $like)
+                ->orWhereRaw("concat_ws(' ', first_name, last_name) ilike ?", [$like])))
+                ->orWhereHas('property', fn (Builder $p) => $p->withTrashed()->where(fn (Builder $a) => $a
                     ->where('line1', 'ilike', $like)
+                    ->orWhere('line2', 'ilike', $like)
                     ->orWhere('unit', 'ilike', $like)
                     ->orWhere('city', 'ilike', $like)
-                    ->orWhere('postal_code', 'ilike', $like)))
+                    ->orWhere('region', 'ilike', $like)
+                    ->orWhere('postal_code', 'ilike', $like)
+                    ->orWhereRaw("concat_ws(' ', line1, city) ilike ?", [$like])))
                 ->orWhere('service_jobs.description', 'ilike', $like)
-                ->orWhereHas('appliances', fn (Builder $a) => $a->where(fn (Builder $m) => $m
+                ->orWhere('service_jobs.notes', 'ilike', $like)
+                ->orWhere('service_jobs.tech_notes', 'ilike', $like)
+                ->orWhere('service_jobs.appliance_brand', 'ilike', $like)
+                ->orWhereHas('teamNotes', fn (Builder $n) => $n->where('body', 'ilike', $like))
+                ->orWhereHas('appliances', fn (Builder $a) => $a->withTrashed()->where(fn (Builder $m) => $m
                     ->where('model_number', 'ilike', $like)
                     ->orWhere('serial_number', 'ilike', $like)
                     ->orWhere('manufacturer', 'ilike', $like)
-                    ->when($types !== [], fn (Builder $t) => $t->orWhereIn('type', $types))));
+                    ->when($types !== [], fn (Builder $t) => $t->orWhereIn('type', $types))))
+                ->when($types !== [], fn (Builder $t) => $t->orWhereIn('service_jobs.appliance_category', $types))
+                // The invoice list matches its own numbers (a job's other invoices are not hits there).
+                ->when($documents, fn (Builder $d) => $d
+                    ->orWhereHas('invoices', fn (Builder $i) => $i->withTrashed()->where('number', 'ilike', $numberLike))
+                    ->orWhereHas('estimates', fn (Builder $e) => $e->withTrashed()->where('number', 'ilike', $numberLike)));
 
-            if (strlen($digits) >= 3) {
-                $q->orWhereHas('customer.phones', fn (Builder $p) => $p->where('number_normalized', 'like', "%{$digits}%"));
+            if ($digits !== '' && ($phoneLike || strlen($digits) >= 3)) {
+                $q->orWhereHas('customer.phones', fn (Builder $p) => $p->where('number_normalized', 'like', "%{$digits}%"))
+                    ->orWhereRaw("regexp_replace(coalesce((select p.site_contact_phone from properties p where p.id = service_jobs.property_id), ''), '\\D', '', 'g') like ?", ["%{$digits}%"]);
             }
         });
     }

@@ -139,9 +139,10 @@ test('empty lines are left out; an amount without a description is "Service"', f
         ->and(array_column($invoice->taxes, 'name'))->toBe(['GST'])
         ->and($invoice->total)->toBe(5250);
 
-    // A description needs an amount; nothing at all is refused.
+    // No field is required: a description without an amount is left out of the total. Taking money for nothing at
+    // all is still refused (there is nothing to charge).
     $this->postJson(route('charges.preview'), ['lines' => [['description' => 'Repair', 'amount' => '']], 'amounts_include_tax' => false])
-        ->assertStatus(422);
+        ->assertOk();
     $this->postJson(route('charges.store'), ['method' => 'cash', 'draft' => [
         'lines' => [['description' => '', 'amount' => '']], 'amounts_include_tax' => false, 'customer' => null,
     ]])->assertStatus(422);

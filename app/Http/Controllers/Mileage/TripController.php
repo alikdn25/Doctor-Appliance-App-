@@ -9,6 +9,7 @@ use App\Models\Membership;
 use App\Models\Trip;
 use App\Models\User;
 use App\Support\Maps\DistanceMatrix;
+use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -110,7 +111,7 @@ class TripController extends Controller
         Gate::authorize('create', Trip::class);
 
         Trip::create([...$this->validated($request), 'user_id' => $request->user()->id, 'distance_edited' => true]);
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('trips.saved')]);
+        SavedToast::flash(route('trips.index'), __('trips.saved'));
 
         return back();
     }
@@ -123,7 +124,7 @@ class TripController extends Controller
         $trip->update([...$data, 'distance_edited' => $trip->distance_edited || (string) $trip->distance_km !== (string) $data['distance_km'],
             // A draft corrected by the Owner (or an Admin) is confirmed by Save.
             'is_draft' => $trip->is_draft && ! $request->user()->hasRole(UserRole::Owner, UserRole::Admin)]);
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('trips.saved')]);
+        SavedToast::flash(route('trips.index'), __('trips.saved'));
 
         return back();
     }
@@ -152,17 +153,18 @@ class TripController extends Controller
         Gate::authorize('create', Trip::class);
 
         $data = $request->validate([
-            'to_address' => ['required', 'string', 'max:255'],
+            'to_address' => ['nullable', 'string', 'max:255'],
             'to_point' => ['nullable', 'string', 'regex:/^-?\d{1,3}(\.\d+)?,-?\d{1,3}(\.\d+)?$/'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
         ], [], ['to_address' => __('trips.fields.to')]);
         $user = $request->user();
-        $to = trim($data['to_address']);
+        $to = trim((string) ($data['to_address'] ?? ''));
         $destination = $data['to_point'] ?? $to;
         $fallback = RecordRouteTrip::lastPoint($user);
 
-        $route = isset($data['latitude'])
+        // No destination typed: the trip is saved without a distance.
+        $route = isset($data['latitude']) && $destination !== ''
             ? $distances->route(round((float) $data['latitude'], 6).','.round((float) $data['longitude'], 6), $destination)
             : null;
         // Pressed on arrival (under 300 m away): the drive started at the last point instead.
@@ -170,14 +172,14 @@ class TripController extends Controller
             $route = null;
         }
         $from = $route['from'] ?? $fallback;
-        $route ??= $from ? $distances->route($from, $destination) : null;
+        $route ??= $from && $destination !== '' ? $distances->route($from, $destination) : null;
 
         Trip::create([
             'user_id' => $user->id,
             'trip_date' => CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
             'type' => 'parts_store',
             'from_address' => $from,
-            'to_address' => $to,
+            'to_address' => $to !== '' ? $to : null,
             'distance_km' => $route['km'] ?? null,
         ]);
 
@@ -278,8 +280,9 @@ class TripController extends Controller
     private function validated(Request $request): array
     {
         $data = $request->validate([
-            'trip_date' => ['required', 'date_format:Y-m-d'],
-            'type' => ['required', Rule::in(Trip::TYPES)],
+            // Nothing is required (owner's task of November 25): no day is today, no type is a business trip.
+            'trip_date' => ['nullable', 'date_format:Y-m-d'],
+            'type' => ['nullable', Rule::in(Trip::TYPES)],
             'from_address' => ['nullable', 'string', 'max:255'],
             'to_address' => ['nullable', 'string', 'max:255'],
             'distance' => ['nullable', 'numeric', 'min:0', 'max:5000'],
@@ -290,8 +293,8 @@ class TripController extends Controller
         ]);
 
         return [
-            'trip_date' => $data['trip_date'],
-            'type' => $data['type'],
+            'trip_date' => $data['trip_date'] ?? CarbonImmutable::now(currentCompany()->timezone)->toDateString(),
+            'type' => $data['type'] ?? Trip::TYPES[0],
             'from_address' => $data['from_address'] ?? null,
             'to_address' => $data['to_address'] ?? null,
             'distance_km' => isset($data['distance']) ? self::toKm((float) $data['distance']) : null,

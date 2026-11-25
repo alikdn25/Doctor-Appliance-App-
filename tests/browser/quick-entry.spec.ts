@@ -29,7 +29,7 @@ test.afterEach(async ({ page }, info) => {
     }
 });
 
-test('New job really opens by clicking and cannot save without a customer', async ({
+test('New job really opens by clicking and Save is active with nothing typed', async ({
     page,
 }) => {
     // One way in: Book customer; the full job form is under "⋯" of the booking screen.
@@ -42,9 +42,10 @@ test('New job really opens by clicking and cannot save without a customer', asyn
     await expect(
         page.getByRole('heading', { name: 'New job', exact: true }),
     ).toBeVisible();
+    // No required fields (owner's task of November 25): Save is always active.
     await expect(
         page.getByRole('button', { name: 'Save', exact: true }),
-    ).toBeDisabled();
+    ).toBeEnabled();
 });
 
 test('an empty calendar day books a new caller using only name phone and time', async ({

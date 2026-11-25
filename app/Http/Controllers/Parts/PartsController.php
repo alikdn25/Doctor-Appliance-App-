@@ -10,6 +10,7 @@ use App\Models\JobPart;
 use App\Models\ServiceJob;
 use App\Models\Supplier;
 use App\Support\Parts\JobParts;
+use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -103,14 +104,16 @@ class PartsController extends Controller
     {
         Gate::authorize('work', $job);
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            // Nothing is required (owner's task of November 25): a part without a name is "Untitled".
+            'name' => ['nullable', 'string', 'max:255'],
             'part_number' => ['nullable', 'string', 'max:100'],
             'quantity' => ['nullable', 'integer', 'min:1', 'max:999'],
             'supplier_id' => ['nullable', 'integer', Rule::exists('suppliers', 'id')->where('company_id', currentCompany()->id)->whereNull('deleted_at')],
         ]);
 
+        $data['name'] = filled($data['name'] ?? null) ? $data['name'] : __('common.untitled');
         JobParts::add($job, $data, $request->user());
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('parts.added')]);
+        SavedToast::flash(route('jobs.show', $job), __('parts.added'));
 
         return back();
     }
@@ -123,15 +126,15 @@ class PartsController extends Controller
     {
         Gate::authorize('work', $part->job);
         $data = $request->validate([
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'part_number' => ['sometimes', 'nullable', 'string', 'max:100'],
             'confirm_number' => ['sometimes', 'boolean'],
-            'quantity' => ['sometimes', 'required', 'integer', 'min:1', 'max:999'],
+            'quantity' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:999'],
             'supplier_id' => ['sometimes', 'nullable', 'integer', Rule::exists('suppliers', 'id')->where('company_id', currentCompany()->id)->whereNull('deleted_at')],
         ]);
 
         if (array_key_exists('name', $data)) {
-            $part->name = trim($data['name']);
+            $part->name = filled($data['name']) ? trim($data['name']) : __('common.untitled');
         }
         if (array_key_exists('part_number', $data)) {
             $number = filled($data['part_number']) ? trim((string) $data['part_number']) : null;
@@ -144,7 +147,7 @@ class PartsController extends Controller
             $part->number_unverified = false;
         }
         if (array_key_exists('quantity', $data)) {
-            $part->quantity = (int) $data['quantity'];
+            $part->quantity = max(1, (int) ($data['quantity'] ?? 1));
         }
         $supplierChanged = array_key_exists('supplier_id', $data) && $data['supplier_id'] !== $part->supplier_id;
         if (array_key_exists('supplier_id', $data)) {

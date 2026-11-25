@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Support\Billing\Money;
 use App\Support\Locale\Currencies;
 use App\Support\PrivateMedia;
+use App\Support\Ui\SavedToast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,13 @@ class PaymentController extends Controller
 {
     public function store(PaymentRequest $request, Invoice $invoice, RecordPayment $record, CashLedger $cash): RedirectResponse
     {
+        // Nothing left to pay and no amount typed: nothing to record.
+        if ($request->amount() <= 0) {
+            SavedToast::flash(route('invoices.show', $invoice));
+
+            return back();
+        }
+
         $payment = DB::transaction(function () use ($request, $invoice, $record, $cash) {
             $payment = $record->manual(
                 $invoice,

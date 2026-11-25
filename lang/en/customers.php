@@ -10,6 +10,7 @@ return [
         'last_job' => 'Last job',
     ],
     'owes' => 'Owes :amount',
+    'unnamed' => 'Unnamed customer',
     'text' => 'Text',
     'icon_tap' => 'Tap the picture to choose man, woman or couple.',
     'already_customer' => 'Already a customer: :name',

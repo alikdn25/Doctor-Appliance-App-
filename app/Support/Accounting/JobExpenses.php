@@ -74,7 +74,7 @@ class JobExpenses
         $today = CarbonImmutable::now(currentCompany()->timezone)->toDateString();
 
         foreach ($lines as $line) {
-            if ((int) $line['amount'] <= 0) {
+            if ((int) $line['amount'] < 0) {
                 continue;
             }
             $expense = new BusinessExpense([

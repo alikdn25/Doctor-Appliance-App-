@@ -202,5 +202,7 @@ test('+ Trip without GPS, or pressed on arrival, starts from the last point of t
         ->from_address->toBe('Supplier Inc')
         ->distance_km->toBe('5.0');
 
-    $this->post(route('trips.quick'), ['to_address' => ''])->assertSessionHasErrors('to_address');
+    // No required fields: a trip with no destination saves without a distance.
+    $this->post(route('trips.quick'), ['to_address' => ''])->assertSessionHasNoErrors();
+    expect(tripsOf($this->company)->last())->to_address->toBeNull()->distance_km->toBeNull();
 });

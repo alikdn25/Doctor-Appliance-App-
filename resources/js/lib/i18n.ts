@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 
 type Replacements = Record<string, string | number | null | undefined>;
 
-type TranslationTree = { [key: string]: string | TranslationTree };
+export type TranslationTree = { [key: string]: string | TranslationTree };
 
 function lookup(tree: TranslationTree, key: string): string | undefined {
     let node: string | TranslationTree | undefined = tree;

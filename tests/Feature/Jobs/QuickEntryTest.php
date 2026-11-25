@@ -90,23 +90,26 @@ test('a customer from the book without an address gets the typed one in place of
 
 test('a failed booking creates no partial customer job or visit and does not consume a number', function () {
     $number = $this->company->fresh()->job_next_number;
-    $this->post(route('jobs.store'), quickEntryPayload(['visit' => ['end_time' => '08:00']]))
-        ->assertSessionHasErrors('visit.end_time');
+    $this->post(route('jobs.store'), quickEntryPayload(['visit' => ['date' => '2030-02-30', 'start_time' => '09:00']]))
+        ->assertSessionHasErrors('visit.date');
     expect(inCompany($this->company, fn () => Customer::count()))->toBe(0)
         ->and(inCompany($this->company, fn () => ServiceJob::count()))->toBe(0)
         ->and($this->company->fresh()->job_next_number)->toBe($number);
 });
 
-test('quick booking needs a valid phone only when one is given; full entry still requires a name, phone and address', function () {
+test('a phone is checked only when one is given; full entry saves without a name, phone or address', function () {
     $this->post(route('jobs.store'), quickEntryPayload(['new_customer' => ['phone' => 'x']]))
         ->assertSessionHasErrors('new_customer.phone');
-    $this->post(route('jobs.store'), quickEntryPayload(['quick_booking' => false, 'new_customer' => ['first_name' => '', 'phone' => '']]))
-        ->assertSessionHasErrors(['new_customer.first_name', 'new_customer.phone']);
-    $this->post(route('jobs.store'), quickEntryPayload(['quick_booking' => false, 'new_customer' => ['property' => ['line1' => '', 'city' => '']]]))
-        ->assertSessionHasErrors(['new_customer.property.line1', 'new_customer.property.city']);
-    $this->post(route('jobs.store'), ['brand_id' => $this->brand->id, 'job_type' => 'repair'])
-        ->assertSessionHasErrors(['customer_id', 'property_id']);
     expect(inCompany($this->company, fn () => ServiceJob::count()))->toBe(0);
+
+    // No required fields (owner's task of November 25).
+    $this->post(route('jobs.store'), quickEntryPayload(['quick_booking' => false, 'new_customer' => ['first_name' => '', 'phone' => '']]))
+        ->assertSessionHasNoErrors();
+    $this->post(route('jobs.store'), quickEntryPayload(['quick_booking' => false, 'new_customer' => ['property' => ['line1' => '', 'city' => '']]]))
+        ->assertSessionHasNoErrors();
+    $this->post(route('jobs.store'), ['brand_id' => $this->brand->id, 'job_type' => 'repair'])
+        ->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => ServiceJob::count()))->toBe(3);
 });
 
 test('quick booking selects an existing customer and preserves their preferences without a duplicate', function () {

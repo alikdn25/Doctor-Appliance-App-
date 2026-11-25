@@ -3,7 +3,7 @@ import { JobCard } from '@/components/jobs/job-card';
 import type { JobRow } from '@/components/jobs/types';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
-import { show } from '@/routes/jobs';
+import { index, show } from '@/routes/jobs';
 
 /**
  * Jobs as compact office cards (UX-REDESIGN §7.4): window and status with a red Overdue flag, customer, address,
@@ -34,7 +34,11 @@ export function JobList({ jobs, empty }: { jobs: JobRow[]; empty: string }) {
                         key={job.id}
                         office
                         job={job}
-                        href={show(job.id)}
+                        href={
+                            job.deleted
+                                ? index({ query: { tab: 'deleted' } })
+                                : show(job.id)
+                        }
                         assignees={job.visit?.assignees ?? []}
                         overdue={job.backlog_reason === 'overdue'}
                         time={
@@ -43,14 +47,25 @@ export function JobList({ jobs, empty }: { jobs: JobRow[]; empty: string }) {
                                       job.visit.scheduled_start,
                                       job.visit.scheduled_end,
                                   )}`
-                                : t('jobs.not_scheduled')
+                                : job.planned_date
+                                  ? `${time.dateOnly(job.planned_date)} · ${t('calendar.no_time')}`
+                                  : t('jobs.not_scheduled')
                         }
                         extra={
                             (reason ||
+                                job.deleted ||
                                 job.visit?.strict_arrival ||
                                 (job.outcome_label &&
                                     job.outcome !== 'repaired')) && (
                                 <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs font-medium">
+                                    {job.deleted && (
+                                        <span
+                                            className="rounded-full bg-red-600 px-2 py-0.5 font-bold text-white"
+                                            data-test="job-deleted"
+                                        >
+                                            {t('jobs.search_deleted')}
+                                        </span>
+                                    )}
                                     {reason && (
                                         <span className="text-muted-foreground">
                                             {reason}

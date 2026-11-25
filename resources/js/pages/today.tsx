@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import {
     Banknote,
     CalendarDays,
+    CalendarOff,
     MapPinOff,
     MessageSquare,
     Package,
@@ -23,8 +24,21 @@ type JobLine = {
     part_number: string | null;
 };
 
+/** A job without a time: "No time" (a day) or "No date" (none yet). */
+type UntimedJob = {
+    id: number;
+    number: number;
+    customer: string | null;
+    address: string | null;
+    status_label: string;
+    assignees: string[];
+    problem: string | null;
+};
+
 type Summary = {
     date: string;
+    no_date?: UntimedJob[];
+    no_time?: UntimedJob[];
     jobs: {
         id: number;
         number: number;
@@ -109,6 +123,41 @@ export default function Today({ summary }: { summary: Summary }) {
         </li>
     );
 
+    const noDate = summary.no_date ?? [];
+    const noTime = summary.no_time ?? [];
+    const untimedRow = (job: UntimedJob, label: string) => (
+        <li key={`untimed-${job.id}`}>
+            <Link
+                href={showJob(job.id)}
+                className="flex min-h-14 items-start gap-3 px-4 py-2 hover:bg-muted/40"
+                data-test="today-untimed-job"
+            >
+                <span className="mt-0.5 shrink-0 rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-900 dark:bg-amber-800 dark:text-amber-50">
+                    {label}
+                </span>
+                <span className="min-w-0 flex-1 text-sm">
+                    <span className="block font-semibold">
+                        {job.customer}{' '}
+                        <span className="font-normal text-muted-foreground">
+                            #{job.number}
+                        </span>
+                    </span>
+                    <span className="block truncate text-muted-foreground">
+                        {job.address ?? '—'}
+                    </span>
+                    {job.assignees.length > 0 && (
+                        <span className="block text-xs text-muted-foreground">
+                            {job.assignees.join(', ')}
+                        </span>
+                    )}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                    {job.status_label}
+                </span>
+            </Link>
+        </li>
+    );
+
     return (
         <>
             <Head title={t('automation.today.title')} />
@@ -117,16 +166,43 @@ export default function Today({ summary }: { summary: Summary }) {
                 subtitle={time.dateOnly(summary.date)}
             />
             <div className="mx-auto w-full max-w-2xl space-y-4 p-4 pb-28 sm:p-6">
+                {noDate.length > 0 && (
+                    <Block
+                        icon={<CalendarOff />}
+                        title={t('automation.today.no_date')}
+                        count={noDate.length}
+                    >
+                        <p className="px-4 pt-3 text-xs text-muted-foreground">
+                            {t('automation.today.no_date_hint')}
+                        </p>
+                        <ul className="divide-y" data-test="today-no-date">
+                            {noDate.map((job) =>
+                                untimedRow(job, t('automation.today.no_date')),
+                            )}
+                        </ul>
+                    </Block>
+                )}
+
                 <Block
                     icon={<CalendarDays />}
                     title={t('automation.today.jobs')}
-                    count={summary.jobs.length}
+                    count={summary.jobs.length + noTime.length}
                 >
-                    {summary.jobs.length === 0 ? (
+                    {noTime.length > 0 && (
+                        <ul
+                            className="divide-y border-b"
+                            data-test="today-no-time"
+                        >
+                            {noTime.map((job) =>
+                                untimedRow(job, t('automation.today.no_time')),
+                            )}
+                        </ul>
+                    )}
+                    {summary.jobs.length === 0 && noTime.length === 0 ? (
                         <p className="px-4 py-3 text-sm text-muted-foreground">
                             {t('automation.today.no_jobs')}
                         </p>
-                    ) : (
+                    ) : summary.jobs.length === 0 ? null : (
                         <ol className="divide-y" data-test="today-jobs">
                             {summary.jobs.map((job, i) => (
                                 <li key={`${job.id}-${i}`}>

@@ -542,31 +542,11 @@ export default function JobForm({
         (p) => p.id === data.property_id,
     );
 
-    const canSave =
-        !!data.brand_id &&
-        (data.new_customer_mode
-            ? !!(
-                  data.new_customer.first_name.trim() ||
-                  data.new_customer.last_name.trim() ||
-                  data.new_customer.company_name.trim()
-              ) &&
-              !!data.new_customer.phone.trim() &&
-              !!data.new_customer.property.line1.trim() &&
-              !!data.new_customer.property.city.trim()
-            : !!data.customer_id && !!data.property_id) &&
-        (!data.customer_edit ||
-            (!!(
-                data.customer_edit.first_name.trim() ||
-                data.customer_edit.last_name.trim() ||
-                data.customer_edit.company_name.trim()
-            ) &&
-                !!data.customer_edit.phone.trim()));
-
     // A double tap fires twice before `processing` re-renders: the ref stops the second job.
     const sending = useRef(false);
     const submit = (e: FormEvent) => {
         e.preventDefault();
-        if (!canSave || form.processing || sending.current) return;
+        if (form.processing || sending.current) return;
         sending.current = true;
         const options = {
             onFinish: () => {
@@ -1737,7 +1717,7 @@ export default function JobForm({
                     <Button
                         type="submit"
                         size="lg"
-                        disabled={!canSave}
+                        disabled={form.processing}
                         loading={form.processing}
                         data-test="job-form-save"
                     >

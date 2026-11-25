@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Membership;
 use App\Models\ServiceJob;
 use App\Models\Task;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -31,12 +32,14 @@ class TaskRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:160'],
+            // Nothing is required (owner's task of November 25): no title saves as "Untitled", no day as today,
+            // no time as a to-do without a time.
+            'title' => ['nullable', 'string', 'max:160'],
             'note' => ['nullable', 'string', 'max:5000'],
-            'task_date' => ['required', 'date_format:Y-m-d'],
+            'task_date' => ['nullable', 'date_format:Y-m-d'],
             'all_day' => ['boolean'],
-            'start_time' => ['exclude_if:all_day,true', 'required', 'date_format:H:i'],
-            'end_time' => ['exclude_if:all_day,true', 'nullable', 'date_format:H:i', 'after:start_time'],
+            'start_time' => ['exclude_if:all_day,true', 'nullable', 'date_format:H:i'],
+            'end_time' => ['exclude_if:all_day,true', 'nullable', 'date_format:H:i'],
             'user_id' => ['nullable', 'integer'],
             'remind_minutes' => ['nullable', 'integer', Rule::in(Task::REMINDERS)],
             'kind' => ['nullable', Rule::in(Task::KINDS)],
@@ -116,15 +119,20 @@ class TaskRequest extends FormRequest
     public function attributesForTask(): array
     {
         $data = $this->validated();
-        $allDay = (bool) ($data['all_day'] ?? false);
+        // No time: a to-do for the whole day.
+        $allDay = (bool) ($data['all_day'] ?? false) || blank($data['start_time'] ?? null);
+        $end = $allDay || blank($data['end_time'] ?? null) || $data['end_time'] <= $data['start_time'] ? null : $data['end_time'];
+        $task = $this->route('task');
 
         return [
-            'title' => trim($data['title']),
+            'title' => filled($data['title'] ?? null) ? trim($data['title']) : __('common.untitled'),
             'note' => filled($data['note'] ?? null) ? trim($data['note']) : null,
-            'task_date' => $data['task_date'],
+            'task_date' => $data['task_date'] ?? ($task instanceof Task && $task->task_date !== null
+                ? $task->task_date->toDateString()
+                : CarbonImmutable::now(currentCompany()->timezone)->toDateString()),
             'all_day' => $allDay,
             'start_time' => $allDay ? null : $data['start_time'],
-            'end_time' => $allDay ? null : ($data['end_time'] ?? null),
+            'end_time' => $end,
             'remind_minutes' => $data['remind_minutes'] ?? null,
             'user_id' => $this->assignee(),
             'kind' => $data['kind'] ?? null,

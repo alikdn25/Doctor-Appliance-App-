@@ -20,6 +20,7 @@ use App\Services\AI\TaskParser;
 use App\Support\Jobs\NearbyWindows;
 use App\Support\Locale\LocalTime;
 use App\Support\Parts\JobParts;
+use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -89,7 +90,7 @@ class TaskController extends Controller
         $task->save();
         self::geocode($task);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('tasks.saved')]);
+        SavedToast::flash(route('tasks.show', $task), __('tasks.saved'));
 
         return back();
     }
@@ -99,7 +100,7 @@ class TaskController extends Controller
         $task->fill($request->attributesForTask())->save();
         self::geocode($task);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('tasks.saved')]);
+        SavedToast::flash(route('tasks.show', $task), __('tasks.saved'));
 
         return back();
     }

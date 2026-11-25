@@ -63,6 +63,11 @@ class JobAddressController extends Controller
         $data = Validator::make($input, $rules, [], PropertyRequest::addressAttributes())->validate();
         $address = collect(self::FIELDS)->mapWithKeys(fn (string $f) => [$f => filled($data[$f] ?? null) ? $data[$f] : null])->all();
 
+        // Saved with no street (nothing is required): the job keeps the address it has.
+        if (blank($address['line1'] ?? null)) {
+            return 'jobs.address.saved';
+        }
+
         DB::transaction(function () use ($job, $customer, $address, $save) {
             $current = $job->property;
             // The job's empty address is filled (it is the customer's too); otherwise the customer gets a new one.

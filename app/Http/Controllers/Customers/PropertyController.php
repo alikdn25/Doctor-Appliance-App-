@@ -8,6 +8,7 @@ use App\Http\Requests\Customers\PropertyRequest;
 use App\Models\Customer;
 use App\Models\Property;
 use App\Models\ServiceJob;
+use App\Support\Ui\SavedToast;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -18,7 +19,7 @@ class PropertyController extends Controller
     {
         $save->handle($customer, null, $request->validated());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('properties.created')]);
+        SavedToast::flash(route('customers.show', $customer), __('properties.created'));
 
         return to_route('customers.show', $customer);
     }
@@ -28,7 +29,7 @@ class PropertyController extends Controller
         $customer = $property->customer()->firstOrFail();
         $save->handle($customer, $property, $request->validated());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('properties.updated')]);
+        SavedToast::flash(route('customers.show', $customer), __('properties.updated'));
 
         return to_route('customers.show', $customer);
     }

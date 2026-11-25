@@ -230,7 +230,6 @@ export function PaymentDialog({
                             id="payment-note"
                             rows={2}
                             maxLength={1000}
-                            required={method === 'other'}
                             value={form.data.note}
                             onChange={(e) =>
                                 form.setData('note', e.target.value)
@@ -295,7 +294,7 @@ export function PaymentDialog({
                         <Button
                             type="submit"
                             className="min-h-12 w-full text-base"
-                            disabled={form.processing || !method || amount <= 0}
+                            disabled={form.processing}
                         >
                             {t('payments.record')} · {money(amount)}
                         </Button>

@@ -26,7 +26,7 @@ class PropertyRequest extends FormRequest
     {
         $this->merge([
             'is_primary' => $this->boolean('is_primary'),
-            'country' => strtoupper((string) $this->input('country', currentCompany()->country)),
+            'country' => strtoupper((string) ($this->input('country') ?: currentCompany()->country)),
         ]);
     }
 
@@ -43,7 +43,7 @@ class PropertyRequest extends FormRequest
      *
      * @return array<string, array<mixed>>
      */
-    public static function addressRules(string $prefix = '', string $required = 'required'): array
+    public static function addressRules(string $prefix = '', string $required = 'nullable'): array
     {
         return [
             "{$prefix}label" => ['nullable', 'string', 'max:100'],

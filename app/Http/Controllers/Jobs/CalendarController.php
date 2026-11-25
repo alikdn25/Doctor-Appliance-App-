@@ -15,6 +15,7 @@ use App\Models\ServiceJob;
 use App\Models\User;
 use App\Support\Jobs\DispatchConflicts;
 use App\Support\Jobs\JobPresenter;
+use App\Support\Jobs\UnscheduledJobs;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -57,7 +58,13 @@ class CalendarController extends Controller
         $unread = SmsThreads::unreadByCustomer($user, $visits->pluck('job.customer_id')->filter()->unique()->values()->all());
         $brandIds = $user->limitedBrandIds();
 
+        // The same search as Jobs (owner's task of November 25): any job, every status, with or without a time,
+        // deleted ones marked.
+        $search = trim((string) $request->query('search', ''));
+
         return Inertia::render('calendar/index', [
+            'search' => $search,
+            'searchResults' => $search !== '' ? JobController::searchJobs($user, $search) : null,
             'view' => $view,
             'date' => $anchor->format('Y-m-d'),
             'today' => $today->format('Y-m-d'),
@@ -81,6 +88,15 @@ class CalendarController extends Controller
                     && ($brandIds === [] || in_array($visit->job->brand_id, $brandIds, true)),
             ])->values(),
             'unscheduled' => $this->unscheduled($user),
+            // Jobs with a day but no time: a "No time" strip above the hours of their day (owner's task of November 25).
+            'noTime' => UnscheduledJobs::noTime($user, $from, $to)
+                ->groupBy(fn (ServiceJob $job) => $job->planned_date->toDateString())
+                ->map(fn ($jobs) => $jobs->map(fn (ServiceJob $job) => UnscheduledJobs::card($job))->values())
+                ->all(),
+            // Jobs with no day and no time: in the strip above today until they get a day.
+            'noDate' => $today->greaterThanOrEqualTo($from) && $today->lessThan($to)
+                ? UnscheduledJobs::noDate($user)->map(fn (ServiceJob $job) => UnscheduledJobs::card($job))->values()->all()
+                : [],
             'assignableUsers' => Membership::query()->assignable()->with('user')->get()
                 ->filter(fn (Membership $m) => $m->user !== null)
                 ->sortBy(fn (Membership $m) => mb_strtolower($m->user->name))

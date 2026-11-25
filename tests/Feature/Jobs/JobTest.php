@@ -144,13 +144,14 @@ test('a new customer can be created right in the job form', function () {
     });
 });
 
-test('a new customer needs a name, a valid phone and an address', function () {
+test('a new customer needs only a valid phone when one is typed (no required fields)', function () {
     $this->post(route('jobs.store'), [
         'brand_id' => $this->brand->id,
         'job_type' => 'repair',
         'new_customer_mode' => true,
         'new_customer' => ['phone' => '123', 'property' => ['line1' => '', 'city' => '']],
-    ])->assertSessionHasErrors(['new_customer.first_name', 'new_customer.property.line1', 'new_customer.property.city']);
+    ])->assertSessionHasErrors(['new_customer.phone'])
+        ->assertSessionDoesntHaveErrors(['new_customer.first_name', 'new_customer.property.line1', 'new_customer.property.city']);
 
     $this->post(route('jobs.store'), [
         'brand_id' => $this->brand->id,
@@ -171,28 +172,31 @@ test('the address and appliances must belong to the chosen customer', function (
         ->assertSessionHasErrors('property_id');
     $this->post(route('jobs.store'), jobPayload(['appliance_ids' => [$otherAppliance->id]]))
         ->assertSessionHasErrors('appliance_ids');
-    $this->post(route('jobs.store'), jobPayload(['customer_id' => null]))
-        ->assertSessionHasErrors('customer_id');
-
     expect(inCompany($this->company, fn () => ServiceJob::count()))->toBe(0);
+
+    // No customer picked: a new "Unnamed customer" job (no required fields).
+    $this->post(route('jobs.store'), ['brand_id' => $this->brand->id, 'customer_id' => null, 'property_id' => null])
+        ->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => ServiceJob::count()))->toBe(1);
 });
 
-test('the visit window must end after it starts and only team members can be assigned', function () {
+test('an end before the start gets the usual window, and only team members can be assigned', function () {
     $outsider = memberOf(Company::factory()->create(), UserRole::Technician);
     $inactive = memberOf($this->company, UserRole::Technician);
     DB::table('company_user')->where('user_id', $inactive->id)->update(['is_active' => false]);
 
     $this->post(route('jobs.store'), jobPayload([
         'add_visit' => true,
-        'visit' => ['date' => '2030-01-15', 'start_time' => '11:00', 'end_time' => '09:00'],
-    ]))->assertSessionHasErrors('visit.end_time');
+        'visit' => ['date' => '2030-01-15', 'start_time' => '09:00', 'end_time' => '11:00', 'assignee_ids' => [$outsider->id, $inactive->id]],
+    ]))->assertSessionHasErrors(['visit.assignee_ids.0', 'visit.assignee_ids.1']);
+    expect(inCompany($this->company, fn () => ServiceJob::count()))->toBe(0);
 
     $this->post(route('jobs.store'), jobPayload([
         'add_visit' => true,
-        'visit' => ['date' => '2030-01-15', 'start_time' => '09:00', 'end_time' => '11:00', 'assignee_ids' => [$outsider->id, $inactive->id]],
-    ]))->assertSessionHasErrors(['visit.assignee_ids.0', 'visit.assignee_ids.1']);
-
-    expect(inCompany($this->company, fn () => ServiceJob::count()))->toBe(0);
+        'visit' => ['date' => '2030-01-15', 'start_time' => '11:00', 'end_time' => '09:00'],
+    ]))->assertSessionHasNoErrors();
+    $visit = inCompany($this->company, fn () => ServiceJob::with('visits')->sole()->visits->sole());
+    expect($visit->scheduled_end->greaterThan($visit->scheduled_start))->toBeTrue();
 });
 
 test('inactive brands cannot be picked for a new job', function () {

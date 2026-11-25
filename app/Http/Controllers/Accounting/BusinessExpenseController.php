@@ -18,6 +18,7 @@ use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
 use App\Support\Locale\Currencies;
 use App\Support\PrivateMedia;
+use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -113,7 +114,7 @@ class BusinessExpenseController extends Controller
     public function store(BusinessExpenseRequest $request, SaveBusinessExpense $save, AuditLogger $audit): RedirectResponse
     {
         $expense = $save->handle($request, null, $audit);
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('expenses.saved')]);
+        SavedToast::flash(route('expenses.index'), __('expenses.saved'));
 
         return $this->savedRedirect($expense);
     }
@@ -121,7 +122,7 @@ class BusinessExpenseController extends Controller
     public function update(BusinessExpenseRequest $request, BusinessExpense $expense, SaveBusinessExpense $save, AuditLogger $audit): RedirectResponse
     {
         $save->handle($request, $expense, $audit);
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('expenses.saved')]);
+        SavedToast::flash(route('expenses.index'), __('expenses.saved'));
 
         return $this->savedRedirect($expense);
     }

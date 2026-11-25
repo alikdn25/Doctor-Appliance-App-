@@ -2,6 +2,9 @@
 
 return [
     'filters' => 'Filters',
+    'no_time' => 'No time',
+    'no_date' => 'No date',
+    'no_time_hint' => 'Tap a job to open it and set a time, or drag it onto the hours.',
     'people' => 'People shown',
     'got_it' => 'Got it',
     'to_schedule_count' => '1 to schedule|:count to schedule',

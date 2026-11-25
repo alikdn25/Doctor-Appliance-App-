@@ -127,7 +127,7 @@ return. Each job counts once; access follows company, brand and technician assig
 ### 7.1 Customers (CRM)
 
 - Customer card with all properties, appliances, jobs, estimates, invoices, payments, messages.
-- Search by name, phone, address, model/serial number.
+- Search by name, phone, address, model/serial number, and by anything the job search finds (§7.26).
 - Duplicate detection on phone/email.
 
 ### 7.2 Lead intake and online booking
@@ -1058,6 +1058,33 @@ set up is built, stays off and says what is missing.
 - `jobs:close-finished` (once, `--dry-run` first): moves closed jobs whose status stayed open to Completed and closes
   fully paid jobs not closed yet; prints the job numbers.
 
+### 7.26 No required fields, jobs without a time, one search (owner's task of November 25)
+
+**No field is required anywhere. Jobs without a time and without a date are always seen in the calendar and on
+Today. The search finds any job.**
+
+- Every create / edit form saves with any fields empty: booking and job, To Do, parts and job cost lines, customer
+  (address, phones, emails, appliances), estimate, invoice, New charge, expense (and My expenses), mileage, marking a
+  payment (method included), visit. Formats (number, date, phone, email) are checked only when the field is filled.
+  Save is always active; there are no required marks.
+- Empty values get a stand-in: a to-do, part, line or expense without a name is "Untitled"; a job's customer without a
+  name is "Unnamed customer" (texts to the customer use no name); no date is today; no amount is 0 (a payment: the
+  balance, method "Other"); no expense category is "Other"; no brand / job type is the company's first ones; a line
+  without quantity is 1.
+- A save that fails (server error, no network) shows a large red message; the form stays open with what was typed.
+  A saved form shows "Saved" with an Open button.
+- "No time" = an open job with a day but no visit with a time (`service_jobs.planned_date`). It shows on that day: a
+  "No time" strip above the hours in the calendar (day and week; the calendar has no month or list view), first on
+  Today and on My Jobs marked "No time". A tap opens the job (set a time there); dragging it onto the hours books that
+  time. A visit with a time clears the day.
+- "No date" = an open job with neither a day nor a visit (not waiting for parts / the customer, not on hold). It shows
+  in a "No date" group at the top of Today and My Jobs (today) and above today in the calendar until it gets a day.
+- Both are in the morning summary and the morning SMS and in the counters of Not completed jobs (No time).
+- Search (Jobs, Calendar, Customers): every job in any status, with or without a day or a time, and deleted ones
+  (marked "Deleted", for people who see the trash). By customer name, phone in any format (spaces, brackets, +1 or
+  none), address, city, problem, notes, appliance type, brand, model and serial, job number, invoice and estimate
+  number; part of a word, any letter case, from the first letter or digit.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).
@@ -1077,7 +1104,7 @@ set up is built, stays off and says what is missing.
 ## 9. Non-functional requirements
 
 - Mobile-first UI; technician screens usable with one hand. Visible Menu; booking (Quick booking · Book customer) starts from the round "+" on every screen, including Calendar (on the day it shows). Login opens the working company for Owners/Admins and My jobs for technicians. Platform administration/support are separate; persistent sign-in is enabled by default.
-- Quick office booking: phone, first and last name, the address (required, right after the name) and the arrival window create the customer, job and visit atomically; an existing customer can be found by name/phone. An address is never saved empty; a customer's first address is the primary one. Other details can be supplied later. Empty calendar days offer booking. New invoice is available from the invoice list and leads to an existing job or short customer entry, then prices. Full job creation cannot save without a customer/property.
+- Quick office booking: phone, first and last name, the address (right after the name) and the arrival window create the customer, job and visit atomically; an existing customer can be found by name/phone. No field is required (§7.26): a job without an address keeps an empty one and shows "No address"; a customer's first address is the primary one. Other details can be supplied later. Empty calendar days offer booking. New invoice is available from the invoice list and leads to an existing job or short customer entry, then prices. Full job creation saves with any fields empty, too.
 - English UI in v1; all text strings kept in translation files for future languages.
 - Localization per company as in §1.1 (currency, taxes, time zone, regional format, address format, E.164 phones).
 - Security: hashed passwords, optional 2FA for every user, role-based access, rate limiting, audit log of sensitive actions.

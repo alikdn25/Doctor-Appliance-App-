@@ -16,6 +16,7 @@ import { StickyActionBar } from '@/components/ui/sticky-action-bar';
 import { hasCardReader } from '@/lib/card-reader';
 import { sendJson } from '@/lib/http';
 import { useTrans } from '@/lib/i18n';
+import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 
 type Line = { description: string; amount: string; tax_rate_ids: number[] };
@@ -468,10 +469,17 @@ export default function NewCharge(props: Props) {
                 <StickyActionBar>
                     <Button
                         size="lg"
-                        disabled={!valid || totals === null}
                         loading={saving}
                         onClick={() => {
                             if (!job) {
+                                // Taking money needs an amount; saving a job's charge does not (it opens the invoice).
+                                if (!valid || totals === null) {
+                                    toast.error(
+                                        t('payments.errors.amount_required'),
+                                    );
+
+                                    return;
+                                }
                                 setPaying(true);
 
                                 return;

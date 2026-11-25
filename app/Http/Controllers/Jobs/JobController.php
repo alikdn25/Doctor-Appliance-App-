@@ -55,10 +55,13 @@ use App\Support\Jobs\BookingPhotos;
 use App\Support\Jobs\JobBacklog;
 use App\Support\Jobs\JobPresenter;
 use App\Support\Jobs\PossibleWarranty;
+use App\Support\Jobs\UnscheduledJobs;
 use App\Support\Locale\LocalTime;
 use App\Support\PhoneNumber;
 use App\Support\Routing\DayOrder;
+use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -126,7 +129,10 @@ class JobController extends Controller
 
             return Inertia::render('jobs/index', [
                 ...$shared,
-                'jobs' => JobBacklogController::jobs($user, $filters),
+                // A search finds any job (owner's task of November 25): every status, with a time or not, deleted too.
+                'jobs' => $filters['search'] !== '' && $filters['reason'] === ''
+                    ? self::searchJobs($user, $filters['search'])
+                    : JobBacklogController::jobs($user, $filters),
                 'filters' => $filters,
             ]);
         }
@@ -162,6 +168,8 @@ class JobController extends Controller
 
         $jobs = ServiceJob::query()
             ->visibleTo($user)
+            // A search also finds deleted jobs (marked Deleted) for people who see the trash.
+            ->when($filters['search'] !== '' && Gate::allows('viewTrash', ServiceJob::class), fn (Builder $q) => $q->withTrashed())
             ->search($filters['search'])
             ->when($filters['status'] === 'open', fn ($q) => $q->whereNotIn('status', self::CLOSED))
             ->when($status, fn ($q) => $q->where('status', $status))
@@ -216,6 +224,25 @@ class JobController extends Controller
             'brands' => $this->brandOptions($user, activeOnly: false),
             'technicians' => $this->assignableUsers(),
         ]);
+    }
+
+    /**
+     * Any job the search matches (owner's task of November 25): every status, with or without a date or a time, and
+     * deleted ones (marked Deleted) for people who see the trash. Newest first.
+     */
+    public static function searchJobs(User $user, string $search): LengthAwarePaginator
+    {
+        return ServiceJob::query()
+            ->visibleTo($user)
+            ->when(Gate::forUser($user)->allows('viewTrash', ServiceJob::class), fn (Builder $q) => $q->withTrashed())
+            ->search($search)
+            ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
+            ->when(Gate::forUser($user)->allows('viewAny', Invoice::class), fn ($q) => $q->with('invoices'))
+            ->orderByRaw('deleted_at is not null')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString()
+            ->through(fn (ServiceJob $job) => JobPresenter::row($job));
     }
 
     /**
@@ -300,6 +327,14 @@ class JobController extends Controller
             'search' => $search,
             // The person's own to-dos of the day, in one feed with the jobs (All / Jobs / To Do on the screen).
             'tasks' => $search === '' ? TaskController::between($user, $date, $date->addDay(), onlyOwn: true) : [],
+            // Jobs of the day without a time first (marked No time), and on today the jobs with no day yet (owner's
+            // task of November 25). The office sees every one; a technician the ones given to them.
+            'noTime' => $tab === 'day' && $search === ''
+                ? UnscheduledJobs::noTime($user, $date, $date->addDay(), onlyOwn: ! $office)->map(fn (ServiceJob $job) => UnscheduledJobs::card($job))->values()
+                : [],
+            'noDate' => $tab === 'day' && $search === '' && $date->equalTo($today)
+                ? UnscheduledJobs::noDate($user, onlyOwn: ! $office)->map(fn (ServiceJob $job) => UnscheduledJobs::card($job))->values()
+                : [],
             'visits' => $visits->map(function (JobVisit $visit) use ($user, $timezone, $messaging, $unread) {
                 $job = $visit->job;
 
@@ -412,7 +447,7 @@ class JobController extends Controller
                 : to_route('jobs.mine', ['date' => $date]);
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.created', ['number' => $job->number])]);
+        SavedToast::flash(route('jobs.show', $job), __('jobs.created', ['number' => $job->number]));
 
         return $request->boolean('open_invoice')
             ? to_route('invoices.create', $job)
@@ -737,7 +772,7 @@ class JobController extends Controller
             }
         });
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.updated')]);
+        SavedToast::flash(route('jobs.show', $job), __('jobs.updated'));
 
         return to_route('jobs.show', $job);
     }
@@ -865,6 +900,11 @@ class JobController extends Controller
             'last_name' => $edit['last_name'],
             'company_name' => $edit['company_name'],
         ])->save();
+
+        // An empty phone box leaves the saved number as it is.
+        if (blank($edit['phone'] ?? null)) {
+            return;
+        }
 
         $phone = $customer->primaryPhone()->first() ?? new CustomerPhone(['label' => 'mobile', 'is_primary' => true]);
 

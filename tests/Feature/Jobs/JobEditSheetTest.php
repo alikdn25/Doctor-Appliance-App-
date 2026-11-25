@@ -94,8 +94,8 @@ test('a new address in the sheet goes on the job and the customer', function () 
 
 test('the sheet keeps a name and a valid window, and only people who manage the job may use it', function () {
     $stranger = memberOf(Company::factory()->create());
-    $this->put(route('jobs.details', $this->job), ['first_name' => '', 'last_name' => ''])->assertSessionHasErrors('first_name');
-    $this->put(route('jobs.details', $this->job), ['date' => '2026-10-20', 'start_time' => '15:00', 'end_time' => '14:00'])->assertSessionHasErrors('end_time');
+    // No required fields: an end before the start saves (the usual window after the start).
+    $this->put(route('jobs.details', $this->job), ['date' => '2026-10-20', 'start_time' => '15:00', 'end_time' => '14:00'])->assertSessionHasNoErrors();
 
     // A technician does not dispatch: changing the technician is the office's.
     $this->actingAs($this->tech)->put(route('jobs.details', $this->job), ['technician_id' => $this->tech->id])->assertForbidden();
@@ -103,6 +103,10 @@ test('the sheet keeps a name and a valid window, and only people who manage the 
     // Another company's job is simply not found, and nothing of it changes.
     $this->actingAs($stranger)->put(route('jobs.details', $this->job), ['first_name' => 'Hacked'])->assertNotFound();
     expect(inCompany($this->company, fn () => $this->customer->fresh()->first_name))->toBe('Paula');
+
+    // An emptied name saves too ("Unnamed customer").
+    $this->actingAs($this->owner)->put(route('jobs.details', $this->job), ['first_name' => '', 'last_name' => ''])->assertSessionHasNoErrors();
+    expect(inCompany($this->company, fn () => $this->customer->fresh()->display_name))->toBe('Unnamed customer');
 });
 
 test('another customer\'s address cannot be put on the job', function () {

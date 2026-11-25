@@ -334,7 +334,8 @@ describe('visit types', function () {
 
     test('a return visit links the earlier job and its appliances, with a "bring with you" list', function () {
         $this->actingAs($this->owner);
-        $this->post(route('jobs.store'), lifecycleJobPayload(['visit_type' => 'return_visit']))->assertSessionHasErrors('previous_job_id');
+        // No required fields: a return visit saves before the earlier job is picked.
+        $this->post(route('jobs.store'), lifecycleJobPayload(['visit_type' => 'return_visit']))->assertSessionHasNoErrors();
 
         $this->post(route('jobs.store'), lifecycleJobPayload([
             'visit_type' => 'return_visit',

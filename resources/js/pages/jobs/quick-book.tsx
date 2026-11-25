@@ -1144,8 +1144,16 @@ export default function QuickBook({
             ...(needsAddress ? { new_property, property_id: null } : {}),
             // The billing address goes with the switch: off = the job address is the customer's own.
             ...(occupantOn ? { billing } : {}),
-            add_visit: booking && slot.kind !== 'none',
-            visit: { ...d.visit, start_time: times.start, end_time: times.end },
+            // "No time" keeps the day: the job shows under No time on that day (owner's task of November 25).
+            add_visit: booking,
+            visit:
+                slot.kind === 'none'
+                    ? { ...d.visit, start_time: null, end_time: null }
+                    : {
+                          ...d.visit,
+                          start_time: times.start,
+                          end_time: times.end,
+                      },
             booking_photos: bookingPhotos.map((photo) => photo.id),
             ...(applianceType === ''
                 ? {}
@@ -1564,7 +1572,6 @@ export default function QuickBook({
                         >
                             <PhoneInput
                                 id="booking-phone"
-                                required
                                 autoFocus
                                 maxLength={32}
                                 country={country}
@@ -2081,7 +2088,6 @@ export default function QuickBook({
                                     <Input
                                         id="booking-date"
                                         type="date"
-                                        required
                                         value={data.visit.date}
                                         onChange={(event) =>
                                             setVisit({
@@ -2098,7 +2104,6 @@ export default function QuickBook({
                                     <Input
                                         id="booking-from"
                                         type="time"
-                                        required
                                         value={data.visit.start_time}
                                         onChange={(event) =>
                                             setVisit({
@@ -2115,7 +2120,6 @@ export default function QuickBook({
                                     <Input
                                         id="booking-to"
                                         type="time"
-                                        required
                                         value={data.visit.end_time}
                                         onChange={(event) =>
                                             setVisit({

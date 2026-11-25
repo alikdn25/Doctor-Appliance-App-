@@ -41,6 +41,7 @@ return [
     'receipt_failed' => 'The receipt could not be saved. Please try again.',
     'job_invalid' => 'Choose one of your jobs.',
     'job_category' => 'Job expenses',
+    'other_category' => 'Other',
     'job_line_default' => 'Expenses for job #:number',
     'job_block' => [
         'title' => 'My expenses',

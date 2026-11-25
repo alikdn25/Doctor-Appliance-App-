@@ -34,7 +34,8 @@ class RecordPayment
         User $user,
     ): Payment {
         // Cash is refused when the company does not take cash.
-        if (! in_array($method, PaymentMethod::manual(currentCompany()), true)) {
+        // "Other" is what a payment marked without a method is saved as.
+        if ($method !== PaymentMethod::Other && ! in_array($method, PaymentMethod::manual(currentCompany()), true)) {
             throw ValidationException::withMessages(['method' => __('payments.errors.invalid_method')]);
         }
 

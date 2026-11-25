@@ -494,7 +494,13 @@ export default function JobsIndex({
                                     label={t('jobs.title')}
                                     rows={jobs.data}
                                     rowKey={(job) => job.id}
-                                    rowHref={(job) => show(job.id)}
+                                    rowHref={(job) =>
+                                        job.deleted
+                                            ? index({
+                                                  query: { tab: 'deleted' },
+                                              })
+                                            : show(job.id)
+                                    }
                                     rowClassName={(job) =>
                                         isFinishedJob(job.status) &&
                                         'opacity-60 grayscale'
@@ -525,10 +531,19 @@ export default function JobsIndex({
                                                     ? 'status'
                                                     : undefined,
                                             render: (job) => (
-                                                <StatusBadge
-                                                    status={job.status}
-                                                    label={job.status_label}
-                                                />
+                                                <span className="flex flex-wrap items-center gap-1">
+                                                    <StatusBadge
+                                                        status={job.status}
+                                                        label={job.status_label}
+                                                    />
+                                                    {job.deleted && (
+                                                        <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
+                                                            {t(
+                                                                'jobs.search_deleted',
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                </span>
                                             ),
                                         },
                                         {
@@ -542,7 +557,9 @@ export default function JobsIndex({
                                             render: (job) =>
                                                 job.visit
                                                     ? `${time.day(job.visit.scheduled_start)} · ${time.shortRange(job.visit.scheduled_start, job.visit.scheduled_end)}`
-                                                    : t('jobs.not_scheduled'),
+                                                    : job.planned_date
+                                                      ? `${time.dateOnly(job.planned_date)} · ${t('calendar.no_time')}`
+                                                      : t('jobs.not_scheduled'),
                                         },
                                         {
                                             key: 'customer',

@@ -1,3 +1,34 @@
+# November 25 — Owner's task: no required fields, jobs without a time, one search (done)
+
+1. **No required fields** (SPEC §7.26): `required` → `nullable` in every form request and inline validator of
+   booking / job (`JobRequest`, `VisitRequest`, `VisitController`, `JobDetailsController`), To Do (`TaskRequest`),
+   parts (`PartsController`, `JobCostController`), customer (`CustomerRequest`, `PropertyRequest`,
+   `ApplianceRequest`, `SaveProperty`), estimate / invoice (`DocumentRequest`), New charge (`ChargeController`),
+   expenses (`BusinessExpenseRequest`, `JobExpenseController`), mileage (`TripController`), payment
+   (`PaymentRequest`, method "Other" allowed). Formats are checked only when filled. Stand-ins: "Untitled",
+   "Unnamed customer" (`Customer::buildDisplayName`, texts use no name), today, 0 / the balance, "Other" category.
+2. **Front end**: no `required` attributes, Save never disabled (job form, document form, task sheet, payment,
+   job edit sheet, quick trip, New charge). A failed save (5xx / no network) shows a large red toast and the form stays
+   open (`use-flash-toast.ts`); a saved form shows "Saved" with Open (`App\Support\Ui\SavedToast`).
+3. **No time / No date** (`App\Support\Jobs\UnscheduledJobs`, column `service_jobs.planned_date`): a booking with a
+   day and no time keeps the day; Calendar (day / week) gets a "No time" strip above the hours (`NoTimeStrip`, tap
+   opens the job, drag onto the hours books it) and "No date" above today; Today (`MorningSummary`: `no_date`,
+   `no_time`) and My Jobs (`noTime`, `noDate`) show them first; the morning SMS lists them; a visit with a time clears
+   the day (`SaveVisit`). They count under No time in Not completed jobs as before.
+4. **Search** (`ServiceJob::scopeSearch`): part of a word, any case, from the first character; name, phone in any
+   format, address, city, problem, notes (and team notes), appliance type / brand / model / serial, job, invoice and
+   estimate number. Jobs (Open and All), Calendar (`search`, `searchResults`) and Customers (a customer whose job
+   matches) use it; a search covers every status and the trash (marked Deleted).
+5. Migration `2026_11_26_000100_no_required_fields_and_planned_date`: `service_jobs.planned_date` (date, nullable,
+   indexed); NOT NULL dropped from the form columns (defaults kept, no rows changed). Existing jobs without a visit
+   show under No date by themselves after the deploy.
+
+- Tests: `NoRequiredFieldsTest` (every form saved empty; No time in calendar / Today / My Jobs / SMS / counters; No
+  date group; technician scope; search by name, phone formats, part of the address, invoice number, model; deleted
+  jobs marked).
+- Not built: the calendar has no month or list view (day, week and map only); the strip is in day and week.
+- Next: Grok Bot deploys and runs the migration.
+
 # November 25 — Grok Bot notes after PR #101: backup:list, local backup folder, translation keys (done)
 
 1. **`backup:list`** without external storage no longer crashes (S3 bucket null): it says "External backups are not

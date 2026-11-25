@@ -10,6 +10,7 @@ use App\Messaging\BookingConfirmation;
 use App\Models\JobVisit;
 use App\Models\Membership;
 use App\Models\ServiceJob;
+use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,9 +26,20 @@ class VisitController extends Controller
     public function store(VisitRequest $request, ServiceJob $job, SaveVisit $save, BookingConfirmation $confirmation): RedirectResponse
     {
         $visit = $request->visit();
+
+        // No time (owner's task of November 25): the day is kept on the job and it shows under No time that day.
+        if ($visit === null) {
+            if ($request->filled('date')) {
+                $job->forceFill(['planned_date' => $request->validated('date')])->save();
+            }
+            SavedToast::flash(route('jobs.show', $job));
+
+            return $request->boolean('back') ? back() : to_route('jobs.show', $job);
+        }
+
         $saved = $save->handle($job, null, $visit['attributes'], $visit['assignee_ids'], $request->user());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.visit_created')]);
+        SavedToast::flash(route('jobs.show', $job), __('jobs.visit_created'));
         self::notify($request, $saved, $confirmation);
 
         // The calendar schedules visits without leaving the page.
@@ -36,13 +48,34 @@ class VisitController extends Controller
 
     public function update(VisitRequest $request, JobVisit $visit, SaveVisit $save, BookingConfirmation $confirmation): RedirectResponse
     {
-        $data = $request->visit();
+        $data = $request->visit() ?? self::keepTimes($request, $visit);
         $save->handle($visit->job, $visit, $data['attributes'], $data['assignee_ids'], $request->user());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('jobs.visit_updated')]);
+        SavedToast::flash(route('jobs.show', $visit->service_job_id), __('jobs.visit_updated'));
         self::notify($request, $visit, $confirmation);
 
         return $request->boolean('back') ? back() : to_route('jobs.show', $visit->service_job_id);
+    }
+
+    /**
+     * A visit saved with its time emptied keeps its times (on the day picked, if one was).
+     *
+     * @return array{attributes: array<string, mixed>, assignee_ids: list<int>}
+     */
+    private static function keepTimes(VisitRequest $request, JobVisit $visit): array
+    {
+        $timezone = currentCompany()->timezone;
+        $start = CarbonImmutable::instance($visit->scheduled_start)->setTimezone($timezone);
+        $end = CarbonImmutable::instance($visit->scheduled_end)->setTimezone($timezone);
+
+        return VisitRequest::toVisit([
+            'date' => $request->validated('date') ?: $start->toDateString(),
+            'start_time' => $start->format('H:i'),
+            'end_time' => $end->format('H:i'),
+            'estimated_duration_minutes' => $request->validated('estimated_duration_minutes') ?? $visit->estimated_duration_minutes,
+            'strict_arrival' => $request->validated('strict_arrival') ?? $visit->strict_arrival,
+            'assignee_ids' => $request->validated('assignee_ids') ?? $visit->assignees()->pluck('users.id')->all(),
+        ]) ?? throw new \LogicException('A visit always has a start.');
     }
 
     /**

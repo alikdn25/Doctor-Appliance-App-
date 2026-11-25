@@ -54,9 +54,9 @@ class JobRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        // A booking saves with any data (owner's update, November 16): no customer chosen means a new one (maybe
+        // No field is required anywhere (owner's task of November 25): no customer chosen means a new one (maybe
         // with no name or phone), and the brand and job type fall back to the company's first ones.
-        if ($this->creating() && $this->boolean('quick_booking')) {
+        if ($this->creating()) {
             if (! $this->boolean('new_customer_mode') && blank($this->input('customer_id'))) {
                 $this->merge(['new_customer_mode' => true]);
             }
@@ -66,6 +66,19 @@ class JobRequest extends FormRequest
             if (blank($this->input('job_type'))) {
                 $types = $this->allowedJobTypes();
                 $this->merge(['job_type' => in_array('repair', $types, true) ? 'repair' : ($types[0] ?? null)]);
+            }
+        }
+
+        // Editing: an emptied brand, job type or address keeps the job's own.
+        $job = $this->route('job');
+        if ($job instanceof ServiceJob) {
+            foreach (['brand_id' => $job->brand_id, 'job_type' => $job->job_type->value, 'property_id' => $job->property_id] as $field => $value) {
+                if (blank($this->input($field))) {
+                    $this->merge([$field => $value]);
+                }
+            }
+            if (is_array($this->input('address_edit')) && blank($this->input('address_edit.country'))) {
+                $this->merge(['address_edit' => [...$this->input('address_edit'), 'country' => currentCompany()->country]]);
             }
         }
 
@@ -129,54 +142,51 @@ class JobRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'brand_id' => ['required', 'integer'],
-            'job_type' => ['required', Rule::in($this->allowedJobTypes())],
+            'brand_id' => ['nullable', 'integer'],
+            'job_type' => ['nullable', Rule::in($this->allowedJobTypes())],
+            // A day picked without a time ("No time"): the job shows on that day until a visit gets a time.
+            'planned_date' => ['nullable', 'date_format:Y-m-d'],
             'lead_source' => ['nullable', Rule::enum(LeadSource::class)],
             'description' => ['nullable', 'string', 'max:5000'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'appliance_ids' => ['array', 'max:20'],
             'appliance_ids.*' => ['integer', 'distinct'],
             'new_appliances' => ['array', 'max:10'],
-            'new_appliances.*.type' => ['required', Rule::enum(ApplianceType::class)],
+            'new_appliances.*.type' => ['nullable', Rule::enum(ApplianceType::class)],
             'new_appliances.*.manufacturer' => ['nullable', 'string', 'max:100'],
             'new_appliances.*.model_number' => ['nullable', 'string', 'max:100'],
             'new_appliances.*.serial_number' => ['nullable', 'string', 'max:100'],
             'visit_type' => ['sometimes', Rule::enum(VisitType::class)],
             'previous_job_id' => ['nullable', 'integer'],
             'bring_items' => ['array', 'max:50'],
-            'bring_items.*.description' => ['required', 'string', 'max:255'],
+            'bring_items.*.description' => ['nullable', 'string', 'max:255'],
             'bring_items.*.quantity' => ['nullable', 'numeric', 'gt:0', 'max:99999'],
         ];
 
         if (! $this->creating()) {
             return [
                 ...$rules,
-                'property_id' => ['required', 'integer'],
+                'property_id' => ['nullable', 'integer'],
                 // Name and main phone of the job's customer, corrected from the job form.
                 ...(is_array($this->input('customer_edit')) ? [
                     'customer_edit' => ['array'],
-                    'customer_edit.first_name' => ['nullable', 'required_without_all:customer_edit.last_name,customer_edit.company_name', 'string', 'max:100'],
+                    'customer_edit.first_name' => ['nullable', 'string', 'max:100'],
                     'customer_edit.last_name' => ['nullable', 'string', 'max:100'],
                     'customer_edit.company_name' => ['nullable', 'string', 'max:255'],
-                    'customer_edit.phone' => ['required', 'string', 'max:32'],
+                    'customer_edit.phone' => ['nullable', 'string', 'max:32'],
                 ] : []),
                 ...(is_array($this->input('address_edit')) ? [
                     'address_edit' => ['array'],
                     ...collect(PropertyRequest::addressRules('address_edit.', 'nullable'))
                         ->only(array_map(fn (string $f) => "address_edit.{$f}", self::ADDRESS_FIELDS))
                         ->all(),
-                    // An address is never emptied.
-                    'address_edit.line1' => ['required', 'string', 'max:255'],
-                    'address_edit.city' => ['required', 'string', 'max:100'],
-                    'address_edit.country' => ['required', 'string', 'size:2'],
                 ] : []),
             ];
         }
 
         $newCustomer = $this->boolean('new_customer_mode');
-        // Book customer saves with any data; the full job form still asks for a customer and an address.
-        $any = $this->boolean('quick_booking');
-        $address = $any ? 'nullable' : 'required';
+        // Every form saves with any data (owner's task of November 25).
+        $address = 'nullable';
 
         return [
             ...$rules,
@@ -190,15 +200,13 @@ class JobRequest extends FormRequest
             'booking_photos.*' => ['string', 'max:64'],
             // Every field is optional (owner's update, November 16): a job without an address keeps an empty one and
             // shows "No address"; a customer may have no name or phone yet.
-            'customer_id' => $newCustomer ? ['nullable'] : ['required', 'integer'],
-            'property_id' => $any || $newCustomer || is_array($this->input('new_property')) ? ['nullable', 'integer'] : ['required', 'integer'],
+            'customer_id' => ['nullable', 'integer'],
+            'property_id' => ['nullable', 'integer'],
             ...($newCustomer ? [
-                'new_customer.first_name' => $any
-                    ? ['nullable', 'string', 'max:100']
-                    : ['nullable', 'required_without_all:new_customer.last_name,new_customer.company_name', 'string', 'max:100'],
+                'new_customer.first_name' => ['nullable', 'string', 'max:100'],
                 'new_customer.last_name' => ['nullable', 'string', 'max:100'],
                 'new_customer.company_name' => ['nullable', 'string', 'max:255'],
-                'new_customer.phone' => [$any ? 'nullable' : 'required', 'string', 'max:32'],
+                'new_customer.phone' => ['nullable', 'string', 'max:32'],
                 'new_customer.email' => ['nullable', 'email', 'max:255'],
                 'new_customer.notes' => ['nullable', 'string', 'max:10000'],
                 ...PropertyRequest::addressRules('new_customer.property.', $address),
@@ -217,7 +225,7 @@ class JobRequest extends FormRequest
             // The payer's billing address (empty = the same as the primary address).
             ...(is_array($this->input('billing')) ? CustomerRequest::billingRules('billing.') : []),
             'add_visit' => ['boolean'],
-            ...VisitRequest::visitRules('visit.', 'required_if_accepted:add_visit'),
+            ...VisitRequest::visitRules('visit.'),
         ];
     }
 
@@ -237,7 +245,7 @@ class JobRequest extends FormRequest
 
             $this->validateCustomerEdit($validator);
 
-            if ($this->boolean('new_customer_mode') && ($this->filled('new_customer.phone') || ! $this->boolean('quick_booking'))
+            if ($this->boolean('new_customer_mode') && $this->filled('new_customer.phone')
                 && ! PhoneNumber::isPossible((string) $this->input('new_customer.phone'))) {
                 $validator->errors()->add('new_customer.phone', __('customers.invalid_phone'));
             }
@@ -296,13 +304,29 @@ class JobRequest extends FormRequest
      */
     public function jobAttributes(): array
     {
-        return collect($this->validated())
+        $attributes = collect($this->validated())
             ->only(['brand_id', 'property_id', 'job_type', 'lead_source', 'description', 'notes', 'visit_type', 'previous_job_id'])
             ->when(
                 fn ($attributes) => isset($attributes['visit_type']) && ! VisitType::from($attributes['visit_type'])->needsPreviousJob(),
                 fn ($attributes) => $attributes->put('previous_job_id', null),
             )
             ->all();
+
+        // The day of a booking taken without a time ("No time"); a visit with a time takes its place.
+        if ($this->has('planned_date')) {
+            $attributes['planned_date'] = $this->validated('planned_date');
+        }
+        if ($this->creating()) {
+            $visit = $this->boolean('add_visit') ? (array) $this->validated('visit', []) : [];
+            if (filled($visit['date'] ?? null) && blank($visit['start_time'] ?? null)) {
+                $attributes['planned_date'] = $visit['date'];
+            }
+            if ($this->visit() !== null) {
+                $attributes['planned_date'] = null;
+            }
+        }
+
+        return $attributes;
     }
 
     /**
@@ -317,9 +341,9 @@ class JobRequest extends FormRequest
         }
 
         return array_values(array_map(fn (array $item) => [
-            'description' => trim($item['description']),
+            'description' => trim((string) $item['description']),
             'quantity' => (string) ($item['quantity'] ?? 1),
-        ], $this->validated('bring_items', [])));
+        ], array_filter($this->validated('bring_items', []), fn (array $item) => filled($item['description'] ?? null))));
     }
 
     /**
@@ -335,7 +359,10 @@ class JobRequest extends FormRequest
      */
     public function newAppliances(): array
     {
-        return array_values($this->validated('new_appliances', []));
+        return array_values(array_map(
+            fn (array $appliance) => [...$appliance, 'type' => filled($appliance['type'] ?? null) ? $appliance['type'] : ApplianceType::Other->value],
+            $this->validated('new_appliances', []),
+        ));
     }
 
     /**
@@ -442,7 +469,7 @@ class JobRequest extends FormRequest
     /**
      * Corrected name and main phone of the job's customer; null when the form did not send them.
      *
-     * @return array{first_name: ?string, last_name: ?string, company_name: ?string, phone: string}|null
+     * @return array{first_name: ?string, last_name: ?string, company_name: ?string, phone: ?string}|null
      */
     public function customerEdit(): ?array
     {
@@ -456,7 +483,7 @@ class JobRequest extends FormRequest
             'first_name' => filled($data['first_name'] ?? null) ? trim($data['first_name']) : null,
             'last_name' => filled($data['last_name'] ?? null) ? trim($data['last_name']) : null,
             'company_name' => filled($data['company_name'] ?? null) ? trim($data['company_name']) : null,
-            'phone' => (string) $data['phone'],
+            'phone' => filled($data['phone'] ?? null) ? (string) $data['phone'] : null,
         ];
     }
 
@@ -475,9 +502,9 @@ class JobRequest extends FormRequest
         $address = [];
         foreach (self::ADDRESS_FIELDS as $field) {
             $value = $data[$field] ?? null;
-            $address[$field] = in_array($field, ['line1', 'city'], true) ? trim((string) $value) : (filled($value) ? $value : null);
+            $address[$field] = filled($value) ? (is_string($value) ? trim($value) : $value) : null;
         }
-        $address['country'] = strtoupper((string) $address['country']);
+        $address['country'] = strtoupper((string) ($address['country'] ?? currentCompany()->country));
 
         return $address;
     }
@@ -487,7 +514,7 @@ class JobRequest extends FormRequest
      */
     public function visit(): ?array
     {
-        return $this->boolean('add_visit') ? VisitRequest::toVisit($this->validated('visit')) : null;
+        return $this->boolean('add_visit') ? VisitRequest::toVisit((array) $this->validated('visit', [])) : null;
     }
 
     /**
@@ -501,9 +528,8 @@ class JobRequest extends FormRequest
             return;
         }
 
+        // Nothing is required: a return visit may be saved before the earlier job is picked.
         if (! $this->filled('previous_job_id')) {
-            $validator->errors()->add('previous_job_id', __('jobs.errors.previous_job_required'));
-
             return;
         }
 
@@ -535,7 +561,7 @@ class JobRequest extends FormRequest
             return;
         }
 
-        if (! PhoneNumber::isPossible((string) $this->input('customer_edit.phone'))) {
+        if ($this->filled('customer_edit.phone') && ! PhoneNumber::isPossible((string) $this->input('customer_edit.phone'))) {
             $validator->errors()->add('customer_edit.phone', __('customers.invalid_phone'));
         }
     }
@@ -582,7 +608,7 @@ class JobRequest extends FormRequest
         }
 
         // A new address typed for the customer, or none at all (an empty one is used): nothing at an address to check.
-        if ($job === null && (is_array($this->input('new_property')) || ($this->boolean('quick_booking') && blank($this->input('property_id'))))) {
+        if ($job === null && (is_array($this->input('new_property')) || blank($this->input('property_id')))) {
             if ($this->input('appliance_ids', []) !== []) {
                 $validator->errors()->add('appliance_ids', __('jobs.errors.invalid_appliance'));
             }
