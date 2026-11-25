@@ -1,4 +1,4 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { translate } from '@/lib/i18n';
@@ -10,9 +10,19 @@ const SAVE_FAILED_CLASS =
     '!border-2 !border-red-700 !bg-red-600 !text-base !font-semibold !text-white';
 
 export function useFlashToast(): void {
-    const { translations } = usePage().props;
-    const words = useRef(translations as TranslationTree);
-    words.current = translations as TranslationTree;
+    // The toaster sits outside the page (no usePage here): the words come with each page.
+    const words = useRef<TranslationTree>({});
+
+    useEffect(
+        () =>
+            router.on('navigate', (event) => {
+                const props = (event as CustomEvent).detail?.page?.props;
+                if (props?.translations) {
+                    words.current = props.translations as TranslationTree;
+                }
+            }),
+        [],
+    );
 
     useEffect(() => {
         return router.on('flash', (event) => {
@@ -44,21 +54,29 @@ export function useFlashToast(): void {
     // A save that fails on the server or for lack of network (owner's task of November 25): never a silent close.
     // The error page is not shown over the form; the form keeps what was typed (its onSuccess never runs).
     useEffect(() => {
-        const failed = (key: string) =>
-            toast.error(translate(words.current, key), {
+        const failed = (key: string, fallback: string) => {
+            const text = translate(words.current, key);
+            toast.error(text === key ? fallback : text, {
                 duration: 15000,
                 className: SAVE_FAILED_CLASS,
             });
+        };
         const offHttp = router.on('httpException', (event) => {
             const status = (event as CustomEvent).detail?.response?.status ?? 0;
 
             if (status >= 500 || status === 0) {
-                failed('common.save_failed_server');
+                failed(
+                    'common.save_failed_server',
+                    'Not saved: the server had a problem. Press Save again.',
+                );
                 event.preventDefault();
             }
         });
         const offNetwork = router.on('networkError', (event) => {
-            failed('common.save_failed');
+            failed(
+                'common.save_failed',
+                'Not saved. Check the connection and press Save again.',
+            );
             event.preventDefault();
         });
 
