@@ -1144,6 +1144,41 @@ RU / EN, independent of the keyboard.**
   (AI_MODEL_BOOKING) under fields whose text goes to the customer (report, SMS reply, invoice / estimate notes,
   booking confirmation texts) replaces the text; "Undo" puts the old text back.
 
+### 7.28 One window to close a job, receipt and review, Today as the start (owner's task of November 26)
+
+- **Today is the start.** Every start of the app opens Today (the day's jobs, `/today`): the PWA (`start_url`), the
+  Android app (it loads the site root, which redirects to Today), sign-in (Owner, Admin, Technician; a page asked for
+  before signing in is not reopened) and the logo. `/my-jobs` redirects to `/today`; the morning summary screen moved
+  to `/today/summary`. A job is listed once on Today (two visits of one job show one card).
+- **Close job window.** "Complete" on the job page and "⋯ → Close job" open the same bottom window "Close job" with big
+  one-tap buttons: Paid — Cash, Paid — E-transfer (Bank transfer outside Canada), Take card payment (the Square reader;
+  after the payment back in the window on "Receipt & review"), Send invoice (the invoice email opens; as before the job
+  moves to Awaiting payment) and No charge. "Declined, unable to repair or another outcome" opens the earlier outcome
+  dialog. An optional note with the microphone (RU | EN) goes to Work done.
+- **Amount.** A job with an unpaid invoice shows its total; Cash / E-transfer pay it in full with that method. Without
+  an invoice: lines as on New charge (description + amount without tax, "+" adds a line, a tick per company tax, all of
+  them shown); taxes are added on top and the total is worked out by code; the invoice is created and paid at once.
+  The amount is optional: empty closes the job without an invoice.
+- **Receipt & review** (after Cash, E-transfer or a card payment): Send receipt (off by default) and Request review (on
+  by default) with the location (the one the person picked last time first). With a switch on and no customer email,
+  an email field shows; the email typed is saved to the customer. Without an email nothing is sent and the job still
+  closes. Both on: one email (the receipt with the review text and picture); Request review only: the review email;
+  Send receipt only: the receipt; both off: nothing. No charge shows only Request review. Send invoice has no such step.
+  One button: Done.
+- **Done.** At once: the payment recorded, the open visit finished, the job Completed (then Paid by its invoices),
+  Not completed jobs and Awaiting payment counted again, Today opens. The emails go from the queue afterwards. The
+  same Done sent twice (double tap, retry) is applied once (`service_jobs.close_request`): no second payment, invoice,
+  email or job.
+- **Other ways to pay close the job too.** Take payment on the job page (reader, Cash, E-transfer) → the Paid screen
+  shows "Receipt & review" → Done → closed → Today (a Walk-in charge keeps the details form). A payment the customer
+  makes online closes the job by itself, even with a visit on the way or in progress (finished at the payment time).
+  Close by voice (Confirm & send or Save only) closes the job and opens Today. A reopened job with a visit booked after
+  the payment is not closed by the payment of its old invoice. A refund does not reopen a job.
+- **Paid jobs left open.** `jobs:close-paid` (also run once by a data migration): every open job whose invoices are all
+  paid and that has no visit booked after the last payment is closed, its open visit finished at the last payment's
+  time; written to the change log (`job.closed_paid`); no email or SMS. Jobs waiting for parts / the customer or on
+  hold are listed, not closed.
+
 ## 8. Google review requests
 
 - A company can have **several Google profiles (locations)**, named by the company itself (e.g. Surrey, Burnaby).

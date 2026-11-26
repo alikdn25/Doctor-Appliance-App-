@@ -99,7 +99,7 @@ for (const scale of [100, 130]) {
                 document.documentElement.style.fontSize = size;
             });
         }, `${scale}%`);
-        await tech.goto('/my-jobs');
+        await tech.goto('/today');
         await expect(tech.getByText('Jane Browser').first()).toBeVisible();
         expect(await overflowingButtons(tech)).toEqual([]);
         await tech.screenshot({

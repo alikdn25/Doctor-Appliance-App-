@@ -69,6 +69,8 @@ import { NoAddressBadge } from '@/components/jobs/no-address-badge';
 import { PartCard } from '@/components/jobs/part-card';
 import type { PartItem, SupplierOption } from '@/components/parts/types';
 import { VoiceCloseSheet } from '@/components/jobs/voice-close-sheet';
+import { CloseJobSheet } from '@/components/jobs/close-job-sheet';
+import type { CloseSheetSetup } from '@/components/jobs/close-job-sheet';
 import type { PossibleWarranty } from '@/components/messaging/types';
 import { WarrantyNotice } from '@/components/messaging/warranty-notice';
 import { HandoffSheet } from '@/components/jobs/handoff-sheet';
@@ -277,6 +279,8 @@ type Props = {
         currency: string;
     }[];
     paymentMethods: Option[];
+    /** The Close job window (owner's task of November 26); null once the job is closed. */
+    closeSheet: CloseSheetSetup | null;
     applianceCategories: Option[];
 };
 
@@ -445,6 +449,7 @@ export default function JobShow({
     photoKinds,
     messaging,
     payable,
+    closeSheet,
     paymentMethods,
     applianceCategories,
     closureReasons,
@@ -468,6 +473,8 @@ export default function JobShow({
     const [statusOpen, setStatusOpen] = useState(false);
     const [reopenOpen, setReopenOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
+    // "Complete" and "⋯ → Close job" open one window (owner's task of November 26).
+    const [closeSheetOpen, setCloseSheetOpen] = useState(false);
     const [confirmationOpen, setConfirmationOpen] = useState(false);
     const draft = isDraftJob(job.status);
     const [finishing, setFinishing] = useState(false);
@@ -662,7 +669,9 @@ export default function JobShow({
                           key: 'complete',
                           label: t('jobs.actions.complete'),
                           icon: <CheckCircle2 />,
-                          href: finishScreen(myVisit.id),
+                          ...(closeSheet
+                              ? { onClick: () => setCloseSheetOpen(true) }
+                              : { href: finishScreen(myVisit.id) }),
                       },
                   ]
                 : [];
@@ -684,7 +693,9 @@ export default function JobShow({
                     key: 'complete',
                     label: t('jobs.actions.complete'),
                     icon: <CheckCircle2 />,
-                    href: finishScreen(myVisit.id),
+                    ...(closeSheet
+                        ? { onClick: () => setCloseSheetOpen(true) }
+                        : { href: finishScreen(myVisit.id) }),
                 },
                 {
                     key: 'parts',
@@ -1022,7 +1033,10 @@ export default function JobShow({
                                     label: t('jobs.close.action'),
                                     hint: t('jobs.close.with_reason'),
                                     icon: <Flag />,
-                                    onSelect: () => setCloseOpen(true),
+                                    onSelect: () =>
+                                        closeSheet
+                                            ? setCloseSheetOpen(true)
+                                            : setCloseOpen(true),
                                 },
                             statusOptions.length > 0 && {
                                 key: 'status',
@@ -2066,6 +2080,21 @@ export default function JobShow({
                 />
             )}
 
+            {closeSheet && (
+                <CloseJobSheet
+                    open={closeSheetOpen}
+                    onOpenChange={setCloseSheetOpen}
+                    setup={closeSheet}
+                    onOtherOutcome={
+                        can.close
+                            ? () => {
+                                  setCloseSheetOpen(false);
+                                  setCloseOpen(true);
+                              }
+                            : undefined
+                    }
+                />
+            )}
             {can.close && (
                 <FinishDialog
                     open={closeOpen}

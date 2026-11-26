@@ -130,7 +130,7 @@ test('a sheet rides above the keyboard and keeps the field being typed in visibl
 test('More scrolls to its last item, and the menu hint names the bottom bar', async ({
     page,
 }, info) => {
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     await page.locator('[data-test="bottom-nav-more"]').click();
     const more = page.locator('[data-test="more-sheet"]');
     await expect(more).toBeVisible();

@@ -9,7 +9,7 @@ test.use({ viewport: { width: 360, height: 740 } });
 test('the "+" menu has larger icons and tap areas; labels fit at 360 px', async ({
     page,
 }) => {
-    await page.goto('/today');
+    await page.goto('/today/summary');
     await page.locator('[data-test="create-fab"]').click();
     const menu = page.locator('[data-test="create-menu"]');
     await expect(menu).toBeVisible();

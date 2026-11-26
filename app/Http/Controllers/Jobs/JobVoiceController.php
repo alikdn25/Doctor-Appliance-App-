@@ -105,7 +105,9 @@ class JobVoiceController extends Controller
 
         Inertia::flash('toast', $closer->confirm($job, $data, $request->user(), $request->boolean('send')));
 
-        return back();
+        // Closed (Confirm & send or Save only): straight to Today (owner's task of November 26); a part to order
+        // keeps the job open and the job page.
+        return $job->refresh()->closed_at !== null ? to_route('jobs.mine') : back();
     }
 
     /**

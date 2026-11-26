@@ -8,7 +8,7 @@ const fixture = JSON.parse(
 );
 
 const screens: [string, string][] = [
-    ['My Jobs', '/my-jobs'],
+    ['My Jobs', '/today'],
     ['Jobs', '/jobs'],
     ['Job page', `/jobs/${fixture.job_id}`],
     ['Book customer', '/jobs/create'],

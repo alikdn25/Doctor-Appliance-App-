@@ -121,7 +121,7 @@ async function navigate(request) {
     }
 
     // The browser refuses a followed redirect as the answer to a page load, so it is told to go to the final
-    // address itself (e.g. /my-jobs → /login). That address is fetched again, never taken from a cache.
+    // address itself (e.g. /today → /login). That address is fetched again, never taken from a cache.
     if (response.redirected) {
         return Response.redirect(response.url, 303);
     }

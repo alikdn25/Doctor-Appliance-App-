@@ -188,7 +188,7 @@ class ChargeController extends Controller
         );
 
         if ($charge->isPaid()) {
-            return response()->json(['status' => 'paid', 'paid_url' => route('payments.paid', $charge->payment_id)]);
+            return response()->json(['status' => 'paid', 'payment_id' => $charge->payment_id, 'paid_url' => route('payments.paid', $charge->payment_id)]);
         }
 
         return response()->json([
@@ -221,7 +221,7 @@ class ChargeController extends Controller
             }
         }
 
-        return response()->json(['status' => 'paid', 'paid_url' => route('payments.paid', $charge->payment_id)]);
+        return response()->json(['status' => 'paid', 'payment_id' => $charge->payment_id, 'paid_url' => route('payments.paid', $charge->payment_id)]);
     }
 
     /**
@@ -310,7 +310,7 @@ class ChargeController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function screen(): array
+    public function screen(): array
     {
         $company = currentCompany();
         $square = app(SquareProvider::class);

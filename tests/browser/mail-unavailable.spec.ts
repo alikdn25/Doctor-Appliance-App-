@@ -73,9 +73,9 @@ test('signup and technician access work while mail is unavailable without promis
     await page.locator('#email').fill(`mail-off-tech-${suffix}@example.com`);
     await page.locator('#password').fill('Technician-password-123!');
     await page.locator('[data-test="login-button"]').click();
-    await expect(page).toHaveURL(/\/my-jobs$/);
+    await expect(page).toHaveURL(/\/today$/);
     await page.reload();
-    await expect(page).toHaveURL(/\/my-jobs$/);
+    await expect(page).toHaveURL(/\/today$/);
     await page.screenshot({
         path: info.outputPath('unverified-technician-workspace.png'),
         fullPage: true,

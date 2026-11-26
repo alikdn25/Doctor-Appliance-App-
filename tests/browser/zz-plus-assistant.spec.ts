@@ -9,7 +9,7 @@ test.use({ viewport: { width: 390, height: 844 } });
 test('"+" → Assistant opens the assistant with the question field focused', async ({
     page,
 }) => {
-    await page.goto('/today');
+    await page.goto('/today/summary');
     await page.locator('[data-test="create-fab"]').click();
     const assistant = page.locator('[data-test="create-assistant"]');
     await expect(assistant).toBeVisible();

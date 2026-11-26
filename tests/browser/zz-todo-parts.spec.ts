@@ -18,7 +18,7 @@ async function noSideScroll(page: Page) {
 test('Today: one feed of jobs and to-dos, All / Jobs / To Do with All on every open', async ({
     page,
 }, info) => {
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     const all = page.getByRole('radio', { name: 'All', exact: true });
     const jobs = page.getByRole('radio', { name: 'Jobs', exact: true });
     const todo = page.getByRole('radio', { name: 'To Do', exact: true });
@@ -48,7 +48,7 @@ test('Today: one feed of jobs and to-dos, All / Jobs / To Do with All on every o
     await noSideScroll(page);
 
     // Back on the screen: All again.
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     await expect(
         page.getByRole('radio', { name: 'All', exact: true }),
     ).toHaveAttribute('aria-checked', 'true');

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Accounting\BusinessExpenseCategoryController;
 use App\Http\Controllers\Accounting\BusinessExpenseController;
 use App\Http\Controllers\Accounting\ExpensesHubController;
@@ -55,6 +56,7 @@ use App\Http\Controllers\Jobs\CalendarController;
 use App\Http\Controllers\Jobs\JobAddressController;
 use App\Http\Controllers\Jobs\JobBacklogController;
 use App\Http\Controllers\Jobs\JobCloseController;
+use App\Http\Controllers\Jobs\JobCloseOutController;
 use App\Http\Controllers\Jobs\JobController;
 use App\Http\Controllers\Jobs\JobCostController;
 use App\Http\Controllers\Jobs\JobDetailsController;
@@ -100,6 +102,7 @@ use App\Http\Controllers\TodayController;
 use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UsageController;
 use App\Http\Controllers\VoiceWebhookController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('manifest.webmanifest', ManifestController::class)->name('manifest');
@@ -145,8 +148,17 @@ Route::post('webhooks/payments/{provider}', PaymentWebhookController::class)
     ->middleware('throttle:120,1')
     ->name('webhooks.payments');
 
-// Home is the Jobs list (technicians, who may not see it, are sent on to My Jobs).
-Route::get('/', fn () => redirect()->route(auth()->check() ? 'jobs.index' : 'login'))->name('home');
+// Home is Today, the day's jobs (owner's task of November 26); people who do not go on calls get the Jobs list.
+Route::get('/', function () {
+    $user = auth()->user();
+    if ($user === null) {
+        return redirect()->route('login');
+    }
+    $company = $user->accessibleCompanies()->firstWhere('id', $user->current_company_id) ?? $user->accessibleCompanies()->first();
+    $role = $company ? $user->membershipFor($company)?->role : null;
+
+    return redirect()->route(in_array($role, [UserRole::Owner, UserRole::Admin, UserRole::Technician], true) ? 'jobs.mine' : 'jobs.index');
+})->name('home');
 
 Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['verified', 'super-admin'])->group(function () {
@@ -165,7 +177,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Tenant area: everything here runs inside the current company.
     Route::middleware(['verified', 'tenant'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
-        Route::get('today', TodayController::class)->name('today');
+        // The morning summary as a screen; /today itself is the day's jobs (jobs.mine).
+        Route::get('today/summary', TodayController::class)->name('today');
         // Google sends the Owner back here after "Connect Google Drive" (Company → Morning SMS & backup).
         Route::get('settings/google-drive/callback', [MorningController::class, 'callback'])->name('google-drive.callback');
 
@@ -217,7 +230,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::put('appliances/{appliance}', [ApplianceController::class, 'update'])->name('appliances.update');
         Route::delete('appliances/{appliance}', [ApplianceController::class, 'destroy'])->name('appliances.destroy');
 
-        Route::get('my-jobs', [JobController::class, 'mine'])->name('jobs.mine');
+        // Today: the app's start screen (PWA, Android app, after sign-in, the logo).
+        Route::get('today', [JobController::class, 'mine'])->name('jobs.mine');
+        Route::get('my-jobs', fn (Request $request) => redirect()->to('/today'.($request->getQueryString() ? '?'.$request->getQueryString() : '')));
         Route::get('jobs/not-completed', JobBacklogController::class)->name('jobs.backlog');
         Route::get('jobs/customers', [JobController::class, 'lookup'])->name('jobs.lookup');
         Route::post('jobs/parse-message', BookingTextController::class)->middleware('throttle:30,1')->name('jobs.parse-message');
@@ -229,6 +244,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::resource('jobs', JobController::class);
         Route::put('jobs/{job}/status', JobStatusController::class)->name('jobs.status');
         Route::post('jobs/{job}/close', JobCloseController::class)->name('jobs.close');
+        // The Close job window (owner's task of November 26).
+        Route::post('jobs/{job}/close-out', [JobCloseOutController::class, 'store'])->middleware('throttle:30,1')->name('jobs.close-out');
+        Route::post('jobs/{job}/close-out/invoice', [JobCloseOutController::class, 'invoice'])->middleware('throttle:30,1')->name('jobs.close-out.invoice');
         Route::post('jobs/{job}/reopen', JobReopenController::class)->name('jobs.reopen');
         Route::post('jobs/{job}/costs', [JobCostController::class, 'storeCost'])->name('jobs.costs.store');
         Route::put('jobs/{job}/costs/{cost}', [JobCostController::class, 'updateCost'])->name('jobs.costs.update');
@@ -358,6 +376,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('payments/reader/session', [PaidController::class, 'readerSession'])->middleware('throttle:30,1')->name('payments.reader.session');
         Route::get('payments/{payment}/paid', [PaidController::class, 'show'])->name('payments.paid');
         Route::post('payments/{payment}/send-receipt', [PaidController::class, 'send'])->middleware('throttle:30,1')->name('payments.send-receipt');
+        Route::post('payments/{payment}/done', [JobCloseOutController::class, 'paid'])->middleware('throttle:30,1')->name('payments.done');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics.index');
         Route::get('statistics/money.csv', [StatisticsController::class, 'export'])->name('statistics.export');

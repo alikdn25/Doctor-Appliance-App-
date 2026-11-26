@@ -60,7 +60,7 @@ test('Quick booking keeps the text when the AI does not answer', async ({
 }) => {
     // No screen shows the booking buttons: they live only in the "+" menu (owner's task of November 23).
     for (const url of [
-        '/my-jobs',
+        '/today',
         '/jobs',
         '/calendar?view=day',
         '/calendar?view=week',
@@ -101,7 +101,7 @@ test('Quick booking keeps the text when the AI does not answer', async ({
     await expect(text).toHaveValue(TEXT);
 
     // "+" on Today has them too.
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     await page.locator('[data-test="create-fab"]').click();
     await page.locator('[data-test="create-quick-booking"]').click();
     await expect(page).toHaveURL(/\/jobs\/quick-booking/);

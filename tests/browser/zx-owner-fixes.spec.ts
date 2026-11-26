@@ -24,7 +24,7 @@ async function noSideScroll(page: Page) {
 test('every main screen fits a 380 px phone', async ({ page }, info) => {
     for (const url of [
         '/jobs',
-        '/my-jobs',
+        '/today',
         '/calendar',
         '/customers',
         `/customers/${fixture.customer_id}`,

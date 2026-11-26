@@ -6,6 +6,7 @@ use App\Enums\PaymentMethod;
 use App\Mail\ReceiptMail;
 use App\Messaging\ReviewRequests;
 use App\Models\GoogleProfile;
+use App\Models\Invoice;
 use App\Models\Message;
 use App\Models\Payment;
 use App\Models\ReviewRequest;
@@ -56,6 +57,16 @@ class PaymentReceipt
         $reviewText = $profile === null ? null
             : (ReviewRequests::personal($data['review_text'] ?? null, $profile) ?? ReviewRequests::text($invoice->customer, $invoice->job?->brand?->name ?? $invoice->brand?->name, $profile));
 
+        $this->deliver($invoice, $email, $profile, $reviewText, $user);
+
+        return ['sent' => [$email]];
+    }
+
+    /**
+     * Queues the receipt email (with the review block when $profile is given) and keeps the review request on the job.
+     */
+    public function deliver(Invoice $invoice, string $email, ?GoogleProfile $profile, ?string $reviewText, ?User $user): void
+    {
         Mail::to($email)->queue(new ReceiptMail($invoice, $profile?->id, $reviewText));
 
         if ($profile !== null) {
@@ -74,8 +85,6 @@ class PaymentReceipt
         }
 
         $this->audit->record('invoice.receipt_sent', $invoice, ['number' => $invoice->number, 'to' => $email, 'review' => $profile !== null]);
-
-        return ['sent' => [$email]];
     }
 
     public static function methodLabel(Payment $payment): string

@@ -136,6 +136,11 @@ class CloseJob
 
     private function validateReason(JobOutcome $outcome, ?string $reason): void
     {
+        // No charge from the Close job window is one tap: no reason asked (owner's task of November 26).
+        if ($outcome === JobOutcome::NoCharge && $reason === null) {
+            return;
+        }
+
         if ($outcome->needsReason() && ! in_array($reason, currentCompany()->closureReasons($outcome), true)) {
             throw ValidationException::withMessages(['reason' => __('jobs.errors.reason_required')]);
         }

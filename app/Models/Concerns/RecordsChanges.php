@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 trait RecordsChanges
 {
     /** Columns never written to the log: bookkeeping, derived and secret values. */
-    private static array $auditIgnored = ['id', 'company_id', 'created_at', 'updated_at', 'deleted_at', 'display_name', 'remember_token', 'password', 'public_token', 'access_token', 'refresh_token'];
+    private static array $auditIgnored = ['id', 'company_id', 'created_at', 'updated_at', 'deleted_at', 'display_name', 'remember_token', 'password', 'public_token', 'access_token', 'refresh_token', 'close_request'];
 
     public static function bootRecordsChanges(): void
     {
