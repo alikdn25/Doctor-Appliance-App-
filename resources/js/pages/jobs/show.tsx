@@ -26,6 +26,7 @@ import {
     Plus,
     Star,
     Receipt,
+    RotateCcw,
     Send,
     ShieldCheck,
     Trash2,
@@ -92,6 +93,8 @@ import type { JobPhotoData } from '@/components/jobs/photo-section';
 import { RatingPlateButton } from '@/components/jobs/rating-plate-button';
 import { SignatureSection } from '@/components/jobs/signature-section';
 import type { SignatureData } from '@/components/jobs/signature-section';
+import { formatMoney } from '@/components/billing/money';
+import { ReopenDialog } from '@/components/jobs/reopen-dialog';
 import { StatusBadge } from '@/components/jobs/status-badge';
 import { StatusDialog } from '@/components/jobs/status-dialog';
 import { TechnicianPicker } from '@/components/jobs/technician-picker';
@@ -108,6 +111,7 @@ import {
 import type { JobMessaging } from '@/components/messaging/types';
 import { RecordHistory } from '@/components/record-history';
 import { ScreenHeader } from '@/components/screen-header';
+import type { TimeWindow } from '@/components/ui/time-window-chips';
 import { ActionSheet } from '@/components/ui/action-sheet';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -164,6 +168,7 @@ type Job = {
     outcome_reason: string | null;
     outcome_note: string | null;
     closed_at: string | null;
+    refunded?: { amount: number; currency: string } | null;
     reports: {
         id: number;
         title: string;
@@ -240,6 +245,7 @@ type Props = {
         delete: boolean;
         work: boolean;
         close: boolean;
+        reopen?: boolean;
         viewCustomer: boolean;
         updateCustomer: boolean;
         assign: boolean;
@@ -258,6 +264,8 @@ type Props = {
     applianceTypes: Option[];
     manufacturers: string[];
     today: string;
+    nowTime?: string;
+    arrivalWindows?: TimeWindow[];
     photoKinds: Option[];
     messaging: JobMessaging;
     possibleWarranty: PossibleWarranty;
@@ -432,6 +440,8 @@ export default function JobShow({
     applianceTypes,
     manufacturers,
     today,
+    nowTime = '00:00',
+    arrivalWindows = [],
     photoKinds,
     messaging,
     payable,
@@ -456,6 +466,7 @@ export default function JobShow({
         (auth.company?.tracks_appliances ?? true) || job.appliances.length > 0;
     const time = useCompanyTime();
     const [statusOpen, setStatusOpen] = useState(false);
+    const [reopenOpen, setReopenOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
     const [confirmationOpen, setConfirmationOpen] = useState(false);
     const draft = isDraftJob(job.status);
@@ -986,6 +997,17 @@ export default function JobShow({
                 title={t('jobs.confirmation.resend')}
             />
 
+            {can.reopen && (
+                <ReopenDialog
+                    open={reopenOpen}
+                    onOpenChange={setReopenOpen}
+                    jobId={job.id}
+                    today={today}
+                    nowTime={nowTime}
+                    windows={arrivalWindows}
+                    assignableUsers={assignableUsers}
+                />
+            )}
             <ScreenHeader
                 title={`#${job.number} · ${job.job_type_label}`}
                 subtitle={subtitle}
@@ -1099,6 +1121,20 @@ export default function JobShow({
                         <span className="da-badge rounded-full px-2.5 py-0.5 text-xs font-medium">
                             {job.visit_type_label}
                         </span>
+                        {job.refunded && (
+                            <span
+                                className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-900 dark:bg-amber-500/20 dark:text-amber-100"
+                                data-test="job-refunded"
+                            >
+                                {t('payments.refunds.refunded_label', {
+                                    amount: formatMoney(
+                                        job.refunded.amount,
+                                        job.refunded.currency,
+                                        auth.company?.locale,
+                                    ),
+                                })}
+                            </span>
+                        )}
                     </div>
                     <div
                         className="flex items-start gap-3"
@@ -1190,6 +1226,19 @@ export default function JobShow({
                             </Button>
                         )}
                     </div>
+
+                    {/* Reopen job (owner's task of November 26): only on a closed job, only here. */}
+                    {can.reopen && (
+                        <Button
+                            type="button"
+                            size="lg"
+                            className="w-full"
+                            onClick={() => setReopenOpen(true)}
+                            data-test="job-reopen"
+                        >
+                            <RotateCcw /> {t('jobs.reopen.action')}
+                        </Button>
+                    )}
 
                     {/* Technician: one tap opens the choice with each person's load (team only). */}
                     {!worksAlone && (

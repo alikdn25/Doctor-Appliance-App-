@@ -85,14 +85,20 @@ test('photos attach as thumbnails with a remove cross; the microphone toggles EN
     // A photo alone can be sent.
     await expect(page.locator('[data-test="assistant-send"]')).toBeEnabled();
 
-    // Chromium has speech recognition: the microphone and its language switch are shown.
+    // Chromium has speech recognition: the microphone and its "RU | EN" switch are shown, the chosen half lit.
     const language = page.locator('[data-test="mic-language"]');
     await expect(page.locator('[data-test="mic-button"]')).toBeVisible();
-    await expect(language).toHaveText('EN');
-    await language.click();
-    await expect(language).toHaveText('RU');
+    await expect(language).toHaveAttribute('data-language', 'en');
+    await page.locator('[data-test="mic-language-ru"]').click();
+    await expect(language).toHaveAttribute('data-language', 'ru');
     await page.reload();
-    await expect(page.locator('[data-test="mic-language"]')).toHaveText('RU');
-    await page.locator('[data-test="mic-language"]').click();
-    await expect(page.locator('[data-test="mic-language"]')).toHaveText('EN');
+    await expect(page.locator('[data-test="mic-language"]')).toHaveAttribute(
+        'data-language',
+        'ru',
+    );
+    await page.locator('[data-test="mic-language-en"]').click();
+    await expect(page.locator('[data-test="mic-language"]')).toHaveAttribute(
+        'data-language',
+        'en',
+    );
 });

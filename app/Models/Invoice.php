@@ -105,6 +105,68 @@ class Invoice extends Model
         ];
     }
 
+    /**
+     * Revenue without taxes once settled refunds are taken back (owner's task of November 26): a refund with its own
+     * taxes takes back its amount without them; older credits (no taxes kept) lower the revenue in proportion.
+     */
+    public function revenueAfterRefunds(): int
+    {
+        $net = $this->total - $this->tax_total;
+
+        if ($this->credited_amount <= 0 || $this->total <= 0) {
+            return $net;
+        }
+
+        [$explicitTotal, $explicitTaxes] = $this->explicitRefunds();
+        $rest = max(0, $this->credited_amount - $explicitTotal);
+
+        return max(0, $net - ($explicitTotal - array_sum($explicitTaxes)) - (int) round($net * $rest / $this->total));
+    }
+
+    /**
+     * The invoice's taxes by name less what settled refunds took back.
+     *
+     * @return array<string, int>
+     */
+    public function taxesAfterRefunds(): array
+    {
+        $taxes = [];
+        foreach ((array) $this->taxes as $tax) {
+            $taxes[(string) $tax['name']] = ($taxes[(string) $tax['name']] ?? 0) + (int) ($tax['amount'] ?? 0);
+        }
+
+        if ($this->credited_amount <= 0 || $this->total <= 0) {
+            return $taxes;
+        }
+
+        [$explicitTotal, $explicitTaxes] = $this->explicitRefunds();
+        $rest = max(0, $this->credited_amount - $explicitTotal);
+
+        return collect($taxes)->map(fn (int $amount, string $name) => $amount - ($explicitTaxes[$name] ?? 0) - (int) round($amount * $rest / $this->total))->all();
+    }
+
+    /**
+     * Settled refunds that kept their taxes: their total and their taxes by name.
+     *
+     * @return array{0: int, 1: array<string, int>}
+     */
+    private function explicitRefunds(): array
+    {
+        $total = 0;
+        $taxes = [];
+
+        Payment::query()->valid()->where('invoice_id', $this->id)->whereNotNull('refunded_payment_id')->whereNotNull('refund_taxes')
+            ->get(['amount', 'refund_taxes'])
+            ->each(function (Payment $refund) use (&$total, &$taxes) {
+                $total += abs((int) $refund->amount);
+                foreach ((array) $refund->refund_taxes as $tax) {
+                    $taxes[(string) $tax['name']] = ($taxes[(string) $tax['name']] ?? 0) + (int) $tax['amount'];
+                }
+            });
+
+        return [$total, $taxes];
+    }
+
     public function isVoid(): bool
     {
         return $this->status === InvoiceStatus::Void;

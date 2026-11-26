@@ -17,13 +17,17 @@ use App\Models\Customer;
 use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\InvoiceAttachment;
+use App\Models\Payment;
 use App\Models\Service;
 use App\Models\ServiceJob;
 use App\Payments\PaymentProviders;
 use App\Services\AuditLogger;
 use App\Support\Billing\BillingPresenter;
+use App\Support\Billing\RefundAmounts;
 use App\Support\Billing\Warranties;
 use App\Support\Jobs\JobPresenter;
+use App\Support\Locale\Currencies;
+use App\Support\Payments\PaidCustomer;
 use App\Support\PrivateMedia;
 use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
@@ -68,36 +72,44 @@ class InvoiceController extends Controller
     }
 
     /**
-     * All invoices of the brands the office user works for, outstanding first by default.
+     * All invoices of the brands the office user works for (owner's task of November 26): Unpaid (default) · Paid ·
+     * Refunded · All, Overdue from its total on top. Paid lists every paid invoice, newest payment first — charges
+     * without a booking ("+" → Charge reader / New charge) too. A search looks through every status: name, phone
+     * (last 4 digits or any format), address, amount, invoice number, the card's last 4 digits.
      */
     public function index(Request $request): Response
     {
         Gate::authorize('viewAny', Invoice::class);
 
         $user = $request->user();
+        $status = (string) $request->query('status', 'unpaid');
         $filters = [
             'search' => trim((string) $request->query('search', '')),
-            'status' => (string) $request->query('status', 'outstanding'),
+            'status' => match ($status) {
+                'outstanding' => 'unpaid',
+                'paid', 'refunded', 'all', 'overdue', 'unpaid' => $status,
+                default => InvoiceStatus::tryFrom($status) !== null ? $status : 'unpaid',
+            },
         ];
-        $status = InvoiceStatus::tryFrom($filters['status']);
-        [$sort, $dir] = self::sorting($request, ['number', 'customer', 'issued', 'due', 'total', 'balance', 'status'], 'issued', 'desc');
+        $exact = InvoiceStatus::tryFrom($filters['status']);
+        [$sort, $dir] = self::sorting($request, ['number', 'customer', 'issued', 'due', 'total', 'balance', 'status', 'paid'], $filters['status'] === 'paid' ? 'paid' : 'issued', 'desc');
         $filters += ['sort' => $sort, 'dir' => $dir];
         $visibleJobs = ServiceJob::query()->visibleTo($user)->select('id');
+        $searching = $filters['search'] !== '';
+        $paidAt = '(select max(p.received_at) from payments p where p.invoice_id = invoices.id and p.voided_at is null and p.amount > 0)';
 
         $base = Invoice::query()->whereIn('service_job_id', $visibleJobs);
 
         $invoices = (clone $base)
-            ->when($filters['status'] === 'outstanding', fn ($q) => $q->outstanding())
-            ->when($filters['status'] === 'overdue', fn ($q) => $q->overdue())
-            ->when($status, fn ($q) => $q->where('status', $status))
-            ->when($filters['search'] !== '', function (Builder $q) use ($filters) {
-                $like = '%'.addcslashes($filters['search'], '%_\\').'%';
-                $q->where(fn (Builder $w) => $w
-                    ->where('number', 'ilike', $like)
-                    ->orWhereHas('customer', fn (Builder $c) => $c->where('display_name', 'ilike', $like))
-                    ->orWhereHas('job', fn (Builder $j) => $j->search($filters['search'], false)));
-            })
-            ->with('customer')
+            // A search looks through every status.
+            ->when(! $searching && $filters['status'] === 'unpaid', fn ($q) => $q->outstanding())
+            ->when(! $searching && $filters['status'] === 'overdue', fn ($q) => $q->overdue())
+            ->when(! $searching && $filters['status'] === 'paid', fn ($q) => $q->where('status', InvoiceStatus::Paid->value))
+            ->when(! $searching && $filters['status'] === 'refunded', fn ($q) => $q->whereIn('status', [InvoiceStatus::Refunded->value, InvoiceStatus::PartiallyRefunded->value]))
+            ->when(! $searching && $exact, fn ($q) => $q->where('status', $exact))
+            ->when($searching, fn (Builder $q) => self::search($q, $filters['search']))
+            ->with(['customer.primaryPhone', 'items', 'payments'])
+            ->when($sort === 'paid', fn ($q) => $q->orderByRaw("{$paidAt} {$dir} nulls last"))
             ->when($sort === 'number', fn ($q) => $q->orderBy('number', $dir))
             ->when($sort === 'customer', fn ($q) => $q->orderBy(
                 Customer::query()->withTrashed()->select('display_name')->whereColumn('customers.id', 'invoices.customer_id')->limit(1),
@@ -111,7 +123,7 @@ class InvoiceController extends Controller
             ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString()
-            ->through(fn (Invoice $invoice) => BillingPresenter::row($invoice));
+            ->through(fn (Invoice $invoice) => [...BillingPresenter::row($invoice), ...self::paidDetails($invoice)]);
 
         return Inertia::render('invoices/index', [
             'invoices' => $invoices,
@@ -134,6 +146,99 @@ class InvoiceController extends Controller
                 ->map(fn ($row) => ['currency' => $row->currency, 'amount' => (int) $row->amount])
                 ->values(),
         ]);
+    }
+
+    /**
+     * Invoices search (every status): number, customer's name, the job's search (phone in any format or its last 4
+     * digits, address, appliance …), the total ("120", "120.50", "$120.50"), the card's last 4 digits.
+     *
+     * @param  Builder<Invoice>  $query
+     */
+    private static function search(Builder $query, string $search): void
+    {
+        $like = '%'.addcslashes($search, '%_\\').'%';
+        // An amount typed alone, with or without a currency sign.
+        $amount = preg_match('/^\D{0,3}\s*(\d+(?:[.,]\d{1,2})?)\s*$/u', $search, $m) === 1
+            ? Currencies::toMinor(str_replace(',', '.', $m[1]), currentCompany()->currency)
+            : null;
+        $last4 = preg_match('/^\d{4}$/', $search) === 1 ? $search : null;
+
+        $query->where(fn (Builder $w) => $w
+            ->where('number', 'ilike', $like)
+            ->orWhereHas('customer', fn (Builder $c) => $c->withTrashed()->where('display_name', 'ilike', $like))
+            ->orWhereHas('job', fn (Builder $j) => $j->withTrashed()->search($search, false))
+            ->when($amount !== null && $amount > 0, fn (Builder $a) => $a->orWhere('total', $amount))
+            ->when($last4 !== null, fn (Builder $c) => $c->orWhereHas('payments', fn (Builder $p) => $p->where('card_last4', $last4))));
+    }
+
+    /**
+     * What a paid row shows (owner's task of November 26): the customer's phone, what was done (the first line), how it
+     * was paid (Card ····1234 / Cash / E-transfer) and when, and the Walk-in mark.
+     *
+     * @return array<string, mixed>
+     */
+    private static function paidDetails(Invoice $invoice): array
+    {
+        $payment = $invoice->payments->whereNull('voided_at')->where('amount', '>', 0)->sortByDesc('received_at')->first();
+
+        return [
+            'walk_in' => (bool) $invoice->customer?->is_walk_in,
+            'phone' => $invoice->customer?->is_walk_in ? null : $invoice->customer?->primaryPhone?->number,
+            'first_line' => $invoice->items->sortBy('position')->first()?->description,
+            'paid_at' => JobPresenter::iso($payment?->received_at),
+            'paid_method' => $payment === null ? null : match (true) {
+                $payment->card_last4 !== null => __('payments.refunds.to_card', ['last4' => $payment->card_last4]),
+                default => $payment->method->label(),
+            },
+            'card_last4' => $payment?->card_last4,
+        ];
+    }
+
+    /**
+     * "Add customer" on a Walk-in invoice (owner's task of November 26): a customer picked from the database or typed
+     * (name, phone, email, address); the invoice and its job move to them.
+     */
+    public function addCustomer(Request $request, Invoice $invoice, PaidCustomer $customers): RedirectResponse
+    {
+        Gate::authorize('update', $invoice->job);
+
+        $data = $request->validate([
+            'customer_id' => ['nullable', 'integer'],
+            'first_name' => ['nullable', 'string', 'max:100'],
+            'last_name' => ['nullable', 'string', 'max:100'],
+            'phone' => ['nullable', 'string', 'max:40'],
+            'email' => ['nullable', 'email:rfc', 'max:254'],
+            'property' => ['nullable', 'array'],
+            'property.*' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $customers->applyToInvoice($invoice, array_filter($data, fn ($value) => $value !== null));
+        app(AuditLogger::class)->record('invoice.customer_added', $invoice, ['number' => $invoice->number, 'customer_id' => $invoice->refresh()->customer_id]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('invoices.add_customer.done')]);
+
+        return back();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function refundSetup(Invoice $invoice): array
+    {
+        $paid = $invoice->payments()->valid()->whereNull('refunded_payment_id')->where('amount', '>', 0)->orderByDesc('received_at')->get();
+        $first = $paid->first();
+
+        return [
+            'left' => max(0, (int) $invoice->amount_paid),
+            'taxes' => RefundAmounts::taxOptions($invoice),
+            'square' => $paid->contains(fn (Payment $p) => $p->provider !== null),
+            'method' => match ($first?->method->statsGroup()) {
+                'cash' => 'cash',
+                'e_transfer' => 'e_transfer',
+                'card' => 'card',
+                default => 'cash',
+            },
+            'card_last4' => $first?->card_last4,
+        ];
     }
 
     public function create(Request $request, ServiceJob $job): Response
@@ -288,7 +393,12 @@ class InvoiceController extends Controller
                 'void' => Gate::allows('void', $invoice),
                 'voidPayments' => Gate::allows('update', $invoice->job),
                 'refund' => Gate::allows('refund', $invoice),
+                // "Add customer" on a Walk-in invoice (owner's task of November 26).
+                'addCustomer' => Gate::allows('update', $invoice->job) && (bool) $invoice->customer()->withTrashed()->value('is_walk_in'),
             ],
+            // The refund window (owner's task of November 26): what is left to refund, the company's taxes ticked as
+            // they were on the invoice, and how the paid money came in.
+            'refund' => Gate::allows('refund', $invoice) ? self::refundSetup($invoice) : null,
             'paymentMethods' => PaymentMethod::manualOptions(currentCompany()),
             'today' => $this->today(),
             'online' => $this->online($invoice, $providers, $links),

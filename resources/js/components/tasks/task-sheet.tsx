@@ -1,7 +1,7 @@
 import { router, useForm, usePage } from '@inertiajs/react';
-import { Check, ListTodo, Trash2 } from 'lucide-react';
+import { Check, ListTodo, PenLine, Sparkles, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { TaskDraft, TaskItem } from '@/components/tasks/types';
 import {
     REMINDERS,
@@ -23,7 +23,9 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { useTrans } from '@/lib/i18n';
+import { holdKeyboard } from '@/lib/keyboard-handoff';
 import { cn } from '@/lib/utils';
+import { index as assistantPage } from '@/routes/assistant';
 import {
     destroy,
     done as doneRoute,
@@ -60,7 +62,9 @@ const plusHour = (hhmm: string) => {
 /**
  * "+ → Task" (owner's task, Oct 24): a to-do without a customer — title, day, a time or all day, note, who it is for
  * (oneself, or a teammate for the office) and a reminder (push and email). Editing the same sheet also marks it done
- * or deletes it.
+ * or deletes it. A new task starts with two buttons like a booking (owner's task of November 26): "✨ Assistant"
+ * (only for people with the assistant) closes the sheet and opens the assistant with the keyboard up; "Manually"
+ * puts the cursor in Title.
  */
 export function TaskSheet({
     open,
@@ -83,6 +87,7 @@ export function TaskSheet({
     const timeZone = auth.company?.timezone ?? 'UTC';
     const [people, setPeople] = useState<Option[]>([]);
     const [jobs, setJobs] = useState<Option[]>([]);
+    const titleRef = useRef<HTMLInputElement>(null);
     const form = useForm({
         title: '',
         note: '',
@@ -105,7 +110,7 @@ export function TaskSheet({
             task?.start_time ?? draft?.start_time ?? nextHour(timeZone);
         form.setData({
             title: task?.title ?? draft?.title ?? '',
-            note: task?.note ?? '',
+            note: task?.note ?? draft?.note ?? '',
             task_date:
                 task?.date ??
                 draft?.task_date ??
@@ -125,7 +130,11 @@ export function TaskSheet({
             // A new to-do is "Personal" (🏠) unless another type is picked.
             kind: task ? (task.kind ?? '') : (draft?.kind ?? 'home'),
             address: task?.address ?? draft?.address ?? '',
-            service_job_id: task?.job ? String(task.job.id) : '',
+            service_job_id: task?.job
+                ? String(task.job.id)
+                : draft?.service_job_id
+                  ? String(draft.service_job_id)
+                  : '',
             repeat: task?.repeat ?? 'none',
         });
 
@@ -192,6 +201,16 @@ export function TaskSheet({
     };
 
     const readOnly = task !== null && !task.can_edit;
+    const assistant = !task && auth.can?.useAssistant === true;
+
+    const openAssistant = () => {
+        // During the tap, so the phone opens the keyboard (see keyboard-handoff).
+        holdKeyboard();
+        onOpenChange(false);
+        router.visit(assistantPage({ query: { focus: 1 } }));
+    };
+
+    const startManually = () => titleRef.current?.focus();
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -209,6 +228,30 @@ export function TaskSheet({
                         {t('tasks.description')}
                     </SheetDescription>
                 </SheetHeader>
+                {!task && (
+                    <div className="flex w-full gap-2" data-test="task-start">
+                        {assistant && (
+                            <button
+                                type="button"
+                                onClick={openAssistant}
+                                className="da-press da-quick-booking inline-flex min-h-[3.9rem] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-center text-[15px] leading-tight font-semibold [&_svg]:size-[1.625rem] [&_svg]:shrink-0"
+                                data-test="task-assistant"
+                            >
+                                <Sparkles />
+                                <span>{t('tasks.start.assistant')}</span>
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={startManually}
+                            className="da-press da-raised inline-flex min-h-[3.9rem] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-center text-[15px] leading-tight font-semibold [&_svg]:size-[1.625rem] [&_svg]:shrink-0"
+                            data-test="task-manually"
+                        >
+                            <PenLine />
+                            <span>{t('tasks.start.manually')}</span>
+                        </button>
+                    </div>
+                )}
                 <form onSubmit={submit} className="space-y-3">
                     <FormField
                         id="task-title"
@@ -216,6 +259,7 @@ export function TaskSheet({
                         error={form.errors.title}
                     >
                         <Input
+                            ref={titleRef}
                             id="task-title"
                             value={form.data.title}
                             maxLength={160}
@@ -393,6 +437,20 @@ export function TaskSheet({
                                 }
                             >
                                 <option value="">{t('tasks.no_job')}</option>
+                                {!task &&
+                                    draft?.service_job_id &&
+                                    !jobs.some(
+                                        (j) =>
+                                            j.value ===
+                                            String(draft.service_job_id),
+                                    ) && (
+                                        <option
+                                            value={String(draft.service_job_id)}
+                                        >
+                                            {draft.job_label ??
+                                                `#${draft.service_job_id}`}
+                                        </option>
+                                    )}
                                 {task?.job &&
                                     !jobs.some(
                                         (j) => j.value === String(task.job!.id),

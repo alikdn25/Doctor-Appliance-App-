@@ -15,8 +15,11 @@ use App\Models\AssistantAction;
 use App\Models\AssistantMessage;
 use App\Models\Invoice;
 use App\Models\JobVisit;
+use App\Models\ServiceJob;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\AI\QuickBookingParser;
+use App\Services\AI\TaskParser;
 use App\Services\AuditLogger;
 use App\Support\Audit\ActionSource;
 use App\Support\Billing\Money;
@@ -27,7 +30,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The assistant's actions: a payment reminder by SMS, moving a booking, a new booking, an invoice read from photos. The AI only proposes one (a
+ * The assistant's actions: a payment reminder by SMS, moving a booking, a new booking, a new task, an invoice read from photos. The AI only proposes one (a
  * pending "what I will do" card); it runs when the person presses Confirm, as that person, marked "AI assistant" in
  * the change log. Cancel drops it. The assistant can delete nothing.
  */
@@ -48,6 +51,7 @@ class AssistantActions
             AssistantAction::RESCHEDULE => $this->rescheduleProposal($input, $user),
             AssistantAction::BOOKING => $this->bookingProposal($input, $conversation),
             AssistantAction::INVOICE => $this->invoiceProposal($input, $conversation),
+            AssistantAction::TASK => $this->taskProposal($input, $user),
         };
 
         $action = AssistantAction::create([
@@ -70,7 +74,7 @@ class AssistantActions
     /**
      * Runs a confirmed action. Returns what the chat shows and, for a booking, the filled form's data.
      *
-     * @return array{message: string, booking?: array<string, mixed>, redirect?: string}
+     * @return array{message: string, booking?: array<string, mixed>, task?: array<string, mixed>, redirect?: string}
      */
     public function confirm(AssistantAction $action, User $user, QuickBookingParser $parser, CustomerFinder $finder, bool $send = true): array
     {
@@ -80,6 +84,7 @@ class AssistantActions
                 AssistantAction::RESCHEDULE => $this->reschedule($action, $user),
                 AssistantAction::BOOKING => $this->booking($action, $user, $parser, $finder),
                 AssistantAction::INVOICE => $this->invoice($action, $user, $send),
+                AssistantAction::TASK => $this->task($action, $user),
             };
 
             app(AuditLogger::class)->record('assistant.'.$action->type, $action, ['label' => $action->summary, 'result' => $result['message']]);
@@ -165,6 +170,56 @@ class AssistantActions
                 ? __('assistant.actions.booking', ['text' => mb_substr($text, 0, 300)])
                 : trans_choice('assistant.actions.booking_photos', count($photos), ['text' => mb_substr($text, 0, 300)]),
         ];
+    }
+
+    /**
+     * A new to-do: the text (and the customer's job the assistant found) is kept; the form is read on Confirm.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array{0: array<string, mixed>, 1: string}
+     */
+    private function taskProposal(array $input, User $user): array
+    {
+        if (! Gate::forUser($user)->allows('create', Task::class)) {
+            throw new AssistantError('This user cannot create tasks.');
+        }
+
+        $text = trim((string) ($input['text'] ?? ''));
+
+        if ($text === '') {
+            throw new AssistantError('Say what the task is.');
+        }
+
+        $jobId = is_numeric($input['job_id'] ?? null) ? (int) $input['job_id'] : null;
+        $job = $jobId === null ? null : ServiceJob::query()->visibleTo($user)->with('customer')->find($jobId);
+
+        if ($jobId !== null && $job === null) {
+            throw new AssistantError('No job with this id.');
+        }
+
+        return [
+            ['text' => mb_substr($text, 0, 5000), 'job_id' => $job?->id],
+            $job === null
+                ? __('assistant.actions.task', ['text' => mb_substr($text, 0, 300)])
+                : __('assistant.actions.task_job', ['text' => mb_substr($text, 0, 300), 'number' => $job->number, 'customer' => $job->customer?->display_name]),
+        ];
+    }
+
+    /**
+     * Confirm opens the task form filled in (TaskParser); nothing is saved until the person presses Save.
+     *
+     * @return array{message: string, task: array<string, mixed>}
+     */
+    private function task(AssistantAction $action, User $user): array
+    {
+        Gate::forUser($user)->authorize('create', Task::class);
+        $task = app(TaskParser::class)->parse((string) $action->params['text'], currentCompany(), $user, $action->params['job_id'] ?? null);
+
+        if ($task === null) {
+            throw ValidationException::withMessages(['action' => __('tasks.parse_failed')]);
+        }
+
+        return ['message' => __('assistant.actions.task_opened'), 'task' => $task];
     }
 
     /**

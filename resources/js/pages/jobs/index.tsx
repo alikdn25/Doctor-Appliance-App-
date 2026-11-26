@@ -24,6 +24,7 @@ import { FilterChips } from '@/components/ui/filter-chips';
 import type { FilterChip } from '@/components/ui/filter-chips';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import { JobSearchResults } from '@/components/jobs/job-search-results';
 import { SearchField } from '@/components/ui/search-field';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useCompanyTime } from '@/lib/datetime';
@@ -484,6 +485,11 @@ export default function JobsIndex({
                                 ))}
                             </ul>
                         )}
+                    </>
+                ) : jobs && filters.search ? (
+                    <>
+                        <JobSearchResults jobs={jobs.data} />
+                        <PaginationLinks links={jobs.links} />
                     </>
                 ) : (
                     jobs && (

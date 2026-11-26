@@ -9,15 +9,20 @@ use App\Models\User;
 use App\Payments\PaymentProviderException;
 use App\Payments\PaymentProviders;
 use App\Services\AuditLogger;
+use App\Support\Billing\Money;
+use App\Support\Billing\RefundAmounts;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Gives money back on an invoice as settled (warranty callback the customer declined, goodwill …): the customer
- * does not owe it again. Spread over the invoice's payments, newest first. Payments made through a provider are
- * refunded at the provider (Square); manual payments get a refund row (the office hands the money back). The
- * refunded amount is credited on the invoice, which becomes Partially refunded / Refunded. Must run in a tenant
- * context.
+ * does not owe it again. Spread over the invoice's payments, newest first; any number of refunds per invoice.
+ * Payments made through a provider are refunded at the provider (Square, to the same card); if the provider says no,
+ * the person may record it instead (record_only: they hand the money back themselves). Cash and e-transfer payments
+ * get a refund row only, the same way they were paid unless another way is picked (owner's task of November 26).
+ * The refund's taxes are kept on its rows (refund_taxes) so statistics and the tax reserve take exactly them back.
+ * The refunded amount is credited on the invoice, which becomes Partially refunded / Refunded. The reason is
+ * optional. Must run in a tenant context.
  */
 class RefundInvoice
 {
@@ -28,25 +33,26 @@ class RefundInvoice
         private readonly AuditLogger $audit,
     ) {}
 
-    public function handle(Invoice $invoice, int $amount, string $reason, User $user): void
+    /**
+     * @param  array{taxes?: list<array{name: string, rate: string, amount: int}>|null, method?: PaymentMethod|null, record_only?: bool}  $options
+     */
+    public function handle(Invoice $invoice, int $amount, ?string $reason, User $user, array $options = []): void
     {
-        if ($amount <= 0) {
-            throw ValidationException::withMessages(['amount' => __('payments.errors.amount_required')]);
-        }
+        $reason = filled($reason) ? trim((string) $reason) : null;
 
-        if (trim($reason) === '') {
-            throw ValidationException::withMessages(['reason' => __('payments.refunds.reason_required')]);
-        }
-
-        DB::transaction(function () use ($invoice, $amount, $reason, $user) {
+        DB::transaction(function () use ($invoice, $amount, $reason, $user, $options) {
             $invoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            RefundAmounts::check($invoice, ['total' => $amount]);
 
-            if ($invoice->isVoid() || $amount > $invoice->amount_paid) {
-                throw ValidationException::withMessages(['amount' => __('payments.refunds.more_than_paid', ['amount' => $invoice->amount_paid])]);
+            // Without taxes given (warranty refunds), the invoice's taxes in proportion.
+            $taxes = $options['taxes'] ?? RefundAmounts::calculate($invoice, 'full', 0, [])['taxes'];
+            if (! array_key_exists('taxes', $options) || $options['taxes'] === null) {
+                $taxes = self::scale($taxes, $amount, max(1, (int) $invoice->amount_paid));
             }
 
             $left = $amount;
-            $originals = $invoice->payments()->valid()->whereNull('refunded_payment_id')->orderByDesc('received_at')->orderByDesc('id')->get();
+            $originals = $invoice->payments()->valid()->whereNull('refunded_payment_id')->where('amount', '>', 0)
+                ->orderByDesc('received_at')->orderByDesc('id')->get();
 
             foreach ($originals as $payment) {
                 if ($left <= 0) {
@@ -60,10 +66,18 @@ class RefundInvoice
                     continue;
                 }
 
-                $payment->provider !== null
-                    ? $this->provider($payment, $part, $reason)
-                    : $this->manual($invoice, $payment, $part, $reason, $user);
+                // The taxes in this part (the last part takes what is left of them).
+                $partTaxes = $part === $left ? $taxes : self::scale($taxes, $part, $left);
+                $taxes = self::minus($taxes, $partTaxes);
+
+                $payment->provider !== null && ! ($options['record_only'] ?? false)
+                    ? $this->provider($payment, $part, $reason, $partTaxes)
+                    : $this->manual($invoice, $payment, $part, $reason, $user, $partTaxes, $options['method'] ?? null);
                 $left -= $part;
+            }
+
+            if ($left > 0) {
+                throw ValidationException::withMessages(['amount' => __('payments.refunds.more_than_paid', ['amount' => Money::format($amount - $left, $invoice->currency, currentCompany()->locale)])]);
             }
 
             $invoice->credited_amount += $amount;
@@ -74,29 +88,39 @@ class RefundInvoice
         });
     }
 
-    private function provider(Payment $payment, int $amount, string $reason): void
+    /**
+     * @param  list<array{name: string, rate: string, amount: int}>  $taxes
+     */
+    private function provider(Payment $payment, int $amount, ?string $reason, array $taxes): void
     {
         $provider = $this->providers->find($payment->provider);
 
         if ($provider === null) {
-            throw ValidationException::withMessages(['amount' => __('payments.links.no_provider')]);
+            throw ValidationException::withMessages(['provider' => __('payments.links.no_provider')]);
         }
 
         try {
-            $refundId = $provider->refund($payment, $amount, $reason);
+            $refundId = $provider->refund($payment, $amount, $reason ?? __('payments.refunds.default_reason'));
         } catch (PaymentProviderException $e) {
-            throw ValidationException::withMessages(['amount' => $e->getMessage()]);
+            // Shown in the refund window with "Record as cash / e-transfer".
+            throw ValidationException::withMessages(['provider' => $e->getMessage()]);
         }
 
         $refund = $this->payments->refundFromProvider($payment, $refundId, $amount, now());
-        $refund->forceFill(['refund_reason' => $reason])->save();
+        $refund->forceFill(['refund_reason' => $reason, 'refund_taxes' => $taxes, 'refund_status' => $refund->refund_status ?? 'pending'])->save();
     }
 
-    private function manual(Invoice $invoice, Payment $payment, int $amount, string $reason, User $user): void
+    /**
+     * @param  list<array{name: string, rate: string, amount: int}>  $taxes
+     */
+    private function manual(Invoice $invoice, Payment $payment, int $amount, ?string $reason, User $user, array $taxes, ?PaymentMethod $method): void
     {
+        $card = in_array($payment->method, [PaymentMethod::Online, PaymentMethod::CardReader, PaymentMethod::CardTerminal], true);
+        $method ??= $card ? PaymentMethod::CardTerminal : $payment->method;
+
         $refund = new Payment([
             'amount' => -$amount,
-            'method' => in_array($payment->method, [PaymentMethod::Online, PaymentMethod::CardReader], true) ? PaymentMethod::Other : $payment->method,
+            'method' => $method,
             'reference' => __('payments.refund_of', ['reference' => $payment->reference ?? $payment->method->label()]),
             'received_at' => now(),
         ]);
@@ -105,7 +129,35 @@ class RefundInvoice
         $refund->currency = $payment->currency;
         $refund->refunded_payment_id = $payment->id;
         $refund->refund_reason = $reason;
+        $refund->refund_taxes = $taxes;
+        $refund->refund_status = 'completed';
+        $refund->card_brand = $method === PaymentMethod::CardTerminal ? $payment->card_brand : null;
+        $refund->card_last4 = $method === PaymentMethod::CardTerminal ? $payment->card_last4 : null;
         $refund->user_id = $user->id;
         $refund->save();
+
+        // Cash handed back leaves the person's cash on hand.
+        if ($method === PaymentMethod::Cash) {
+            app(CashLedger::class)->collected($refund, $user);
+        }
+    }
+
+    /**
+     * @param  list<array{name: string, rate: string, amount: int}>  $taxes
+     * @return list<array{name: string, rate: string, amount: int}>
+     */
+    private static function scale(array $taxes, int $part, int $whole): array
+    {
+        return array_map(fn (array $tax) => [...$tax, 'amount' => (int) round($tax['amount'] * $part / max(1, $whole))], $taxes);
+    }
+
+    /**
+     * @param  list<array{name: string, rate: string, amount: int}>  $taxes
+     * @param  list<array{name: string, rate: string, amount: int}>  $part
+     * @return list<array{name: string, rate: string, amount: int}>
+     */
+    private static function minus(array $taxes, array $part): array
+    {
+        return array_map(fn (array $tax, int $i) => [...$tax, 'amount' => $tax['amount'] - ($part[$i]['amount'] ?? 0)], $taxes, array_keys($taxes));
     }
 }

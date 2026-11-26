@@ -13,6 +13,8 @@ enum InvoiceStatus: string
 {
     use HasOptions;
 
+    /** No lines or a total of 0 and no payments (owner's task of November 26): not paid, does not close the job. */
+    case Draft = 'draft';
     case Unpaid = 'unpaid';
     case PartiallyPaid = 'partially_paid';
     case Paid = 'paid';

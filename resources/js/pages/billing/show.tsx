@@ -11,6 +11,7 @@ import {
     Stethoscope,
     Trash2,
     Undo2,
+    UserPlus,
     XCircle,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
@@ -23,7 +24,7 @@ import {
 import type { Delivery } from '@/components/billing/document-delivery';
 import { DocumentStatusBadge } from '@/components/billing/document-status-badge';
 import { EditPaymentDialog } from '@/components/billing/edit-payment-dialog';
-import { fromMinor, useMoney } from '@/components/billing/money';
+import { useMoney } from '@/components/billing/money';
 import type { OnlinePayment } from '@/components/billing/online-payment';
 import { OnlinePaymentSection } from '@/components/billing/online-payment';
 import { PaymentDialog } from '@/components/billing/payment-dialog';
@@ -47,7 +48,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { IconButton } from '@/components/ui/icon-button';
-import { Input } from '@/components/ui/input';
 import {
     Sheet,
     SheetContent,
@@ -57,6 +57,9 @@ import {
 } from '@/components/ui/sheet';
 import { OverdueFlag, StatusBadge } from '@/components/ui/status-badge';
 import { StickyActionBar } from '@/components/ui/sticky-action-bar';
+import { AddCustomerDialog } from '@/components/billing/add-customer-dialog';
+import { RefundDialog } from '@/components/billing/refund-dialog';
+import type { RefundSetup } from '@/components/billing/refund-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
@@ -73,11 +76,10 @@ import {
 import {
     edit as editInvoice,
     show as showInvoice,
-    refund as refundRoute,
     voidMethod as voidInvoice,
 } from '@/routes/invoices';
 import { show as showJob } from '@/routes/jobs';
-import { voidMethod as voidPayment } from '@/routes/payments';
+import { refundReceipt, voidMethod as voidPayment } from '@/routes/payments';
 import type { Option } from '@/types';
 
 type Can = {
@@ -89,6 +91,7 @@ type Can = {
     void?: boolean;
     voidPayments?: boolean;
     refund?: boolean;
+    addCustomer?: boolean;
 };
 
 /**
@@ -110,6 +113,7 @@ export default function BillingShow({
     signature = null,
     diagnosisUrl = null,
     attachments = [],
+    refund = null,
 }: {
     document: BillingDocument;
     can: Can;
@@ -130,6 +134,8 @@ export default function BillingShow({
     diagnosisUrl?: string | null;
     /** Photos or screenshots the invoice was made from (assistant). */
     attachments?: { id: number; url: string }[];
+    /** The refund window's setup (owner's task of November 26). */
+    refund?: RefundSetup | null;
 }) {
     const canViewHistory = Boolean(usePage().props.auth.can?.viewChangeLog);
     const t = useTrans();
@@ -140,6 +146,7 @@ export default function BillingShow({
     const [takeOpen, setTakeOpen] = useState(false);
     const [voidOpen, setVoidOpen] = useState(false);
     const [refundOpen, setRefundOpen] = useState(false);
+    const [addCustomerOpen, setAddCustomerOpen] = useState(false);
     const [editPayment, setEditPayment] = useState<PaymentData | null>(null);
     const [confirm, setConfirm] = useState<
         null | 'delete' | 'revise' | 'edit-paid'
@@ -222,6 +229,17 @@ export default function BillingShow({
         router.post(voidPayment(payment.id).url, { reason }, options);
     };
 
+    // "Send refund receipt": by email to the customer (asked for when the customer has none).
+    const sendRefundReceipt = (paymentId: number) => {
+        const email = doc.customer.email
+            ? null
+            : window.prompt(t('charges.receipt.email'));
+        if (email === '') return;
+        router.post(refundReceipt(paymentId).url, email ? { email } : {}, {
+            preserveScroll: true,
+        });
+    };
+
     // What the big line on top says.
     const headline = isInvoice
         ? doc.status === 'void'
@@ -269,12 +287,6 @@ export default function BillingShow({
                   label: t('invoices.edit'),
                   icon: <Pencil />,
                   onSelect: editDocument,
-              },
-              can.refund && {
-                  key: 'refund',
-                  label: t('payments.refunds.action'),
-                  icon: <Undo2 />,
-                  onSelect: () => setRefundOpen(true),
               },
               can.void && ('separator' as const),
               can.void && {
@@ -357,6 +369,17 @@ export default function BillingShow({
             return (
                 <>
                     <SendMenu actions={send} />
+                    {/* Refund next to the invoice's buttons (owner's task of November 26). */}
+                    {can.refund && refund && (
+                        <Button
+                            variant="outline"
+                            className="min-h-12 md:min-h-11"
+                            onClick={() => setRefundOpen(true)}
+                            data-test="refund-open"
+                        >
+                            <Undo2 /> {t('payments.refunds.action')}
+                        </Button>
+                    )}
                     {send.openReceipt && (
                         <Button
                             variant="outline"
@@ -529,6 +552,16 @@ export default function BillingShow({
                         >
                             {headline.text}
                         </p>
+                        {can.addCustomer && (
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => setAddCustomerOpen(true)}
+                                data-test="add-customer"
+                            >
+                                <UserPlus /> {t('invoices.add_customer.action')}
+                            </Button>
+                        )}
                         <p className="text-sm text-muted-foreground">
                             {[
                                 t('billing.issued', {
@@ -1052,6 +1085,24 @@ export default function BillingShow({
                                                                   p.received_at,
                                                               )
                                                             : null,
+                                                        p.is_refund
+                                                            ? p.card_last4
+                                                                ? t(
+                                                                      'payments.refunds.to_card',
+                                                                      {
+                                                                          last4: p.card_last4,
+                                                                      },
+                                                                  )
+                                                                : p.method_label
+                                                            : null,
+                                                        p.is_refund &&
+                                                        p.refund_status &&
+                                                        p.refund_status !==
+                                                            'completed'
+                                                            ? t(
+                                                                  `payments.refunds.status.${p.refund_status}`,
+                                                              )
+                                                            : null,
                                                         p.reference,
                                                         p.tip_amount !== 0
                                                             ? t(
@@ -1082,11 +1133,45 @@ export default function BillingShow({
                                                         {p.void_reason}
                                                     </p>
                                                 )}
+                                                {p.refund_taxes &&
+                                                    p.refund_taxes.length >
+                                                        0 && (
+                                                        <p
+                                                            className="text-xs text-muted-foreground"
+                                                            data-test="refund-taxes"
+                                                        >
+                                                            {p.refund_taxes
+                                                                .map(
+                                                                    (tax) =>
+                                                                        `${tax.name} ${money(-tax.amount)}`,
+                                                                )
+                                                                .join(' · ')}
+                                                        </p>
+                                                    )}
                                                 {p.refund_reason && (
                                                     <p className="text-xs">
                                                         {p.refund_reason}
                                                     </p>
                                                 )}
+                                                {p.is_refund &&
+                                                    !p.voided_at && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="mt-2"
+                                                            onClick={() =>
+                                                                sendRefundReceipt(
+                                                                    p.id,
+                                                                )
+                                                            }
+                                                            data-test="refund-receipt"
+                                                        >
+                                                            <Receipt />{' '}
+                                                            {t(
+                                                                'payments.refunds.send_receipt',
+                                                            )}
+                                                        </Button>
+                                                    )}
                                             </div>
                                             <span
                                                 className={
@@ -1197,13 +1282,20 @@ export default function BillingShow({
                     </SheetContent>
                 </Sheet>
             )}
-            {can.refund && (
+            {can.addCustomer && (
+                <AddCustomerDialog
+                    open={addCustomerOpen}
+                    onOpenChange={setAddCustomerOpen}
+                    invoiceId={doc.id}
+                />
+            )}
+            {can.refund && refund && (
                 <RefundDialog
                     open={refundOpen}
                     onOpenChange={setRefundOpen}
                     invoiceId={doc.id}
-                    paid={doc.amount_paid ?? 0}
                     currency={doc.currency}
+                    setup={refund}
                 />
             )}
             {can.void && (
@@ -1305,85 +1397,6 @@ function VoidInvoiceDialog({
                         disabled={form.processing}
                     >
                         {t('invoices.void')}
-                    </Button>
-                </form>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function RefundDialog({
-    open,
-    onOpenChange,
-    invoiceId,
-    paid,
-    currency,
-}: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    invoiceId: number;
-    paid: number;
-    currency: string;
-}) {
-    const t = useTrans();
-    const money = useMoney(currency);
-    const form = useForm({ amount: fromMinor(paid, currency), reason: '' });
-
-    const submit = (e: FormEvent) => {
-        e.preventDefault();
-        form.post(refundRoute(invoiceId).url, {
-            preserveScroll: true,
-            onSuccess: () => onOpenChange(false),
-        });
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>{t('payments.refunds.title')}</DialogTitle>
-                    <DialogDescription>
-                        {t('payments.refunds.hint')}
-                    </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={submit} className="space-y-4">
-                    <FormField
-                        id="refund-amount"
-                        label={`${t('payments.refunds.amount')} (≤ ${money(paid)})`}
-                        error={form.errors.amount}
-                    >
-                        <Input
-                            id="refund-amount"
-                            inputMode="decimal"
-                            value={form.data.amount}
-                            onChange={(e) =>
-                                form.setData('amount', e.target.value)
-                            }
-                        />
-                    </FormField>
-                    <FormField
-                        id="refund-reason"
-                        label={t('payments.refunds.reason')}
-                        error={form.errors.reason}
-                    >
-                        <Textarea
-                            id="refund-reason"
-                            rows={2}
-                            maxLength={500}
-                            value={form.data.reason}
-                            onChange={(e) =>
-                                form.setData('reason', e.target.value)
-                            }
-                        />
-                    </FormField>
-                    <Button
-                        type="submit"
-                        className="w-full"
-                        disabled={
-                            form.processing || form.data.reason.trim() === ''
-                        }
-                    >
-                        {t('payments.refunds.action')}
                     </Button>
                 </form>
             </DialogContent>

@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { useClock, useCompanyTime } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { mine, show as showJob } from '@/routes/jobs';
-import { destroy, done as doneRoute } from '@/routes/tasks';
+import { useTaskDone } from '@/components/tasks/use-task-done';
+import { destroy } from '@/routes/tasks';
 
 type TaskPage = TaskItem & {
     planned_date: string | null;
@@ -38,12 +39,8 @@ export default function TaskShow({ task }: { task: TaskPage }) {
               : clock.clock(task.start_time),
     ].join(' · ');
 
-    const toggle = () =>
-        router.post(
-            doneRoute(task.id).url,
-            { done: !task.done },
-            { preserveScroll: true },
-        );
+    const done = useTaskDone({ preserveState: false });
+    const toggle = () => done.toggle(task);
 
     const remove = () => {
         if (!window.confirm(t('tasks.page.delete_confirm'))) return;
@@ -241,6 +238,7 @@ export default function TaskShow({ task }: { task: TaskPage }) {
                 onOpenChange={setEditing}
                 task={editing ? task : null}
             />
+            {done.dialog}
         </>
     );
 }

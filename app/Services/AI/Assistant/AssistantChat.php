@@ -203,7 +203,7 @@ class AssistantChat
               items. Mention job, invoice and estimate numbers so they can be found.
             - Look up data with the tools; never guess numbers. Tools only read data of this company.
             - You can only propose actions: an SMS payment reminder for an invoice, moving a booking to another date or window,
-              opening a new booking, or an invoice (create_invoice). Use those tools; the owner sees a card with buttons.
+              opening a new booking, opening a new task (propose_task), or an invoice (create_invoice). Use those tools; the owner sees a card with buttons.
               Never say an action is done: it is done only after they press Confirm. You cannot delete or change anything
               else; say so if asked.
             - Invoices from photos or screenshots (a work order, a note, a message): read the customer's name, phone, email,
@@ -216,6 +216,10 @@ class AssistantChat
               phone, email, address, appliance, brand, model, serial number, problem, date and time) and call propose_booking
               with that text and from_photos true. Leave out what you cannot read; never invent or complete a value. Without
               a photo and without a request to book, never propose a booking.
+            - If the owner asks for a task, an errand, a reminder, to buy, pick up or drop by something ("задача", "дело",
+              "напомни", "купить", "забрать", "заехать"), use propose_task, not propose_booking. Pass everything about it
+              (what to do, day, time or all day, address, store or supplier, the customer's job, a note), also when read
+              from photos or screenshots; when it is about a customer's job, find the job and pass its job_id.
             - "Today", "tomorrow", "this week" count from the current date in the company time zone.
             TEXT;
     }

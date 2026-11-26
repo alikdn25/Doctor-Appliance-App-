@@ -1,3 +1,51 @@
+# November 26 — Owner's task: "+" button, tasks through the assistant, payments and refunds, search and Reopen job (done)
+
+1. **"+" menu** (`create-fab.tsx`): "Booking from photo" removed with its code (`startQuickBookingFromPhotos`, the
+   parse-on-open flag) and translation; photos in Quick booking and the assistant stay. Order top to bottom: Trip,
+   Expense, Charge reader, Task, the booking buttons, Assistant.
+2. **Task sheet** (`TaskSheet`): a new task starts with "✨ Assistant" (violet, with the glow; only with
+   `can.useAssistant`) — closes the sheet and opens the assistant with the keyboard up — and "Manually" (cursor in
+   Title). Not shown when editing a task.
+3. **Assistant `propose_task`** (`AssistantTools`, `AssistantActions::TASK`): the text (and the job the assistant
+   found, `job_id`) is kept; Confirm reads it with `TaskParser` (now also `note` and the customer's job by number or
+   name) and opens the filled `TaskSheet` on the assistant page; nothing is saved before Save. A named supplier gives
+   its saved address. The system prompt sends tasks, errands, reminders, buy / pick up / drop by to `propose_task`.
+4. **Search** (`JobController::searchJobs`, `ServiceJob::scopeSearch`): on Jobs (Open and All) and the calendar any text
+   searches open and closed jobs together; the Open chips and All's "open" filter do not narrow it. Phone digits
+   (last 4 or the full number in any format, any of the customer's phones), house number, street, unit, city, email
+   added. Open first, then closed, newest (last visit) first; deleted at the bottom. Row (`JobSearchResults`):
+   customer, address, appliance, last visit, coloured Open / Completed / Paid / Cancelled.
+5. **Reopen job** (`ReopenJob`, `POST jobs/{job}/reopen`, `ReopenDialog`): full-width blue button under the customer
+   on Completed / Invoiced / Awaiting payment / Paid / Cancelled jobs only. Day, arrival windows, Now, No time, No date;
+   technician Me; "Notify client" sends the booking confirmation. The job becomes Scheduled (New without a date),
+   `service_jobs.reopened_at` keeps `SyncJobBillingStatus` from closing it again by its paid invoice; Complete / Close
+   by voice clears it. Status history "Reopened" and change log `job.reopened`.
+6. **Invoices**: Unpaid (default) · Paid · Refunded · All; Paid newest payment first, charges without a booking
+   included. Paid rows: customer or Walk-in, phone, first line, amount, Card ····1234 / Cash / E-transfer, paid date and
+   time, number. Search over every status: name, phone (last 4 / any format), address, amount, number, card's last 4.
+   "Add customer" on a Walk-in invoice (`POST invoices/{invoice}/customer`): pick a customer or type one; the invoice
+   and its job move to them.
+7. **Refunds** (`RefundInvoice`, `RefundAmounts`, `RefundDialog`): Refund button next to the invoice's buttons (no longer
+   under ⋯) and on the Paid screen. Full refund = what is left; Partial = amount without taxes + ticked GST / PST
+   (company rates, ticked as on the invoice), total worked out by code, never above what is left; reason optional; any
+   number of refunds. Square card payments are refunded at Square; if Square says no, its reason shows with "Record as
+   cash / e-transfer" (no "Refund on reader": the Android Square SDK cannot refund). Cash / E-transfer / Card refunds
+   are recorded only; a cash refund leaves cash on hand. Refund rows keep `refund_taxes` and `refund_status`
+   (webhooks `refund.created` / `refund.updated` set it; a failed one is voided). Statistics (money by method, GST /
+   PST, tax CSV), the tax reserve and revenue / average ticket / profit per job take the refund's own amount and
+   taxes back. Job page shows "Refunded $XX.XX". "Send refund receipt" (`RefundReceiptMail`) only on the button.
+8. **Empty invoice**: no lines or $0 and no payments → `draft` (`InvoiceStatus::Draft`); it neither closes nor bills
+   the job and is not under Paid.
+9. **Microphone**: "RU | EN" two-half switch next to every microphone.
+10. "Edit by voice" in My Jobs was already shown when working alone (test added). Done on "Buy at {supplier}" lists its
+    parts, all ticked: ticked → Waiting, unticked stay under Order (a new "Buy at" task for them).
+
+- Migration `2026_11_28_000100_add_reopen_and_refund_details`: `service_jobs.reopened_at`, `payments.refund_taxes`,
+  `payments.refund_status` (no rows changed).
+- Tests: `tests/Feature/Owner/November26Test.php`, `AssistantTest` (propose_task), `TodoPartsTest` (parts list on
+  Done), `RefundsAndCallbacksTest` (reason optional).
+- Next: Grok Bot deploys and runs the migration.
+
 # November 25 — Owner's task: fix any data, booking confirmation, reports with photos, the app's microphone (done)
 
 Parts 1–7 (no required fields), 24–29 (No time / No date) and 30–33 (search) were done in PR #103; this task adds:

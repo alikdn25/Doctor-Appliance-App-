@@ -20,6 +20,7 @@ use App\Services\AI\TaskParser;
 use App\Support\Jobs\NearbyWindows;
 use App\Support\Locale\LocalTime;
 use App\Support\Parts\JobParts;
+use App\Support\Parts\SupplierTasks;
 use App\Support\Ui\SavedToast;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -114,13 +115,22 @@ class TaskController extends Controller
         Gate::authorize('update', $task);
         $done = $request->boolean('done', true);
 
-        // The parts first: the task then closes with them (and no new "Buy at" task is made meanwhile).
+        // "Buy at {supplier}" (owner's task of November 26): the parts ticked in the list go to Waiting; the ones left
+        // unticked stay under Order (a new "Buy at" task is made for them). Without a list (older screens) every
+        // part of that supplier is taken as on hand.
+        $picked = $request->has('parts') ? array_map('intval', (array) $request->input('parts', [])) : null;
+
         if ($done && $task->supplier_id !== null) {
-            JobPart::query()->with('job')->where('supplier_id', $task->supplier_id)->where('status', JobPart::TO_ORDER)->get()
-                ->each(fn (JobPart $part) => JobParts::move($part, JobPart::ON_HAND, $request->user()));
+            JobPart::query()->with('job')->where('supplier_id', $task->supplier_id)->where('status', JobPart::TO_ORDER)
+                ->when($picked !== null, fn ($q) => $q->whereIn('id', $picked))->get()
+                ->each(fn (JobPart $part) => JobParts::move($part, $picked !== null ? JobPart::ORDERED : JobPart::ON_HAND, $request->user()));
         }
 
         $task->refresh()->forceFill(['completed_at' => $done ? ($task->completed_at ?? now()) : null])->save();
+
+        if ($done && $task->supplier_id !== null && $picked !== null) {
+            SupplierTasks::sync();
+        }
 
         if ($done && in_array($task->kind, [Task::KIND_PARTS, Task::KIND_MATERIALS], true)) {
             Inertia::flash('offerReceipt', true);
@@ -271,6 +281,11 @@ class TaskController extends Controller
             'repeat' => $task->repeat,
             'carried_days' => $task->completed_at === null ? $task->carriedDays() : 0,
             'automatic' => $task->supplier_id !== null,
+            // "Buy at {supplier}": its parts, all ticked when Done is pressed.
+            'parts' => $task->supplier_id === null || $task->completed_at !== null ? [] : JobPart::query()
+                ->with('job')->where('supplier_id', $task->supplier_id)->where('status', JobPart::TO_ORDER)->orderBy('id')->get()
+                ->map(fn (JobPart $part) => ['id' => $part->id, 'name' => $part->name, 'quantity' => $part->quantity ?? 1, 'job' => $part->job?->number])
+                ->values()->all(),
             'job' => $task->job === null ? null : [
                 'id' => $task->job->id,
                 'number' => $task->job->number,

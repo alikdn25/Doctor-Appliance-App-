@@ -19,8 +19,6 @@ import {
     MAX_BOOKING_PHOTOS,
     quickBookingPhotos,
     quickBookingText,
-    quickParsePending,
-    takeQuickParse,
 } from '@/lib/quick-booking';
 import type { QuickBookingPhoto } from '@/lib/quick-booking';
 import { create } from '@/routes/jobs';
@@ -94,8 +92,7 @@ export default function QuickBooking() {
     const empty = text.trim() === '' && photos.length === 0;
     useEffect(
         () => () => {
-            // Photos just picked in "+" are on their way to the new Quick booking screen: keep them.
-            if (!toForm.current && !quickParsePending()) clearBooking();
+            if (!toForm.current) clearBooking();
         },
         [],
     );
@@ -150,12 +147,6 @@ export default function QuickBooking() {
                 setParsing(false);
             });
     };
-
-    // Photos picked in "+" → "Booking from photo": read them right away (once).
-    useEffect(() => {
-        if (takeQuickParse() && photos.length > 0) read();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     return (
         <>

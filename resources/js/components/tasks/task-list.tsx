@@ -1,11 +1,11 @@
-import { router, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import { Bell, Check, ListTodo, MapPin, Repeat } from 'lucide-react';
 import { dayLabel } from '@/components/calendar/types';
 import type { TaskItem } from '@/components/tasks/types';
 import { useClock } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { done as doneRoute } from '@/routes/tasks';
+import { useTaskDone } from '@/components/tasks/use-task-done';
 
 /**
  * Tasks in their own colour (pink), above the jobs of My Jobs and the calendar: the time or "All day", the title and,
@@ -30,15 +30,11 @@ export function TaskList({
     const t = useTrans();
     const clock = useClock();
     const locale = usePage().props.auth.company?.locale ?? 'en-US';
+    const done = useTaskDone();
 
     if (tasks.length === 0) return null;
 
-    const toggle = (task: TaskItem) =>
-        router.post(
-            doneRoute(task.id).url,
-            { done: !task.done },
-            { preserveScroll: true, preserveState: true },
-        );
+    const toggle = (task: TaskItem) => done.toggle(task);
 
     return (
         <section
@@ -170,6 +166,7 @@ export function TaskList({
                     </li>
                 ))}
             </ul>
+            {done.dialog}
         </section>
     );
 }

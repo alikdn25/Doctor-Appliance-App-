@@ -42,10 +42,25 @@ return [
         'status' => 'Status',
     ],
     'filters' => [
+        'unpaid' => 'Unpaid',
         'outstanding' => 'Outstanding',
         'overdue' => 'Overdue',
         'paid' => 'Paid',
+        'refunded' => 'Refunded',
         'all' => 'All',
+    ],
+    'empty_refunded' => 'No refunded invoices.',
+    'walk_in' => 'Walk-in',
+    'paid_at' => 'Paid :date',
+    'columns_paid' => 'Paid',
+    'add_customer' => [
+        'action' => 'Add customer',
+        'title' => 'Add customer',
+        'hint' => 'Find the customer or type their details: the invoice and its job move to them.',
+        'find' => 'Find customer',
+        'or_new' => 'Or a new customer',
+        'save' => 'Save customer',
+        'done' => 'Customer added to the invoice.',
     ],
     'empty_outstanding' => 'No outstanding invoices.',
     'empty_overdue' => 'No overdue invoices.',
@@ -59,6 +74,7 @@ return [
     'paid_in_full' => 'Paid in full',
 
     'statuses' => [
+        'draft' => 'Draft',
         'unpaid' => 'Unpaid',
         'partially_paid' => 'Partially paid',
         'paid' => 'Paid',

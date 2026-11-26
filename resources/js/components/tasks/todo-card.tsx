@@ -1,4 +1,4 @@
-import { Link, router } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { Check, Navigation } from 'lucide-react';
 import { mapsUrl } from '@/components/customers/types';
 import type { TaskItem } from '@/components/tasks/types';
@@ -6,7 +6,8 @@ import { taskIcon } from '@/components/tasks/types';
 import { useClock } from '@/lib/datetime';
 import { useTrans } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { done as doneRoute, show as showTask } from '@/routes/tasks';
+import { useTaskDone } from '@/components/tasks/use-task-done';
+import { show as showTask } from '@/routes/tasks';
 
 /**
  * A to-do in the Today feed (owner's task of November 25): light yellow with a yellow stripe (job cards have a blue
@@ -18,12 +19,8 @@ export function TodoCard({ task }: { task: TaskItem }) {
     const t = useTrans();
     const clock = useClock();
 
-    const toggle = () =>
-        router.post(
-            doneRoute(task.id).url,
-            { done: !task.done },
-            { preserveScroll: true, preserveState: true },
-        );
+    const done = useTaskDone();
+    const toggle = () => done.toggle(task);
 
     const when =
         task.all_day || !task.start_time
@@ -107,6 +104,7 @@ export function TodoCard({ task }: { task: TaskItem }) {
                     <Navigation className="size-5" />
                 </a>
             )}
+            {done.dialog}
         </li>
     );
 }

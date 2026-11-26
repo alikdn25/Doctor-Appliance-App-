@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * Booking from photo on a 390 px phone (owner's task of November 23): the tap on "Booking from photo" in "+" opens the
- * photo picker itself; the picked photos open Quick booking and are read at once. Opened by a link (?photo=1), Quick
+ * Booking from photo on a 390 px phone (owner's task of November 23). Opened by a link (?photo=1), Quick
  * booking shows a big "Choose photo" instead of opening the picker by itself. The paperclip next to the microphone adds photos, their previews sit above the text field
  * with ✕; photos alone can be parsed, and the filled form shows them above the fields (each removable) with the
  * serial number read from the plate.
@@ -41,30 +40,6 @@ const parsed = {
         uncertain_fields: ['phone'],
     },
 };
-
-test('"Booking from photo" in "+" opens the picker on the tap and reads the photos at once', async ({
-    page,
-}) => {
-    let sent = '';
-    await page.route('**/jobs/quick-booking/parse', async (route) => {
-        sent = route.request().postData() ?? '';
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify(parsed),
-        });
-    });
-    await page.goto('/today');
-    await page.locator('[data-test="create-fab"]').click();
-    const chooser = page.waitForEvent('filechooser');
-    await page.locator('[data-test="create-booking-photo"]').click();
-    await (await chooser).setFiles([file('sms.png'), file('plate.png')]);
-
-    // Quick booking opens with the photos and goes straight on to the filled form.
-    await expect(page).toHaveURL(/\/jobs\/create\?book=1&quick=1/);
-    expect(sent.match(/name="photos\[\]"/g)).toHaveLength(2);
-    await expect(page.locator('#booking-name')).toHaveValue('Maria');
-});
 
 test('a link to ?photo=1 shows "Choose photo"; photos alone fill the form and show above it', async ({
     page,

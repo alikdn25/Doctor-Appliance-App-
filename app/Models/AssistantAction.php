@@ -35,6 +35,8 @@ class AssistantAction extends Model
 
     public const INVOICE = 'invoice';
 
+    public const TASK = 'task';
+
     protected $fillable = ['user_id', 'conversation', 'after_message_id', 'type', 'params', 'summary', 'status', 'result', 'decided_at'];
 
     /**

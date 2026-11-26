@@ -243,6 +243,7 @@ test('the To Do microphone fills the form by AI_MODEL_BOOKING; nothing is saved'
             'title' => 'Buy heating element at Marcone', 'task_date' => '2026-10-15', 'all_day' => true, 'start_time' => null,
             // The supplier's saved address.
             'address' => '4300 Kingsway, Burnaby', 'kind' => 'parts',
+            'note' => null, 'service_job_id' => null, 'job_label' => null,
         ]]);
 
     expect($fake->requests[0]['model'])->toBe('claude-haiku-5-5')
@@ -298,6 +299,23 @@ test('ticking "Buy at {supplier}" done marks those parts bought; no second task 
         ->and($task->fresh()->completed_at)->not->toBeNull()
         ->and(inCompany($this->company, fn () => Task::query()->whereNotNull('supplier_id')->count()))->toBe(1)
         ->and(todoJob()->status)->toBe(JobStatus::PartsReady);
+});
+
+test('Done on "Buy at {supplier}" lists its parts; the ticked go to Waiting, the unticked stay under Order (owner\'s task of November 26)', function () {
+    $a = addPart(['supplier_id' => $this->marcone->id]);
+    $b = addPart(['name' => 'Fuse', 'supplier_id' => $this->marcone->id]);
+    $task = inCompany($this->company, fn () => Task::query()->whereNotNull('supplier_id')->sole());
+
+    $this->get(route('jobs.mine'))->assertInertia(fn (Assert $page) => $page
+        ->where('tasks', fn ($tasks) => collect(collect($tasks)->firstWhere('id', $task->id)['parts'])->pluck('id')->all() === [$a->id, $b->id]));
+
+    $this->post(route('tasks.done', $task), ['done' => true, 'parts' => [$a->id]])->assertRedirect();
+
+    expect($a->fresh()->status)->toBe(JobPart::ORDERED)
+        ->and($b->fresh()->status)->toBe(JobPart::TO_ORDER)
+        ->and($task->fresh()->completed_at)->not->toBeNull()
+        // A new "Buy at" task for what is left.
+        ->and(inCompany($this->company, fn () => Task::query()->whereNotNull('supplier_id')->whereNull('completed_at')->sole()->title))->toBe('Buy at Marcone: 1 part');
 });
 
 // ——— Parts ———

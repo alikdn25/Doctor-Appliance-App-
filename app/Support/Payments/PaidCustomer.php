@@ -81,11 +81,13 @@ class PaidCustomer
                 return $this->fill($customer, $data);
             }
 
-            if (! self::named($data) && trim((string) ($data['email'] ?? '')) === '') {
+            if (! isset($data['customer_id']) && ! self::named($data) && trim((string) ($data['email'] ?? '')) === '') {
                 return $customer;
             }
 
-            $real = self::findByPhone(self::phone($data));
+            // A customer picked from the database ("Add customer" on a Walk-in invoice), else found by phone or new.
+            $picked = isset($data['customer_id']) ? Customer::query()->where('is_walk_in', false)->find((int) $data['customer_id']) : null;
+            $real = $picked ?? self::findByPhone(self::phone($data));
             $real = $real !== null ? $this->fill($real, $data) : $this->create($data);
             $property = $real->primaryProperty()->first() ?? $real->properties()->orderBy('id')->first() ?? $this->saveProperty->empty($real);
 

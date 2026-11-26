@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * The microphone's language, one for every field on the screen (and saved for the person on the server, so it is the
- * same on every device). RU / EN next to any microphone changes it everywhere.
+ * same on every device). The "RU | EN" switch next to any microphone changes it everywhere.
  */
 let chosen: DictationLanguage | null = null;
 const listeners = new Set<() => void>();
@@ -114,20 +114,36 @@ export function MicButton({
                     </button>
                 </div>
             )}
-            <button
-                type="button"
-                onClick={switchLanguage}
-                className="da-press inline-flex h-11 min-w-9 items-center justify-center rounded-xl px-1.5 text-xs font-bold text-muted-foreground"
+            {/* Two halves "RU | EN" (owner's task of November 26): the chosen one is lit; a tap on the other switches
+                every field. */}
+            <div
+                role="radiogroup"
                 aria-label={t("ui.dictation.language", {
                     language: language.toUpperCase(),
                 })}
-                title={t("ui.dictation.language", {
-                    language: language.toUpperCase(),
-                })}
+                className="da-track inline-flex h-11 items-center gap-0.5 rounded-xl p-0.5 text-xs font-bold"
                 data-test="mic-language"
+                data-language={language}
             >
-                {language.toUpperCase()}
-            </button>
+                {(["ru", "en"] as const).map((option) => (
+                    <button
+                        key={option}
+                        type="button"
+                        role="radio"
+                        aria-checked={language === option}
+                        onClick={() => language !== option && switchLanguage()}
+                        className={cn(
+                            "da-press inline-flex h-10 min-w-8 items-center justify-center rounded-lg px-1.5",
+                            language === option
+                                ? "da-raised text-navy"
+                                : "text-muted-foreground",
+                        )}
+                        data-test={`mic-language-${option}`}
+                    >
+                        {option.toUpperCase()}
+                    </button>
+                ))}
+            </div>
             <button
                 type="button"
                 onClick={dictation.toggle}

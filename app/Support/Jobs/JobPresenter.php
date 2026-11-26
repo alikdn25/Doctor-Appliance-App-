@@ -63,6 +63,29 @@ class JobPresenter
     }
 
     /**
+     * A search result's extras (owner's task of November 26): the last visit's day and a coloured label — Open,
+     * Completed (also invoiced / awaiting payment), Paid or Cancelled.
+     *
+     * @return array{last_visit: string|null, search_status: string, search_status_label: string}
+     */
+    public static function searchFields(ServiceJob $job): array
+    {
+        $last = $job->visits->sortByDesc('scheduled_start')->first();
+        $status = match ($job->status) {
+            JobStatus::Paid => 'paid',
+            JobStatus::Cancelled => 'cancelled',
+            JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment => 'completed',
+            default => 'open',
+        };
+
+        return [
+            'last_visit' => $last !== null ? self::iso($last->scheduled_start) : $job->planned_date?->toDateString(),
+            'search_status' => $status,
+            'search_status_label' => __("jobs.search_status.{$status}"),
+        ];
+    }
+
+    /**
      * @return array{amount: int, currency: string}|null
      */
     private static function invoiced(ServiceJob $job): ?array

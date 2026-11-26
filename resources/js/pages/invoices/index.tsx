@@ -23,11 +23,22 @@ type Filters = {
 };
 type Total = { currency: string; amount: number };
 
-const FILTERS = ['outstanding', 'overdue', 'paid', 'all'] as const;
+const FILTERS = ['unpaid', 'paid', 'refunded', 'all'] as const;
+
+/** A row's extras for paid invoices (owner's task of November 26). */
+type InvoiceRow = DocumentRow & {
+    walk_in?: boolean;
+    phone?: string | null;
+    first_line?: string | null;
+    paid_at?: string | null;
+    paid_method?: string | null;
+    card_last4?: string | null;
+};
 
 /**
- * Invoices (UX-REDESIGN §10.1): Outstanding and Overdue totals on top, filter chips, live search, one row per
- * invoice with where it stands ("Due in 5 days", "Overdue 3 days", "Paid").
+ * Invoices (UX-REDESIGN §10.1): Outstanding and Overdue totals on top, Unpaid · Paid · Refunded · All (Unpaid by
+ * default; owner's task of November 26), live search over every status, one row per invoice with where it stands.
+ * A paid row shows the customer (or Walk-in), phone, what was done, the amount, how and when it was paid.
  */
 export default function InvoicesIndex({
     invoices,
@@ -36,7 +47,7 @@ export default function InvoicesIndex({
     outstandingTotals,
     overdueTotals,
 }: {
-    invoices: Paginated<DocumentRow>;
+    invoices: Paginated<InvoiceRow>;
     hasInvoices: boolean;
     filters: Filters;
     outstandingTotals: Total[];
@@ -71,9 +82,11 @@ export default function InvoicesIndex({
                 ? t('invoices.empty_overdue')
                 : filters.status === 'paid'
                   ? t('invoices.empty_paid')
-                  : filters.status === 'outstanding'
-                    ? t('invoices.empty_outstanding')
-                    : t('invoices.empty');
+                  : filters.status === 'refunded'
+                    ? t('invoices.empty_refunded')
+                    : filters.status === 'unpaid'
+                      ? t('invoices.empty_outstanding')
+                      : t('invoices.empty');
 
     return (
         <>
@@ -98,7 +111,7 @@ export default function InvoicesIndex({
                 <div className="grid grid-cols-2 gap-3">
                     <button
                         type="button"
-                        onClick={() => apply({ status: 'outstanding' })}
+                        onClick={() => apply({ status: 'unpaid' })}
                         className="da-card da-press p-3 text-left"
                         data-test="metric-outstanding"
                     >
@@ -143,7 +156,6 @@ export default function InvoicesIndex({
                     chips={FILTERS.map((value) => ({
                         value,
                         label: t(`invoices.filters.${value}`),
-                        danger: value === 'overdue' && overdueTotals.length > 0,
                     }))}
                 />
 
@@ -202,7 +214,26 @@ export default function InvoicesIndex({
                                     key: 'customer',
                                     label: t('invoices.customer'),
                                     sort: 'customer',
-                                    render: (r) => r.customer,
+                                    render: (r) =>
+                                        r.walk_in
+                                            ? t('invoices.walk_in')
+                                            : [r.customer, r.phone]
+                                                  .filter(Boolean)
+                                                  .join(' · '),
+                                },
+                                {
+                                    key: 'paid',
+                                    label: t('invoices.columns_paid'),
+                                    sort: 'paid',
+                                    render: (r) =>
+                                        r.paid_at
+                                            ? [
+                                                  time.dateTime(r.paid_at),
+                                                  r.paid_method,
+                                              ]
+                                                  .filter(Boolean)
+                                                  .join(' · ')
+                                            : '—',
                                 },
                                 {
                                     key: 'issued',
@@ -250,51 +281,61 @@ export default function InvoicesIndex({
                         >
                             {invoices.data.map((invoice) => (
                                 <li key={invoice.id}>
-                                    <Link
-                                        href={show(invoice.id)}
-                                        className="flex min-h-16 items-center gap-3 px-3 py-2.5 hover:bg-black/[0.03]"
-                                    >
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex min-w-0 items-center gap-2">
-                                                <span className="shrink-0 font-semibold">
-                                                    {invoice.number}
-                                                </span>
-                                                <span className="truncate">
-                                                    {invoice.customer}
-                                                </span>
-                                            </div>
-                                            <div className="truncate text-sm text-muted-foreground">
-                                                {invoice.due_on
-                                                    ? t('invoices.issued_due', {
-                                                          issued: time.dateOnly(
+                                    {invoice.paid_at &&
+                                    (invoice.balance ?? 0) <= 0 ? (
+                                        <PaidRow invoice={invoice} />
+                                    ) : (
+                                        <Link
+                                            href={show(invoice.id)}
+                                            className="flex min-h-16 items-center gap-3 px-3 py-2.5 hover:bg-black/[0.03]"
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <span className="shrink-0 font-semibold">
+                                                        {invoice.number}
+                                                    </span>
+                                                    <span className="truncate">
+                                                        {invoice.customer}
+                                                    </span>
+                                                </div>
+                                                <div className="truncate text-sm text-muted-foreground">
+                                                    {invoice.due_on
+                                                        ? t(
+                                                              'invoices.issued_due',
+                                                              {
+                                                                  issued: time.dateOnly(
+                                                                      invoice.issued_on,
+                                                                  ),
+                                                                  due: time.dateOnly(
+                                                                      invoice.due_on,
+                                                                  ),
+                                                              },
+                                                          )
+                                                        : time.dateOnly(
                                                               invoice.issued_on,
-                                                          ),
-                                                          due: time.dateOnly(
-                                                              invoice.due_on,
-                                                          ),
-                                                      })
-                                                    : time.dateOnly(
-                                                          invoice.issued_on,
-                                                      )}
+                                                          )}
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex shrink-0 flex-col items-end gap-1">
-                                            <span className="font-semibold tabular-nums">
-                                                {money(
-                                                    invoice.balance !== null &&
-                                                        invoice.balance > 0 &&
-                                                        invoice.status !==
-                                                            'void'
-                                                        ? invoice.balance
-                                                        : invoice.total,
-                                                    invoice.currency,
-                                                )}
-                                            </span>
-                                            <InvoiceDueBadge
-                                                invoice={invoice}
-                                            />
-                                        </div>
-                                    </Link>
+                                            <div className="flex shrink-0 flex-col items-end gap-1">
+                                                <span className="font-semibold tabular-nums">
+                                                    {money(
+                                                        invoice.balance !==
+                                                            null &&
+                                                            invoice.balance >
+                                                                0 &&
+                                                            invoice.status !==
+                                                                'void'
+                                                            ? invoice.balance
+                                                            : invoice.total,
+                                                        invoice.currency,
+                                                    )}
+                                                </span>
+                                                <InvoiceDueBadge
+                                                    invoice={invoice}
+                                                />
+                                            </div>
+                                        </Link>
+                                    )}
                                 </li>
                             ))}
                         </ul>
@@ -310,3 +351,51 @@ export default function InvoicesIndex({
 InvoicesIndex.layout = {
     breadcrumbs: [{ title: 'invoices.title', href: index() }],
 };
+
+/** A paid invoice: customer (or Walk-in) and phone, what was done, amount, how and when it was paid, number. */
+function PaidRow({ invoice }: { invoice: InvoiceRow }) {
+    const t = useTrans();
+    const money = useMoney();
+    const time = useCompanyTime();
+
+    return (
+        <Link
+            href={show(invoice.id)}
+            className="flex min-h-16 items-start gap-3 px-3 py-2.5 hover:bg-black/[0.03]"
+            data-test="invoice-paid-row"
+        >
+            <div className="min-w-0 flex-1 space-y-0.5">
+                <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-semibold">
+                        {invoice.walk_in
+                            ? t('invoices.walk_in')
+                            : invoice.customer}
+                    </span>
+                    {invoice.phone && (
+                        <span className="shrink-0 text-sm text-muted-foreground">
+                            {invoice.phone}
+                        </span>
+                    )}
+                </div>
+                {invoice.first_line && (
+                    <div className="truncate text-sm">{invoice.first_line}</div>
+                )}
+                <div className="truncate text-xs text-muted-foreground">
+                    {[
+                        invoice.paid_method,
+                        invoice.paid_at ? time.dateTime(invoice.paid_at) : null,
+                        `#${invoice.number}`,
+                    ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                </div>
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1">
+                <span className="font-semibold tabular-nums">
+                    {money(invoice.total, invoice.currency)}
+                </span>
+                <InvoiceDueBadge invoice={invoice} />
+            </div>
+        </Link>
+    );
+}

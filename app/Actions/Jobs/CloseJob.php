@@ -126,6 +126,8 @@ class CloseJob
             'outcome_reason' => $outcome->needsReason() ? $reason : null,
             'outcome_note' => filled($note) ? trim((string) $note) : null,
             'closed_at' => now(),
+            // A reopened job closed again: a paid invoice may close it by itself again later.
+            'reopened_at' => null,
             'closed_by' => $user?->id,
             // Declined or not repairable: only the diagnosis was done (Statistics); the job page can change it.
             'only_diagnostic' => $outcome->allowsDiagnosisInvoice() ? true : $job->only_diagnostic,

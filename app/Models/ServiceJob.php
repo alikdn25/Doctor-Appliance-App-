@@ -32,6 +32,7 @@ use Illuminate\Support\Carbon;
  * @property int $number
  * @property int $brand_id
  * @property int $customer_id
+ * @property Carbon|null $reopened_at Reopened after it was closed (owner's task of November 26)
  * @property int $property_id
  * @property JobType $job_type
  * @property LeadSource|null $lead_source
@@ -126,6 +127,7 @@ class ServiceJob extends Model
             'outcome' => JobOutcome::class,
             'visit_type' => VisitType::class,
             'closed_at' => 'datetime',
+            'reopened_at' => 'datetime',
             'confirmation_sent_at' => 'datetime',
             'review_clicked_at' => 'datetime',
             'appliance_category' => ApplianceCategory::class,
@@ -476,7 +478,8 @@ class ServiceJob extends Model
                 ->orWhere('first_name', 'ilike', $like)
                 ->orWhere('last_name', 'ilike', $like)
                 ->orWhere('company_name', 'ilike', $like)
-                ->orWhereRaw("concat_ws(' ', first_name, last_name) ilike ?", [$like])))
+                ->orWhereRaw("concat_ws(' ', first_name, last_name) ilike ?", [$like])
+                ->orWhereHas('emails', fn (Builder $e) => $e->where('email', 'ilike', $like))))
                 ->orWhereHas('property', fn (Builder $p) => $p->withTrashed()->where(fn (Builder $a) => $a
                     ->where('line1', 'ilike', $like)
                     ->orWhere('line2', 'ilike', $like)
@@ -484,7 +487,9 @@ class ServiceJob extends Model
                     ->orWhere('city', 'ilike', $like)
                     ->orWhere('region', 'ilike', $like)
                     ->orWhere('postal_code', 'ilike', $like)
-                    ->orWhereRaw("concat_ws(' ', line1, city) ilike ?", [$like])))
+                    ->orWhereRaw("concat_ws(' ', line1, city) ilike ?", [$like])
+                    ->orWhereRaw("concat_ws(' ', unit, line1) ilike ?", [$like])
+                    ->orWhereRaw("concat_ws('-', unit, line1) ilike ?", [$like])))
                 ->orWhere('service_jobs.description', 'ilike', $like)
                 ->orWhere('service_jobs.notes', 'ilike', $like)
                 ->orWhere('service_jobs.tech_notes', 'ilike', $like)

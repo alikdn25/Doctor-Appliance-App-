@@ -3,6 +3,7 @@
 namespace App\Payments\Square;
 
 use App\Actions\Billing\RecordPayment;
+use App\Actions\Billing\SyncInvoice;
 use App\Enums\PaymentMethod;
 use App\Enums\UserRole;
 use App\Models\Charge;
@@ -355,13 +356,42 @@ class SquareProvider implements PaymentProvider
     }
 
     /**
-     * A completed Square refund of a payment recorded here becomes a refund row on its invoice (once).
+     * A Square refund of a payment recorded here (refund.created / refund.updated): a completed one becomes a refund
+     * row on its invoice (once) and the row's status follows Square (pending → completed). A refund Square rejected
+     * or failed voids the row made when it was asked for, so the money counts as not given back (owner's task of
+     * November 26).
      *
      * @param  array<string, mixed>  $refund
      */
     private function recordRefund(array $refund): void
     {
-        if (($refund['status'] ?? null) !== 'COMPLETED' || ! is_string($refund['id'] ?? null) || ! is_string($refund['payment_id'] ?? null)) {
+        if (! is_string($refund['id'] ?? null) || ! is_string($refund['payment_id'] ?? null)) {
+            return;
+        }
+
+        $status = (string) ($refund['status'] ?? '');
+        $existing = Payment::query()->where('provider', $this->key())->where('provider_payment_id', $refund['id'])
+            ->whereNotNull('refunded_payment_id')->first();
+
+        if ($existing !== null && in_array($status, ['REJECTED', 'FAILED'], true) && $existing->voided_at === null) {
+            $existing->forceFill(['refund_status' => 'failed', 'voided_at' => now(), 'void_reason' => 'Square refund '.strtolower($status)])->save();
+            if ($existing->invoice !== null) {
+                $invoice = $existing->invoice;
+                $invoice->credited_amount = max(0, $invoice->credited_amount - abs((int) $existing->amount));
+                $invoice->save();
+                app(SyncInvoice::class)->handle($invoice, null);
+            }
+
+            return;
+        }
+
+        if ($existing !== null) {
+            $existing->forceFill(['refund_status' => $status === 'COMPLETED' ? 'completed' : 'pending'])->save();
+
+            return;
+        }
+
+        if ($status !== 'COMPLETED') {
             return;
         }
 
@@ -380,7 +410,7 @@ class SquareProvider implements PaymentProvider
             $refund['id'],
             (int) ($refund['amount_money']['amount'] ?? 0),
             CarbonImmutable::parse($refund['updated_at'] ?? $refund['created_at'] ?? 'now'),
-        );
+        )->forceFill(['refund_status' => 'completed'])->save();
     }
 
     /**

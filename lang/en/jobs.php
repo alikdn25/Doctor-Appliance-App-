@@ -2,6 +2,27 @@
 
 return [
     'search_deleted' => 'Deleted',
+    // "Reopen job" on a closed job (owner's task of November 26).
+    'reopen' => [
+        'action' => 'Reopen job',
+        'title' => 'Reopen job',
+        'hint' => 'A new visit on the same job. Notes, photos, invoices and payments stay.',
+        'no_date' => 'No date',
+        'submit' => 'Reopen',
+        'me' => 'Me',
+        'done' => 'Job reopened.',
+        'history' => 'Reopened',
+        'not_closed' => 'Only a closed job can be reopened.',
+    ],
+    // The coloured label of a search result (owner's task of November 26).
+    'search_status' => [
+        'open' => 'Open',
+        'completed' => 'Completed',
+        'paid' => 'Paid',
+        'cancelled' => 'Cancelled',
+    ],
+    'search_last_visit' => 'Last visit :date',
+    'search_no_visit' => 'No visit yet',
     'columns' => [
         'status' => 'Status',
         'date' => 'Date / window',

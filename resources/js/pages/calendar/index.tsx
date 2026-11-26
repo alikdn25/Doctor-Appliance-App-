@@ -17,7 +17,7 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DayMap } from '@/components/calendar/day-map';
 import { NoTimeStrip } from '@/components/calendar/no-time-strip';
-import { JobList } from '@/components/jobs/job-list';
+import { JobSearchResults } from '@/components/jobs/job-search-results';
 import type { JobRow } from '@/components/jobs/types';
 import { SearchField } from '@/components/ui/search-field';
 import { DayGrid, HOUR_PX } from '@/components/calendar/day-grid';
@@ -583,10 +583,7 @@ export default function CalendarPage({
                 />
                 {searchResults && (
                     <section data-test="calendar-search-results">
-                        <JobList
-                            jobs={searchResults.data}
-                            empty={t('jobs.no_results')}
-                        />
+                        <JobSearchResults jobs={searchResults.data} />
                     </section>
                 )}
 

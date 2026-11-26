@@ -92,10 +92,8 @@ class TaxReserve
                     return;
                 }
 
-                $share = $payment->amount / $invoice->total;
-
-                foreach ($invoice->taxes ?? [] as $tax) {
-                    $sums[$tax['name']] = ($sums[$tax['name']] ?? 0) + (int) round((int) $tax['amount'] * $share);
+                foreach ($payment->taxShares((int) $invoice->total, (array) $invoice->taxes) as $name => $amount) {
+                    $sums[$name] = ($sums[$name] ?? 0) + $amount;
                 }
             });
 
@@ -121,10 +119,8 @@ class TaxReserve
                     return;
                 }
 
-                $share = ($invoice->total - $invoice->credited_amount) / $invoice->total;
-
-                foreach ($invoice->taxes ?? [] as $tax) {
-                    $sums[$tax['name']] = ($sums[$tax['name']] ?? 0) + (int) round((int) $tax['amount'] * $share);
+                foreach ($invoice->taxesAfterRefunds() as $name => $amount) {
+                    $sums[$name] = ($sums[$name] ?? 0) + $amount;
                 }
             });
 
