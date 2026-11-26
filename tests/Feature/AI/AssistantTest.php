@@ -11,6 +11,8 @@ use App\Models\JobVisit;
 use App\Models\Message;
 use App\Models\Property;
 use App\Models\ServiceJob;
+use App\Models\Supplier;
+use App\Models\Task;
 use App\Services\AI\AiResponse;
 use App\Services\AI\Assistant\AssistantTools;
 use Carbon\CarbonImmutable;
@@ -216,4 +218,57 @@ test('another person\'s conversation id is refused', function () {
     inCompany($this->company, fn () => AssistantMessage::create(['user_id' => memberOf($this->company)->id, 'conversation' => $this->conversation, 'role' => 'user', 'content' => [], 'text' => 'mine']));
 
     $this->postJson(route('assistant.ask'), ['question' => 'x', 'conversation' => $this->conversation])->assertForbidden();
+});
+
+test('propose_task makes a pending action; Confirm returns the filled task form and saves nothing (owner\'s task of November 26)', function () {
+    $fake = FakeAiTransport::install(fn (array $r) => $r['schema'] === null ? 'ok' : [
+        'title' => 'Buy heating element at Marcone', 'date' => '2026-11-17', 'time' => '', 'address' => '', 'supplier' => '',
+        'kind' => 'parts', 'note' => 'Part WP3387747', 'job' => 'Jane Cooper',
+    ]);
+    $result = tool('propose_task', ['text' => 'tomorrow buy heating element at Marcone for Jane Cooper, part WP3387747']);
+    $action = inCompany($this->company, fn () => AssistantAction::query()->sole());
+    $tasks = Task::withoutCompanyScope()->count();
+
+    expect($result['proposed'])->toBeTrue()
+        ->and($action->type)->toBe(AssistantAction::TASK)
+        ->and($action->status)->toBe('pending');
+
+    $this->postJson(route('assistant.actions.confirm', $action))
+        ->assertOk()
+        ->assertJsonPath('task.title', 'Buy heating element at Marcone')
+        ->assertJsonPath('task.task_date', '2026-11-17')
+        ->assertJsonPath('task.all_day', true)
+        ->assertJsonPath('task.kind', 'parts')
+        ->assertJsonPath('task.note', 'Part WP3387747')
+        // The customer's job is found and goes into the Job field.
+        ->assertJsonPath('task.service_job_id', $this->job->id);
+
+    // Nothing is saved until the person presses Save in the task form.
+    expect(Task::withoutCompanyScope()->count())->toBe($tasks)
+        ->and($fake->requests)->not->toBeEmpty();
+});
+
+test('propose_task takes the job the assistant found, and a named supplier gives its saved address', function () {
+    inCompany($this->company, fn () => Supplier::create(['name' => 'Marcone', 'address' => '123 Kingsway, Vancouver']));
+    FakeAiTransport::install(fn (array $r) => $r['schema'] === null ? 'ok' : [
+        'title' => 'Pick up belt', 'date' => '', 'time' => '14:00', 'address' => '', 'supplier' => 'Marcone',
+        'kind' => 'parts', 'note' => '', 'job' => '',
+    ]);
+    tool('propose_task', ['text' => 'pick up the belt at Marcone at 2 pm', 'job_id' => $this->job->id]);
+    $action = inCompany($this->company, fn () => AssistantAction::query()->sole());
+
+    $this->postJson(route('assistant.actions.confirm', $action))
+        ->assertOk()
+        ->assertJsonPath('task.start_time', '14:00')
+        ->assertJsonPath('task.all_day', false)
+        ->assertJsonPath('task.address', '123 Kingsway, Vancouver')
+        ->assertJsonPath('task.service_job_id', $this->job->id);
+});
+
+test('propose_task cannot point at another company\'s job, and the prompt sends errands to propose_task', function () {
+    expect(tool('propose_task', ['text' => 'call', 'job_id' => $this->otherJob->id]))->toHaveKey('error')
+        ->and(inCompany($this->company, fn () => AssistantAction::query()->count()))->toBe(0)
+        ->and(array_column(AssistantTools::definitions(), 'name'))->toContain('propose_task');
+
+    expect(file_get_contents(app_path('Services/AI/Assistant/AssistantChat.php')))->toContain('use propose_task, not propose_booking');
 });

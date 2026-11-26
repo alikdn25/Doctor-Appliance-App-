@@ -29,8 +29,12 @@ class SyncInvoice
             $invoice->balance = $invoice->total - $invoice->credited_amount - $paid;
             // An imported debt still waiting for its amount stays open (owner's task of November 19).
             $needsAmount = $paid <= 0 && $invoice->items()->where('needs_amount', true)->exists();
+            // An empty invoice (no lines, or 0) with no payments is a draft, never Paid (owner's task of November 26).
+            $empty = $invoice->credited_amount <= 0 && ! $invoice->payments()->valid()->exists()
+                && ($invoice->total <= 0 || ! $invoice->items()->exists());
             $invoice->status = match (true) {
                 $needsAmount => InvoiceStatus::Unpaid,
+                $empty => InvoiceStatus::Draft,
                 $invoice->balance <= 0 && $invoice->credited_amount > 0 && $paid <= 0 => InvoiceStatus::Refunded,
                 $invoice->balance <= 0 && $invoice->credited_amount > 0 => InvoiceStatus::PartiallyRefunded,
                 $invoice->balance <= 0 && ($paid > 0 || ! $refunded) => InvoiceStatus::Paid,

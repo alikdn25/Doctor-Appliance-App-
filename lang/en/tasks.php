@@ -19,6 +19,16 @@ return [
         'service_job_id' => 'Job',
         'repeat' => 'Repeat',
     ],
+    // Done on "Buy at {supplier}" (owner's task of November 26).
+    'parts_done' => [
+        'hint' => 'Ticked parts go to Waiting; unticked ones stay under Order.',
+        'submit' => 'Done',
+    ],
+    // The two buttons at the top of a new task (owner's task of November 26).
+    'start' => [
+        'assistant' => 'Assistant',
+        'manually' => 'Manually',
+    ],
     'title_placeholder' => 'Call the supplier, pick up a part…',
     'all_day' => 'All day',
     'timed' => 'Time',

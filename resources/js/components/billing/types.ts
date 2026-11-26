@@ -81,6 +81,9 @@ export type PaymentData = {
     voided_by: string | null;
     void_reason: string | null;
     refund_reason: string | null;
+    refund_taxes?: { name: string; rate: string; amount: number }[] | null;
+    refund_status?: 'pending' | 'completed' | 'failed' | null;
+    card_last4?: string | null;
     processing_fee: number;
 };
 

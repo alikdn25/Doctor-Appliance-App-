@@ -212,6 +212,9 @@ class BillingPresenter
             'voided_by' => $payment->voider?->name,
             'void_reason' => $payment->void_reason,
             'refund_reason' => $payment->refund_reason,
+            'refund_taxes' => $payment->refund_taxes,
+            'refund_status' => $payment->refund_status,
+            'card_last4' => $payment->card_last4,
             'processing_fee' => $payment->processing_fee,
         ];
     }

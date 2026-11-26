@@ -1,6 +1,8 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { CheckCircle2, Send } from 'lucide-react';
+import { CheckCircle2, Send, Undo2 } from 'lucide-react';
 import { useState } from 'react';
+import { RefundDialog } from '@/components/billing/refund-dialog';
+import type { RefundSetup } from '@/components/billing/refund-dialog';
 import {
     CustomerFields,
     emptyCustomer,
@@ -43,6 +45,8 @@ type Props = {
     profiles: { id: number; label: string; text: string }[];
     default_profile_id: number | null;
     send_url: string;
+    refund?: RefundSetup | null;
+    currency?: string;
 };
 
 /**
@@ -56,6 +60,7 @@ export default function Paid(props: Props) {
     const country = usePage().props.auth.company?.country;
     const { payment, invoice, customer } = props;
     const [email, setEmail] = useState(customer.email);
+    const [refundOpen, setRefundOpen] = useState(false);
     const [details, setDetails] = useState<CustomerDetails>(() => ({
         ...emptyCustomer(),
         phone: customer.phone,
@@ -296,6 +301,26 @@ export default function Paid(props: Props) {
                         </p>
                     )}
                 </section>
+
+                {props.refund && props.currency && (
+                    <>
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            onClick={() => setRefundOpen(true)}
+                            data-test="paid-refund"
+                        >
+                            <Undo2 /> {t('payments.refunds.action')}
+                        </Button>
+                        <RefundDialog
+                            open={refundOpen}
+                            onOpenChange={setRefundOpen}
+                            invoiceId={invoice.id}
+                            currency={props.currency}
+                            setup={props.refund}
+                        />
+                    </>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                     <Button variant="outline" asChild>

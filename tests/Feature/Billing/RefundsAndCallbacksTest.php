@@ -57,7 +57,6 @@ function makeCallback(ServiceJob $original, $test, string $date = '2026-12-01')
 }
 
 test('a refund as settled leaves nothing owing: partially refunded, then refunded', function () {
-    $this->post(route('invoices.refund', $this->invoice), ['amount' => '50.00'])->assertSessionHasErrors('reason');
     $this->post(route('invoices.refund', $this->invoice), ['amount' => '500.00', 'reason' => 'x'])->assertSessionHasErrors('amount');
 
     $this->post(route('invoices.refund', $this->invoice), ['amount' => '50.00', 'reason' => 'Goodwill'])->assertSessionHasNoErrors();

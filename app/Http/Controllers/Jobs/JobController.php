@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Jobs;
 
 use App\Actions\Jobs\RefundOriginalJob;
+use App\Actions\Jobs\ReopenJob;
 use App\Actions\Jobs\SaveJob;
 use App\Enums\ApplianceCategory;
 use App\Enums\ApplianceType;
@@ -42,6 +43,7 @@ use App\Models\JobReport;
 use App\Models\JobVisit;
 use App\Models\Membership;
 use App\Models\Message;
+use App\Models\Payment;
 use App\Models\Property;
 use App\Models\ReviewRequest;
 use App\Models\ServiceJob;
@@ -132,7 +134,8 @@ class JobController extends Controller
             return Inertia::render('jobs/index', [
                 ...$shared,
                 // A search finds any job (owner's task of November 25): every status, with a time or not, deleted too.
-                'jobs' => $filters['search'] !== '' && $filters['reason'] === ''
+                // The reason chips do not narrow a search (owner's task of November 26).
+                'jobs' => $filters['search'] !== ''
                     ? self::searchJobs($user, $filters['search'])
                     : JobBacklogController::jobs($user, $filters),
                 'filters' => $filters,
@@ -161,6 +164,23 @@ class JobController extends Controller
             'from' => $this->date($request->query('from')),
             'to' => $this->date($request->query('to')),
         ];
+
+        // A search on All finds every job too: open first, then closed, newest first; the filters do not narrow it
+        // (owner's task of November 26).
+        if ($filters['search'] !== '') {
+            return Inertia::render('jobs/index', [
+                ...$shared,
+                'jobs' => self::searchJobs($user, $filters['search']),
+                'statusCounts' => (object) [],
+                'filters' => $filters,
+                'statuses' => JobStatus::options(),
+                'types' => currentCompany()->vertical->jobTypeOptions(),
+                'visitTypes' => VisitType::options(),
+                'outcomes' => JobOutcome::options(),
+                'brands' => $this->brandOptions($user, activeOnly: false),
+                'technicians' => $this->assignableUsers(),
+            ]);
+        }
 
         $status = JobStatus::tryFrom($filters['status']);
         $type = JobType::tryFrom($filters['type']);
@@ -229,22 +249,39 @@ class JobController extends Controller
     }
 
     /**
-     * Any job the search matches (owner's task of November 25): every status, with or without a date or a time, and
-     * deleted ones (marked Deleted) for people who see the trash. Newest first.
+     * @return array{amount: int, currency: string}|null
+     */
+    private static function refunded(ServiceJob $job): ?array
+    {
+        $row = Payment::query()->valid()->whereNotNull('refunded_payment_id')
+            ->whereIn('invoice_id', $job->invoices()->select('id'))
+            ->selectRaw('currency, -sum(amount) as amount')->groupBy('currency')->orderByDesc('amount')->first();
+
+        return $row === null || (int) $row->amount <= 0 ? null : ['amount' => (int) $row->amount, 'currency' => (string) $row->currency];
+    }
+
+    /**
+     * Any job the search matches (owner's tasks of November 25 and 26): every status, open and closed, with or
+     * without a date or a time, and deleted ones (marked Deleted, at the bottom) for people who see the trash. Open
+     * jobs first, then closed ones; newest (by the last visit, else the booking) first in each.
      */
     public static function searchJobs(User $user, string $search): LengthAwarePaginator
     {
+        $closed = "'".implode("','", [JobStatus::Completed->value, JobStatus::Invoiced->value, JobStatus::AwaitingPayment->value, JobStatus::Paid->value, JobStatus::Cancelled->value])."'";
+
         return ServiceJob::query()
             ->visibleTo($user)
             ->when(Gate::forUser($user)->allows('viewTrash', ServiceJob::class), fn (Builder $q) => $q->withTrashed())
             ->search($search)
             ->with(['customer.primaryPhone', 'property', 'brand', 'appliances', 'visits.assignees'])
             ->when(Gate::forUser($user)->allows('viewAny', Invoice::class), fn ($q) => $q->with('invoices'))
-            ->orderByRaw('deleted_at is not null')
-            ->orderByDesc('id')
+            ->orderByRaw('service_jobs.deleted_at is not null')
+            ->orderByRaw("case when service_jobs.status in ({$closed}) then 1 else 0 end")
+            ->orderByRaw('coalesce((select max(v.scheduled_start) from job_visits v where v.service_job_id = service_jobs.id), service_jobs.planned_date, service_jobs.created_at) desc')
+            ->orderByDesc('service_jobs.id')
             ->paginate(25)
             ->withQueryString()
-            ->through(fn (ServiceJob $job) => JobPresenter::row($job));
+            ->through(fn (ServiceJob $job) => [...JobPresenter::row($job), ...JobPresenter::searchFields($job)]);
     }
 
     /**
@@ -551,6 +588,8 @@ class JobController extends Controller
                 'outcome_reason' => $job->outcome_reason,
                 'outcome_note' => $job->outcome_note,
                 'closed_at' => JobPresenter::iso($job->closed_at),
+                // "Refunded $XX.XX" on the job (owner's task of November 26): refunds given on its invoices.
+                'refunded' => Gate::allows('viewAny', Invoice::class) ? self::refunded($job) : null,
                 // The job's own reports, under Files (owner's task of November 25).
                 'reports' => JobReport::query()->where('service_job_id', $job->id)->orderByDesc('id')->get()
                     ->map(fn (JobReport $report) => [
@@ -663,6 +702,8 @@ class JobController extends Controller
                 'delete' => Gate::allows('delete', $job),
                 'work' => Gate::allows('work', $job),
                 'close' => Gate::allows('work', $job) && $job->status !== JobStatus::Cancelled && ! $job->trashed(),
+                // "Reopen job" in the header of a closed job (owner's task of November 26).
+                'reopen' => $canUpdate && ReopenJob::canReopen($job) && ! $job->trashed(),
                 'viewCustomer' => Gate::allows('view', $job->customer),
                 'updateCustomer' => Gate::allows('update', $job->customer),
                 // One tap on "Technician" (office, team mode).
@@ -743,6 +784,9 @@ class JobController extends Controller
             'applianceTypes' => ApplianceType::options(),
             'manufacturers' => CustomerController::manufacturers(),
             'today' => CarbonImmutable::now($timezone)->format('Y-m-d'),
+            // The Reopen job window: the company's arrival windows and "Now".
+            'nowTime' => CarbonImmutable::now($timezone)->format('H:i'),
+            'arrivalWindows' => currentCompany()->arrivalWindows(),
             'photoKinds' => PhotoKind::takeable(),
             // "Mark as paid": invoices with money owed that this person may take a payment for.
             'payable' => $job->invoices

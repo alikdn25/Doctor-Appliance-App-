@@ -18,6 +18,13 @@ export type TaskItem = {
     repeat?: 'none' | 'weekly' | 'monthly';
     carried_days?: number;
     automatic?: boolean;
+    /** "Buy at {supplier}": the parts to buy there (ticked when Done is pressed). */
+    parts?: {
+        id: number;
+        name: string;
+        quantity: number;
+        job: number | null;
+    }[];
     on_the_way?: string | null;
     job?: { id: number; number: number; customer: string | null } | null;
 };
@@ -40,6 +47,10 @@ export type TaskDraft = {
     start_time: string | null;
     address: string | null;
     kind: TaskKind | null;
+    /** From the assistant (propose_task): a note and the customer's job it found. */
+    note?: string | null;
+    service_job_id?: number | null;
+    job_label?: string | null;
 };
 
 export const REMINDERS = [0, 15, 60, 1440] as const;

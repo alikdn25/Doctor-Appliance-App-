@@ -94,6 +94,10 @@ class AssistantTools
                 'text' => ['type' => 'string'],
                 'from_photos' => ['type' => 'boolean'],
             ], ['text', 'from_photos']),
+            $tool('propose_task', 'Propose a new to-do (task, errand, reminder, buy, pick up, drop by): pass everything about it as text (what to do, the day, a time or all day, the address, the store or supplier, the customer\'s job, a note), as said by the user or read from the photos or screenshots. When it is about a customer\'s job, find the job (find_customers, customer_history) and pass its job_id. After Confirm the task form opens filled in; the user saves it.', [
+                'text' => ['type' => 'string'],
+                'job_id' => ['type' => 'integer', 'description' => 'The customer\'s job the task is about; leave out when none'],
+            ], ['text']),
             [
                 'name' => 'create_invoice',
                 'description' => 'Propose an invoice read from the photos/screenshots or the text the user sent: customer name, phone, email, address, work lines with their amounts and whether the amounts include tax. The app finds or creates the customer, calculates the company\'s taxes and the total itself and shows a preview card with Confirm & send, Edit and Cancel. Nothing is saved or sent until the user presses a button. Never invent a phone number or an amount: if one is missing, ask the user instead of calling this tool.',
@@ -123,6 +127,7 @@ class AssistantTools
                 'propose_payment_reminder' => $this->actions->propose(AssistantAction::PAYMENT_REMINDER, $input, $user, $conversation),
                 'propose_reschedule' => $this->actions->propose(AssistantAction::RESCHEDULE, $input, $user, $conversation),
                 'propose_booking' => $this->actions->propose(AssistantAction::BOOKING, $input, $user, $conversation),
+                'propose_task' => $this->actions->propose(AssistantAction::TASK, $input, $user, $conversation),
                 'create_invoice' => $this->actions->propose(AssistantAction::INVOICE, $input, $user, $conversation),
                 default => ['error' => 'Unknown tool.'],
             };

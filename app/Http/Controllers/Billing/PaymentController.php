@@ -13,12 +13,15 @@ use App\Enums\VisitStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\DocumentRequest;
 use App\Http\Requests\Billing\PaymentRequest;
+use App\Mail\RefundReceiptMail;
 use App\Messaging\ReviewRequests;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Support\Billing\Money;
 use App\Support\Billing\MoneyInput;
+use App\Support\Billing\RefundAmounts;
 use App\Support\Locale\Currencies;
 use App\Support\PrivateMedia;
 use App\Support\Ui\SavedToast;
@@ -27,7 +30,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -108,20 +113,71 @@ class PaymentController extends Controller
     }
 
     /**
-     * A refund as settled (the customer does not owe it again), with the reason.
+     * A refund as settled (the customer does not owe it again; owner's task of November 26): Full refund (what is left
+     * to refund, its taxes in proportion) or Partial refund (an amount without taxes plus the ticked taxes on top);
+     * the reason is optional. A card paid through Square is refunded there; if Square says no, record_only records
+     * it as given back by hand (Cash / E-transfer / Card). Without a mode, amount is the refund's total.
      */
     public function refund(Request $request, Invoice $invoice, RefundInvoice $refund): RedirectResponse
     {
         Gate::authorize('refund', $invoice);
 
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0', DocumentRequest::moneyRule($invoice->currency)],
-            'reason' => ['required', 'string', 'max:500'],
+            'mode' => ['nullable', Rule::in(['full', 'partial'])],
+            'amount' => [Rule::requiredIf(fn () => $request->input('mode') !== 'full'), 'nullable', 'numeric', 'gt:0', DocumentRequest::moneyRule($invoice->currency)],
+            'taxes' => ['array'],
+            'taxes.*' => ['string', 'max:60'],
+            'method' => ['nullable', Rule::in(['cash', 'e_transfer', 'card'])],
+            'record_only' => ['boolean'],
+            'reason' => ['nullable', 'string', 'max:500'],
         ], [], ['amount' => __('payments.fields.amount'), 'reason' => __('payments.refunds.reason')]);
 
-        $refund->handle($invoice, Currencies::toMinor($data['amount'], $invoice->currency), $data['reason'], $request->user());
+        $mode = $data['mode'] ?? null;
+        $options = [
+            'method' => match ($data['method'] ?? null) {
+                'cash' => PaymentMethod::Cash,
+                'e_transfer' => PaymentMethod::BankTransfer,
+                'card' => PaymentMethod::CardTerminal,
+                default => null,
+            },
+            'record_only' => (bool) ($data['record_only'] ?? false),
+        ];
+
+        if ($mode === null) {
+            $amount = Currencies::toMinor($data['amount'], $invoice->currency);
+        } else {
+            $amounts = RefundAmounts::calculate($invoice, $mode, $mode === 'partial' ? Currencies::toMinor($data['amount'], $invoice->currency) : 0, array_values($data['taxes'] ?? []));
+            RefundAmounts::check($invoice, $amounts);
+            $amount = $amounts['total'];
+            $options['taxes'] = $amounts['taxes'];
+        }
+
+        $refund->handle($invoice, $amount, $data['reason'] ?? null, $request->user(), $options);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('payments.refunds.done')]);
+
+        return back();
+    }
+
+    /**
+     * "Send refund receipt": the refund by email to the customer, in the style of our receipt (only on the button).
+     */
+    public function refundReceipt(Request $request, Payment $payment): RedirectResponse
+    {
+        abort_unless($payment->isRefund() && $payment->invoice !== null, 404);
+        Gate::authorize('view', $payment->invoice);
+
+        $data = $request->validate(['email' => ['nullable', 'email:rfc', 'max:254']]);
+        $invoice = $payment->invoice()->with('customer.primaryEmail')->firstOrFail();
+        $email = $data['email'] ?? $invoice->customer?->primaryEmail?->email;
+
+        if (blank($email)) {
+            throw ValidationException::withMessages(['email' => __('charges.receipt.errors.email')]);
+        }
+
+        Mail::to($email)->queue(new RefundReceiptMail($payment));
+        app(AuditLogger::class)->record('invoice.refund_receipt_sent', $invoice, ['number' => $invoice->number, 'to' => $email]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('payments.refunds.receipt_sent', ['email' => $email])]);
 
         return back();
     }

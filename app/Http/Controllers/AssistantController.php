@@ -152,7 +152,7 @@ class AssistantController extends Controller
             $action->forceFill(['status' => 'failed', 'result' => __('assistant.actions.not_possible'), 'decided_at' => now()])->save();
         }
 
-        return response()->json(['action' => AssistantChat::action($action), 'booking' => $result['booking'] ?? null, 'redirect' => $result['redirect'] ?? null]);
+        return response()->json(['action' => AssistantChat::action($action), 'booking' => $result['booking'] ?? null, 'task' => $result['task'] ?? null, 'redirect' => $result['redirect'] ?? null]);
     }
 
     public function cancel(Request $request, AssistantAction $action): JsonResponse

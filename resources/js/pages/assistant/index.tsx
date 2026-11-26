@@ -16,6 +16,8 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useMoney } from '@/components/billing/money';
 import { headerButtonClass, ScreenHeader } from '@/components/screen-header';
+import { TaskSheet } from '@/components/tasks/task-sheet';
+import type { TaskDraft } from '@/components/tasks/types';
 import { Button } from '@/components/ui/button';
 import { ChatDock } from '@/components/ui/chat-dock';
 import { IconButton } from '@/components/ui/icon-button';
@@ -432,9 +434,12 @@ function InvoiceCard({
 function ActionCard({
     item,
     onDecided,
+    onTask,
 }: {
     item: Action;
     onDecided: (action: Action) => void;
+    /** A confirmed task (propose_task): the task form opens filled in; it is saved only with Save. */
+    onTask: (task: TaskDraft) => void;
 }) {
     const t = useTrans();
     const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null);
@@ -448,8 +453,10 @@ function ActionCard({
                 (body: {
                     action: Action;
                     booking?: Record<string, unknown> | null;
+                    task?: TaskDraft | null;
                 }) => {
                     if (body.action) onDecided(body.action);
+                    if (body.task) onTask(body.task);
                     // A new booking: the same filled form as Quick booking.
                     if (body.booking) {
                         handQuickResult(body.booking);
@@ -553,6 +560,7 @@ export default function AssistantIndex({
         { id: string; blob: Blob; filename: string; preview: string }[]
     >([]);
     const [sentPhotos, setSentPhotos] = useState<string[]>([]);
+    const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null);
     const picker = useRef<HTMLInputElement>(null);
     const questionField = useRef<HTMLTextAreaElement>(null);
     const latestPhotos = useRef(photos);
@@ -795,6 +803,7 @@ export default function AssistantIndex({
                                 key={item.id}
                                 item={item}
                                 onDecided={decided}
+                                onTask={setTaskDraft}
                             />
                         ) : (
                             <div
@@ -974,6 +983,11 @@ export default function AssistantIndex({
                     </form>
                 </ChatDock>
             </section>
+            <TaskSheet
+                open={taskDraft !== null}
+                onOpenChange={(open) => !open && setTaskDraft(null)}
+                draft={taskDraft}
+            />
         </>
     );
 }

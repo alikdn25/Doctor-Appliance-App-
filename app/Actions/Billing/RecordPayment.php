@@ -159,6 +159,9 @@ class RecordPayment
             $refund->estimate_id = $original->estimate_id;
             $refund->currency = $original->currency;
             $refund->refunded_payment_id = $original->id;
+            // Where the money went back: the same card (shown on the refund and its receipt).
+            $refund->card_brand = $original->card_brand;
+            $refund->card_last4 = $original->card_last4;
             $refund->save();
 
             if ($invoice !== null) {

@@ -55,7 +55,6 @@ return [
         'close' => 'Close',
         'job' => 'Job',
         'quick_booking' => 'Quick booking',
-        'booking_from_photo' => 'Booking from photo',
         'expense' => 'Expense',
         'trip' => 'Trip',
         'task' => 'Task',

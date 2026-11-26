@@ -52,7 +52,7 @@ test('the list shows outstanding and overdue totals and how many days each invoi
 
     $this->get(route('invoices.index'))->assertInertia(fn (Assert $page) => $page
         ->component('invoices/index')
-        ->where('filters.status', 'outstanding')
+        ->where('filters.status', 'unpaid')
         ->where('outstandingTotals.0.amount', $overdue->total + $due->total)
         ->where('overdueTotals.0.amount', $overdue->total)
         ->where('invoices.data', fn ($rows) => collect($rows)->pluck('due_in_days', 'number')->all() === [

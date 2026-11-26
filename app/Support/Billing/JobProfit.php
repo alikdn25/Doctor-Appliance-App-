@@ -38,9 +38,8 @@ class JobProfit
         $cost = 0;
 
         foreach ($invoices as $invoice) {
-            $net = $invoice->total - $invoice->tax_total;
-            // Refunds given as settled lower the revenue in proportion.
-            $revenue += $invoice->total > 0 ? (int) round($net * max(0, $invoice->total - $invoice->credited_amount) / $invoice->total) : $net;
+            // Settled refunds take their amount without taxes back.
+            $revenue += $invoice->revenueAfterRefunds();
             $cost += $invoice->items->sum(fn (InvoiceItem $item) => $item->totalCost());
         }
 

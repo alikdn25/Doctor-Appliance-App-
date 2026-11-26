@@ -33,6 +33,10 @@ export type JobRow = {
     planned_date?: string | null;
     /** Found by a search in the trash. */
     deleted?: boolean;
+    /** Search results only (owner's task of November 26). */
+    last_visit?: string | null;
+    search_status?: 'open' | 'completed' | 'paid' | 'cancelled';
+    search_status_label?: string;
 };
 
 export type ApplianceItem = {

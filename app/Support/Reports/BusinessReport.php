@@ -28,11 +28,8 @@ class BusinessReport
             $job = $invoice->job;
             $visit = $job->visits->filter(fn (JobVisit $v) => $v->started_at !== null)->last() ?? $job->visits->last();
             $technician = $visit?->assignees->first();
-            $net = $invoice->total - $invoice->tax_total;
-            // A settled refund reduces net revenue proportionally; taxes and tips are not revenue.
-            $revenue = $invoice->total > 0
-                ? (int) round($net * max(0, $invoice->total - $invoice->credited_amount) / $invoice->total)
-                : $net;
+            // Settled refunds take their amount without taxes back; taxes and tips are not revenue.
+            $revenue = $invoice->revenueAfterRefunds();
 
             return [
                 'currency' => $invoice->currency,

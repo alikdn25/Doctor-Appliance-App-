@@ -65,6 +65,7 @@ use App\Http\Controllers\Jobs\JobMessageController;
 use App\Http\Controllers\Jobs\JobMessageFillController;
 use App\Http\Controllers\Jobs\JobNoteController;
 use App\Http\Controllers\Jobs\JobPartsController;
+use App\Http\Controllers\Jobs\JobReopenController;
 use App\Http\Controllers\Jobs\JobReportController;
 use App\Http\Controllers\Jobs\JobStatsFieldsController;
 use App\Http\Controllers\Jobs\JobStatusController;
@@ -228,6 +229,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::resource('jobs', JobController::class);
         Route::put('jobs/{job}/status', JobStatusController::class)->name('jobs.status');
         Route::post('jobs/{job}/close', JobCloseController::class)->name('jobs.close');
+        Route::post('jobs/{job}/reopen', JobReopenController::class)->name('jobs.reopen');
         Route::post('jobs/{job}/costs', [JobCostController::class, 'storeCost'])->name('jobs.costs.store');
         Route::put('jobs/{job}/costs/{cost}', [JobCostController::class, 'updateCost'])->name('jobs.costs.update');
         Route::delete('jobs/{job}/costs/{cost}', [JobCostController::class, 'destroyCost'])->name('jobs.costs.destroy');
@@ -336,6 +338,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('payments.store');
         Route::get('payments/{payment}/receipt', [PaymentController::class, 'receipt'])->name('payments.receipt');
         Route::post('invoices/{invoice}/refund', [PaymentController::class, 'refund'])->name('invoices.refund');
+        Route::post('invoices/{invoice}/customer', [InvoiceController::class, 'addCustomer'])->name('invoices.add-customer');
+        Route::post('payments/{payment}/refund-receipt', [PaymentController::class, 'refundReceipt'])->middleware('throttle:20,1')->name('payments.refund-receipt');
         Route::post('payments/{payment}/void', [PaymentController::class, 'void'])->name('payments.void');
         Route::patch('payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
 

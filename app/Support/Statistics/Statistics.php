@@ -155,7 +155,7 @@ class Statistics
                     'method' => $payment->method->statsGroup(),
                     'method_label' => $payment->method->label(),
                     'amount' => (int) $payment->amount,
-                    'taxes' => self::taxShare((int) $payment->amount, (int) $document->total, (array) $document->taxes),
+                    'taxes' => $payment->taxShares((int) $document->total, (array) $document->taxes),
                     'invoice' => $document->number,
                     'customer_id' => $document->customer_id,
                 ];

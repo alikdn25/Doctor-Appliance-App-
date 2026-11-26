@@ -75,6 +75,9 @@ class PaidController extends Controller
                 default => null,
             },
             'send_url' => route('payments.send-receipt', $payment),
+            // Refund from here too (owner's task of November 26).
+            'refund' => Gate::allows('refund', $invoice) ? InvoiceController::refundSetup($invoice) : null,
+            'currency' => $invoice->currency,
         ]);
     }
 

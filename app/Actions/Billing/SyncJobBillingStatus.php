@@ -21,7 +21,8 @@ use Illuminate\Support\Collection;
  * Sending an estimate changes nothing. Jobs still in progress without a sent invoice (e.g. a diagnosis fee paid on
  * site) and jobs in the parts flow keep their status; they are synced again when the work is completed.
  * A job not closed yet whose invoices are all paid closes by itself as repaired (owner's task of November 25), unless
- * a visit is under way or booked ahead, or the job waits for parts, the customer or is on hold.
+ * a visit is under way or booked ahead, or the job waits for parts, the customer or is on hold. A reopened job is left
+ * alone until it is closed again.
  */
 class SyncJobBillingStatus
 {
@@ -36,7 +37,14 @@ class SyncJobBillingStatus
             return;
         }
 
-        $invoices = $job->invoices()->where('status', '!=', InvoiceStatus::Void->value)->get(['id', 'status', 'balance', 'sent_at', 'total']);
+        // A reopened job (owner's task of November 26) stays open whatever its invoices say: it is closed by Complete
+        // or Close by voice, which clears reopened_at.
+        if ($job->reopened_at !== null && ! in_array($job->status, [JobStatus::Completed, JobStatus::Invoiced, JobStatus::AwaitingPayment, JobStatus::Paid], true)) {
+            return;
+        }
+
+        // An empty draft invoice (no lines or 0, nothing paid) neither bills nor closes the job.
+        $invoices = $job->invoices()->whereNotIn('status', [InvoiceStatus::Void->value, InvoiceStatus::Draft->value])->get(['id', 'status', 'balance', 'sent_at', 'total']);
 
         if ($autoClose && $this->closesItself($job, $invoices)) {
             // CloseJob records the outcome, sets the status and syncs again (Paid).
