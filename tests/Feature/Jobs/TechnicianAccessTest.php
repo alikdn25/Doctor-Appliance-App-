@@ -75,7 +75,8 @@ test('my jobs lists only the user\'s own visits by day', function () {
 
     // A closed job leaves the day and shows under Completed only.
     inCompany($this->company, fn () => $this->job->forceFill(['status' => JobStatus::Completed])->save());
-    expect($ids(['tab' => 'completed']))->toBe([$today->id, $past->id])
+    // Each job once (owner's task of November 26): its latest visit.
+    expect($ids(['tab' => 'completed']))->toBe([$today->id])
         ->and($ids([]))->toBe([]);
 });
 
