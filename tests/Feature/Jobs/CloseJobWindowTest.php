@@ -22,6 +22,7 @@ use App\Models\Property;
 use App\Models\ReviewRequest;
 use App\Models\ServiceJob;
 use App\Models\TaxRate;
+use App\Support\Jobs\MorningSms;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -378,4 +379,14 @@ test('jobs:close-paid closes paid jobs left open, finishes the visit at the paym
     expect(AuditLog::query()->withoutGlobalScopes()->where('action', 'job.closed_paid')->where('auditable_id', $this->job->id)->exists())->toBeTrue();
     Mail::assertNothingQueued();
     Mail::assertNothingSent();
+});
+
+test('a job closed with No charge is not counted in "No invoice"; one closed without an amount is', function () {
+    closeOut(['method' => 'no_charge'])->assertRedirect('/today');
+    $count = fn () => inCompany($this->company, fn () => MorningSms::completedWithoutInvoice()->count());
+    expect($count())->toBe(0);
+
+    $this->job = ServiceJob::factory()->for(Property::factory()->for($this->customer))->create(['brand_id' => $this->brand->id, 'status' => JobStatus::Scheduled]);
+    closeOut(['token' => 'tap-2'])->assertRedirect('/today');
+    expect($count())->toBe(1);
 });

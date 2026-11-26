@@ -3,6 +3,7 @@
 namespace App\Support\Jobs;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\JobOutcome;
 use App\Enums\JobStatus;
 use App\Enums\UserRole;
 use App\Enums\VisitStatus;
@@ -150,6 +151,8 @@ class MorningSms
     public static function completedWithoutInvoice(): Builder
     {
         return ServiceJob::query()->where('status', JobStatus::Completed->value)
+            // Closed with No charge: nothing to invoice (owner's task of November 26).
+            ->where(fn ($q) => $q->whereNull('outcome')->orWhere('outcome', '!=', JobOutcome::NoCharge->value))
             ->whereDoesntHave('invoices', fn ($q) => $q->where('status', '!=', InvoiceStatus::Void->value));
     }
 

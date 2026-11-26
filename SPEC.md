@@ -1178,6 +1178,7 @@ RU / EN, independent of the keyboard.**
   paid and that has no visit booked after the last payment is closed, its open visit finished at the last payment's
   time; written to the change log (`job.closed_paid`); no email or SMS. Jobs waiting for parts / the customer or on
   hold are listed, not closed.
+- A job closed with No charge is not counted in "No invoice" (nothing to invoice); one closed without an amount is.
 
 ## 8. Google review requests
 
