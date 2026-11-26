@@ -63,6 +63,12 @@ for (const scale of [100, 130]) {
             .locator('[data-test="action-sheet"]')
             .getByRole('button', { name: /Close job/ })
             .click();
+        // The Close job window keeps its labels inside too; the outcome dialog opens from its link.
+        await expect(
+            page.locator('[data-test="close-job-sheet"]'),
+        ).toBeVisible();
+        expect(await overflowingButtons(page)).toEqual([]);
+        await page.locator('[data-test="close-other-outcome"]').click();
         const dialog = page.getByRole('dialog');
         const declined = dialog.getByRole('button', {
             name: 'Customer declined repair',

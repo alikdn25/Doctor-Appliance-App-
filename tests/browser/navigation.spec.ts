@@ -49,11 +49,10 @@ test('the owner gets Today, Calendar, Map, Jobs, More and the round "+"; Field s
     await page.locator('[data-test="create-fab"]').click();
     const menu = page.locator('[data-test="create-menu"] :is(button, label)');
     await expect(menu).toHaveText([
-        'Task',
         'Trip',
         'Expense',
         'New charge',
-        'Booking from photo',
+        'Task',
         // The owner's Assistant, nearest the "+" (below the booking pair).
         'Assistant',
     ]);

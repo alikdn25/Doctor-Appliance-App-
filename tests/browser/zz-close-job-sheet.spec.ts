@@ -52,7 +52,12 @@ test('Close job fits a 390 px phone with every button in reach', async ({
         expect(b.y + b.height).toBeLessThanOrEqual(844);
         expect(b.y).toBeGreaterThan(844 / 3);
     }
-    await expect(page.locator('[data-test="close-line"]')).toHaveCount(1);
+    // The open invoice's total, or the lines to type when the job has none.
+    await expect(
+        page.locator(
+            '[data-test="close-invoice-total"], [data-test="close-lines"]',
+        ),
+    ).toHaveCount(1);
     await expect(page.locator('[data-test="close-note"]')).toBeVisible();
     await page.screenshot({ path: info.outputPath('390-close-job.png') });
 
