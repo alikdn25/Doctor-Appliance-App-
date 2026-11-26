@@ -15,8 +15,8 @@ class ManifestController extends Controller
             'name' => config('app.name'),
             'short_name' => config('app.name'),
             'description' => __('pwa.description'),
-            // Technicians land on their visits for the day.
-            'start_url' => '/my-jobs',
+            // Every start opens Today, the day's jobs (owner's task of November 26).
+            'start_url' => '/today',
             'scope' => '/',
             'display' => 'standalone',
             'orientation' => 'portrait',

@@ -253,7 +253,7 @@ test('the app can be installed on a phone', function () {
         ->assertOk()
         ->assertHeader('Content-Type', 'application/manifest+json')
         ->assertJsonPath('display', 'standalone')
-        ->assertJsonPath('start_url', '/my-jobs')
+        ->assertJsonPath('start_url', '/today')
         ->assertJsonCount(3, 'icons');
 
     foreach (['offline.html', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'] as $file) {

@@ -22,7 +22,14 @@ test('the technician finishes a visit on the Finish visit screen with free-text 
     await expect(
         tech.getByRole('link', { name: 'Part needed', exact: true }),
     ).toBeVisible();
-    await tech.getByRole('link', { name: 'Complete', exact: true }).click();
+    // Complete opens the Close job window (owner's task of November 26); the Finish visit screen stays at its address.
+    await tech.getByRole('button', { name: 'Complete', exact: true }).click();
+    await expect(tech.locator('[data-test="close-job-sheet"]')).toBeVisible();
+    await tech.keyboard.press('Escape');
+    const parts = await tech
+        .getByRole('link', { name: 'Part needed', exact: true })
+        .getAttribute('href');
+    await tech.goto(`http://127.0.0.1:8000${parts!.split('?')[0]}`);
     await expect(tech).toHaveURL(/\/visits\/\d+\/finish$/);
     await expect(tech.getByText('Jane Browser').first()).toBeVisible();
     await tech

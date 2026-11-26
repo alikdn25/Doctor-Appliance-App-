@@ -10,7 +10,7 @@ test.use({ viewport: { width: 390, height: 844 } });
 test('More has Assistant; the chat says when the AI is not set up', async ({
     page,
 }) => {
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     await page.locator('[data-test="bottom-nav-more"]').click();
     const more = page.locator('[data-test="more-sheet"]');
     await more.getByRole('link', { name: 'Assistant', exact: true }).click();

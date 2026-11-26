@@ -19,7 +19,7 @@ async function noSideScroll(page: Page) {
 test('Map is a tab of the bottom bar and shows the day with a card per job', async ({
     page,
 }, info) => {
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     const nav = page.getByRole('navigation', { name: 'Main sections' });
     await expect(nav.locator('[data-test="bottom-nav-map"]')).toBeVisible();
     await nav.locator('[data-test="bottom-nav-map"]').click();
@@ -81,7 +81,7 @@ test('after a deploy the app offers Update, and waits while a form has changes',
     await page.route('**/app-version', (route) =>
         route.fulfill({ json: { version: 'a-newer-version' } }),
     );
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     const banner = page.locator('[data-test="app-update"]');
     await expect(banner).toBeVisible();
     await expect(banner).toContainText('New version available');

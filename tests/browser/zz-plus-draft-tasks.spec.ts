@@ -29,7 +29,7 @@ async function openPlus(page: Page) {
 test('the round "+" is on every screen and opens Job, Expense, Trip and Task', async ({
     page,
 }, info) => {
-    for (const path of ['/my-jobs', '/calendar', '/customers']) {
+    for (const path of ['/today', '/calendar', '/customers']) {
         await page.goto(path);
         await expect(page.locator('[data-test="create-fab"]')).toBeVisible();
     }
@@ -37,11 +37,10 @@ test('the round "+" is on every screen and opens Job, Expense, Trip and Task', a
     // From the bottom up; the booking pair (Quick booking · Book customer) nearest the thumb.
     const items = page.locator('[data-test="create-menu"] :is(button, label)');
     await expect(items).toHaveText([
-        'Task',
         'Trip',
         'Expense',
         'New charge',
-        'Booking from photo',
+        'Task',
         // The owner's Assistant, nearest the "+" (below the booking pair).
         'Assistant',
     ]);
@@ -73,7 +72,7 @@ test('the round "+" is on every screen and opens Job, Expense, Trip and Task', a
 test('a task from "+" shows in My Jobs in its own colour and is ticked done', async ({
     page,
 }, info) => {
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     await openPlus(page);
     await page.locator('[data-test="create-task"]').click();
     const sheet = page.locator('[data-test="task-sheet"]');
@@ -224,7 +223,7 @@ test('the job page has Job · Notes · Messages · Files · History; a team note
 test('job card badges (status, Overdue) stay inside the card on a phone', async ({
     page,
 }) => {
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     const cards = page.locator('[data-test="job-card"]');
     await expect(cards.first()).toBeVisible();
     for (const card of await cards.all()) {

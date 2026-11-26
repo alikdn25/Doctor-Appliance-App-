@@ -8,6 +8,8 @@ import {
     emptyCustomer,
 } from '@/components/payments/customer-fields';
 import type { CustomerDetails } from '@/components/payments/customer-fields';
+import { ReceiptReviewStep } from '@/components/payments/receipt-review-step';
+import type { ReviewStepSetup } from '@/components/payments/receipt-review-step';
 import { ScreenHeader } from '@/components/screen-header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -47,6 +49,8 @@ type Props = {
     send_url: string;
     refund?: RefundSetup | null;
     currency?: string;
+    /** "Receipt & review" and Done for a job's customer (owner's task of November 26). */
+    close_step?: (ReviewStepSetup & { done_url: string }) | null;
 };
 
 /**
@@ -82,6 +86,12 @@ export default function Paid(props: Props) {
     const [sending, setSending] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [sent, setSent] = useState(false);
+    // One id for this screen: Done sent twice is applied once.
+    const [doneToken] = useState(() =>
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
 
     const send = () => {
         setSending(true);
@@ -149,8 +159,29 @@ export default function Paid(props: Props) {
                     )}
                 </div>
 
+                {props.close_step && (
+                    <ReceiptReviewStep
+                        setup={props.close_step}
+                        showReceipt
+                        summary={`${payment.amount} · ${payment.method}`}
+                        busy={sending}
+                        onDone={(values) => {
+                            setSending(true);
+                            router.post(
+                                props.close_step!.done_url,
+                                { token: doneToken, ...values },
+                                { onFinish: () => setSending(false) },
+                            );
+                        }}
+                    />
+                )}
+
                 <section
-                    className="da-card grid gap-3 rounded-[18px] p-4"
+                    className={
+                        props.close_step
+                            ? 'hidden'
+                            : 'da-card grid gap-3 rounded-[18px] p-4'
+                    }
                     data-test="send-receipt"
                 >
                     <h2 className="text-base font-semibold">

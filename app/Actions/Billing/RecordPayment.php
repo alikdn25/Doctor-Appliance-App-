@@ -8,6 +8,7 @@ use App\Models\Estimate;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\Jobs\PaidJobCloser;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -116,7 +117,14 @@ class RecordPayment
                 return $this->createDeposit($estimate, $attributes);
             }
 
-            return $this->create($invoice, $attributes, $user, $estimate?->id);
+            $payment = $this->create($invoice, $attributes, $user, $estimate?->id);
+
+            // Paid online by the customer: the job is over, even with a visit still open (owner's task of November 26).
+            if ($method === PaymentMethod::Online) {
+                app(PaidJobCloser::class)->afterOnlinePayment($payment);
+            }
+
+            return $payment;
         });
     }
 

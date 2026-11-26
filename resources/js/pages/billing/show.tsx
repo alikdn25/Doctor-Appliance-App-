@@ -213,6 +213,13 @@ export default function BillingShow({
         ) {
             otherWays();
         }
+        // "Send invoice" in the Close job window opens the email at once.
+        if (
+            send.canSend &&
+            new URLSearchParams(window.location.search).get('send') === '1'
+        ) {
+            send.openEmail();
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 

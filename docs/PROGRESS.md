@@ -1,3 +1,29 @@
+# November 26 — Owner's task: one window to close a job, receipt and review, Today as the start (done)
+
+1. **Today is the start** (SPEC §7.28): `/today` is the day's jobs (`jobs.mine`); `/my-jobs` redirects there; the
+   morning summary screen moved to `/today/summary`. PWA `start_url` = `/today`; `/` (the Android app's start) and
+   sign-in (Owner, Admin, Technician) open Today; the logo follows the nav. A job is listed once on Today.
+2. **Close job window** (`CloseJobSheet`, `JobCloseOutController`, `JobCloseOut`): "Complete" and "⋯ → Close job" open
+   it. Paid — Cash / E-transfer (the open invoice in full, or an invoice made from the lines with taxes on top, or no
+   invoice when empty), Take card payment (the reader for the open invoice or one made from the lines, then back in the
+   window), Send invoice (`/invoices/{id}?send=1` opens the email; Awaiting payment as before), No charge (no reason
+   asked). Note with the microphone → Work done. "Declined, unable to repair or another outcome" opens the old dialog.
+3. **Receipt & review** (`ReceiptReviewStep`): Send receipt (off), Request review (on) with the location remembered
+   per person (`users.review_profile_id`), email field when the customer has none (saved). Emails from the queue
+   (`SendCloseOutEmails`): both → one receipt with the review block; one → that one; none → nothing; no email → nothing.
+4. **Done**: payment, visit finished, job closed, redirect to Today; `service_jobs.close_request` makes a repeated Done
+   a no-op. The Paid screen after Take payment shows the same step (`payments/{payment}/done`); Walk-in keeps the form.
+5. **Online payment closes the job** even with a visit open (finished at the payment time, `PaidJobCloser`); not for a
+   reopened job paying an invoice made before reopening. Close by voice → Today. A refund keeps the job closed.
+6. **`jobs:close-paid`** (+ data migration `2026_11_29_000200`): closes open jobs paid in full with no visit booked
+   after the last payment; change log `job.closed_paid`; no emails or SMS. Parts / customer / on hold are listed only.
+
+- Tests: `CloseJobWindowTest` (every button, the 4 email combinations, no email, double Done, card, online payment with
+  an open visit, reopened job, refund, Today after Done and sign-in, the command, isolation); browser
+  `zz-close-job-sheet.spec.ts` (390 px: the window fits, buttons in reach). Browser specs moved to `/today`.
+- Migrations: `2026_11_29_000100` (2 nullable columns), `2026_11_29_000200` (data fix). Next: deploy, check on the
+  phone, confirm #1018 and #1023 are closed.
+
 # November 26 — Owner's task: "+" button, tasks through the assistant, payments and refunds, search and Reopen job (done)
 
 1. **"+" menu** (`create-fab.tsx`): "Booking from photo" removed with its code (`startQuickBookingFromPhotos`, the

@@ -9,6 +9,7 @@ use App\Models\GoogleProfile;
 use App\Models\Invoice;
 use App\Models\Message;
 use App\Models\ReviewRequest;
+use App\Models\ServiceJob;
 use App\Models\User;
 use App\Support\Reviews\ReviewText;
 use App\Support\Reviews\ReviewTracking;
@@ -60,16 +61,25 @@ class ReviewRequests
     public function send(Invoice $invoice, GoogleProfile $profile, string $email, User $user, ?string $text = null): Message
     {
         $invoice->loadMissing(['customer', 'job.brand']);
-        $job = $invoice->job;
-        $body = self::personal($text, $profile) ?? self::text($invoice->customer, $job->brand?->name, $profile);
-        self::keepEmail($invoice->customer, $email);
+
+        return $this->sendForJob($invoice->job, $invoice->customer, $profile, $email, $user, $text);
+    }
+
+    /**
+     * The review request of a job, with or without an invoice (a job closed with No charge).
+     */
+    public function sendForJob(ServiceJob $job, Customer $customer, GoogleProfile $profile, string $email, ?User $user, ?string $text = null): Message
+    {
+        $job->loadMissing('brand');
+        $body = self::personal($text, $profile) ?? self::text($customer, $job->brand?->name, $profile);
+        self::keepEmail($customer, $email);
 
         // The links go through our address, so a click is seen on the job (no reminder after it).
-        $message = $this->messenger->emailToAddress(MessageKind::ReviewRequest, $invoice->customer, $job, $email,
+        $message = $this->messenger->emailToAddress(MessageKind::ReviewRequest, $customer, $job, $email,
             ReviewTracking::inText($body, $job, $profile), $user, reviewUrl: ReviewTracking::link($job, $profile));
 
         ReviewRequest::query()->updateOrCreate(['service_job_id' => $job->id], [
-            'customer_id' => $invoice->customer_id,
+            'customer_id' => $customer->id,
             'google_profile_id' => $profile->id,
             'status' => ReviewRequest::SENT,
             'channel' => Message::EMAIL,

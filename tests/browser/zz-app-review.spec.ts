@@ -7,7 +7,7 @@ import { expect, test } from '@playwright/test';
 test.use({ viewport: { width: 390, height: 844 } });
 
 test('Inconvenient in More sends a note', async ({ page }) => {
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     await page.locator('[data-test="bottom-nav-more"]').click();
     await page.locator('[data-test="more-inconvenient"]').click();
     const sheet = page.locator('[data-test="inconvenient-sheet"]');

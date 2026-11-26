@@ -158,7 +158,7 @@ test('the morning summary goes at each person\'s time, once a day, and can be tu
     expect($alerts)->toHaveCount(1)
         ->and($alerts->first()->data['kind'])->toBe('morning_summary')
         ->and($alerts->first()->data['body'])->toContain('2 jobs today')->toContain('1 unanswered text')->toContain('1 unpaid invoice')->toContain('1 part to receive')
-        ->and($alerts->first()->data['url'])->toEndWith('/today')
+        ->and($alerts->first()->data['url'])->toEndWith('/today/summary')
         ->and($this->tech->notifications()->count())->toBe(0);
 
     // The time is a setting.

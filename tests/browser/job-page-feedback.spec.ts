@@ -138,7 +138,7 @@ test('my jobs: Day | Completed with ‹ date ›, the day summary, + Trip button
         viewport: page.viewportSize()!,
     });
     const tech = await context.newPage();
-    await tech.goto('http://127.0.0.1:8000/my-jobs');
+    await tech.goto('http://127.0.0.1:8000/today');
     await expect(tech.getByRole('radio', { name: 'Day' })).toHaveAttribute(
         'aria-checked',
         'true',

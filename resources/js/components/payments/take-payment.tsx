@@ -36,8 +36,11 @@ export type ChargeScreen = {
 
 type Method = 'card_reader' | 'cash' | 'bank_transfer';
 
+/** A payment recorded: its id and the Paid screen. */
+export type PaidResult = { payment_id: number; paid_url: string };
+
 type StoreResponse =
-    | { status: 'paid'; paid_url: string }
+    | { status: 'paid'; payment_id: number; paid_url: string }
     | {
           status: 'pending';
           reference: string;
@@ -125,6 +128,8 @@ export function TakePayment({
     amountLabel,
     editable,
     payload,
+    onPaid,
+    cardOnly = false,
 }: {
     screen: ChargeScreen;
     /** Plain number for the field, e.g. "168.00". */
@@ -134,6 +139,10 @@ export function TakePayment({
     editable: boolean;
     /** The body of POST charges for this method and amount. */
     payload: (method: Method, amount: string) => Record<string, unknown>;
+    /** Instead of opening the Paid screen (the Close job window goes on to "Receipt & review"). */
+    onPaid?: (paid: PaidResult) => void;
+    /** Only the card reader (Cash and E-transfer are buttons of their own around it). */
+    cardOnly?: boolean;
 }) {
     const t = useTrans();
     const native = hasCardReader();
@@ -174,7 +183,8 @@ export function TakePayment({
             );
 
             if (started.status === 'paid') {
-                router.visit(started.paid_url);
+                if (onPaid) onPaid(started);
+                else router.visit(started.paid_url);
 
                 return;
             }
@@ -200,11 +210,11 @@ export function TakePayment({
             });
             setStage(t('charges.take.saving'));
             failUrl = null;
-            const done = await post<{ paid_url: string }>(
-                started.complete_url,
-                { payment_id: result.paymentId },
-            );
-            router.visit(done.paid_url);
+            const done = await post<PaidResult>(started.complete_url, {
+                payment_id: result.paymentId,
+            });
+            if (onPaid) onPaid(done);
+            else router.visit(done.paid_url);
         } catch (e) {
             const info = readerError(e);
             const { code, message } = info;
@@ -331,7 +341,7 @@ export function TakePayment({
                     </p>
                 ))}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className={cardOnly ? 'hidden' : 'grid grid-cols-2 gap-3'}>
                 {screen.methods.cash && (
                     <Button
                         variant="outline"

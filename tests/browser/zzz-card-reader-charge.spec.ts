@@ -13,7 +13,7 @@ test('New charge in the browser: Cash → Paid with Send receipt', async ({
     // The charge makes a Completed job for today: run it once, last (phone project), so it does not change what the
     // other screens show.
     test.skip(info.project.name !== 'mobile', 'Runs once, on the phone');
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     await expect(page.locator('[data-test="booking-buttons"]')).toHaveCount(0);
 
     await page.locator('[data-test="create-fab"]').click();

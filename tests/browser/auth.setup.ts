@@ -37,8 +37,8 @@ export default async function setup() {
                 .getByRole('button', { name: 'Continue', exact: true })
                 .click();
         }
-        // The Owner starts on Jobs, a technician on My Jobs.
-        await expect(page).toHaveURL(role === 'owner' ? /\/jobs$/ : /my-jobs/);
+        // Everyone who goes on calls starts on Today (owner's task of November 26).
+        await expect(page).toHaveURL(/\/today$/);
         await expect(page.locator('h1')).toBeVisible();
         await context.storageState({ path: `test-results/auth-${role}.json` });
         await context.close();

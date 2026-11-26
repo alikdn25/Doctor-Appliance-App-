@@ -340,6 +340,11 @@ class JobController extends Controller
         if ($tab === 'day') {
             $visits = DayOrder::sort($visits);
         }
+        // A job is listed once (owner's task of November 26), even with two visits in the list: on the day the one
+        // under way (else the first), under Completed the latest.
+        $keep = $visits->groupBy('service_job_id')
+            ->map(fn ($group) => ($group->first(fn (JobVisit $v) => in_array($v->status->value, $active, true)) ?? $group->first())->id);
+        $visits = $visits->filter(fn (JobVisit $v) => $keep->contains($v->id))->values();
 
         $messaging = app(MessagingPresenter::class);
         // New-message badge: unread texts from the customer of an unfinished job.
@@ -795,6 +800,10 @@ class JobController extends Controller
                 ->values(),
             'paymentMethods' => PaymentMethod::manualOptions(currentCompany()),
             'applianceCategories' => ApplianceCategory::options(),
+            // The Close job window ("Complete", "⋯ → Close job"): owner's task of November 26.
+            'closeSheet' => Gate::allows('work', $job) && $job->outcome === null && ! $job->trashed()
+                && ! in_array($job->status, [JobStatus::Cancelled, JobStatus::Draft], true)
+                ? JobCloseOutController::sheet($job, $user) : null,
         ]);
     }
 

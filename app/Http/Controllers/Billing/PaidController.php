@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Billing;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Jobs\JobCloseOutController;
 use App\Messaging\ReviewRequests;
 use App\Models\GoogleProfile;
 use App\Models\Payment;
@@ -78,6 +79,12 @@ class PaidController extends Controller
             // Refund from here too (owner's task of November 26).
             'refund' => Gate::allows('refund', $invoice) ? InvoiceController::refundSetup($invoice) : null,
             'currency' => $invoice->currency,
+            // "Receipt & review" and Done (owner's task of November 26): for a job's customer; a Walk-in keeps the
+            // details form above.
+            'close_step' => $invoice->job !== null && ! $customer->is_walk_in ? [
+                'done_url' => route('payments.done', $payment),
+                ...JobCloseOutController::reviewStep($invoice->job, request()->user()),
+            ] : null,
         ]);
     }
 

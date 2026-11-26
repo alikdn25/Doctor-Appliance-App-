@@ -22,7 +22,7 @@ test('the owner gets Today, Calendar, Map, Jobs, More and the round "+"; Field s
     page,
 }, info) => {
     test.skip(info.project.name !== 'mobile', 'The bottom bar is for phones');
-    await page.goto('/my-jobs');
+    await page.goto('/today');
 
     const nav = page.getByRole('navigation', { name: 'Main sections' });
     await expect(nav.locator('[data-test="bottom-nav-today"]')).toHaveAttribute(
@@ -49,11 +49,10 @@ test('the owner gets Today, Calendar, Map, Jobs, More and the round "+"; Field s
     await page.locator('[data-test="create-fab"]').click();
     const menu = page.locator('[data-test="create-menu"] :is(button, label)');
     await expect(menu).toHaveText([
-        'Task',
         'Trip',
         'Expense',
         'New charge',
-        'Booking from photo',
+        'Task',
         // The owner's Assistant, nearest the "+" (below the booking pair).
         'Assistant',
     ]);
@@ -124,14 +123,14 @@ test('the owner gets Today, Calendar, Map, Jobs, More and the round "+"; Field s
 test('child screens have ← that goes back; the unfinished-jobs strip shows counters', async ({
     page,
 }, info) => {
-    await page.goto('/my-jobs');
+    await page.goto('/today');
     await expect(page.locator('[data-test="unfinished-total"]')).toBeVisible();
 
     await page.goto('/customers');
     const back = page.locator('[data-test="back-button"]:visible').first();
     await expect(back).toBeVisible();
     await back.click();
-    await expect(page).toHaveURL(/\/my-jobs/);
+    await expect(page).toHaveURL(/\/today/);
     await page.screenshot({ path: info.outputPath('back.png') });
 });
 
@@ -162,7 +161,7 @@ test.describe('technician', () => {
             info.project.name !== 'mobile',
             'The bottom bar is for phones',
         );
-        await page.goto('/my-jobs');
+        await page.goto('/today');
         const nav = page.getByRole('navigation', { name: 'Main sections' });
         for (const key of ['today', 'map', 'mileage', 'more']) {
             await expect(
