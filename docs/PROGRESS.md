@@ -1,3 +1,10 @@
+# November 26 — after the deploy check of 79dbb00 (done)
+
+- "No invoice" counter (top strip, morning SMS, Debtors → not invoiced): jobs closed with No charge are left out
+  (`MorningSms::completedWithoutInvoice`). Test in `CloseJobWindowTest`. No migration.
+- Checked: the logo opens Today (sidebar `Link` to `/today`, not `/`); the raw `<b>` in the review request text box is
+  the editable markup (hint under the field), bold only in the email — unchanged.
+
 # November 26 — Owner's task: one window to close a job, receipt and review, Today as the start (done)
 
 1. **Today is the start** (SPEC §7.28): `/today` is the day's jobs (`jobs.mine`); `/my-jobs` redirects there; the
